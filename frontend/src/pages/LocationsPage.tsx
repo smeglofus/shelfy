@@ -1,3 +1,3 @@
-export function LocationsPage(): JSX.Element {
+export function LocationsPage() {
   return <p>Locations page placeholder</p>
 }

@@ -1,3 +1,3 @@
-export function HomePage(): JSX.Element {
+export function HomePage() {
   return <p>Dashboard placeholder</p>
 }

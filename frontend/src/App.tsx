@@ -4,7 +4,7 @@ import { BooksPage } from './pages/BooksPage'
 import { HomePage } from './pages/HomePage'
 import { LocationsPage } from './pages/LocationsPage'
 
-export function App(): JSX.Element {
+export function App() {
   return (
     <main style={{ fontFamily: 'sans-serif', margin: '2rem auto', maxWidth: 860 }}>
       <h1>Shelfy</h1>

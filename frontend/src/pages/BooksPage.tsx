@@ -1,3 +1,3 @@
-export function BooksPage(): JSX.Element {
+export function BooksPage() {
   return <p>Books page placeholder</p>
 }
