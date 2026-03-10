@@ -21,7 +21,7 @@ jobs:
       - run: mypy app/
       - run: pytest --cov=app --cov-fail-under=80 tests/
 
-  frontend-lint:
+  frontend-checks:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,8 +31,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      - run: npm install
       - run: npm run lint
+      - run: npm run build
 
   docker-build-check:
     runs-on: ubuntu-latest
@@ -42,3 +43,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config
+      - run: docker compose build

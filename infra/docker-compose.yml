@@ -2,14 +2,24 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_DB: shelfy
-      POSTGRES_USER: shelfy
-      POSTGRES_PASSWORD: shelfy
+      POSTGRES_DB: ${POSTGRES_DB:-shelfy}
+      POSTGRES_USER: ${POSTGRES_USER:-shelfy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shelfy}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shelfy} -d ${POSTGRES_DB:-shelfy}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     ports:
       - "5432:5432"
 
   redis:
     image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     ports:
       - "6379:6379"
 
@@ -17,8 +27,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -28,13 +38,15 @@ services:
     working_dir: /app
     volumes:
       - ../backend:/app
-    command: bash -lc "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: bash -lc "pip install -r requirements.txt -r requirements-dev.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://shelfy:shelfy@postgres:5432/shelfy
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://shelfy:shelfy@postgres:5432/shelfy}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
 
@@ -45,7 +57,8 @@ services:
       - ../worker:/app
     command: bash -lc "pip install -r requirements.txt && celery -A celery_app.celery_app worker --loglevel=info"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   frontend:
     image: node:20
