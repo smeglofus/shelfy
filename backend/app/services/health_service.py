@@ -1,15 +1,15 @@
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 import redis.asyncio as redis
 
-from app.config import Settings
+from app.core.config import Settings
 
 
 async def check_database(settings: Settings) -> None:
     engine = create_async_engine(settings.database_url, future=True)
     try:
         async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
+            await connection.execute(select(1))
     finally:
         await engine.dispose()
 
