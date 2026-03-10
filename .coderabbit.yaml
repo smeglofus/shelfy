@@ -1,0 +1,8 @@
+reviews:
+  profile: chill
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Follow coding standards documented in docs/coding-standards.md.
+        Enforce: no raw SQL, typed request/response models in FastAPI,
+        and required tests for changed behavior.
