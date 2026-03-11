@@ -11,7 +11,9 @@ async def main() -> None:
         raise RuntimeError("ADMIN_EMAIL and ADMIN_PASSWORD must be set")
 
     async with SessionLocal() as session:
-        await seed_admin_user(session, settings.admin_email, settings.admin_password)
+        created = await seed_admin_user(session, settings.admin_email, settings.admin_password)
+
+    print("Admin user created." if created else "Admin user already exists.")
 
 
 if __name__ == "__main__":

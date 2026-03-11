@@ -1,19 +1,26 @@
 from datetime import timedelta
+import uuid
 
 from fastapi import HTTPException, status
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
 from app.core.config import Settings
 from app.core.security import create_token, decode_token, verify_password
 from app.models.user import User
 
+logger = structlog.get_logger()
+
 
 async def authenticate_user(session: AsyncSession, email: str, password: str) -> User:
     user = await get_user_by_email(session, email)
     if user is None or not verify_password(password, user.hashed_password):
+        logger.warning("authentication_failed", email=email)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    logger.info("authentication_success", user_id=str(user.id))
     return user
 
 
@@ -22,7 +29,7 @@ async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
+async def get_user_by_id(session: AsyncSession, user_id: uuid.UUID) -> User | None:
     result = await session.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
 

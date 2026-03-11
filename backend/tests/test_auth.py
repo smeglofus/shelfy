@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 
 from httpx import ASGITransport, AsyncClient
 import pytest
@@ -40,7 +40,7 @@ def test_settings() -> Settings:
 def override_dependencies(
     test_session: AsyncSession,
     test_settings: Settings,
-) -> AsyncIterator[None]:
+) -> Iterator[None]:
     async def _get_db() -> AsyncIterator[AsyncSession]:
         yield test_session
 
