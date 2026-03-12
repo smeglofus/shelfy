@@ -53,18 +53,21 @@ export function LocationsPage() {
         style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}
       >
         <input
+          aria-label="Room"
           required
           placeholder="Room"
           value={createForm.room}
           onChange={(event) => setCreateForm((prev) => ({ ...prev, room: event.target.value }))}
         />
         <input
+          aria-label="Furniture"
           required
           placeholder="Furniture"
           value={createForm.furniture}
           onChange={(event) => setCreateForm((prev) => ({ ...prev, furniture: event.target.value }))}
         />
         <input
+          aria-label="Shelf"
           required
           placeholder="Shelf"
           value={createForm.shelf}
@@ -112,14 +115,15 @@ export function LocationsPage() {
 
               return (
                 <tr key={location.id} style={{ borderTop: '1px solid #ddd' }}>
-                  <td>{isEditing ? <input value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : location.room}</td>
-                  <td>{isEditing ? <input value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : location.furniture}</td>
-                  <td>{isEditing ? <input value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : location.shelf}</td>
+                  <td>{isEditing ? <input aria-label="Edit room" value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : location.room}</td>
+                  <td>{isEditing ? <input aria-label="Edit furniture" value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : location.furniture}</td>
+                  <td>{isEditing ? <input aria-label="Edit shelf" value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : location.shelf}</td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
                     {isEditing ? (
                       <>
                         <button
                           type="button"
+                          disabled={updateMutation.isPending}
                           onClick={() => {
                             updateMutation.mutate(
                               { id: location.id, payload: editForm },
@@ -127,10 +131,11 @@ export function LocationsPage() {
                             )
                           }}
                         >
-                          Save
+                          {updateMutation.isPending ? 'Saving…' : 'Save'}
                         </button>
                         <button
                           type="button"
+                          disabled={updateMutation.isPending}
                           onClick={() => {
                             setEditingLocationId(null)
                             setEditForm(EMPTY_FORM)
@@ -143,6 +148,7 @@ export function LocationsPage() {
                       <>
                         <button
                           type="button"
+                          disabled={updateMutation.isPending}
                           onClick={() => {
                             setEditingLocationId(location.id)
                             setEditForm({
@@ -190,13 +196,14 @@ export function LocationsPage() {
               </button>
               <button
                 type="button"
+                disabled={deleteMutation.isPending}
                 onClick={() => {
                   deleteMutation.mutate(deleteTarget.id, {
                     onSuccess: () => setDeleteTarget(null),
                   })
                 }}
               >
-                Confirm delete
+                {deleteMutation.isPending ? 'Deleting…' : 'Confirm delete'}
               </button>
             </div>
           </div>

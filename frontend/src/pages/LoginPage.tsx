@@ -15,13 +15,13 @@ export function LoginPage() {
   const location = useLocation()
   const showError = useToastStore((state) => state.showError)
 
-  const [email, setEmail] = useState('admin@example.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (tokens) => {
-      persistTokens(tokens.access_token, tokens.refresh_token)
+      persistTokens(tokens.access_token)
       const state = location.state as RouteState | undefined
       navigate(state?.from ?? '/locations', { replace: true })
     },

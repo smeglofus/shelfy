@@ -15,7 +15,7 @@ vi.mock('../lib/api', () => ({
   formatApiError: vi.fn(() => 'API error'),
 }))
 
-import { createLocation, deleteLocation, listLocations } from '../lib/api'
+import { createLocation, deleteLocation, listLocations, updateLocation } from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -47,6 +47,25 @@ describe('LocationsPage', () => {
     cleanup()
   })
 
+  it('shows loading state while locations are being fetched', () => {
+    vi.mocked(listLocations).mockImplementation(
+      () => new Promise<Location[]>(() => undefined),
+    )
+
+    renderWithProviders(<LocationsPage />)
+
+    expect(screen.getByText('Loading locations…')).toBeInTheDocument()
+  })
+
+  it('shows error state when loading locations fails', async () => {
+    vi.mocked(listLocations).mockRejectedValue(new Error('Failed'))
+
+    renderWithProviders(<LocationsPage />)
+
+    expect(await screen.findByText('Failed to load locations.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
   it('renders location list with mock data', async () => {
     vi.mocked(listLocations).mockResolvedValue(baseLocations)
 
@@ -72,14 +91,43 @@ describe('LocationsPage', () => {
 
     await screen.findByText('Office')
 
-    await userEvent.type(screen.getByPlaceholderText('Room'), 'Living Room')
-    await userEvent.type(screen.getByPlaceholderText('Furniture'), 'Cabinet')
-    await userEvent.type(screen.getByPlaceholderText('Shelf'), 'Top')
+    await userEvent.type(screen.getByLabelText('Room'), 'Living Room')
+    await userEvent.type(screen.getByLabelText('Furniture'), 'Cabinet')
+    await userEvent.type(screen.getByLabelText('Shelf'), 'Top')
     await userEvent.click(screen.getByRole('button', { name: 'Create location' }))
 
     expect(await screen.findByText('Living Room')).toBeInTheDocument()
     expect(screen.getByText('Cabinet')).toBeInTheDocument()
     expect(screen.getByText('Top')).toBeInTheDocument()
+  })
+
+  it('updates a location using inline edit form', async () => {
+    vi.mocked(listLocations).mockResolvedValue(baseLocations)
+    vi.mocked(updateLocation).mockImplementation(async (_id, payload) => ({
+      ...baseLocations[0],
+      ...payload,
+      updated_at: '2024-01-02T00:00:00Z',
+    }))
+
+    renderWithProviders(<LocationsPage />)
+
+    await screen.findByText('Office')
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    const editRoom = screen.getByLabelText('Edit room')
+    await userEvent.clear(editRoom)
+    await userEvent.type(editRoom, 'Study')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(updateLocation).toHaveBeenCalledWith('loc-1', {
+        room: 'Study',
+        furniture: 'Bookshelf',
+        shelf: 'Shelf 1',
+      })
+    })
+
+    expect(await screen.findByText('Study')).toBeInTheDocument()
   })
 
   it('requires confirmation before deleting a location', async () => {

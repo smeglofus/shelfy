@@ -1,5 +1,4 @@
 const ACCESS_TOKEN_KEY = 'shelfy.accessToken'
-const REFRESH_TOKEN_KEY = 'shelfy.refreshToken'
 
 function parseJwtExp(token: string): number | null {
   try {
@@ -8,7 +7,13 @@ function parseJwtExp(token: string): number | null {
       return null
     }
 
-    const payload = JSON.parse(atob(payloadSegment)) as { exp?: number }
+    const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      '=',
+    )
+
+    const payload = JSON.parse(atob(padded)) as { exp?: number }
     return typeof payload.exp === 'number' ? payload.exp : null
   } catch {
     return null
@@ -36,12 +41,10 @@ export function hasValidAccessToken(): boolean {
   return isAccessTokenValid(getAccessToken())
 }
 
-export function persistTokens(accessToken: string, refreshToken: string): void {
+export function persistTokens(accessToken: string): void {
   window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
 }
 
 export function clearTokens(): void {
   window.localStorage.removeItem(ACCESS_TOKEN_KEY)
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY)
 }

@@ -32,7 +32,7 @@ export function ErrorToast() {
         borderRadius: '0.5rem',
       }}
     >
-      {message}
+      {message.message}
     </div>
   )
 }
