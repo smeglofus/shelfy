@@ -82,6 +82,13 @@ async def test_locations_full_crud_cycle(test_session: AsyncSession) -> None:
         assert patched.status_code == 200
         assert patched.json()["shelf"] == "shelf-4"
 
+        patched_null = await client.patch(
+            f"/api/v1/locations/{location_id}",
+            json={"shelf": None},
+            headers=headers,
+        )
+        assert 400 <= patched_null.status_code < 500
+
         deleted = await client.delete(f"/api/v1/locations/{location_id}", headers=headers)
         assert deleted.status_code == 204
         assert (await client.get(f"/api/v1/locations/{location_id}", headers=headers)).status_code == 404
@@ -127,3 +134,28 @@ async def test_delete_location_blocked_when_books_assigned(test_session: AsyncSe
         blocked = await client.delete(f"/api/v1/locations/{location_id}", headers=headers)
 
     assert blocked.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_delete_location_safe_when_books_table_has_no_location_id(test_session: AsyncSession) -> None:
+    books_table = Table(
+        "books",
+        MetaData(),
+        Column("id", Uuid(as_uuid=True), primary_key=True),
+        Column("title", String(255), nullable=False),
+    )
+    async with test_session.bind.begin() as connection:
+        await connection.run_sync(books_table.create)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        created = await client.post(
+            "/api/v1/locations",
+            json={"room": "office", "furniture": "bookshelf-2", "shelf": "shelf-3"},
+            headers=headers,
+        )
+        location_id = created.json()["id"]
+
+        delete_response = await client.delete(f"/api/v1/locations/{location_id}", headers=headers)
+
+    assert delete_response.status_code == 204

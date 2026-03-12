@@ -37,7 +37,7 @@ async def update_location(
     session: AsyncSession, location_id: uuid.UUID, payload: LocationUpdateRequest
 ) -> Location:
     location = await get_location_or_404(session, location_id)
-    update_data = payload.model_dump(exclude_unset=True)
+    update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
     for field_name, value in update_data.items():
         setattr(location, field_name, value)
 
@@ -63,9 +63,13 @@ async def delete_location(session: AsyncSession, location_id: uuid.UUID) -> None
 
 async def _location_has_books(session: AsyncSession, location_id: uuid.UUID) -> bool:
     connection = await session.connection()
-    has_books_table = await connection.run_sync(lambda sync_conn: inspect(sync_conn).has_table("books"))
+    books_columns = await connection.run_sync(
+        lambda sync_conn: {column["name"] for column in inspect(sync_conn).get_columns("books")}
+        if inspect(sync_conn).has_table("books")
+        else set()
+    )
 
-    if not has_books_table:
+    if "location_id" not in books_columns:
         return False
 
     books = Table("books", MetaData(), Column("location_id", Uuid(as_uuid=True)))
