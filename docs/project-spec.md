@@ -407,6 +407,7 @@ Jobs
 Locations
   GET    /api/v1/locations
   POST   /api/v1/locations
+  GET    /api/v1/locations/{id}
   PATCH  /api/v1/locations/{id}
   DELETE /api/v1/locations/{id}
 
