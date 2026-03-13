@@ -24,15 +24,13 @@ book_processing_status = sa.Enum(
     "failed",
     "partial",
     name="book_processing_status",
+    create_type=False,
 )
 
 
 def upgrade() -> None:
     bind = op.get_bind()
     is_postgresql = bind.dialect.name == "postgresql"
-
-    if is_postgresql:
-        book_processing_status.create(bind, checkfirst=True)
 
     op.create_table(
         "books",
@@ -62,9 +60,11 @@ def upgrade() -> None:
     op.create_index("ix_books_location_id", "books", ["location_id"], unique=False)
 
     if is_postgresql:
-        op.execute(
-            "CREATE INDEX ix_books_search_vector ON books USING GIN "
-            "(to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(author, '')));"
+        op.create_index(
+            "ix_books_search_vector",
+            "books",
+            [sa.text("to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(author, ''))")],
+            postgresql_using="gin",
         )
 
 
@@ -73,11 +73,11 @@ def downgrade() -> None:
     is_postgresql = bind.dialect.name == "postgresql"
 
     if is_postgresql:
-        op.execute("DROP INDEX IF EXISTS ix_books_search_vector")
+        op.drop_index("ix_books_search_vector", table_name="books")
 
     op.drop_index("ix_books_location_id", table_name="books")
     op.drop_index("ix_books_isbn", table_name="books")
     op.drop_table("books")
 
     if is_postgresql:
-        book_processing_status.drop(bind, checkfirst=True)
+        book_processing_status.drop(op.get_bind(), checkfirst=True)

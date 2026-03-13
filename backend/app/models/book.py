@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -32,7 +32,13 @@ class Book(Base):
         Uuid(as_uuid=True), ForeignKey("locations.id", ondelete="SET NULL"), nullable=True, index=True
     )
     processing_status: Mapped[BookProcessingStatus] = mapped_column(
-        String(20),
+        SAEnum(
+            BookProcessingStatus,
+            values_callable=lambda e: [member.value for member in e],
+            validate_strings=True,
+            name="book_processing_status",
+            create_type=False,
+        ),
         nullable=False,
         default=BookProcessingStatus.MANUAL,
         server_default=BookProcessingStatus.MANUAL.value,

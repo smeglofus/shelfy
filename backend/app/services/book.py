@@ -40,7 +40,7 @@ async def list_books(
     if filters:
         count_query = count_query.where(*filters)
 
-    query = select(Book).order_by(Book.created_at.desc())
+    query = select(Book).order_by(Book.created_at.desc(), Book.id.desc())
     if filters:
         query = query.where(*filters)
     query = query.offset((page - 1) * page_size).limit(page_size)
@@ -59,7 +59,10 @@ async def create_book(session: AsyncSession, payload: BookCreateRequest) -> Book
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        raise _map_integrity_error(exc) from exc
+        orig = str(exc.orig).lower() if exc.orig else ""
+        if "ix_books_isbn" in orig or "uq_books_isbn" in orig or "books_isbn" in orig:
+            raise _map_integrity_error(exc) from exc
+        raise
 
     await session.refresh(book)
     logger.info("book_created", book_id=str(book.id), location_id=str(book.location_id) if book.location_id else None)
@@ -88,7 +91,10 @@ async def update_book(session: AsyncSession, book_id: uuid.UUID, payload: BookUp
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        raise _map_integrity_error(exc) from exc
+        orig = str(exc.orig).lower() if exc.orig else ""
+        if "ix_books_isbn" in orig or "uq_books_isbn" in orig or "books_isbn" in orig:
+            raise _map_integrity_error(exc) from exc
+        raise
 
     await session.refresh(book)
     logger.info("book_updated", book_id=str(book.id), fields=list(update_data.keys()))
