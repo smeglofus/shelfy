@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://shelfy:shelfy@localhost:5432/shelfy"
     redis_url: str = "redis://localhost:6379/0"
+    cors_allowed_origins: list[str] = ["http://localhost:5173"]
 
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
