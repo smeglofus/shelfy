@@ -17,14 +17,16 @@ from app.models.location import Location
 from app.models.user import User
 
 
+def _require_test_database_url() -> str:
+    url = os.environ.get("TEST_DATABASE_URL")
+    if not url:
+        pytest.fail("TEST_DATABASE_URL must be set for integration tests")
+    return url
+
+
 @pytest.fixture
 async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
-    engine = create_async_engine(
-        os.environ.get(
-            "TEST_DATABASE_URL",
-            "postgresql+asyncpg://test:test@localhost:5432/shelfy_test",
-        )
-    )
+    engine = create_async_engine(_require_test_database_url())
     async with engine.begin() as connection:
         await connection.run_sync(
             lambda sync_conn: sa.Enum(
@@ -48,10 +50,7 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
 @pytest.fixture
 def test_settings() -> Settings:
     return Settings(
-        database_url=os.environ.get(
-            "TEST_DATABASE_URL",
-            "postgresql+asyncpg://test:test@localhost:5432/shelfy_test",
-        ),
+        database_url=_require_test_database_url(),
         jwt_secret_key="test-secret",
         jwt_algorithm="HS256",
         access_token_expire_minutes=15,
