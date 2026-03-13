@@ -188,3 +188,56 @@ async def test_books_pagination_returns_total_and_page_size(test_session: AsyncS
 async def test_books_require_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         assert (await client.get("/api/v1/books")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_book_with_duplicate_isbn_returns_409(test_session: AsyncSession) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+
+        first = await client.post(
+            "/api/v1/books",
+            json={"title": "Book One", "isbn": "9780134494166"},
+            headers=headers,
+        )
+        assert first.status_code == 201
+
+        duplicate = await client.post(
+            "/api/v1/books",
+            json={"title": "Book Two", "isbn": "9780134494166"},
+            headers=headers,
+        )
+
+    assert duplicate.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_invalid_location_id_returns_404_on_post_and_patch(test_session: AsyncSession) -> None:
+    invalid_location_id = uuid.uuid4()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+
+        invalid_create = await client.post(
+            "/api/v1/books",
+            json={"title": "Book with Invalid Location", "location_id": str(invalid_location_id)},
+            headers=headers,
+        )
+        assert invalid_create.status_code == 404
+
+        valid_location_id = await _create_location(test_session)
+        created = await client.post(
+            "/api/v1/books",
+            json={"title": "Valid Book", "location_id": str(valid_location_id)},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        book_id = created.json()["id"]
+
+        invalid_patch = await client.patch(
+            f"/api/v1/books/{book_id}",
+            json={"location_id": str(invalid_location_id)},
+            headers=headers,
+        )
+
+    assert invalid_patch.status_code == 404

@@ -57,16 +57,15 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["location_id"], ["locations.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("isbn"),
     )
-    op.create_index("ix_books_isbn", "books", ["isbn"], unique=False)
+    op.create_index("ix_books_isbn", "books", ["isbn"], unique=True)
     op.create_index("ix_books_location_id", "books", ["location_id"], unique=False)
 
     if is_postgresql:
         op.create_index(
             "ix_books_search_vector",
             "books",
-            [sa.text("to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(author, ''))")],
+            [sa.text("to_tsvector('simple', concat_ws(' ', title, coalesce(author, '')))")],
             postgresql_using="gin",
         )
 
