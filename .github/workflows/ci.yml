@@ -1,5 +1,4 @@
 name: CI
-
 on:
   pull_request:
   push:
@@ -8,6 +7,22 @@ on:
 jobs:
   backend-checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: shelfy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
     defaults:
       run:
         working-directory: backend
@@ -19,6 +34,8 @@ jobs:
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: ruff check app/
       - run: mypy app/
+      - name: Wait for PostgreSQL
+        run: until pg_isready -h localhost -p 5432 -U test; do sleep 1; done
       - run: pytest --cov=app --cov-fail-under=80 tests/
 
   frontend-checks:
