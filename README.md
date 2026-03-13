@@ -18,6 +18,7 @@ Set these environment variables in `.env` before starting the backend:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `SEED_ADMIN_ON_STARTUP=true` (optional auto-seed)
+- `CORS_ALLOWED_ORIGINS=["http://localhost:5173"]` (JSON array for allowed frontend origins)
 
 Manual admin seed command:
 
