@@ -4,6 +4,7 @@ import uuid
 
 from httpx import ASGITransport, AsyncClient
 import pytest
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -25,6 +26,16 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
         )
     )
     async with engine.begin() as connection:
+        await connection.run_sync(
+            lambda sync_conn: sa.Enum(
+                "manual",
+                "pending",
+                "done",
+                "failed",
+                "partial",
+                name="book_processing_status",
+            ).create(sync_conn, checkfirst=True)
+        )
         await connection.run_sync(Base.metadata.drop_all)
         await connection.run_sync(Base.metadata.create_all)
 
@@ -270,3 +281,36 @@ async def test_invalid_location_id_returns_404_on_post_and_patch(
         )
 
     assert invalid_patch.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_book_with_duplicate_isbn_returns_409(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        first = await client.post(
+            "/api/v1/books",
+            json={"title": "Book One", "isbn": "9780134494166"},
+            headers=headers,
+        )
+        assert first.status_code == 201
+
+        second = await client.post(
+            "/api/v1/books",
+            json={"title": "Book Two", "isbn": "9780132350884"},
+            headers=headers,
+        )
+        assert second.status_code == 201
+
+        second_book_id = second.json()["id"]
+
+        conflict = await client.patch(
+            f"/api/v1/books/{second_book_id}",
+            json={"isbn": "9780134494166"},
+            headers=headers,
+        )
+
+    assert conflict.status_code == 409
