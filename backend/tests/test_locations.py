@@ -3,7 +3,6 @@ import uuid
 
 from httpx import ASGITransport, AsyncClient
 import pytest
-from sqlalchemy import Column, DateTime, MetaData, String, Table, Uuid, func, insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -11,6 +10,7 @@ from app.core.security import get_password_hash
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
+from app.models.book import Book
 from app.models.user import User
 
 
@@ -102,17 +102,6 @@ async def test_locations_require_authentication() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_location_blocked_when_books_assigned(test_session: AsyncSession) -> None:
-    books_table = Table(
-        "books",
-        MetaData(),
-        Column("id", Uuid(as_uuid=True), primary_key=True),
-        Column("title", String(255), nullable=False),
-        Column("location_id", Uuid(as_uuid=True), nullable=True),
-        Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
-    )
-    async with test_session.bind.begin() as connection:
-        await connection.run_sync(books_table.create)
-
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         created = await client.post(
@@ -122,13 +111,7 @@ async def test_delete_location_blocked_when_books_assigned(test_session: AsyncSe
         )
         location_id = uuid.UUID(created.json()["id"])
 
-        await test_session.execute(
-            insert(books_table).values(
-                id=uuid.uuid4(),
-                title="Domain-Driven Design",
-                location_id=location_id,
-            )
-        )
+        test_session.add(Book(title="Domain-Driven Design", location_id=location_id))
         await test_session.commit()
 
         blocked = await client.delete(f"/api/v1/locations/{location_id}", headers=headers)
@@ -137,16 +120,7 @@ async def test_delete_location_blocked_when_books_assigned(test_session: AsyncSe
 
 
 @pytest.mark.asyncio
-async def test_delete_location_safe_when_books_table_has_no_location_id(test_session: AsyncSession) -> None:
-    books_table = Table(
-        "books",
-        MetaData(),
-        Column("id", Uuid(as_uuid=True), primary_key=True),
-        Column("title", String(255), nullable=False),
-    )
-    async with test_session.bind.begin() as connection:
-        await connection.run_sync(books_table.create)
-
+async def test_delete_location_succeeds_when_no_books_assigned(test_session: AsyncSession) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         created = await client.post(
