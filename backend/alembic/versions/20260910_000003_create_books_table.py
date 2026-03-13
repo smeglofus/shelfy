@@ -32,6 +32,9 @@ def upgrade() -> None:
     bind = op.get_bind()
     is_postgresql = bind.dialect.name == "postgresql"
 
+    if is_postgresql:
+        book_processing_status.create(bind, checkfirst=True)
+
     op.create_table(
         "books",
         sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
@@ -80,4 +83,4 @@ def downgrade() -> None:
     op.drop_table("books")
 
     if is_postgresql:
-        book_processing_status.drop(op.get_bind(), checkfirst=True)
+        book_processing_status.drop(bind, checkfirst=True)

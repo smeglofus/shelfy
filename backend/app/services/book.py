@@ -60,7 +60,12 @@ async def create_book(session: AsyncSession, payload: BookCreateRequest) -> Book
     except IntegrityError as exc:
         await session.rollback()
         orig = str(exc.orig).lower() if exc.orig else ""
-        if "ix_books_isbn" in orig or "uq_books_isbn" in orig or "books_isbn" in orig:
+        if (
+            "ix_books_isbn" in orig
+            or "uq_books_isbn" in orig
+            or "books_isbn" in orig
+            or "books.isbn" in orig
+        ):
             raise _map_integrity_error(exc) from exc
         raise
 
@@ -92,7 +97,12 @@ async def update_book(session: AsyncSession, book_id: uuid.UUID, payload: BookUp
     except IntegrityError as exc:
         await session.rollback()
         orig = str(exc.orig).lower() if exc.orig else ""
-        if "ix_books_isbn" in orig or "uq_books_isbn" in orig or "books_isbn" in orig:
+        if (
+            "ix_books_isbn" in orig
+            or "uq_books_isbn" in orig
+            or "books_isbn" in orig
+            or "books.isbn" in orig
+        ):
             raise _map_integrity_error(exc) from exc
         raise
 
