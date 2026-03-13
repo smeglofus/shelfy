@@ -29,7 +29,7 @@ class Book(Base):
     publication_year: Mapped[int | None] = mapped_column(Integer(), nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     location_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("locations.id", ondelete="SET NULL"), nullable=True, index=True
+        Uuid(as_uuid=True), ForeignKey("locations.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     processing_status: Mapped[BookProcessingStatus] = mapped_column(
         SAEnum(

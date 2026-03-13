@@ -1,8 +1,10 @@
 from collections.abc import AsyncIterator, Iterator
+import os
 import uuid
 
 from httpx import ASGITransport, AsyncClient
 import pytest
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -16,14 +18,29 @@ from app.models.user import User
 
 
 @pytest.fixture
-async def test_session() -> AsyncIterator[AsyncSession]:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    engine = create_async_engine(
+        os.environ.get(
+            "TEST_DATABASE_URL",
+            "postgresql+asyncpg://test:test@localhost:5432/shelfy_test",
+        )
+    )
     async with engine.begin() as connection:
+        await connection.run_sync(
+            lambda sync_conn: sa.Enum(
+                "manual",
+                "pending",
+                "done",
+                "failed",
+                "partial",
+                name="book_processing_status",
+            ).create(sync_conn, checkfirst=True)
+        )
+        await connection.run_sync(Base.metadata.drop_all)
         await connection.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as session:
-        yield session
+    yield session_factory
 
     await engine.dispose()
 
@@ -31,7 +48,10 @@ async def test_session() -> AsyncIterator[AsyncSession]:
 @pytest.fixture
 def test_settings() -> Settings:
     return Settings(
-        database_url="sqlite+aiosqlite:///:memory:",
+        database_url=os.environ.get(
+            "TEST_DATABASE_URL",
+            "postgresql+asyncpg://test:test@localhost:5432/shelfy_test",
+        ),
         jwt_secret_key="test-secret",
         jwt_algorithm="HS256",
         access_token_expire_minutes=15,
@@ -40,9 +60,12 @@ def test_settings() -> Settings:
 
 
 @pytest.fixture(autouse=True)
-def override_dependencies(test_session: AsyncSession, test_settings: Settings) -> Iterator[None]:
+def override_dependencies(
+    test_session: async_sessionmaker[AsyncSession], test_settings: Settings
+) -> Iterator[None]:
     async def _get_db() -> AsyncIterator[AsyncSession]:
-        yield test_session
+        async with test_session() as session:
+            yield session
 
     app.dependency_overrides[get_db_session] = _get_db
     app.dependency_overrides[get_settings] = lambda: test_settings
@@ -58,6 +81,7 @@ async def _seed_user(session: AsyncSession) -> None:
 async def _auth_headers(client: AsyncClient, session: AsyncSession) -> dict[str, str]:
     await _seed_user(session)
     login_response = await client.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": "secret"})
+    assert login_response.status_code == 200
     token = login_response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -71,10 +95,11 @@ async def _create_location(session: AsyncSession) -> uuid.UUID:
 
 
 @pytest.mark.asyncio
-async def test_books_full_crud_cycle(test_session: AsyncSession) -> None:
+async def test_books_full_crud_cycle(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        headers = await _auth_headers(client, test_session)
-        location_id = await _create_location(test_session)
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+            location_id = await _create_location(session)
 
         created = await client.post(
             "/api/v1/books",
@@ -118,18 +143,20 @@ async def test_books_full_crud_cycle(test_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_books_search_returns_expected_results(test_session: AsyncSession) -> None:
-    test_session.add_all(
-        [
-            Book(title="The Pragmatic Programmer", author="Andrew Hunt"),
-            Book(title="Domain-Driven Design", author="Eric Evans"),
-            Book(title="Refactoring", author="Martin Fowler"),
-        ]
-    )
-    await test_session.commit()
+async def test_books_search_returns_expected_results(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with test_session() as session:
+        session.add_all(
+            [
+                Book(title="The Pragmatic Programmer", author="Andrew Hunt"),
+                Book(title="Domain-Driven Design", author="Eric Evans"),
+                Book(title="Refactoring", author="Martin Fowler"),
+            ]
+        )
+        await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        headers = await _auth_headers(client, test_session)
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
 
         response = await client.get("/api/v1/books", params={"search": "Evans"}, headers=headers)
 
@@ -140,19 +167,21 @@ async def test_books_search_returns_expected_results(test_session: AsyncSession)
 
 
 @pytest.mark.asyncio
-async def test_books_filter_by_location(test_session: AsyncSession) -> None:
-    location_id = await _create_location(test_session)
-    test_session.add_all(
-        [
-            Book(title="Book A", location_id=location_id),
-            Book(title="Book B", location_id=location_id),
-            Book(title="Book C"),
-        ]
-    )
-    await test_session.commit()
+async def test_books_filter_by_location(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with test_session() as session:
+        location_id = await _create_location(session)
+        session.add_all(
+            [
+                Book(title="Book A", location_id=location_id),
+                Book(title="Book B", location_id=location_id),
+                Book(title="Book C"),
+            ]
+        )
+        await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        headers = await _auth_headers(client, test_session)
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
 
         response = await client.get(
             "/api/v1/books", params={"location_id": str(location_id)}, headers=headers
@@ -165,12 +194,16 @@ async def test_books_filter_by_location(test_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_books_pagination_returns_total_and_page_size(test_session: AsyncSession) -> None:
-    test_session.add_all([Book(title=f"Book {index}") for index in range(1, 6)])
-    await test_session.commit()
+async def test_books_pagination_returns_total_and_page_size(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with test_session() as session:
+        session.add_all([Book(title=f"Book {index}") for index in range(1, 6)])
+        await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        headers = await _auth_headers(client, test_session)
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
 
         response = await client.get(
             "/api/v1/books", params={"page": 2, "page_size": 2}, headers=headers
@@ -191,9 +224,12 @@ async def test_books_require_authentication() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_book_with_duplicate_isbn_returns_409(test_session: AsyncSession) -> None:
+async def test_create_book_with_duplicate_isbn_returns_409(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        headers = await _auth_headers(client, test_session)
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
 
         first = await client.post(
             "/api/v1/books",
@@ -212,11 +248,14 @@ async def test_create_book_with_duplicate_isbn_returns_409(test_session: AsyncSe
 
 
 @pytest.mark.asyncio
-async def test_invalid_location_id_returns_404_on_post_and_patch(test_session: AsyncSession) -> None:
+async def test_invalid_location_id_returns_404_on_post_and_patch(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
     invalid_location_id = uuid.uuid4()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        headers = await _auth_headers(client, test_session)
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
 
         invalid_create = await client.post(
             "/api/v1/books",
@@ -225,7 +264,8 @@ async def test_invalid_location_id_returns_404_on_post_and_patch(test_session: A
         )
         assert invalid_create.status_code == 404
 
-        valid_location_id = await _create_location(test_session)
+        async with test_session() as session:
+            valid_location_id = await _create_location(session)
         created = await client.post(
             "/api/v1/books",
             json={"title": "Valid Book", "location_id": str(valid_location_id)},
@@ -241,3 +281,36 @@ async def test_invalid_location_id_returns_404_on_post_and_patch(test_session: A
         )
 
     assert invalid_patch.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_book_with_duplicate_isbn_returns_409(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        first = await client.post(
+            "/api/v1/books",
+            json={"title": "Book One", "isbn": "9780134494166"},
+            headers=headers,
+        )
+        assert first.status_code == 201
+
+        second = await client.post(
+            "/api/v1/books",
+            json={"title": "Book Two", "isbn": "9780132350884"},
+            headers=headers,
+        )
+        assert second.status_code == 201
+
+        second_book_id = second.json()["id"]
+
+        conflict = await client.patch(
+            f"/api/v1/books/{second_book_id}",
+            json={"isbn": "9780134494166"},
+            headers=headers,
+        )
+
+    assert conflict.status_code == 409
