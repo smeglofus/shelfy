@@ -19,6 +19,62 @@ export interface LocationUpdateRequest {
   shelf?: string
 }
 
+export type BookProcessingStatus = 'manual' | 'pending' | 'done' | 'failed' | 'partial'
+
+export interface Book {
+  id: string
+  title: string
+  author: string | null
+  isbn: string | null
+  publisher: string | null
+  language: string | null
+  description: string | null
+  publication_year: number | null
+  cover_image_url: string | null
+  location_id: string | null
+  processing_status: BookProcessingStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface BookListResponse {
+  total: number
+  page: number
+  page_size: number
+  items: Book[]
+}
+
+export interface BookListParams {
+  search?: string
+  locationId?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface BookCreateRequest {
+  title: string
+  author?: string | null
+  isbn?: string | null
+  publisher?: string | null
+  language?: string | null
+  description?: string | null
+  publication_year?: number | null
+  cover_image_url?: string | null
+  location_id?: string | null
+}
+
+export interface BookUpdateRequest {
+  title?: string
+  author?: string | null
+  isbn?: string | null
+  publisher?: string | null
+  language?: string | null
+  description?: string | null
+  publication_year?: number | null
+  cover_image_url?: string | null
+  location_id?: string | null
+}
+
 export interface LoginRequest {
   email: string
   password: string
