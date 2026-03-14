@@ -2,6 +2,7 @@ import { Link, Route, Routes } from 'react-router-dom'
 
 import { ErrorToast } from './components/ErrorToast'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { BookDetailPage } from './pages/BookDetailPage'
 import { BooksPage } from './pages/BooksPage'
 import { HomePage } from './pages/HomePage'
 import { LocationsPage } from './pages/LocationsPage'
@@ -23,6 +24,7 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/books" element={<BooksPage />} />
+          <Route path="/books/:bookId" element={<BookDetailPage />} />
           <Route path="/locations" element={<LocationsPage />} />
         </Route>
       </Routes>
