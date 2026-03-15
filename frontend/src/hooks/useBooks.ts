@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createBook, deleteBook, formatApiError, getBook, listBooks, updateBook } from '../lib/api'
+import {
+  createBook,
+  deleteBook,
+  formatApiError,
+  getBook,
+  getJobStatus,
+  listBooks,
+  updateBook,
+  uploadBookImage,
+} from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import type { BookCreateRequest, BookListParams, BookUpdateRequest } from '../lib/types'
 
@@ -64,5 +73,32 @@ export function useDeleteBook() {
     onError: (error: unknown) => {
       showError(formatApiError(error))
     },
+  })
+}
+
+export function useUploadBookImage() {
+  const showError = useToastStore((state) => state.showError)
+
+  return useMutation({
+    mutationFn: (file: File) => uploadBookImage(file),
+    onError: (error: unknown) => {
+      showError(formatApiError(error))
+    },
+  })
+}
+
+export function useJobStatus(jobId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['jobs', jobId],
+    queryFn: () => getJobStatus(jobId ?? ''),
+    enabled: enabled && !!jobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (!status || status === 'pending' || status === 'processing') {
+        return 2000
+      }
+      return false
+    },
+    retry: false,
   })
 }

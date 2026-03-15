@@ -1,13 +1,30 @@
+import asyncio
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
+from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.models.user import User
 from app.schemas.book import BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest
+from app.schemas.job import JobStatusResponse, UploadResponse
 from app.services.book import create_book, delete_book, get_book_or_404, list_books, update_book
+from app.services.job import (
+    EmptyFileError,
+    FileTooLargeError,
+    InvalidImageTypeError,
+    JobNotFoundError,
+    MismatchedImageTypeError,
+    create_processing_job,
+    get_job_or_404,
+    make_image_object_path,
+    mark_job_failed,
+    read_validated_image,
+)
+from app.services.storage import get_storage_service
+from app.services.tasks import get_celery_client
 
 router = APIRouter(prefix="/api/v1/books", tags=["books"])
 
@@ -40,6 +57,53 @@ async def create_book_endpoint(
 ) -> BookResponse:
     book = await create_book(session, payload)
     return BookResponse.model_validate(book)
+
+
+@router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
+async def upload_book_image(
+    image: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+    _current_user: User = Depends(get_current_user),
+) -> UploadResponse:
+    try:
+        payload, content_type = await read_validated_image(image)
+    except (EmptyFileError, FileTooLargeError, InvalidImageTypeError, MismatchedImageTypeError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+
+    object_path = make_image_object_path(content_type)
+
+    storage_service = get_storage_service(settings)
+    await storage_service.upload_bytes(object_path, payload, content_type)
+
+    job = await create_processing_job(session, minio_path=object_path)
+
+    celery_client = get_celery_client(settings)
+    try:
+        await asyncio.to_thread(celery_client.send_task, "worker.process_image_job", args=[str(job.id)])
+    except Exception as exc:
+        await mark_job_failed(session, job, f"Failed to enqueue processing task: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Image processing service is temporarily unavailable",
+        ) from exc
+
+    return UploadResponse(job_id=job.id, status=job.status)
+
+
+@router.get("/jobs/{job_id}", response_model=JobStatusResponse, tags=["jobs"])
+async def get_job_status(
+    job_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> JobStatusResponse:
+    try:
+        job = await get_job_or_404(session, job_id)
+    except JobNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    book_id = job.book_image.book_id if job.book_image is not None else None
+    return JobStatusResponse(id=job.id, status=job.status, book_id=book_id)
 
 
 @router.get("/{book_id}", response_model=BookResponse)
