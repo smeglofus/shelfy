@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BooksPage } from './BooksPage'
-import type { Book, BookListResponse, Location } from '../lib/types'
+import type { Book, BookListResponse, JobStatusResponse, Location, UploadJobResponse } from '../lib/types'
 
 vi.mock('../lib/api', () => ({
   listBooks: vi.fn(),
@@ -14,10 +14,20 @@ vi.mock('../lib/api', () => ({
   updateBook: vi.fn(),
   deleteBook: vi.fn(),
   listLocations: vi.fn(),
+  uploadBookImage: vi.fn(),
+  getJobStatus: vi.fn(),
   formatApiError: vi.fn(() => 'API error'),
 }))
 
-import { createBook, deleteBook, listBooks, listLocations, updateBook } from '../lib/api'
+import {
+  createBook,
+  deleteBook,
+  getJobStatus,
+  listBooks,
+  listLocations,
+  updateBook,
+  uploadBookImage,
+} from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -73,6 +83,7 @@ describe('BooksPage', () => {
     vi.mocked(listBooks).mockResolvedValue(booksResponse)
     vi.mocked(listLocations).mockResolvedValue(locations)
     vi.mocked(deleteBook).mockResolvedValue()
+    vi.mocked(getJobStatus).mockResolvedValue({ id: 'job-1', status: 'pending', book_id: null } satisfies JobStatusResponse)
   })
 
   afterEach(() => {
@@ -151,4 +162,23 @@ describe('BooksPage', () => {
       expect(deleteBook).toHaveBeenCalledWith('book-1')
     })
   })
+
+  it('polls job status and stops when done', async () => {
+    vi.mocked(uploadBookImage).mockResolvedValue({ job_id: 'job-1', status: 'pending' } satisfies UploadJobResponse)
+    vi.mocked(getJobStatus)
+      .mockResolvedValueOnce({ id: 'job-1', status: 'pending', book_id: null } satisfies JobStatusResponse)
+      .mockResolvedValueOnce({ id: 'job-1', status: 'done', book_id: null } satisfies JobStatusResponse)
+
+    renderWithProviders(<BooksPage />)
+    await screen.findByText('Clean Code')
+
+    const file = new File(['img'], 'cover.png', { type: 'image/png' })
+    await userEvent.upload(screen.getByLabelText('Upload book image'), file)
+    await userEvent.click(screen.getByRole('button', { name: 'Upload image' }))
+
+    await waitFor(() => expect(getJobStatus).toHaveBeenCalledTimes(2), { timeout: 7000 })
+
+    await new Promise((resolve) => setTimeout(resolve, 2500))
+    expect(getJobStatus).toHaveBeenCalledTimes(2)
+  }, 10000)
 })

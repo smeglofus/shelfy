@@ -11,6 +11,7 @@ from app.api.health import router as health_router
 from app.api.locations import router as locations_router
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.services.storage import get_storage_service
 from app.services.user_seed import seed_admin_user
 
 logger = structlog.get_logger()
@@ -19,6 +20,14 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    storage_service = get_storage_service(settings)
+    try:
+        await storage_service.ensure_bucket()
+        logger.info("minio_bucket_ready", bucket=settings.minio_bucket_name)
+    except Exception as exc:
+        logger.exception("minio_bucket_setup_failed", error=str(exc), bucket=settings.minio_bucket_name)
+        raise
+
     if settings.seed_admin_on_startup and settings.admin_email and settings.admin_password:
         try:
             async with SessionLocal() as session:

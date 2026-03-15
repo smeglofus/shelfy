@@ -13,6 +13,8 @@ from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models.book import Book
+from app.models.book_image import BookImage
+from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.models.location import Location
 from app.models.user import User
 
@@ -313,3 +315,123 @@ async def test_update_book_with_duplicate_isbn_returns_409(
         )
 
     assert conflict.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_upload_endpoint_returns_202_with_job_id(
+    test_session: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class _FakeCelery:
+        def __init__(self) -> None:
+            self.called = False
+
+        def send_task(self, _name: str, args: list[str]) -> None:
+            self.called = True
+            assert len(args) == 1
+
+    fake_celery = _FakeCelery()
+    monkeypatch.setattr("app.api.books.get_celery_client", lambda _settings: fake_celery)
+
+    async def _upload_stub(self, object_path: str, data: bytes, content_type: str) -> str:  # noqa: ANN001
+        assert object_path.startswith("uploads/")
+        assert data
+        assert content_type == "image/png"
+        return object_path
+
+    monkeypatch.setattr("app.services.storage.StorageService.upload_bytes", _upload_stub)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        files = {"image": ("cover.png", b"\x89PNG\r\n\x1a\nmock", "image/png")}
+        response = await client.post("/api/v1/books/upload", files=files, headers=headers)
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["status"] == "pending"
+    assert payload["job_id"]
+    assert fake_celery.called is True
+
+
+@pytest.mark.asyncio
+async def test_upload_endpoint_rejects_invalid_file_type(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        files = {"image": ("cover.gif", b"gif-bytes", "image/gif")}
+        response = await client.post("/api/v1/books/upload", files=files, headers=headers)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_job_status_endpoint_returns_correct_status(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with test_session() as session:
+        image = BookImage(minio_path="uploads/test/path.png")
+        job = ProcessingJob(book_image=image, status=ProcessingJobStatus.DONE)
+        session.add_all([image, job])
+        await session.commit()
+        await session.refresh(job)
+        job_id = job.id
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get(f"/api/v1/books/jobs/{job_id}", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == str(job_id)
+    assert payload["status"] == "done"
+    assert payload["book_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_upload_endpoint_rejects_empty_file(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        files = {"image": ("cover.png", b"", "image/png")}
+        response = await client.post("/api/v1/books/upload", files=files, headers=headers)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_upload_endpoint_rejects_oversized_file(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        oversized_payload = b"\x89PNG\r\n\x1a\n" + (b"0" * ((10 * 1024 * 1024) + 1))
+        files = {"image": ("cover.png", oversized_payload, "image/png")}
+        response = await client.post("/api/v1/books/upload", files=files, headers=headers)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_job_status_endpoint_returns_404_for_missing_job(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    missing_job_id = uuid.uuid4()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get(f"/api/v1/books/jobs/{missing_job_id}", headers=headers)
+
+    assert response.status_code == 404

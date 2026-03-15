@@ -1,7 +1,16 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { useBooks, useCreateBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
+import {
+  useBooks,
+  useCreateBook,
+  useDeleteBook,
+  useJobStatus,
+  useUpdateBook,
+  useUploadBookImage,
+  BOOKS_QUERY_KEY,
+} from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { getBookDetailRoute } from '../lib/routes'
 import type { BookCreateRequest } from '../lib/types'
@@ -29,17 +38,37 @@ export function BooksPage() {
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<BookCreateRequest>(EMPTY_FORM)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
 
   const queryParams = useMemo(
     () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, locationId: selectedLocationId || undefined }),
     [page, search, selectedLocationId],
   )
 
+  const queryClient = useQueryClient()
   const booksQuery = useBooks(queryParams)
   const locationsQuery = useLocations()
   const createMutation = useCreateBook()
   const updateMutation = useUpdateBook()
   const deleteMutation = useDeleteBook()
+  const uploadMutation = useUploadBookImage()
+  const jobQuery = useJobStatus(activeJobId, !!activeJobId)
+
+  useEffect(() => {
+    if (!jobQuery.data) {
+      return
+    }
+    if (jobQuery.data.status === 'done') {
+      void queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      setActiveJobId(null)
+      return
+    }
+
+    if (jobQuery.data.status === 'failed') {
+      setActiveJobId(null)
+    }
+  }, [jobQuery.data, queryClient])
 
   const locationLabelById = useMemo(() => {
     const map = new Map<string, string>()
@@ -48,7 +77,6 @@ export function BooksPage() {
     }
     return map
   }, [locationsQuery.data])
-
 
   useEffect(() => {
     if (!booksQuery.data) {
@@ -104,6 +132,36 @@ export function BooksPage() {
       </form>
 
       <form
+        aria-label="upload-book-image-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!selectedImage) {
+            return
+          }
+          uploadMutation.mutate(selectedImage, {
+            onSuccess: (result) => {
+              setActiveJobId(result.job_id)
+              setSelectedImage(null)
+            },
+          })
+        }}
+        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}
+      >
+        <input
+          aria-label="Upload book image"
+          type="file"
+          accept="image/png,image/jpeg"
+          onChange={(event) => setSelectedImage(event.target.files?.[0] ?? null)}
+        />
+        <button type="submit" disabled={!selectedImage || uploadMutation.isPending}>
+          {uploadMutation.isPending ? 'Uploading…' : 'Upload image'}
+        </button>
+        {jobQuery.data && (
+          <span aria-label="job-status">Job status: {jobQuery.data.status}</span>
+        )}
+      </form>
+
+      <form
         aria-label="create-book-form"
         onSubmit={(event) => {
           event.preventDefault()
@@ -137,16 +195,7 @@ export function BooksPage() {
       </form>
 
       {booksQuery.isLoading && <p>Loading books…</p>}
-
-      {booksQuery.isError && (
-        <p>
-          Failed to load books.
-          <button type="button" onClick={() => void booksQuery.refetch()}>
-            Retry
-          </button>
-        </p>
-      )}
-
+      {booksQuery.isError && <p>Failed to load books.</p>}
       {booksQuery.data && booksQuery.data.total === 0 && <p>No books found.</p>}
 
       {booksQuery.data && booksQuery.data.total > 0 && (
@@ -236,31 +285,11 @@ export function BooksPage() {
               })}
             </tbody>
           </table>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem' }}>
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
-              Previous
-            </button>
-            <span>
-              Page {booksQuery.data.page} of {Math.max(1, Math.ceil(booksQuery.data.total / booksQuery.data.page_size))}
-            </span>
-            <button
-              type="button"
-              disabled={page >= Math.ceil(booksQuery.data.total / booksQuery.data.page_size)}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-            </button>
-          </div>
         </>
       )}
 
       {deleteTargetId && (
-        <div
-          role="dialog"
-          aria-label="delete-book-dialog"
-          style={{ border: '1px solid #ddd', padding: '1rem', marginTop: '1rem' }}
-        >
+        <div role="dialog" aria-label="delete-book-dialog" style={{ border: '1px solid #ddd', padding: '1rem', marginTop: '1rem' }}>
           <p>Are you sure you want to delete this book?</p>
           <button
             type="button"
