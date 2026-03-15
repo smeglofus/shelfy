@@ -2,6 +2,11 @@ import axios, { type AxiosError } from 'axios'
 
 import { clearTokens, getAccessToken } from './auth'
 import type {
+  Book,
+  BookCreateRequest,
+  BookListParams,
+  BookListResponse,
+  BookUpdateRequest,
   Location,
   LocationCreateRequest,
   LocationUpdateRequest,
@@ -69,4 +74,36 @@ export async function updateLocation(id: string, payload: LocationUpdateRequest)
 
 export async function deleteLocation(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/locations/${id}`)
+}
+
+export async function listBooks(params: BookListParams = {}): Promise<BookListResponse> {
+  const response = await apiClient.get<BookListResponse>('/api/v1/books', {
+    params: {
+      search: params.search,
+      location_id: params.locationId,
+      page: params.page ?? 1,
+      page_size: params.pageSize ?? 20,
+    },
+  })
+
+  return response.data
+}
+
+export async function getBook(id: string): Promise<Book> {
+  const response = await apiClient.get<Book>(`/api/v1/books/${id}`)
+  return response.data
+}
+
+export async function createBook(payload: BookCreateRequest): Promise<Book> {
+  const response = await apiClient.post<Book>('/api/v1/books', payload)
+  return response.data
+}
+
+export async function updateBook(id: string, payload: BookUpdateRequest): Promise<Book> {
+  const response = await apiClient.patch<Book>(`/api/v1/books/${id}`, payload)
+  return response.data
+}
+
+export async function deleteBook(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/books/${id}`)
 }
