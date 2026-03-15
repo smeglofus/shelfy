@@ -85,3 +85,16 @@ export interface TokenResponse {
   refresh_token: string
   token_type: string
 }
+
+export type ProcessingJobStatus = 'pending' | 'processing' | 'done' | 'failed'
+
+export interface UploadJobResponse {
+  job_id: string
+  status: ProcessingJobStatus
+}
+
+export interface JobStatusResponse {
+  id: string
+  status: ProcessingJobStatus
+  book_id: string | null
+}

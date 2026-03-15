@@ -11,6 +11,15 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     cors_allowed_origins: list[str] = ["http://localhost:5173"]
 
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
+
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_secure: bool = False
+    minio_bucket_name: str = "shelfy-images"
+
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
