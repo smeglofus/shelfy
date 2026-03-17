@@ -1,2 +1,4 @@
 celery==5.5.3
 redis==6.4.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.9

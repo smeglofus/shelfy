@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BooksPage } from './BooksPage'
+import { useToastStore } from '../lib/toast-store'
 import type { Book, BookListResponse, Location } from '../lib/types'
 
 vi.mock('../lib/api', () => ({
@@ -14,10 +15,18 @@ vi.mock('../lib/api', () => ({
   updateBook: vi.fn(),
   deleteBook: vi.fn(),
   listLocations: vi.fn(),
+  uploadBookImage: vi.fn(),
+  getJobStatus: vi.fn(),
   formatApiError: vi.fn(() => 'API error'),
 }))
 
-import { createBook, deleteBook, listBooks, listLocations, updateBook } from '../lib/api'
+import {
+  createBook,
+  deleteBook,
+  listBooks,
+  listLocations,
+  updateBook,
+} from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -69,7 +78,9 @@ const locations: Location[] = [
 
 describe('BooksPage', () => {
   beforeEach(() => {
+    vi.useRealTimers()
     vi.clearAllMocks()
+    useToastStore.setState({ message: null })
     vi.mocked(listBooks).mockResolvedValue(booksResponse)
     vi.mocked(listLocations).mockResolvedValue(locations)
     vi.mocked(deleteBook).mockResolvedValue()
@@ -89,6 +100,29 @@ describe('BooksPage', () => {
 
     await waitFor(() => {
       expect(listBooks).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'Martin' }))
+    })
+  })
+
+  it('aggregates failed-book toast messages into one toast', async () => {
+    const showErrorSpy = vi.spyOn(useToastStore.getState(), 'showError')
+    vi.mocked(listBooks).mockResolvedValue({
+      ...booksResponse,
+      total: 2,
+      items: [
+        { ...booksResponse.items[0], id: 'book-f1', title: 'Book Failed 1', processing_status: 'failed' },
+        { ...booksResponse.items[0], id: 'book-f2', title: 'Book Failed 2', processing_status: 'failed' },
+      ],
+    })
+
+    renderWithProviders(<BooksPage />)
+
+    await screen.findByText('Book Failed 1')
+
+    await waitFor(() => {
+      expect(showErrorSpy).toHaveBeenCalledTimes(1)
+      expect(showErrorSpy).toHaveBeenCalledWith(
+        'Metadata extraction failed for 2 book(s): "Book Failed 1", "Book Failed 2"',
+      )
     })
   })
 
@@ -151,4 +185,6 @@ describe('BooksPage', () => {
       expect(deleteBook).toHaveBeenCalledWith('book-1')
     })
   })
+
+
 })

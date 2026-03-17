@@ -1,13 +1,16 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
 from app.models.user import User
 from app.schemas.book import BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest
+from app.schemas.job import UploadResponse
 from app.services.book import create_book, delete_book, get_book_or_404, list_books, update_book
+from app.services.job import create_upload_job
+from app.services.job_queue import get_celery_client
 
 router = APIRouter(prefix="/api/v1/books", tags=["books"])
 
@@ -71,3 +74,25 @@ async def delete_book_endpoint(
 ) -> Response:
     await delete_book(session, book_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
+async def upload_book_image(
+    image: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> UploadResponse:
+    job = await create_upload_job(session, image)
+
+    try:
+        celery_client = get_celery_client()
+        celery_client.send_task("worker.celery_app.process_book_image", args=[str(job.id)])
+        await session.commit()
+    except Exception as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Image processing queue is unavailable",
+        ) from exc
+
+    return UploadResponse(job_id=job.id, status=job.status)
