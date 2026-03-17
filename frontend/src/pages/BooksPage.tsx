@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { useBooks, useCreateBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
+import {
+  useBooks,
+  useCreateBook,
+  useDeleteBook,
+  useJobStatus,
+  useUpdateBook,
+  useUploadBookImage,
+} from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { getBookDetailRoute } from '../lib/routes'
+import { useToastStore } from '../lib/toast-store'
 import type { BookCreateRequest } from '../lib/types'
 
 const PAGE_SIZE = 10
@@ -29,6 +37,7 @@ export function BooksPage() {
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<BookCreateRequest>(EMPTY_FORM)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [uploadJobId, setUploadJobId] = useState<string | null>(null)
 
   const queryParams = useMemo(
     () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, locationId: selectedLocationId || undefined }),
@@ -36,10 +45,14 @@ export function BooksPage() {
   )
 
   const booksQuery = useBooks(queryParams)
+  const refetchBooks = booksQuery.refetch
   const locationsQuery = useLocations()
   const createMutation = useCreateBook()
   const updateMutation = useUpdateBook()
   const deleteMutation = useDeleteBook()
+  const uploadMutation = useUploadBookImage()
+  const uploadJobStatusQuery = useJobStatus(uploadJobId)
+  const showError = useToastStore((state) => state.showError)
 
   const locationLabelById = useMemo(() => {
     const map = new Map<string, string>()
@@ -49,6 +62,15 @@ export function BooksPage() {
     return map
   }, [locationsQuery.data])
 
+  useEffect(() => {
+    const failedBooks = (booksQuery.data?.items ?? []).filter((book) => book.processing_status === 'failed')
+    if (failedBooks.length === 0) {
+      return
+    }
+
+    const titles = failedBooks.map((book) => `"${book.title}"`).join(', ')
+    showError(`Metadata extraction failed for ${failedBooks.length} book(s): ${titles}`)
+  }, [booksQuery.data?.items, showError])
 
   useEffect(() => {
     if (!booksQuery.data) {
@@ -65,6 +87,19 @@ export function BooksPage() {
       setPage(lastValidPage)
     }
   }, [booksQuery.data])
+
+  useEffect(() => {
+    const status = uploadJobStatusQuery.data?.status
+    if (status === 'done' || status === 'failed') {
+      setUploadJobId(null)
+      void refetchBooks()
+      return
+    }
+
+    if (uploadJobStatusQuery.isError) {
+      setUploadJobId(null)
+    }
+  }, [refetchBooks, uploadJobStatusQuery.data?.status, uploadJobStatusQuery.isError])
 
   return (
     <section style={{ marginTop: '1.5rem' }}>
@@ -102,6 +137,36 @@ export function BooksPage() {
         </select>
         <button type="submit">Apply search</button>
       </form>
+
+      <form
+        aria-label="upload-book-image-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const formData = new FormData(event.currentTarget)
+          const file = formData.get('book-image')
+          if (!(file instanceof File)) {
+            return
+          }
+          uploadMutation.mutate(file, {
+            onSuccess: (response) => {
+              setUploadJobId(response.job_id)
+            },
+          })
+        }}
+        style={{ marginBottom: '1rem' }}
+      >
+        <label htmlFor="book-image">Upload cover image</label>
+        <input id="book-image" name="book-image" type="file" accept="image/jpeg,image/png" required />
+        <button type="submit" disabled={uploadMutation.isPending || Boolean(uploadJobId)}>
+          {uploadMutation.isPending ? 'Uploading…' : 'Upload image'}
+        </button>
+      </form>
+
+      {uploadJobId && (
+        <p>
+          Processing job {uploadJobId}: {uploadJobStatusQuery.data?.status ?? 'pending'}
+        </p>
+      )}
 
       <form
         aria-label="create-book-form"
