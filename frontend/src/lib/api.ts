@@ -7,11 +7,13 @@ import type {
   BookListParams,
   BookListResponse,
   BookUpdateRequest,
+  JobStatusResponse,
   Location,
   LocationCreateRequest,
   LocationUpdateRequest,
   LoginRequest,
   TokenResponse,
+  UploadJobResponse,
 } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
@@ -106,4 +108,17 @@ export async function updateBook(id: string, payload: BookUpdateRequest): Promis
 
 export async function deleteBook(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/books/${id}`)
+}
+
+
+export async function uploadBookImage(file: File): Promise<UploadJobResponse> {
+  const formData = new FormData()
+  formData.append('image', file)
+  const response = await apiClient.post<UploadJobResponse>('/api/v1/books/upload', formData)
+  return response.data
+}
+
+export async function getJobStatus(id: string): Promise<JobStatusResponse> {
+  const response = await apiClient.get<JobStatusResponse>(`/api/v1/jobs/${id}`)
+  return response.data
 }
