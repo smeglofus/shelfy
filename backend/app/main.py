@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,7 @@ from app.api.health import router as health_router
 from app.api.locations import router as locations_router
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.services.storage import storage_service
 from app.services.user_seed import seed_admin_user
 
 logger = structlog.get_logger()
@@ -19,6 +21,15 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    try:
+        await asyncio.wait_for(storage_service.ensure_bucket(), timeout=30)
+    except asyncio.TimeoutError as exc:
+        logger.exception("storage_bucket_ensure_timeout", error=str(exc), timeout_seconds=30)
+        raise
+    except Exception as exc:
+        logger.exception("storage_bucket_ensure_failed", error=str(exc))
+        raise
+
     if settings.seed_admin_on_startup and settings.admin_email and settings.admin_password:
         try:
             async with SessionLocal() as session:

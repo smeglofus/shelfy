@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useBooks, useCreateBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { getBookDetailRoute } from '../lib/routes'
+import { useToastStore } from '../lib/toast-store'
 import type { BookCreateRequest } from '../lib/types'
 
 const PAGE_SIZE = 10
@@ -30,6 +31,9 @@ export function BooksPage() {
   const [editForm, setEditForm] = useState<BookCreateRequest>(EMPTY_FORM)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
+  const showError = useToastStore((state) => state.showError)
+  const seenFailedBookIds = useRef<Set<string>>(new Set())
+
   const queryParams = useMemo(
     () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, locationId: selectedLocationId || undefined }),
     [page, search, selectedLocationId],
@@ -49,6 +53,30 @@ export function BooksPage() {
     return map
   }, [locationsQuery.data])
 
+
+
+  useEffect(() => {
+    if (!booksQuery.data) {
+      return
+    }
+
+    for (const book of booksQuery.data.items) {
+      if (book.processing_status === 'failed' && !seenFailedBookIds.current.has(book.id)) {
+        seenFailedBookIds.current.add(book.id)
+        showError(`Processing failed for "${book.title}".`)
+      }
+    }
+  }, [booksQuery.data, showError])
+
+  const totalPages = booksQuery.data ? Math.max(1, Math.ceil(booksQuery.data.total / booksQuery.data.page_size)) : 1
+
+  const handlePrevPage = () => {
+    setPage((current) => (current > 1 ? current - 1 : current))
+  }
+
+  const handleNextPage = () => {
+    setPage((current) => (current < totalPages ? current + 1 : current))
+  }
 
   useEffect(() => {
     if (!booksQuery.data) {
@@ -238,16 +266,16 @@ export function BooksPage() {
           </table>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem' }}>
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+            <button type="button" disabled={page <= 1} onClick={handlePrevPage}>
               Previous
             </button>
             <span>
-              Page {booksQuery.data.page} of {Math.max(1, Math.ceil(booksQuery.data.total / booksQuery.data.page_size))}
+              Page {booksQuery.data.page} of {totalPages}
             </span>
             <button
               type="button"
-              disabled={page >= Math.ceil(booksQuery.data.total / booksQuery.data.page_size)}
-              onClick={() => setPage((current) => current + 1)}
+              disabled={page >= totalPages}
+              onClick={handleNextPage}
             >
               Next
             </button>
