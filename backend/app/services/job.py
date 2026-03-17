@@ -1,0 +1,54 @@
+import uuid
+
+from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.book_image import BookImage
+from app.models.processing_job import ProcessingJob, ProcessingJobStatus
+from app.services.job_queue import get_celery_client
+from app.services.storage import upload_image_bytes
+
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png"}
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+
+
+async def create_upload_job(session: AsyncSession, upload_file: UploadFile) -> ProcessingJob:
+    if upload_file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Only jpeg/png files are supported")
+
+    payload = await upload_file.read()
+    if len(payload) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="File size exceeds 10MB")
+
+    extension = "jpg" if upload_file.content_type == "image/jpeg" else "png"
+    object_name = f"uploads/{uuid.uuid4()}.{extension}"
+    minio_path = upload_image_bytes(object_name=object_name, payload=payload, content_type=upload_file.content_type)
+
+    book_image = BookImage(minio_path=minio_path)
+    session.add(book_image)
+    await session.flush()
+
+    job = ProcessingJob(book_image_id=book_image.id, status=ProcessingJobStatus.PENDING)
+    session.add(job)
+    await session.commit()
+    await session.refresh(job)
+
+    celery_client = get_celery_client()
+    celery_client.send_task("worker.celery_app.process_book_image", args=[str(job.id)])
+    return job
+
+
+async def get_job_or_404(session: AsyncSession, job_id: uuid.UUID) -> ProcessingJob:
+    result = await session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return job
+
+
+async def get_job_book_id(session: AsyncSession, job: ProcessingJob) -> uuid.UUID | None:
+    image = await session.get(BookImage, job.book_image_id)
+    if image is None:
+        return None
+    return image.book_id
