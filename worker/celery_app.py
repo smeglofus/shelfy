@@ -1,25 +1,33 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
+import json
 import os
 import re
 import uuid
 
 import boto3
+from celery import Celery
+from celery.exceptions import Retry
+from celery.utils.log import get_task_logger
 import cv2
+import httpx
 import numpy as np
 import pytesseract
 try:
     from pyzbar.pyzbar import decode as decode_barcodes
 except ImportError:
     decode_barcodes = None
-from celery import Celery
-from celery.exceptions import Retry
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Uuid, create_engine, exc, func
+from redis import Redis
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+CACHE_TTL_SECONDS = 24 * 60 * 60
+logger = get_task_logger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -33,16 +41,49 @@ class ProcessingJobStatus(str, Enum):
     FAILED = "failed"
 
 
+class BookProcessingStatus(str, Enum):
+    MANUAL = "manual"
+    PENDING = "pending"
+    DONE = "done"
+    FAILED = "failed"
+    PARTIAL = "partial"
+
+
+class Book(Base):
+    __tablename__ = "books"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    author: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True, index=True)
+    publisher: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    publication_year: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    processing_status: Mapped[BookProcessingStatus] = mapped_column(
+        SAEnum(
+            BookProcessingStatus,
+            values_callable=lambda e: [member.value for member in e],
+            validate_strings=True,
+            name="book_processing_status",
+            create_type=False,
+        ),
+        nullable=False,
+        default=BookProcessingStatus.MANUAL,
+    )
+
+
 class BookImage(Base):
     __tablename__ = "book_images"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    book_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("books.id", ondelete="SET NULL"), nullable=True, index=True)
     minio_path: Mapped[str] = mapped_column(String(1024), nullable=False)
 
 
 class ProcessingJob(Base):
     __tablename__ = "processing_jobs"
-    # Keep this schema aligned with backend/app/models/processing_job.py.
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     status: Mapped[ProcessingJobStatus] = mapped_column(
@@ -85,6 +126,12 @@ def _get_engine():
     database_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://shelfy:shelfy@postgres:5432/shelfy")
     sync_database_url = database_url.replace("+asyncpg", "+psycopg2")
     return create_engine(sync_database_url, pool_pre_ping=True)
+
+
+@lru_cache(maxsize=1)
+def _get_redis_client() -> Redis:
+    redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    return Redis.from_url(redis_url, decode_responses=True)
 
 
 def _get_minio_client():
@@ -245,6 +292,146 @@ def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], Processing
     )
 
 
+def _cache_key(isbn: str) -> str:
+    return f"book-metadata:{isbn}"
+
+
+async def _fetch_google_books_metadata(isbn: str) -> dict[str, object] | None:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f"isbn:{isbn}", "maxResults": 1},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+    items = payload.get("items")
+    if not items:
+        return None
+
+    volume = items[0].get("volumeInfo", {})
+    published_date = str(volume.get("publishedDate", ""))
+    publication_year = int(published_date[:4]) if len(published_date) >= 4 and published_date[:4].isdigit() else None
+    image_links = volume.get("imageLinks") or {}
+
+    return {
+        "title": volume.get("title"),
+        "author": (volume.get("authors") or [None])[0],
+        "isbn": isbn,
+        "publisher": volume.get("publisher"),
+        "language": volume.get("language"),
+        "description": volume.get("description"),
+        "publication_year": publication_year,
+        "cover_image_url": image_links.get("thumbnail") or image_links.get("smallThumbnail"),
+        "provider": "google_books",
+    }
+
+
+async def _fetch_open_library_metadata(isbn: str) -> dict[str, object] | None:
+    bib_key = f"ISBN:{isbn}"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://openlibrary.org/api/books",
+            params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+    book_data = payload.get(bib_key)
+    if not book_data:
+        return None
+
+    publish_date = str(book_data.get("publish_date", ""))
+    publication_year: int | None = None
+    for token in publish_date.replace(",", " ").split():
+        if len(token) == 4 and token.isdigit():
+            publication_year = int(token)
+            break
+
+    cover_data = book_data.get("cover") or {}
+    language_key = ((book_data.get("languages") or [{}])[0].get("key") or "").split("/")[-1] or None
+    description = book_data.get("description")
+    if isinstance(description, dict):
+        description = description.get("value")
+
+    return {
+        "title": book_data.get("title"),
+        "author": (book_data.get("authors") or [{}])[0].get("name"),
+        "isbn": isbn,
+        "publisher": (book_data.get("publishers") or [{}])[0].get("name"),
+        "language": language_key,
+        "description": description,
+        "publication_year": publication_year,
+        "cover_image_url": cover_data.get("large") or cover_data.get("medium") or cover_data.get("small"),
+        "provider": "open_library",
+    }
+
+
+async def _enrich_metadata_with_fallback(isbn: str) -> dict[str, object] | None:
+    cache = _get_redis_client()
+    cached = cache.get(_cache_key(isbn))
+    if cached:
+        return json.loads(cached)
+
+    metadata: dict[str, object] | None = None
+
+    try:
+        metadata = await _fetch_google_books_metadata(isbn)
+    except Exception:
+        metadata = None
+
+    if metadata is None:
+        try:
+            metadata = await _fetch_open_library_metadata(isbn)
+        except Exception:
+            metadata = None
+
+    if metadata is not None:
+        cache.setex(_cache_key(isbn), CACHE_TTL_SECONDS, json.dumps(metadata))
+    return metadata
+
+
+def _upsert_book_from_metadata(
+    session: Session,
+    book_image: BookImage,
+    local_result: dict[str, object],
+    metadata: dict[str, object] | None,
+) -> Book:
+    isbn = local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None
+    metadata_or_empty = metadata or {}
+
+    book: Book | None = None
+    if book_image.book_id is not None:
+        book = session.get(Book, book_image.book_id)
+
+    if book is None and isbn:
+        book = session.execute(select(Book).where(Book.isbn == isbn)).scalar_one_or_none()
+
+    if book is None:
+        book = Book(id=uuid.uuid4(), title="Unknown title")
+        session.add(book)
+
+    book.title = (metadata_or_empty.get("title") if isinstance(metadata_or_empty.get("title"), str) else None) or (
+        local_result.get("title") if isinstance(local_result.get("title"), str) else None
+    ) or "Unknown title"
+    book.author = (metadata_or_empty.get("author") if isinstance(metadata_or_empty.get("author"), str) else None) or (
+        local_result.get("author") if isinstance(local_result.get("author"), str) else None
+    )
+    book.isbn = isbn
+    book.publisher = metadata_or_empty.get("publisher") if isinstance(metadata_or_empty.get("publisher"), str) else None
+    book.language = metadata_or_empty.get("language") if isinstance(metadata_or_empty.get("language"), str) else None
+    book.description = metadata_or_empty.get("description") if isinstance(metadata_or_empty.get("description"), str) else None
+    book.publication_year = metadata_or_empty.get("publication_year") if isinstance(metadata_or_empty.get("publication_year"), int) else None
+    book.cover_image_url = metadata_or_empty.get("cover_image_url") if isinstance(metadata_or_empty.get("cover_image_url"), str) else None
+    book.processing_status = BookProcessingStatus.DONE if metadata is not None else BookProcessingStatus.PARTIAL
+
+    session.flush()
+    book_image.book_id = book.id
+    return book
+
+
 def _mark_failed(job_id: str, message: str) -> None:
     with Session(_get_engine()) as session:
         job = session.get(ProcessingJob, uuid.UUID(job_id))
@@ -253,6 +440,18 @@ def _mark_failed(job_id: str, message: str) -> None:
             job.result_json = None
             job.error_message = message[:1000]
             session.commit()
+
+
+def _mark_book_partial(book_id: str, message: str) -> None:
+    with Session(_get_engine()) as session:
+        book = session.get(Book, uuid.UUID(book_id))
+        if book is None:
+            return
+
+        book.processing_status = BookProcessingStatus.PARTIAL
+        if not book.description:
+            book.description = message[:1000]
+        session.commit()
 
 
 @celery_app.task(
@@ -280,11 +479,33 @@ def process_book_image(self, job_id: str) -> None:
             session.commit()
 
             image_bytes = _download_image_bytes(image.minio_path)
-            result_json, final_status, error_message = _extract_metadata(image_bytes)
+            local_result, local_status, error_message = _extract_metadata(image_bytes)
 
-            job.status = final_status
+            if local_status == ProcessingJobStatus.FAILED:
+                job.status = local_status
+                job.result_json = local_result
+                job.error_message = error_message
+                session.commit()
+                return
+
+            isbn = local_result.get("isbn")
+            metadata: dict[str, object] | None = None
+            if isinstance(isbn, str):
+                metadata = asyncio.run(_enrich_metadata_with_fallback(isbn))
+
+            if isinstance(isbn, str) and metadata is None:
+                logger.warning("metadata_enrichment_partial job_id=%s isbn=%s", job_id, isbn)
+
+            book = _upsert_book_from_metadata(session, image, local_result, metadata)
+
+            result_json = {**local_result}
+            if metadata is not None:
+                result_json["metadata"] = metadata
+            result_json["book_id"] = str(book.id)
+
+            job.status = ProcessingJobStatus.DONE
             job.result_json = result_json
-            job.error_message = error_message
+            job.error_message = None
             session.commit()
     except Retry:
         raise
@@ -292,4 +513,46 @@ def process_book_image(self, job_id: str) -> None:
         raise
     except Exception as error:
         _mark_failed(job_id, str(error))
+        raise
+
+
+@celery_app.task(
+    name="worker.celery_app.retry_book_enrichment",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(exc.OperationalError, exc.InterfaceError),
+    retry_backoff=True,
+    retry_backoff_max=60,
+    max_retries=3,
+)
+def retry_book_enrichment(self, book_id: str) -> None:
+    try:
+        with Session(_get_engine()) as session:
+            book = session.get(Book, uuid.UUID(book_id))
+            if book is None:
+                raise self.retry(exc=RuntimeError(f"Book {book_id} not found"), countdown=2)
+            if not book.isbn:
+                _mark_book_partial(book_id, "Retry skipped: book ISBN is missing")
+                return
+
+            metadata = asyncio.run(_enrich_metadata_with_fallback(book.isbn))
+            if metadata is None:
+                _mark_book_partial(book_id, "Retry enrichment failed for all providers")
+                return
+
+            book.title = metadata.get("title") if isinstance(metadata.get("title"), str) else book.title
+            book.author = metadata.get("author") if isinstance(metadata.get("author"), str) else book.author
+            book.publisher = metadata.get("publisher") if isinstance(metadata.get("publisher"), str) else book.publisher
+            book.language = metadata.get("language") if isinstance(metadata.get("language"), str) else book.language
+            book.description = metadata.get("description") if isinstance(metadata.get("description"), str) else book.description
+            book.publication_year = metadata.get("publication_year") if isinstance(metadata.get("publication_year"), int) else book.publication_year
+            book.cover_image_url = metadata.get("cover_image_url") if isinstance(metadata.get("cover_image_url"), str) else book.cover_image_url
+            book.processing_status = BookProcessingStatus.DONE
+            session.commit()
+    except Retry:
+        raise
+    except (exc.OperationalError, exc.InterfaceError):
+        raise
+    except Exception:
+        _mark_book_partial(book_id, "Retry enrichment failed")
         raise

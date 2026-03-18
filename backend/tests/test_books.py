@@ -313,3 +313,41 @@ async def test_update_book_with_duplicate_isbn_returns_409(
         )
 
     assert conflict.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_retry_enrichment_enqueues_worker_task(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with test_session() as session:
+        book = Book(title="Book pending", isbn="9780134494166")
+        session.add(book)
+        await session.commit()
+        await session.refresh(book)
+        book_id = book.id
+
+    from unittest.mock import patch
+
+    with patch("app.api.books.get_celery_client") as celery_client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            async with test_session() as session:
+                headers = await _auth_headers(client, session)
+
+            response = await client.patch(f"/api/v1/books/{book_id}/retry-enrichment", headers=headers)
+
+    assert response.status_code == 202
+    assert response.json()["book_id"] == str(book_id)
+    assert response.json()["status"] == "queued"
+    celery_client.return_value.send_task.assert_called_once_with(
+        "worker.celery_app.retry_book_enrichment",
+        args=[str(book_id)],
+    )
+
+
+@pytest.mark.asyncio
+async def test_retry_enrichment_missing_book_returns_404(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.patch(f"/api/v1/books/{uuid.uuid4()}/retry-enrichment", headers=headers)
+
+    assert response.status_code == 404

@@ -8,7 +8,7 @@ from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.models.user import User
-from app.schemas.book import BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest
+from app.schemas.book import BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest, RetryEnrichmentResponse
 from app.schemas.job import UploadResponse
 from app.services.book import create_book, delete_book, get_book_or_404, list_books, update_book
 from app.services.job import create_upload_job
@@ -78,6 +78,33 @@ async def delete_book_endpoint(
     await delete_book(session, book_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+
+
+@router.patch("/{book_id}/retry-enrichment", response_model=RetryEnrichmentResponse, status_code=status.HTTP_202_ACCEPTED)
+async def retry_book_enrichment(
+    book_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> RetryEnrichmentResponse:
+    await get_book_or_404(session, book_id)
+
+    try:
+        celery_client = get_celery_client()
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: celery_client.send_task(
+                "worker.celery_app.retry_book_enrichment",
+                args=[str(book_id)],
+            ),
+        )
+    except Exception as publish_exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Enrichment queue is unavailable",
+        ) from publish_exc
+
+    return RetryEnrichmentResponse(book_id=book_id, status="queued")
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_book_image(
