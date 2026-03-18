@@ -1,10 +1,12 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
+from typing import Any
 from contextlib import asynccontextmanager
 
 from httpx import ASGITransport, AsyncClient
 import pytest
 
 from app.api.health import check_database, check_redis
+from app.core.config import Settings
 from app.db.session import get_db_session
 from app.main import app
 
@@ -76,11 +78,11 @@ async def test_check_database_executes_simple_query(monkeypatch: pytest.MonkeyPa
             executed.append(statement)
 
     @asynccontextmanager
-    async def _connect() -> AsyncIterator[_Connection]:
+    async def _connect() -> AsyncGenerator[_Connection, None]:
         yield _Connection()
 
     class _Engine:
-        def connect(self) -> AsyncIterator[_Connection]:
+        def connect(self) -> Any:
             return _connect()
 
         async def dispose(self) -> None:
@@ -89,10 +91,8 @@ async def test_check_database_executes_simple_query(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr("app.api.health.create_async_engine", lambda *_args, **_kwargs: _Engine())
 
-    class _Settings:
-        database_url = "sqlite+aiosqlite://"
-
-    await check_database(_Settings())
+    test_settings = Settings(database_url="sqlite+aiosqlite://")
+    await check_database(test_settings)
 
     assert disposed is True
     assert len(executed) == 1
@@ -114,10 +114,8 @@ async def test_check_redis_pings_and_closes_client(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr("app.api.health.redis.from_url", lambda *_args, **_kwargs: _Client())
 
-    class _Settings:
-        redis_url = "redis://localhost:6379/0"
-
-    await check_redis(_Settings())
+    test_settings = Settings(redis_url="redis://localhost:6379/0")
+    await check_redis(test_settings)
 
     assert pinged is True
     assert closed is True
@@ -133,7 +131,7 @@ async def test_metrics_endpoint_returns_prometheus_payload() -> None:
         async def execute(self, _statement: object) -> _FakeResult:
             return _FakeResult()
 
-    async def _override_session():
+    async def _override_session() -> AsyncIterator[_FakeSession]:
         yield _FakeSession()
 
     app.dependency_overrides[get_db_session] = _override_session
