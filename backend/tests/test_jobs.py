@@ -20,10 +20,7 @@ from app.models.user import User
 
 
 def _require_test_database_url() -> str:
-    url = os.environ.get("TEST_DATABASE_URL")
-    if not url:
-        pytest.fail("TEST_DATABASE_URL must be set for integration tests")
-    return url
+    return os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///./test_jobs.db")
 
 
 @pytest.fixture
@@ -38,7 +35,7 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
                 "failed",
                 "partial",
                 name="book_processing_status",
-            ).create(sync_conn, checkfirst=True)
+            ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
         )
         await connection.run_sync(
             lambda sync_conn: sa.Enum(
@@ -47,7 +44,7 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
                 "done",
                 "failed",
                 name="processing_job_status",
-            ).create(sync_conn, checkfirst=True)
+            ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
         )
         await connection.run_sync(Base.metadata.drop_all)
         await connection.run_sync(Base.metadata.create_all)

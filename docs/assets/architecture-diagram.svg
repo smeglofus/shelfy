@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520">
+  <style>
+    .title { font: 700 26px sans-serif; fill: #0f172a; }
+    .label { font: 600 16px sans-serif; fill: #0f172a; }
+    .text { font: 14px sans-serif; fill: #334155; }
+    .box { fill: #f8fafc; stroke: #94a3b8; stroke-width: 2; rx: 12; }
+    .data { fill: #ecfeff; stroke: #0ea5e9; stroke-width: 2; rx: 12; }
+    .queue { fill: #fff7ed; stroke: #f97316; stroke-width: 2; rx: 12; }
+    .arrow { stroke: #475569; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#475569" />
+    </marker>
+  </defs>
+
+  <text x="32" y="44" class="title">Shelfy Runtime Architecture</text>
+
+  <rect x="40" y="90" width="190" height="90" class="box"/>
+  <text x="58" y="124" class="label">React Frontend</text>
+  <text x="58" y="148" class="text">Vite + React Query</text>
+
+  <rect x="290" y="90" width="230" height="90" class="box"/>
+  <text x="308" y="124" class="label">FastAPI Backend</text>
+  <text x="308" y="148" class="text">Auth, Books, Jobs, Metrics</text>
+
+  <rect x="600" y="70" width="180" height="90" class="data"/>
+  <text x="618" y="104" class="label">PostgreSQL</text>
+  <text x="618" y="128" class="text">books, locations, jobs</text>
+
+  <rect x="600" y="190" width="180" height="90" class="queue"/>
+  <text x="618" y="224" class="label">Redis</text>
+  <text x="618" y="248" class="text">broker + cache</text>
+
+  <rect x="860" y="70" width="180" height="90" class="data"/>
+  <text x="878" y="104" class="label">MinIO</text>
+  <text x="878" y="128" class="text">cover image objects</text>
+
+  <rect x="860" y="190" width="180" height="90" class="box"/>
+  <text x="878" y="224" class="label">Celery Worker</text>
+  <text x="878" y="248" class="text">OCR + metadata enrichment</text>
+
+  <rect x="860" y="320" width="180" height="90" class="box"/>
+  <text x="878" y="354" class="label">External APIs</text>
+  <text x="878" y="378" class="text">Google Books / OpenLibrary</text>
+
+  <path d="M230 135 L290 135" class="arrow"/>
+  <path d="M520 115 L600 115" class="arrow"/>
+  <path d="M520 140 L600 230" class="arrow"/>
+  <path d="M520 160 L860 230" class="arrow"/>
+  <path d="M780 230 L860 230" class="arrow"/>
+  <path d="M860 230 L780 230" class="arrow"/>
+  <path d="M950 160 L950 190" class="arrow"/>
+  <path d="M950 280 L950 320" class="arrow"/>
+</svg>

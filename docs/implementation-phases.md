@@ -392,6 +392,8 @@ Definition of done:
 Goal:
 - Raise quality bar to make the project presentable as a portfolio piece.
 
+Status: ✅ Completed on 2026-03-18.
+
 Deliverables:
 - test coverage must reach minimum 80% on backend (enforced in CI)
 - all mypy errors resolved (strict mode enabled)

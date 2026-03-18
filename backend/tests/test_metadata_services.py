@@ -47,10 +47,10 @@ def test_google_books_client_returns_normalized_metadata() -> None:
 
 
 def test_open_library_fallback_called_when_google_books_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def _google(_client: httpx.AsyncClient, _isbn: str):
+    async def _google(_client: httpx.AsyncClient, _isbn: str) -> None:
         return None
 
-    async def _open_library(_client: httpx.AsyncClient, isbn: str):
+    async def _open_library(_client: httpx.AsyncClient, isbn: str) -> dict[str, object]:
         return {
             "title": "Refactoring",
             "author": "Martin Fowler",
@@ -105,7 +105,7 @@ def test_cache_hit_skips_external_calls(monkeypatch: pytest.MonkeyPatch) -> None
         async def aclose(self) -> None:
             return None
 
-    async def _raise_if_called(*_args, **_kwargs):
+    async def _raise_if_called(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("external client should not be called on cache hit")
 
     monkeypatch.setattr("app.services.metadata.service.redis_async.from_url", lambda *_args, **_kwargs: FakeRedis())
