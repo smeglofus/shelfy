@@ -106,7 +106,7 @@ export function BooksPage() {
 
     if (uploadJobStatusQuery.isError) {
       showError('Failed to check upload status.')
-      setUploadJobId(null)
+      // setUploadJobId(null)
     }
   }, [
     refetchBooks,
