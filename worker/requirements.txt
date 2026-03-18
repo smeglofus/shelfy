@@ -1,7 +1,7 @@
 celery==5.6.0
 redis==6.4.0
 sqlalchemy==2.0.36
-psycopg2==2.9.9
+psycopg2-binary==2.9.9
 boto3==1.35.36
 opencv-python-headless==4.11.0.86
 pyzbar==0.1.9
