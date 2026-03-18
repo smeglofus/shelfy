@@ -47,7 +47,7 @@ docker push "$REGISTRY/shelfy-worker:$TAG"
 
 ## 3) Create Docker secrets
 
-Create local files in a temporary directory (avoid writing secrets in the repo checkout):
+Create local files in a temporary directory (avoid writing secrets in the repo checkout). Ensure `htpasswd` is installed (`apache2-utils` on Debian/Ubuntu or `httpd-tools` on RHEL/Fedora):
 
 ```bash
 SECRETS_DIR="$(mktemp -d)"
@@ -57,6 +57,7 @@ openssl rand -base64 32 > "$SECRETS_DIR/postgres_password.txt"
 openssl rand -base64 32 > "$SECRETS_DIR/redis_password.txt"
 openssl rand -base64 32 > "$SECRETS_DIR/minio_root_password.txt"
 openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret_key.txt"
+htpasswd -nB admin > "$SECRETS_DIR/traefik_dashboard_auth.txt"
 printf 'admin@example.com' > "$SECRETS_DIR/admin_email.txt"
 printf 'change-this-admin-password' > "$SECRETS_DIR/admin_password.txt"
 ```
@@ -68,6 +69,7 @@ docker secret create postgres_password "$SECRETS_DIR/postgres_password.txt"
 docker secret create redis_password "$SECRETS_DIR/redis_password.txt"
 docker secret create minio_root_password "$SECRETS_DIR/minio_root_password.txt"
 docker secret create jwt_secret_key "$SECRETS_DIR/jwt_secret_key.txt"
+docker secret create traefik_dashboard_auth "$SECRETS_DIR/traefik_dashboard_auth.txt"
 docker secret create admin_email "$SECRETS_DIR/admin_email.txt"
 docker secret create admin_password "$SECRETS_DIR/admin_password.txt"
 ```
@@ -99,8 +101,10 @@ export POSTGRES_USER=shelfy
 export MINIO_ROOT_USER=minioadmin
 export MINIO_BUCKET=shelfy-images
 export MINIO_REGION=us-east-1
-# export CORS_ALLOWED_ORIGINS='["https://library.example.com"]'
 ```
+
+**Optional:** To override allowed CORS origins:
+`CORS_ALLOWED_ORIGINS='["https://library.example.com"]'`
 
 ## 5) Deploy the stack
 
