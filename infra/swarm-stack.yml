@@ -1,0 +1,214 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - --providers.docker=true
+      - --providers.docker.swarmMode=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:?TRAEFIK_ACME_EMAIL is required}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --api.dashboard=true
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - public
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DASHBOARD_HOST}`)
+        - traefik.http.routers.traefik.entrypoints=websecure
+        - traefik.http.routers.traefik.tls.certresolver=letsencrypt
+        - traefik.http.routers.traefik.service=api@internal
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shelfy}
+      POSTGRES_USER: ${POSTGRES_USER:-shelfy}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  redis:
+    image: redis:7
+    command:
+      - /bin/sh
+      - -ec
+      - exec redis-server --appendonly yes --requirepass "$$(cat /run/secrets/redis_password)"
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  minio:
+    image: minio/minio:latest
+    command:
+      - /bin/sh
+      - -ec
+      - export MINIO_ROOT_PASSWORD="$$(cat /run/secrets/minio_root_password)" && exec minio server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+    secrets:
+      - minio_root_password
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.minio-api.rule=Host(`${MINIO_API_HOST}`)
+        - traefik.http.routers.minio-api.entrypoints=websecure
+        - traefik.http.routers.minio-api.tls.certresolver=letsencrypt
+        - traefik.http.services.minio-api.loadbalancer.server.port=9000
+        - traefik.http.routers.minio-console.rule=Host(`${MINIO_CONSOLE_HOST}`)
+        - traefik.http.routers.minio-console.entrypoints=websecure
+        - traefik.http.routers.minio-console.tls.certresolver=letsencrypt
+        - traefik.http.services.minio-console.loadbalancer.server.port=9001
+
+  backend:
+    image: ${SHELFY_BACKEND_IMAGE:?SHELFY_BACKEND_IMAGE is required}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        export DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER:-shelfy}:$$(cat /run/secrets/postgres_password)@postgres:5432/${POSTGRES_DB:-shelfy}"
+        export REDIS_URL="redis://:$$(cat /run/secrets/redis_password)@redis:6379/0"
+        export CELERY_BROKER_URL="$$REDIS_URL"
+        export CELERY_RESULT_BACKEND="redis://:$$(cat /run/secrets/redis_password)@redis:6379/1"
+        export MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-minioadmin}"
+        export MINIO_SECRET_KEY="$$(cat /run/secrets/minio_root_password)"
+        export JWT_SECRET_KEY="$$(cat /run/secrets/jwt_secret_key)"
+        if [ -f /run/secrets/admin_email ] && [ -f /run/secrets/admin_password ]; then
+          export SEED_ADMIN_ON_STARTUP=true
+          export ADMIN_EMAIL="$$(cat /run/secrets/admin_email)"
+          export ADMIN_PASSWORD="$$(cat /run/secrets/admin_password)"
+        fi
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      ENVIRONMENT: production
+      APP_NAME: Shelfy API
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-[\"https://${SHELFY_APP_HOST}\"]}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKET: ${MINIO_BUCKET:-shelfy-images}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+    secrets:
+      - postgres_password
+      - redis_password
+      - minio_root_password
+      - jwt_secret_key
+      - admin_email
+      - admin_password
+    networks:
+      - internal
+      - public
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.backend.rule=Host(`${API_HOST}`)
+        - traefik.http.routers.backend.entrypoints=websecure
+        - traefik.http.routers.backend.tls.certresolver=letsencrypt
+        - traefik.http.services.backend.loadbalancer.server.port=8000
+      restart_policy:
+        condition: on-failure
+
+  worker:
+    image: ${SHELFY_WORKER_IMAGE:?SHELFY_WORKER_IMAGE is required}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        export DATABASE_URL="postgresql+psycopg2://${POSTGRES_USER:-shelfy}:$$(cat /run/secrets/postgres_password)@postgres:5432/${POSTGRES_DB:-shelfy}"
+        export REDIS_URL="redis://:$$(cat /run/secrets/redis_password)@redis:6379/0"
+        export CELERY_BROKER_URL="$$REDIS_URL"
+        export CELERY_RESULT_BACKEND="redis://:$$(cat /run/secrets/redis_password)@redis:6379/1"
+        export MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-minioadmin}"
+        export MINIO_SECRET_KEY="$$(cat /run/secrets/minio_root_password)"
+        exec celery -A celery_app worker --loglevel=info -Q default
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKET: ${MINIO_BUCKET:-shelfy-images}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+    secrets:
+      - postgres_password
+      - redis_password
+      - minio_root_password
+    networks:
+      - internal
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  frontend:
+    image: ${SHELFY_FRONTEND_IMAGE:?SHELFY_FRONTEND_IMAGE is required}
+    environment:
+      VITE_API_BASE_URL: https://${API_HOST}
+    networks:
+      - public
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.frontend.rule=Host(`${SHELFY_APP_HOST}`)
+        - traefik.http.routers.frontend.entrypoints=websecure
+        - traefik.http.routers.frontend.tls.certresolver=letsencrypt
+        - traefik.http.services.frontend.loadbalancer.server.port=5173
+      restart_policy:
+        condition: on-failure
+
+networks:
+  public:
+    driver: overlay
+    attachable: true
+  internal:
+    driver: overlay
+    attachable: true
+
+volumes:
+  traefik_letsencrypt:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+secrets:
+  postgres_password:
+    external: true
+  redis_password:
+    external: true
+  minio_root_password:
+    external: true
+  jwt_secret_key:
+    external: true
+  admin_email:
+    external: true
+  admin_password:
+    external: true

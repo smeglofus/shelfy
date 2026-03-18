@@ -50,6 +50,19 @@ When services are healthy:
 - Metrics: http://localhost:8000/metrics
 - MinIO Console: http://localhost:9001
 
+## Homelab deployment (Docker Swarm)
+
+Use the Swarm stack file and deployment runbook:
+
+- Stack definition: `infra/swarm-stack.yml`
+- Step-by-step guide: `docs/deployment.md`
+
+Deploy command:
+
+```bash
+docker stack deploy -c infra/swarm-stack.yml library-app
+```
+
 ## Environment variables reference
 
 The app reads from `.env` (see `.env.example`).
@@ -137,3 +150,4 @@ npm test -- --run
 - ADRs: `docs/adr/`
 - Implementation roadmap: `docs/implementation-phases.md`
 - Coding standards: `docs/coding-standards.md`
+- Swarm deployment guide: `docs/deployment.md`
