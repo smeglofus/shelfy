@@ -1,8 +1,14 @@
 import asyncio
 
+import structlog
+
 from app.core.config import get_settings
+from app.core.logging import configure_structlog
 from app.db.session import SessionLocal
 from app.services.user_seed import seed_admin_user
+
+configure_structlog(service="backend")
+logger = structlog.get_logger()
 
 
 async def main() -> None:
@@ -13,7 +19,7 @@ async def main() -> None:
     async with SessionLocal() as session:
         created = await seed_admin_user(session, settings.admin_email, settings.admin_password)
 
-    print("Admin user created." if created else "Admin user already exists.")
+    logger.info("admin_seed_cli_result", created=created, email=settings.admin_email)
 
 
 if __name__ == "__main__":

@@ -8,11 +8,13 @@ import json
 import os
 import re
 import uuid
+from time import perf_counter
+
+import structlog
 
 import boto3
 from celery import Celery
 from celery.exceptions import Retry
-from celery.utils.log import get_task_logger
 import cv2
 import httpx
 import numpy as np
@@ -27,7 +29,24 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
-logger = get_task_logger(__name__)
+
+
+def _configure_structlog() -> None:
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.stdlib.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", key="timestamp"),
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+    structlog.contextvars.bind_contextvars(service="worker")
+
+
+_configure_structlog()
+logger = structlog.get_logger()
 
 
 class Base(DeclarativeBase):
@@ -297,14 +316,18 @@ def _cache_key(isbn: str) -> str:
 
 
 async def _fetch_google_books_metadata(isbn: str) -> dict[str, object] | None:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": f"isbn:{isbn}", "maxResults": 1},
-            timeout=10.0,
-        )
-        response.raise_for_status()
-        payload = response.json()
+    start = perf_counter()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://www.googleapis.com/books/v1/volumes",
+                params={"q": f"isbn:{isbn}", "maxResults": 1},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            payload = response.json()
+    finally:
+        logger.info("external_api_call", provider="google_books", isbn=isbn, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
 
     items = payload.get("items")
     if not items:
@@ -330,14 +353,18 @@ async def _fetch_google_books_metadata(isbn: str) -> dict[str, object] | None:
 
 async def _fetch_open_library_metadata(isbn: str) -> dict[str, object] | None:
     bib_key = f"ISBN:{isbn}"
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "https://openlibrary.org/api/books",
-            params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
-            timeout=10.0,
-        )
-        response.raise_for_status()
-        payload = response.json()
+    start = perf_counter()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://openlibrary.org/api/books",
+                params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            payload = response.json()
+    finally:
+        logger.info("external_api_call", provider="open_library", isbn=isbn, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
 
     book_data = payload.get(bib_key)
     if not book_data:
@@ -464,7 +491,10 @@ def _mark_book_partial(book_id: str, message: str) -> None:
     max_retries=3,
 )
 def process_book_image(self, job_id: str) -> None:
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(service="worker", job_id=job_id, isbn=None, processing_step="job_processing")
     try:
+        logger.info("process_book_image_started")
         with Session(_get_engine()) as session:
             job = session.get(ProcessingJob, uuid.UUID(job_id))
             if job is None:
@@ -491,10 +521,11 @@ def process_book_image(self, job_id: str) -> None:
             isbn = local_result.get("isbn")
             metadata: dict[str, object] | None = None
             if isinstance(isbn, str):
+                structlog.contextvars.bind_contextvars(isbn=isbn, processing_step="metadata_enrichment")
                 metadata = asyncio.run(_enrich_metadata_with_fallback(isbn))
 
             if isinstance(isbn, str) and metadata is None:
-                logger.warning("metadata_enrichment_partial job_id=%s isbn=%s", job_id, isbn)
+                logger.warning("metadata_enrichment_partial", job_id=job_id, isbn=isbn, processing_step="metadata_enrichment")
 
             book = _upsert_book_from_metadata(session, image, local_result, metadata)
 
@@ -507,11 +538,14 @@ def process_book_image(self, job_id: str) -> None:
             job.result_json = result_json
             job.error_message = None
             session.commit()
+            processing_result = "partial" if metadata is None else "success"
+            logger.info("process_book_image_completed", job_id=job_id, isbn=isbn, processing_step="job_complete", status=processing_result)
     except Retry:
         raise
     except (exc.OperationalError, exc.InterfaceError):
         raise
     except Exception as error:
+        logger.exception("process_book_image_failed", job_id=job_id, processing_step="job_processing", error=str(error))
         _mark_failed(job_id, str(error))
         raise
 
@@ -526,7 +560,10 @@ def process_book_image(self, job_id: str) -> None:
     max_retries=3,
 )
 def retry_book_enrichment(self, book_id: str) -> None:
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(service="worker", job_id=book_id, isbn=None, processing_step="retry_enrichment")
     try:
+        logger.info("retry_book_enrichment_started")
         with Session(_get_engine()) as session:
             book = session.get(Book, uuid.UUID(book_id))
             if book is None:
@@ -538,6 +575,7 @@ def retry_book_enrichment(self, book_id: str) -> None:
             metadata = asyncio.run(_enrich_metadata_with_fallback(book.isbn))
             if metadata is None:
                 _mark_book_partial(book_id, "Retry enrichment failed for all providers")
+                logger.warning("retry_book_enrichment_partial", job_id=book_id, processing_step="retry_enrichment")
                 return
 
             book.title = metadata.get("title") if isinstance(metadata.get("title"), str) else book.title
@@ -549,10 +587,12 @@ def retry_book_enrichment(self, book_id: str) -> None:
             book.cover_image_url = metadata.get("cover_image_url") if isinstance(metadata.get("cover_image_url"), str) else book.cover_image_url
             book.processing_status = BookProcessingStatus.DONE
             session.commit()
+            logger.info("retry_book_enrichment_completed", job_id=book_id, isbn=book.isbn, processing_step="retry_enrichment")
     except Retry:
         raise
     except (exc.OperationalError, exc.InterfaceError):
         raise
-    except Exception:
+    except Exception as error:
+        logger.exception("retry_enrichment_failed", job_id=book_id, processing_step="retry_enrichment", error=str(error))
         _mark_book_partial(book_id, "Retry enrichment failed")
         raise
