@@ -86,8 +86,10 @@ GitHub Actions CI validates:
 3. Backend tests with coverage threshold (`--cov-fail-under=80`)
 4. Frontend lint and tests
 
-## 8. Deferred to deployment phase
+## 8. Homelab deployment architecture
 
-- Docker Swarm stack and Traefik/TLS routing
-- Docker Secrets wiring in production deployment docs
-- Operational smoke-test checklist for homelab rollout
+- Production deployment target is Docker Swarm using `infra/swarm-stack.yml`.
+- Traefik v3 is the ingress controller, with label-based routing and ACME TLS.
+- Sensitive values are mounted via Docker Secrets under `/run/secrets/` and injected at runtime.
+- Persistent storage uses named Swarm volumes for PostgreSQL and MinIO.
+- Operational deployment and smoke-test steps are documented in `docs/deployment.md`.
