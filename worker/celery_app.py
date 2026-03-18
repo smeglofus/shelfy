@@ -107,6 +107,8 @@ def process_book_image(self, job_id: str) -> None:
             job = session.get(ProcessingJob, uuid.UUID(job_id))
             if job is None:
                 raise RuntimeError(f"ProcessingJob {job_id} not found — may not be committed yet")
+            if job.status == ProcessingJobStatus.DONE:
+                return
             job.status = ProcessingJobStatus.DONE
             job.error_message = None
             session.commit()
