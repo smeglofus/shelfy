@@ -50,6 +50,19 @@ When services are healthy:
 - Metrics: http://localhost:8000/metrics
 - MinIO Console: http://localhost:9001
 
+## Homelab deployment (Docker Swarm)
+
+Use the Swarm stack file and deployment runbook:
+
+- Stack definition: `infra/swarm-stack.yml`
+- Step-by-step guide: `docs/deployment.md`
+
+Deploy command:
+
+```bash
+docker stack deploy -c infra/swarm-stack.yml library-app
+```
+
 ## Environment variables reference
 
 The app reads from `.env` (see `.env.example`).
@@ -114,6 +127,20 @@ The app reads from `.env` (see `.env.example`).
 |---|---|---:|---|
 | `VITE_API_BASE_URL` | `http://localhost:8000` | No | Base URL consumed by frontend API client. |
 
+### Swarm deployment
+
+| Variable | Default | Required | Purpose |
+|---|---|---:|---|
+| `SHELFY_BACKEND_IMAGE` | `ghcr.io/your-org/shelfy-backend:latest` | Yes (Swarm) | Backend image reference used by `infra/swarm-stack.yml`. |
+| `SHELFY_FRONTEND_IMAGE` | `ghcr.io/your-org/shelfy-frontend:latest` | Yes (Swarm) | Frontend image reference used by `infra/swarm-stack.yml`. |
+| `SHELFY_WORKER_IMAGE` | `ghcr.io/your-org/shelfy-worker:latest` | Yes (Swarm) | Worker image reference used by `infra/swarm-stack.yml`. |
+| `SHELFY_APP_HOST` | `library.example.com` | Yes (Swarm) | Public hostname routed to the frontend service. |
+| `API_HOST` | `api.library.example.com` | Yes (Swarm) | Public hostname routed to the backend API. |
+| `MINIO_API_HOST` | `minio.library.example.com` | Yes (Swarm) | Public hostname routed to MinIO S3 API. |
+| `MINIO_CONSOLE_HOST` | `minio-console.library.example.com` | Yes (Swarm) | Public hostname routed to MinIO console. |
+| `TRAEFIK_DASHBOARD_HOST` | `traefik.library.example.com` | Yes (Swarm) | Public hostname for Traefik dashboard. |
+| `TRAEFIK_ACME_EMAIL` | `ops@example.com` | Yes (Swarm) | Contact email used by Traefik ACME/Let's Encrypt resolver. |
+
 ## Developer checks
 
 ```bash
@@ -137,3 +164,4 @@ npm test -- --run
 - ADRs: `docs/adr/`
 - Implementation roadmap: `docs/implementation-phases.md`
 - Coding standards: `docs/coding-standards.md`
+- Swarm deployment guide: `docs/deployment.md`
