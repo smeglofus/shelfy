@@ -76,6 +76,11 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://shelfy:shelfy@postgres:5432/shelfy}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-shelfy-images}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
     depends_on:
       postgres:
         condition: service_healthy
