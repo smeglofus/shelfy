@@ -67,3 +67,8 @@ class BookListResponse(BaseModel):
     page: int
     page_size: int
     items: list[BookResponse]
+
+
+class RetryEnrichmentResponse(BaseModel):
+    book_id: uuid.UUID
+    status: str
