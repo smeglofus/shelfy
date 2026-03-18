@@ -18,7 +18,7 @@ branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
-processing_job_status = sa.Enum(
+processing_job_status = postgresql.ENUM(
     "pending",
     "processing",
     "done",
