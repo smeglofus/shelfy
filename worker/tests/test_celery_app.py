@@ -229,3 +229,78 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
     assert fake_book_image.book_id == fake_book.id
     assert len(added_books) == 1
     assert added_books[0].processing_status == celery_app.BookProcessingStatus.PARTIAL
+
+
+def test_worker_logs_include_job_id(monkeypatch, capsys) -> None:
+    job_id = uuid.uuid4()
+    book_image_id = uuid.uuid4()
+
+    class FakeJob:
+        def __init__(self) -> None:
+            self.id = job_id
+            self.book_image_id = book_image_id
+            self.status = celery_app.ProcessingJobStatus.PENDING
+            self.result_json = None
+            self.error_message = None
+            self.attempts = 0
+
+    class FakeBookImage:
+        def __init__(self) -> None:
+            self.id = book_image_id
+            self.minio_path = "uploads/test.jpg"
+            self.book_id = None
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return None
+
+    class FakeSession:
+        def __init__(self, _engine) -> None:
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, model, identifier):
+            if model is celery_app.ProcessingJob and identifier == job_id:
+                return FakeJob()
+            if model is celery_app.BookImage and identifier == book_image_id:
+                return FakeBookImage()
+            return None
+
+        def execute(self, _query):
+            return FakeResult()
+
+        def add(self, _obj) -> None:
+            return None
+
+        def flush(self) -> None:
+            return None
+
+        def commit(self) -> None:
+            return None
+
+    monkeypatch.setattr(celery_app, "Session", FakeSession)
+    monkeypatch.setattr(celery_app, "_get_engine", lambda: object())
+    monkeypatch.setattr(celery_app, "_download_image_bytes", lambda _path: b"image")
+    monkeypatch.setattr(
+        celery_app,
+        "_extract_metadata",
+        lambda _bytes: (
+            {"isbn": "9780306406157", "title": "Fallback title", "author": "Fallback author", "source": "ocr"},
+            celery_app.ProcessingJobStatus.DONE,
+            None,
+        ),
+    )
+    async def _metadata(_isbn):
+        return None
+
+    monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _metadata)
+
+    celery_app.process_book_image.run(job_id=str(job_id))
+
+    output = capsys.readouterr().out
+    assert "\"job_id\": \"" + str(job_id) + "\"" in output
