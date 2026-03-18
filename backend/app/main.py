@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from anyio import to_thread
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
@@ -8,9 +9,11 @@ import structlog
 from app.api.auth import router as auth_router
 from app.api.books import router as books_router
 from app.api.health import router as health_router
+from app.api.jobs import router as jobs_router
 from app.api.locations import router as locations_router
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.services.storage import ensure_bucket_exists
 from app.services.user_seed import seed_admin_user
 
 logger = structlog.get_logger()
@@ -19,6 +22,12 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    try:
+        await to_thread.run_sync(ensure_bucket_exists)
+    except Exception as exc:
+        logger.exception("minio_bucket_setup_failed", error=str(exc), bucket=settings.minio_bucket)
+        raise
+
     if settings.seed_admin_on_startup and settings.admin_email and settings.admin_password:
         try:
             async with SessionLocal() as session:
@@ -43,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(locations_router)
     app.include_router(books_router)
+    app.include_router(jobs_router)
     return app
 
 
