@@ -5,6 +5,7 @@ from httpx import ASGITransport, AsyncClient
 import pytest
 
 from app.api.health import check_database, check_redis
+from app.db.session import get_db_session
 from app.main import app
 
 
@@ -120,3 +121,41 @@ async def test_check_redis_pings_and_closes_client(monkeypatch: pytest.MonkeyPat
 
     assert pinged is True
     assert closed is True
+
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint_returns_prometheus_payload() -> None:
+    class _FakeResult:
+        def scalar_one(self) -> int:
+            return 0
+
+    class _FakeSession:
+        async def execute(self, _statement: object) -> _FakeResult:
+            return _FakeResult()
+
+    async def _override_session():
+        yield _FakeSession()
+
+    app.dependency_overrides[get_db_session] = _override_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/metrics")
+    finally:
+        app.dependency_overrides.pop(get_db_session, None)
+
+    assert response.status_code == 200
+    assert "http_requests_total" in response.text
+    assert "book_processing_jobs_total" in response.text
+    assert "external_api_calls_total" in response.text
+    assert "external_api_latency_seconds" in response.text
+
+
+@pytest.mark.asyncio
+async def test_request_logging_contains_request_id(capsys: pytest.CaptureFixture[str]) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/health", headers={"x-request-id": "req-123"})
+
+    assert response.status_code == 200
+    captured = capsys.readouterr().out
+    assert "\"event\": \"http_request\"" in captured
+    assert "\"request_id\": \"req-123\"" in captured
