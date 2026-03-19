@@ -9,6 +9,7 @@ from typing import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "20260910_000003"
@@ -17,7 +18,7 @@ branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
-book_processing_status = sa.Enum(
+book_processing_status = postgresql.ENUM(
     "manual",
     "pending",
     "done",
@@ -65,7 +66,7 @@ def upgrade() -> None:
         op.create_index(
             "ix_books_search_vector",
             "books",
-            [sa.text("to_tsvector('simple', concat_ws(' ', title, coalesce(author, '')))")],
+            [sa.text("to_tsvector('simple'::regconfig, (coalesce(title, '') || ' ' || coalesce(author, ''))::text)")],
             postgresql_using="gin",
         )
 
