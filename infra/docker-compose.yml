@@ -24,7 +24,7 @@ services:
       - "6379:6379"
 
   minio:
-    image: minio/minio:latest
+    image: bitnami/minio:latest
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
