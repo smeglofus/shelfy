@@ -8,6 +8,8 @@ services:
       - --providers.swarm.exposedbydefault=false
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:?TRAEFIK_ACME_EMAIL is required}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
@@ -24,6 +26,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_letsencrypt:/letsencrypt
+    secrets:
+      - traefik_dashboard_auth
     networks:
       - public
     deploy:
@@ -35,6 +39,8 @@ services:
         - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DASHBOARD_HOST}`)
         - traefik.http.routers.traefik.entrypoints=websecure
         - traefik.http.routers.traefik.tls.certresolver=letsencrypt
+        - traefik.http.middlewares.dashboard-auth.basicauth.usersfile=/run/secrets/traefik_dashboard_auth
+        - traefik.http.routers.traefik.middlewares=dashboard-auth
         - traefik.http.routers.traefik.service=api@internal
 
   postgres:
@@ -70,7 +76,7 @@ services:
         condition: on-failure
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
     command:
       - /bin/sh
       - -ec
@@ -209,4 +215,6 @@ secrets:
   admin_email:
     external: true
   admin_password:
+    external: true
+  traefik_dashboard_auth:
     external: true
