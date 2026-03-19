@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+from types import SimpleNamespace, TracebackType
+from typing import Any
 
 import pytest
 
@@ -25,7 +26,12 @@ async def test_seed_admin_cli_calls_seed_and_logs(monkeypatch: pytest.MonkeyPatc
         async def __aenter__(self) -> "DummySession":
             return self
 
-        async def __aexit__(self, exc_type, exc, tb) -> None:
+        async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> None:
             return None
 
     monkeypatch.setattr(
@@ -37,7 +43,7 @@ async def test_seed_admin_cli_calls_seed_and_logs(monkeypatch: pytest.MonkeyPatc
 
     called: dict[str, object] = {}
 
-    async def fake_seed(session, email: str, password: str) -> bool:
+    async def fake_seed(session: Any, email: str, password: str) -> bool:
         called["email"] = email
         called["password"] = password
         return True

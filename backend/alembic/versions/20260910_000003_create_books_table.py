@@ -9,6 +9,7 @@ from typing import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import cast, column, func, literal, literal_column
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -66,7 +67,17 @@ def upgrade() -> None:
         op.create_index(
             "ix_books_search_vector",
             "books",
-            [sa.text("to_tsvector('simple'::regconfig, (coalesce(title, '') || ' ' || coalesce(author, ''))::text)")],
+            [
+                func.to_tsvector(
+                    literal_column("'simple'::regconfig"),
+                    cast(
+                        func.coalesce(column("title"), "")
+                        + literal(" ")
+                        + func.coalesce(column("author"), ""),
+                        sa.Text(),
+                    ),
+                )
+            ],
             postgresql_using="gin",
         )
 

@@ -14,8 +14,11 @@ logger = structlog.get_logger()
 async def main() -> None:
     settings = get_settings()
     if settings.admin_email is None or settings.admin_password is None:
-        print("Error: ADMIN_EMAIL and ADMIN_PASSWORD environment variables must be set.")
-        print("Example: ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=secret python -m app.cli.seed_admin")
+        logger.error(
+            "admin_seed_cli_missing_env",
+            message="ADMIN_EMAIL and ADMIN_PASSWORD environment variables must be set.",
+            example="ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=secret python -m app.cli.seed_admin",
+        )
         raise SystemExit(1)
 
     async with SessionLocal() as session:
