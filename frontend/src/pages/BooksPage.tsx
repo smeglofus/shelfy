@@ -1,412 +1,221 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-
-import {
-  useBooks,
-  useCreateBook,
-  useDeleteBook,
-  useJobStatus,
-  useUpdateBook,
-  useUploadBookImage,
-} from '../hooks/useBooks'
+import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
-import { getBookDetailRoute } from '../lib/routes'
 import { useToastStore } from '../lib/toast-store'
-import type { BookCreateRequest } from '../lib/types'
-import './BooksPage.css'
+import { BookCard } from '../components/BookCard'
+import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
+import { StatBar } from '../components/StatBar'
+import type { Book, Location } from '../lib/types'
 
-const PAGE_SIZE = 10
-
-const EMPTY_FORM: BookCreateRequest = {
-  title: '',
-  author: '',
-  isbn: '',
-  publisher: '',
-  language: '',
-  description: '',
-  publication_year: null,
-  cover_image_url: '',
-  location_id: null,
-}
+const PAGE_SIZE = 20
 
 export function BooksPage() {
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [selectedLocationId, setSelectedLocationId] = useState('')
-  const [page, setPage] = useState(1)
-  const [createForm, setCreateForm] = useState<BookCreateRequest>(EMPTY_FORM)
-  const [editingBookId, setEditingBookId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<BookCreateRequest>(EMPTY_FORM)
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
-  const [uploadJobId, setUploadJobId] = useState<string | null>(null)
-  const toastedFailedIdsRef = useRef<Set<string>>(new Set())
+  const [searchInput, setSearchInput]         = useState('')
+  const [search, setSearch]                   = useState('')
+  const [page, setPage]                       = useState(1)
+  const [deleteTargetId, setDeleteTargetId]   = useState<string | null>(null)
+  const [uploadJobId, setUploadJobId]         = useState<string | null>(null)
+  const toastedFailedIdsRef                   = useRef<Set<string>>(new Set())
 
   const queryParams = useMemo(
-    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, locationId: selectedLocationId || undefined }),
-    [page, search, selectedLocationId],
+    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined }),
+    [page, search],
   )
 
-  const booksQuery = useBooks(queryParams)
-  const refetchBooks = booksQuery.refetch
-  const locationsQuery = useLocations()
-  const createMutation = useCreateBook()
-  const updateMutation = useUpdateBook()
-  const deleteMutation = useDeleteBook()
-  const uploadMutation = useUploadBookImage()
+  const booksQuery          = useBooks(queryParams)
+  const locationsQuery      = useLocations()
+  const deleteMutation      = useDeleteBook()
   const uploadJobStatusQuery = useJobStatus(uploadJobId)
-  const showError = useToastStore((state) => state.showError)
+  const showError           = useToastStore(s => s.showError)
 
-  const locationLabelById = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const location of locationsQuery.data ?? []) {
-      map.set(location.id, `${location.room} / ${location.furniture} / ${location.shelf}`)
-    }
-    return map
+  // Map locationId → Location object
+  const locationById = useMemo(() => {
+    const m = new Map<string, Location>()
+    for (const loc of locationsQuery.data ?? []) m.set(loc.id, loc)
+    return m
   }, [locationsQuery.data])
 
+  // Group books by location
+  const groups = useMemo(() => {
+    const map = new Map<string | null, Book[]>()
+    for (const b of booksQuery.data?.items ?? []) {
+      const key = b.location_id ?? null
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(b)
+    }
+    return map
+  }, [booksQuery.data?.items])
+
+  // Toast for failed processing
   useEffect(() => {
-    const failedBooks = (booksQuery.data?.items ?? []).filter(
-      (book) => book.processing_status === 'failed' && !toastedFailedIdsRef.current.has(book.id),
+    const failed = (booksQuery.data?.items ?? []).filter(
+      b => b.processing_status === 'failed' && !toastedFailedIdsRef.current.has(b.id),
     )
-    if (failedBooks.length === 0) {
-      return
-    }
-    for (const book of failedBooks) {
-      toastedFailedIdsRef.current.add(book.id)
-    }
-    const titles = failedBooks.map((book) => `"${book.title}"`).join(', ')
-    showError(`Metadata extraction failed for ${failedBooks.length} book(s): ${titles}`)
+    if (!failed.length) return
+    for (const b of failed) toastedFailedIdsRef.current.add(b.id)
+    showError(`Zpracování selhalo pro ${failed.length} knih: ${failed.map(b => `"${b.title}"`).join(', ')}`)
   }, [booksQuery.data?.items, showError])
 
-  useEffect(() => {
-    if (!booksQuery.data) {
-      return
-    }
-
-    const { total, page: currentPage, page_size: currentPageSize, items } = booksQuery.data
-    if (total <= 0 || items.length > 0) {
-      return
-    }
-
-    const lastValidPage = Math.max(1, Math.ceil(total / currentPageSize))
-    if (currentPage > lastValidPage) {
-      setPage(lastValidPage)
-    }
-  }, [booksQuery.data])
-
+  // Upload job polling
   useEffect(() => {
     const status = uploadJobStatusQuery.data?.status
     if (status === 'done' || status === 'failed') {
-      if (status === 'failed') {
-        showError(uploadJobStatusQuery.data?.error_message ?? 'Image processing failed.')
-      }
+      if (status === 'failed') showError(uploadJobStatusQuery.data?.error_message ?? 'Zpracování obrázku selhalo.')
       setUploadJobId(null)
-      void refetchBooks()
-      return
+      void booksQuery.refetch()
     }
-
     if (uploadJobStatusQuery.isError) {
-      showError('Failed to check upload status.')
+      showError('Nepodařilo se zkontrolovat stav uploadu.')
     }
   }, [
-    refetchBooks,
+    booksQuery,
     showError,
     uploadJobStatusQuery.data?.error_message,
     uploadJobStatusQuery.data?.status,
     uploadJobStatusQuery.isError,
   ])
 
-  return (
-    <section className="books-page">
-      <header className="books-header">
-        <h2>Books</h2>
-        <p className="books-subtitle">Browse your library and quickly add new titles.</p>
-      </header>
+  const books = booksQuery.data?.items ?? []
+  const total = booksQuery.data?.total ?? 0
 
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ padding: '16px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 500 }}>Shelfy</h1>
+          <p style={{ fontSize: 13, color: '#888' }}>{total} knih</p>
+        </div>
+      </div>
+
+      {/* Stat bar */}
+      <StatBar books={books} total={total} />
+
+      {/* Search */}
       <form
         aria-label="book-search-form"
-        className="books-panel books-search-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          setPage(1)
-          setSearch(searchInput.trim())
-        }}
+        onSubmit={e => { e.preventDefault(); setPage(1); setSearch(searchInput.trim()) }}
+        style={{ margin: '12px 16px 0', display: 'flex', gap: 8 }}
       >
-        <input
-          aria-label="Search books"
-          placeholder="Search by title, author, ISBN..."
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-        />
-        <select
-          aria-label="Filter by location"
-          value={selectedLocationId}
-          onChange={(event) => {
-            setSelectedLocationId(event.target.value)
-            setPage(1)
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: '#F7F7F5',
+          border: '0.5px solid rgba(0,0,0,0.10)',
+          borderRadius: 12,
+          padding: '10px 14px',
+        }}>
+          <span style={{ fontSize: 16, color: '#888' }}>⌕</span>
+          <input
+            aria-label="Search books"
+            placeholder="Hledat knihy, autory..."
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, outline: 'none' }}
+          />
+        </div>
+        <button
+          type="submit"
+          style={{
+            padding: '0 16px',
+            background: '#1D9E75',
+            color: 'white',
+            border: 'none',
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
           }}
         >
-          <option value="">All locations</option>
-          {(locationsQuery.data ?? []).map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.room} / {location.furniture} / {location.shelf}
-            </option>
-          ))}
-        </select>
-        <button type="submit">Apply search</button>
-      </form>
-
-      <form
-        aria-label="upload-book-image-form"
-        className="books-panel books-upload-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const formData = new FormData(event.currentTarget)
-          const file = formData.get('book-image')
-          if (!(file instanceof File)) {
-            return
-          }
-          uploadMutation.mutate(file, {
-            onSuccess: (response) => {
-              setUploadJobId(response.job_id)
-            },
-          })
-        }}
-      >
-        <label htmlFor="book-image">Upload cover image</label>
-        <input id="book-image" name="book-image" type="file" accept="image/jpeg,image/png" required />
-        <button type="submit" disabled={uploadMutation.isPending || Boolean(uploadJobId)}>
-          {uploadMutation.isPending ? 'Uploading…' : 'Upload image'}
+          Hledat
         </button>
       </form>
 
+      {/* Upload status */}
       {uploadJobId && (
-        <p className="books-job-status">
-          Processing job {uploadJobId}: {uploadJobStatusQuery.data?.status ?? 'pending'}
+        <p style={{ margin: '8px 16px', fontSize: 13, color: '#BA7517' }}>
+          ⏳ Zpracovávám obrázek… ({uploadJobStatusQuery.data?.status ?? 'pending'})
         </p>
       )}
 
-      <form
-        aria-label="create-book-form"
-        className="books-panel books-create-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          createMutation.mutate(createForm, {
-            onSuccess: () => setCreateForm(EMPTY_FORM),
-          })
-        }}
-      >
-        <h3>Add book</h3>
-        <input
-          aria-label="Title"
-          required
-          placeholder="Title"
-          value={createForm.title ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, title: event.target.value }))}
-        />
-        <input
-          aria-label="Author"
-          placeholder="Author"
-          value={createForm.author ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, author: event.target.value }))}
-        />
-        <input
-          aria-label="ISBN"
-          placeholder="ISBN"
-          value={createForm.isbn ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, isbn: event.target.value }))}
-        />
-        <input
-          aria-label="Publisher"
-          placeholder="Publisher"
-          value={createForm.publisher ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, publisher: event.target.value }))}
-        />
-        <input
-          aria-label="Language"
-          placeholder="Language"
-          value={createForm.language ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, language: event.target.value }))}
-        />
-        <input
-          aria-label="Publication year"
-          type="number"
-          placeholder="Publication year"
-          value={createForm.publication_year ?? ''}
-          onChange={(event) =>
-            setCreateForm((prev) => ({ ...prev, publication_year: event.target.value ? Number(event.target.value) : null }))
-          }
-        />
-        <input
-          aria-label="Cover URL"
-          placeholder="Cover URL"
-          value={createForm.cover_image_url ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, cover_image_url: event.target.value }))}
-        />
-        <select
-          aria-label="Location"
-          value={createForm.location_id ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, location_id: event.target.value || null }))}
-        >
-          <option value="">Unassigned</option>
-          {(locationsQuery.data ?? []).map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.room} / {location.furniture} / {location.shelf}
-            </option>
-          ))}
-        </select>
-        <textarea
-          aria-label="Description"
-          placeholder="Description"
-          value={createForm.description ?? ''}
-          onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
-        />
-        <button type="submit" disabled={createMutation.isPending}>
-          {createMutation.isPending ? 'Creating…' : 'Create book'}
-        </button>
-      </form>
-
-      {booksQuery.isLoading && <p>Loading books…</p>}
-
-      {booksQuery.isError && (
-        <p>
-          Failed to load books.
-          <button type="button" onClick={() => void booksQuery.refetch()}>
-            Retry
-          </button>
-        </p>
-      )}
-
-      {booksQuery.data && booksQuery.data.total === 0 && <p>No books found.</p>}
-
-      {booksQuery.data && booksQuery.data.total > 0 && (
-        <>
-          <div className="books-list" aria-label="books-list">
-            {booksQuery.data.items.map((book) => {
-              const isEditing = editingBookId === book.id
-
-              return (
-                <article key={book.id} className="book-card" data-testid="book-card">
-                  {isEditing ? (
-                    <>
-                      <input
-                        aria-label="Edit title"
-                        value={editForm.title ?? ''}
-                        onChange={(event) => setEditForm((prev) => ({ ...prev, title: event.target.value }))}
-                      />
-                      <input
-                        aria-label="Edit author"
-                        value={editForm.author ?? ''}
-                        onChange={(event) => setEditForm((prev) => ({ ...prev, author: event.target.value }))}
-                      />
-                      <select
-                        aria-label="Edit location"
-                        value={editForm.location_id ?? ''}
-                        onChange={(event) => setEditForm((prev) => ({ ...prev, location_id: event.target.value || null }))}
-                      >
-                        <option value="">Unassigned</option>
-                        {(locationsQuery.data ?? []).map((location) => (
-                          <option key={location.id} value={location.id}>
-                            {location.room} / {location.furniture} / {location.shelf}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="book-card-actions">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            updateMutation.mutate(
-                              { id: book.id, payload: editForm },
-                              { onSuccess: () => setEditingBookId(null) },
-                            )
-                          }}
-                        >
-                          Save
-                        </button>
-                        <button type="button" onClick={() => setEditingBookId(null)}>
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h3>
-                        <Link to={getBookDetailRoute(book.id)}>{book.title}</Link>
-                      </h3>
-                      <p>
-                        <strong>Author:</strong> {book.author || '—'}
-                      </p>
-                      <p>
-                        <strong>Location:</strong>{' '}
-                        {(book.location_id ? locationLabelById.get(book.location_id) : null) ?? 'Unassigned'}
-                      </p>
-                      <div className="book-card-actions">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingBookId(book.id)
-                            setEditForm({
-                              title: book.title,
-                              author: book.author,
-                              isbn: book.isbn,
-                              publisher: book.publisher,
-                              language: book.language,
-                              description: book.description,
-                              publication_year: book.publication_year,
-                              cover_image_url: book.cover_image_url,
-                              location_id: book.location_id,
-                            })
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button type="button" onClick={() => setDeleteTargetId(book.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </article>
-              )
-            })}
-          </div>
-
-          <div className="books-pagination">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
-              Previous
+      {/* Book groups */}
+      <div style={{ padding: '14px 16px 0' }}>
+        {booksQuery.isLoading && <p style={{ color: '#888', fontSize: 14 }}>Načítám knihy…</p>}
+        {booksQuery.isError && (
+          <p style={{ color: '#E24B4A', fontSize: 14 }}>
+            Nepodařilo se načíst knihy.{' '}
+            <button onClick={() => void booksQuery.refetch()} style={{ color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Zkusit znovu
             </button>
-            <span>
-              Page {booksQuery.data.page} of {Math.max(1, Math.ceil(booksQuery.data.total / booksQuery.data.page_size))}
+          </p>
+        )}
+        {!booksQuery.isLoading && !booksQuery.isError && total === 0 && (
+          <p style={{ color: '#888', fontSize: 14 }}>Žádné knihy nenalezeny.</p>
+        )}
+
+        {Array.from(groups.entries()).map(([locId, groupBooks]) => {
+          const loc = locId ? locationById.get(locId) : null
+          return (
+            <div key={locId ?? 'unassigned'} style={{ marginBottom: 18 }}>
+              {loc
+                ? <ShelfBreadcrumb location={loc} />
+                : <p style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>Bez umístění</p>
+              }
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {groupBooks.map(b => <BookCard key={b.id} book={b} onDelete={setDeleteTargetId} />)}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Pagination */}
+        {total > PAGE_SIZE && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(p => p - 1)}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.15)', background: 'none', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}
+            >
+              ← Předchozí
+            </button>
+            <span style={{ fontSize: 13, color: '#888' }}>
+              {page} / {Math.ceil(total / PAGE_SIZE)}
             </span>
             <button
-              type="button"
-              disabled={page >= Math.ceil(booksQuery.data.total / booksQuery.data.page_size)}
-              onClick={() => setPage((current) => current + 1)}
+              disabled={page >= Math.ceil(total / PAGE_SIZE)}
+              onClick={() => setPage(p => p + 1)}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.15)', background: 'none', cursor: page >= Math.ceil(total / PAGE_SIZE) ? 'not-allowed' : 'pointer', opacity: page >= Math.ceil(total / PAGE_SIZE) ? 0.4 : 1 }}
             >
-              Next
+              Další →
             </button>
           </div>
-        </>
-      )}
+        )}
+      </div>
 
+      {/* Delete dialog */}
       {deleteTargetId && (
-        <div role="dialog" aria-label="delete-book-dialog" className="books-delete-dialog">
-          <p>Are you sure you want to delete this book?</p>
-          <button
-            type="button"
-            onClick={() => {
-              deleteMutation.mutate(deleteTargetId, {
-                onSuccess: () => setDeleteTargetId(null),
-              })
-            }}
-          >
-            Confirm delete
-          </button>
-          <button type="button" onClick={() => setDeleteTargetId(null)}>
-            Cancel
-          </button>
+        <div role="dialog" aria-label="delete-book-dialog" style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '0 24px',
+        }}>
+          <div style={{ background: 'white', borderRadius: 16, padding: '20px 20px 16px', width: '100%', maxWidth: 360 }}>
+            <p style={{ fontSize: 15, marginBottom: 16 }}>Opravdu chceš smazat tuto knihu?</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteTargetId(null)} style={{ padding: '9px 18px', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.15)', background: 'none', cursor: 'pointer', fontSize: 14 }}>
+                Zrušit
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteTargetId, { onSuccess: () => setDeleteTargetId(null) })}
+                style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#E24B4A', color: 'white', cursor: 'pointer', fontSize: 14 }}
+              >
+                {deleteMutation.isPending ? 'Mažu…' : 'Smazat'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </section>
+    </div>
   )
 }

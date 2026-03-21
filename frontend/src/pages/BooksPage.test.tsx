@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BooksPage } from './BooksPage'
 import { useToastStore } from '../lib/toast-store'
-import type { Book, BookListResponse, Location } from '../lib/types'
+import type { BookListResponse, Location } from '../lib/types'
 
 vi.mock('../lib/api', () => ({
   listBooks: vi.fn(),
@@ -20,20 +20,13 @@ vi.mock('../lib/api', () => ({
   formatApiError: vi.fn(() => 'API error'),
 }))
 
-import {
-  createBook,
-  deleteBook,
-  getJobStatus,
-  listBooks,
-  listLocations,
-  updateBook,
-  uploadBookImage,
-} from '../lib/api'
+import { deleteBook, listBooks, listLocations } from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
+      mutations: { retry: false },
     },
   })
 
@@ -47,7 +40,7 @@ function renderWithProviders(ui: ReactNode) {
 const booksResponse: BookListResponse = {
   total: 1,
   page: 1,
-  page_size: 10,
+  page_size: 20,
   items: [
     {
       id: 'book-1',
@@ -80,7 +73,6 @@ const locations: Location[] = [
 
 describe('BooksPage', () => {
   beforeEach(() => {
-    vi.useRealTimers()
     vi.clearAllMocks()
     useToastStore.setState({ message: null })
     vi.mocked(listBooks).mockResolvedValue(booksResponse)
@@ -95,53 +87,33 @@ describe('BooksPage', () => {
   it('renders book list and submits search input', async () => {
     renderWithProviders(<BooksPage />)
 
-    expect(await screen.findByText('Clean Code')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /delete-book-/ })).toBeInTheDocument()
 
     await userEvent.type(screen.getByLabelText('Search books'), 'Martin')
-    await userEvent.click(screen.getByRole('button', { name: 'Apply search' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Hledat' }))
 
     await waitFor(() => {
       expect(listBooks).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'Martin' }))
     })
   })
 
-  it('polls job status and refreshes books on done', async () => {
-    vi.mocked(uploadBookImage).mockResolvedValue({ job_id: 'job-1', status: 'pending' })
-    vi.mocked(getJobStatus)
-      .mockResolvedValueOnce({ id: 'job-1', status: 'pending', book_id: null })
-      .mockResolvedValueOnce({ id: 'job-1', status: 'done', book_id: null })
-
+  it('requires confirmation before deleting a book', async () => {
     renderWithProviders(<BooksPage />)
-    await screen.findByText('Clean Code')
 
-    const file = new File(['img'], 'cover.png', { type: 'image/png' })
-    await userEvent.upload(screen.getByLabelText('Upload cover image'), file)
-    fireEvent.submit(screen.getByLabelText('upload-book-image-form'))
+    await screen.findByRole('button', { name: /delete-book-/ })
 
-    await waitFor(() => expect(uploadBookImage).toHaveBeenCalled(), { timeout: 7000 })
-    await waitFor(() => expect(screen.getByText(/Processing job job-1:/)).toBeInTheDocument(), { timeout: 7000 })
-    await waitFor(() => expect(getJobStatus).toHaveBeenCalled(), { timeout: 7000 })
-    await waitFor(() => expect(listBooks).toHaveBeenCalledTimes(2), { timeout: 7000 })
-  }, 10000)
+    await userEvent.click(screen.getByRole('button', { name: /delete-book-/ }))
 
-  it('shows error toast when job fails', async () => {
-    const showErrorSpy = vi.spyOn(useToastStore.getState(), 'showError')
-    vi.mocked(uploadBookImage).mockResolvedValue({ job_id: 'job-2', status: 'pending' })
-    vi.mocked(getJobStatus).mockResolvedValue({ id: 'job-2', status: 'failed', book_id: null })
+    expect(screen.getByRole('dialog', { name: 'delete-book-dialog' })).toBeInTheDocument()
 
-    renderWithProviders(<BooksPage />)
-    await screen.findByText('Clean Code')
+    await userEvent.click(screen.getByRole('button', { name: 'Smazat' }))
 
-    const file = new File(['img'], 'cover.png', { type: 'image/png' })
-    await userEvent.upload(screen.getByLabelText('Upload cover image'), file)
-    fireEvent.submit(screen.getByLabelText('upload-book-image-form'))
+    await waitFor(() => {
+      expect(deleteBook).toHaveBeenCalledWith('book-1')
+    })
+  })
 
-    await waitFor(() => expect(uploadBookImage).toHaveBeenCalled(), { timeout: 7000 })
-    await waitFor(() => expect(screen.getByText(/Processing job job-2:/)).toBeInTheDocument(), { timeout: 7000 })
-    await waitFor(() => expect(showErrorSpy).toHaveBeenCalled(), { timeout: 7000 })
-  }, 10000)
-
-  it('aggregates failed-book toast messages into one toast', async () => {
+  it('shows aggregated toast for failed books', async () => {
     const showErrorSpy = vi.spyOn(useToastStore.getState(), 'showError')
     vi.mocked(listBooks).mockResolvedValue({
       ...booksResponse,
@@ -154,74 +126,14 @@ describe('BooksPage', () => {
 
     renderWithProviders(<BooksPage />)
 
-    await screen.findByText('Book Failed 1')
+    const deleteButtons = await screen.findAllByRole('button', { name: /delete-book-/ })
+    expect(deleteButtons.length).toBe(2)
 
     await waitFor(() => {
       expect(showErrorSpy).toHaveBeenCalledTimes(1)
       expect(showErrorSpy).toHaveBeenCalledWith(
-        'Metadata extraction failed for 2 book(s): "Book Failed 1", "Book Failed 2"',
+        'Zpracování selhalo pro 2 knih: "Book Failed 1", "Book Failed 2"',
       )
     })
   })
-
-  it('submits create and edit forms', async () => {
-    vi.mocked(createBook).mockImplementation(async (payload) => ({
-      ...(booksResponse.items[0] as Book),
-      id: 'book-2',
-      title: payload.title,
-      author: payload.author ?? null,
-    }))
-    vi.mocked(updateBook).mockImplementation(async (_id, payload) => ({
-      ...(booksResponse.items[0] as Book),
-      ...payload,
-      author: payload.author ?? booksResponse.items[0].author,
-    }))
-
-    renderWithProviders(<BooksPage />)
-
-    await screen.findByText('Clean Code')
-
-    await userEvent.type(screen.getByLabelText('Title'), 'Refactoring')
-    await userEvent.type(screen.getByLabelText('Author'), 'Martin Fowler')
-    await userEvent.click(screen.getByRole('button', { name: 'Create book' }))
-
-    await waitFor(() => {
-      expect(createBook).toHaveBeenCalledWith(expect.objectContaining({ title: 'Refactoring' }))
-    })
-
-    const cleanCodeCard = (await screen.findByRole('link', { name: 'Clean Code' })).closest('[data-testid="book-card"]')
-    if (!cleanCodeCard) {
-      throw new Error('Expected book card to exist')
-    }
-
-    await userEvent.click(within(cleanCodeCard).getByRole('button', { name: 'Edit' }))
-    const editTitleInput = screen.getByLabelText('Edit title')
-    await userEvent.clear(editTitleInput)
-    await userEvent.type(editTitleInput, 'Clean Code 2nd Edition')
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => {
-      expect(updateBook).toHaveBeenCalledWith(
-        'book-1',
-        expect.objectContaining({ title: 'Clean Code 2nd Edition' }),
-      )
-    })
-  })
-
-  it('requires confirmation before deleting a book', async () => {
-    renderWithProviders(<BooksPage />)
-
-    await screen.findByText('Clean Code')
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
-
-    expect(screen.getByRole('dialog', { name: 'delete-book-dialog' })).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm delete' }))
-
-    await waitFor(() => {
-      expect(deleteBook).toHaveBeenCalledWith('book-1')
-    })
-  })
-
-
 })

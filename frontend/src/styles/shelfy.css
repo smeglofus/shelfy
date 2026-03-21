@@ -1,0 +1,50 @@
+:root {
+  --sh-teal:      #1D9E75;
+  --sh-teal-dark: #0F6E56;
+  --sh-teal-bg:   #E1F5EE;
+  --sh-teal-text: #085041;
+  --sh-amber:     #BA7517;
+  --sh-amber-bg:  #FAEEDA;
+  --sh-amber-text:#633806;
+  --sh-blue:      #185FA5;
+  --sh-blue-bg:   #E6F1FB;
+  --sh-blue-text: #042C53;
+  --sh-purple-bg: #EEEDFE;
+  --sh-purple-text:#3C3489;
+  --sh-red-bg:    #FCEBEB;
+  --sh-red-text:  #A32D2D;
+  --sh-border:    rgba(0,0,0,0.10);
+  --sh-border-2:  rgba(0,0,0,0.18);
+  --sh-surface:   #F7F7F5;
+  --sh-radius-sm: 6px;
+  --sh-radius-md: 10px;
+  --sh-radius-lg: 14px;
+  --sh-radius-xl: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: var(--sh-surface); color: #111; }
+
+.sh-app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: white;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.sh-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 80px;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.book-card:hover { border-color: rgba(0,0,0,0.25); }
+.nav-item:hover { color: var(--sh-teal); }
+.sh-btn-primary:hover { background: var(--sh-teal-dark); }
+.sh-input:focus { border-color: var(--sh-teal); box-shadow: 0 0 0 3px rgba(29,158,117,.15); outline: none; }
+.sh-select:focus { border-color: var(--sh-teal); box-shadow: 0 0 0 3px rgba(29,158,117,.15); outline: none; }
