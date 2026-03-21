@@ -262,6 +262,14 @@ def _extract_json_object(text: str) -> dict[str, object] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _detect_mime_type(image_bytes: bytes) -> str:
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    return "image/jpeg"
+
+
 def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
     if decode_barcodes is None:
         return None
@@ -277,6 +285,11 @@ def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
 async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, object] | None:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
+        logger.warning(
+            "gemini_vision_disabled",
+            processing_step="spine_recognition",
+            reason="GEMINI_API_KEY not configured",
+        )
         return None
 
     prompt = (
@@ -284,26 +297,42 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, o
         "Return only strict JSON object with keys: title (string|null), author (string|null), "
         "isbn (string|null), observed_text (string|null). Do not include markdown."
     )
+    mime_type = _detect_mime_type(image_bytes)
     request_payload: dict[str, object] = {
         "contents": [
             {
                 "parts": [
                     {"text": prompt},
-                    {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(image_bytes).decode("ascii")}},
+                    {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
                 ]
             }
         ],
         "generationConfig": {"temperature": 0},
     }
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        response = await client.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-            params={"key": api_key},
-            json=request_payload,
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+                params={"key": api_key},
+                json=request_payload,
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "gemini_vision_http_error",
+            processing_step="spine_recognition",
+            status_code=exc.response.status_code,
         )
-        response.raise_for_status()
-        payload = response.json()
+        return None
+    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(
+            "gemini_vision_failed",
+            processing_step="spine_recognition",
+            error_type=type(exc).__name__,
+        )
+        return None
 
     candidates = payload.get("candidates")
     if not isinstance(candidates, list) or not candidates:
@@ -331,15 +360,18 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, o
     title = parsed.get("title") if isinstance(parsed.get("title"), str) else None
     author = parsed.get("author") if isinstance(parsed.get("author"), str) else None
 
-    if not (title or author or normalized_isbn or observed_text):
+    if not (title or author or normalized_isbn):
         return None
 
-    return {
+    result: dict[str, object] = {
         "isbn": normalized_isbn,
         "title": title,
         "author": author,
         "source": "gemini_vision",
     }
+    if observed_text:
+        result["observed_text"] = observed_text
+    return result
 
 
 def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], ProcessingJobStatus, str | None]:
@@ -360,7 +392,12 @@ def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], Processing
 
     try:
         vision_result = asyncio.run(_extract_spine_metadata_with_gemini(image_bytes))
-    except Exception:
+    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(
+            "gemini_vision_failed",
+            processing_step="spine_recognition",
+            error_type=type(exc).__name__,
+        )
         vision_result = None
 
     if vision_result is not None:

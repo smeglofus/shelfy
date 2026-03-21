@@ -296,7 +296,8 @@ library-app/
 │       ├── 001-fastapi-over-django.md
 │       ├── 002-async-image-processing.md
 │       ├── 003-minio-for-file-storage.md
-│       └── 004-react-over-nextjs.md
+│       ├── 004-react-over-nextjs.md
+│       └── 006-gemini-vision-for-spine-recognition.md
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
