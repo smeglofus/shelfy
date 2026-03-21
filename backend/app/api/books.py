@@ -113,6 +113,8 @@ async def upload_book_image(
     _current_user: User = Depends(get_current_user),
 ) -> UploadResponse:
     job, minio_path = await create_upload_job(session, image)
+    job_id = job.id
+    job_status = job.status
 
     try:
         await session.commit()
@@ -122,7 +124,7 @@ async def upload_book_image(
             None,
             lambda: celery_client.send_task(
                 "worker.celery_app.process_book_image",
-                args=[str(job.id)],
+                args=[str(job_id)],
             ),
         )
     except Exception as publish_exc:
@@ -133,7 +135,7 @@ async def upload_book_image(
             pass
         try:
             async with AsyncSession(session.bind) as cleanup_session:
-                orphaned_job = await cleanup_session.get(ProcessingJob, job.id)
+                orphaned_job = await cleanup_session.get(ProcessingJob, job_id)
                 if orphaned_job is not None:
                     orphaned_job.status = ProcessingJobStatus.FAILED
                     orphaned_job.error_message = "Queue unavailable"
@@ -145,4 +147,4 @@ async def upload_book_image(
             detail="Image processing queue is unavailable",
         ) from publish_exc
 
-    return UploadResponse(job_id=job.id, status=job.status)
+    return UploadResponse(job_id=job_id, status=job_status)
