@@ -13,6 +13,7 @@ import { useLocations } from '../hooks/useLocations'
 import { getBookDetailRoute } from '../lib/routes'
 import { useToastStore } from '../lib/toast-store'
 import type { BookCreateRequest } from '../lib/types'
+import './BooksPage.css'
 
 const PAGE_SIZE = 10
 
@@ -65,7 +66,7 @@ export function BooksPage() {
 
   useEffect(() => {
     const failedBooks = (booksQuery.data?.items ?? []).filter(
-      (book) => book.processing_status === 'failed' && !toastedFailedIdsRef.current.has(book.id)
+      (book) => book.processing_status === 'failed' && !toastedFailedIdsRef.current.has(book.id),
     )
     if (failedBooks.length === 0) {
       return
@@ -106,7 +107,6 @@ export function BooksPage() {
 
     if (uploadJobStatusQuery.isError) {
       showError('Failed to check upload status.')
-      // setUploadJobId(null)
     }
   }, [
     refetchBooks,
@@ -117,17 +117,20 @@ export function BooksPage() {
   ])
 
   return (
-    <section style={{ marginTop: '1.5rem' }}>
-      <h2>Books</h2>
+    <section className="books-page">
+      <header className="books-header">
+        <h2>Books</h2>
+        <p className="books-subtitle">Browse your library and quickly add new titles.</p>
+      </header>
 
       <form
         aria-label="book-search-form"
+        className="books-panel books-search-form"
         onSubmit={(event) => {
           event.preventDefault()
           setPage(1)
           setSearch(searchInput.trim())
         }}
-        style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}
       >
         <input
           aria-label="Search books"
@@ -155,6 +158,7 @@ export function BooksPage() {
 
       <form
         aria-label="upload-book-image-form"
+        className="books-panel books-upload-form"
         onSubmit={(event) => {
           event.preventDefault()
           const formData = new FormData(event.currentTarget)
@@ -168,7 +172,6 @@ export function BooksPage() {
             },
           })
         }}
-        style={{ marginBottom: '1rem' }}
       >
         <label htmlFor="book-image">Upload cover image</label>
         <input id="book-image" name="book-image" type="file" accept="image/jpeg,image/png" required />
@@ -178,28 +181,68 @@ export function BooksPage() {
       </form>
 
       {uploadJobId && (
-        <p>
+        <p className="books-job-status">
           Processing job {uploadJobId}: {uploadJobStatusQuery.data?.status ?? 'pending'}
         </p>
       )}
 
       <form
         aria-label="create-book-form"
+        className="books-panel books-create-form"
         onSubmit={(event) => {
           event.preventDefault()
           createMutation.mutate(createForm, {
             onSuccess: () => setCreateForm(EMPTY_FORM),
           })
         }}
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(240px, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}
       >
-        <input aria-label="Title" required placeholder="Title" value={createForm.title ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, title: event.target.value }))} />
-        <input aria-label="Author" placeholder="Author" value={createForm.author ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, author: event.target.value }))} />
-        <input aria-label="ISBN" placeholder="ISBN" value={createForm.isbn ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, isbn: event.target.value }))} />
-        <input aria-label="Publisher" placeholder="Publisher" value={createForm.publisher ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, publisher: event.target.value }))} />
-        <input aria-label="Language" placeholder="Language" value={createForm.language ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, language: event.target.value }))} />
-        <input aria-label="Publication year" type="number" placeholder="Publication year" value={createForm.publication_year ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, publication_year: event.target.value ? Number(event.target.value) : null }))} />
-        <input aria-label="Cover URL" placeholder="Cover URL" value={createForm.cover_image_url ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, cover_image_url: event.target.value }))} />
+        <h3>Add book</h3>
+        <input
+          aria-label="Title"
+          required
+          placeholder="Title"
+          value={createForm.title ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, title: event.target.value }))}
+        />
+        <input
+          aria-label="Author"
+          placeholder="Author"
+          value={createForm.author ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, author: event.target.value }))}
+        />
+        <input
+          aria-label="ISBN"
+          placeholder="ISBN"
+          value={createForm.isbn ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, isbn: event.target.value }))}
+        />
+        <input
+          aria-label="Publisher"
+          placeholder="Publisher"
+          value={createForm.publisher ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, publisher: event.target.value }))}
+        />
+        <input
+          aria-label="Language"
+          placeholder="Language"
+          value={createForm.language ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, language: event.target.value }))}
+        />
+        <input
+          aria-label="Publication year"
+          type="number"
+          placeholder="Publication year"
+          value={createForm.publication_year ?? ''}
+          onChange={(event) =>
+            setCreateForm((prev) => ({ ...prev, publication_year: event.target.value ? Number(event.target.value) : null }))
+          }
+        />
+        <input
+          aria-label="Cover URL"
+          placeholder="Cover URL"
+          value={createForm.cover_image_url ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, cover_image_url: event.target.value }))}
+        />
         <select
           aria-label="Location"
           value={createForm.location_id ?? ''}
@@ -212,8 +255,15 @@ export function BooksPage() {
             </option>
           ))}
         </select>
-        <textarea aria-label="Description" placeholder="Description" value={createForm.description ?? ''} onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))} />
-        <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create book'}</button>
+        <textarea
+          aria-label="Description"
+          placeholder="Description"
+          value={createForm.description ?? ''}
+          onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
+        />
+        <button type="submit" disabled={createMutation.isPending}>
+          {createMutation.isPending ? 'Creating…' : 'Create book'}
+        </button>
       </form>
 
       {booksQuery.isLoading && <p>Loading books…</p>}
@@ -231,93 +281,97 @@ export function BooksPage() {
 
       {booksQuery.data && booksQuery.data.total > 0 && (
         <>
-          <table width="100%" cellPadding={8} style={{ borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th align="left">Title</th>
-                <th align="left">Author</th>
-                <th align="left">Location</th>
-                <th align="left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {booksQuery.data.items.map((book) => {
-                const isEditing = editingBookId === book.id
+          <div className="books-list" aria-label="books-list">
+            {booksQuery.data.items.map((book) => {
+              const isEditing = editingBookId === book.id
 
-                return (
-                  <tr key={book.id} style={{ borderTop: '1px solid #ddd' }}>
-                    <td>{isEditing ? <input aria-label="Edit title" value={editForm.title ?? ''} onChange={(event) => setEditForm((prev) => ({ ...prev, title: event.target.value }))} /> : <Link to={getBookDetailRoute(book.id)}>{book.title}</Link>}</td>
-                    <td>{isEditing ? <input aria-label="Edit author" value={editForm.author ?? ''} onChange={(event) => setEditForm((prev) => ({ ...prev, author: event.target.value }))} /> : (book.author || '—')}</td>
-                    <td>
-                      {isEditing ? (
-                        <select
-                          aria-label="Edit location"
-                          value={editForm.location_id ?? ''}
-                          onChange={(event) => setEditForm((prev) => ({ ...prev, location_id: event.target.value || null }))}
+              return (
+                <article key={book.id} className="book-card" data-testid="book-card">
+                  {isEditing ? (
+                    <>
+                      <input
+                        aria-label="Edit title"
+                        value={editForm.title ?? ''}
+                        onChange={(event) => setEditForm((prev) => ({ ...prev, title: event.target.value }))}
+                      />
+                      <input
+                        aria-label="Edit author"
+                        value={editForm.author ?? ''}
+                        onChange={(event) => setEditForm((prev) => ({ ...prev, author: event.target.value }))}
+                      />
+                      <select
+                        aria-label="Edit location"
+                        value={editForm.location_id ?? ''}
+                        onChange={(event) => setEditForm((prev) => ({ ...prev, location_id: event.target.value || null }))}
+                      >
+                        <option value="">Unassigned</option>
+                        {(locationsQuery.data ?? []).map((location) => (
+                          <option key={location.id} value={location.id}>
+                            {location.room} / {location.furniture} / {location.shelf}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="book-card-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateMutation.mutate(
+                              { id: book.id, payload: editForm },
+                              { onSuccess: () => setEditingBookId(null) },
+                            )
+                          }}
                         >
-                          <option value="">Unassigned</option>
-                          {(locationsQuery.data ?? []).map((location) => (
-                            <option key={location.id} value={location.id}>
-                              {location.room} / {location.furniture} / {location.shelf}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        (book.location_id ? locationLabelById.get(book.location_id) : null) ?? 'Unassigned'
-                      )}
-                    </td>
-                    <td style={{ display: 'flex', gap: '0.5rem' }}>
-                      {isEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateMutation.mutate(
-                                { id: book.id, payload: editForm },
-                                { onSuccess: () => setEditingBookId(null) },
-                              )
-                            }}
-                          >
-                            Save
-                          </button>
-                          <button type="button" onClick={() => setEditingBookId(null)}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingBookId(book.id)
-                              setEditForm({
-                                title: book.title,
-                                author: book.author,
-                                isbn: book.isbn,
-                                publisher: book.publisher,
-                                language: book.language,
-                                description: book.description,
-                                publication_year: book.publication_year,
-                                cover_image_url: book.cover_image_url,
-                                location_id: book.location_id,
-                              })
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button type="button" onClick={() => setDeleteTargetId(book.id)}>
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditingBookId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h3>
+                        <Link to={getBookDetailRoute(book.id)}>{book.title}</Link>
+                      </h3>
+                      <p>
+                        <strong>Author:</strong> {book.author || '—'}
+                      </p>
+                      <p>
+                        <strong>Location:</strong>{' '}
+                        {(book.location_id ? locationLabelById.get(book.location_id) : null) ?? 'Unassigned'}
+                      </p>
+                      <div className="book-card-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingBookId(book.id)
+                            setEditForm({
+                              title: book.title,
+                              author: book.author,
+                              isbn: book.isbn,
+                              publisher: book.publisher,
+                              language: book.language,
+                              description: book.description,
+                              publication_year: book.publication_year,
+                              cover_image_url: book.cover_image_url,
+                              location_id: book.location_id,
+                            })
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => setDeleteTargetId(book.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </article>
+              )
+            })}
+          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem' }}>
+          <div className="books-pagination">
             <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
               Previous
             </button>
@@ -336,11 +390,7 @@ export function BooksPage() {
       )}
 
       {deleteTargetId && (
-        <div
-          role="dialog"
-          aria-label="delete-book-dialog"
-          style={{ border: '1px solid #ddd', padding: '1rem', marginTop: '1rem' }}
-        >
+        <div role="dialog" aria-label="delete-book-dialog" className="books-delete-dialog">
           <p>Are you sure you want to delete this book?</p>
           <button
             type="button"

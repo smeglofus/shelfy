@@ -189,13 +189,12 @@ describe('BooksPage', () => {
       expect(createBook).toHaveBeenCalledWith(expect.objectContaining({ title: 'Refactoring' }))
     })
 
-    const cleanCodeCell = await screen.findByRole('link', { name: 'Clean Code' })
-    const cleanCodeRow = cleanCodeCell.closest('tr')
-    if (!cleanCodeRow) {
-      throw new Error('Expected book row to exist')
+    const cleanCodeCard = (await screen.findByRole('link', { name: 'Clean Code' })).closest('[data-testid="book-card"]')
+    if (!cleanCodeCard) {
+      throw new Error('Expected book card to exist')
     }
 
-    await userEvent.click(within(cleanCodeRow).getByRole('button', { name: 'Edit' }))
+    await userEvent.click(within(cleanCodeCard).getByRole('button', { name: 'Edit' }))
     const editTitleInput = screen.getByLabelText('Edit title')
     await userEvent.clear(editTitleInput)
     await userEvent.type(editTitleInput, 'Clean Code 2nd Edition')
