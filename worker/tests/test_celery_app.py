@@ -2,6 +2,7 @@ from pathlib import Path
 import sys
 import uuid
 
+import httpx
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -19,18 +20,57 @@ def test_detect_barcode_returns_normalized_isbn(monkeypatch) -> None:
     assert isbn == "9780306406157"
 
 
-def test_ocr_fallback_triggers_when_no_barcode(monkeypatch) -> None:
+def test_gemini_fallback_triggers_when_no_barcode(monkeypatch) -> None:
     monkeypatch.setattr(celery_app, "_decode_image_bytes", lambda _bytes: np.zeros((10, 10, 3), dtype=np.uint8))
     monkeypatch.setattr(celery_app, "_detect_isbn_from_barcode", lambda _image: None)
-    monkeypatch.setattr(celery_app, "_extract_text_with_ocr", lambda _image: "The Pragmatic Programmer\nBy Andrew Hunt")
+    async def _gemini(_image_bytes: bytes) -> dict[str, object] | None:
+        return {
+            "isbn": None,
+            "title": "The Pragmatic Programmer",
+            "author": "Andrew Hunt",
+            "source": "gemini_vision",
+        }
+
+    monkeypatch.setattr(celery_app, "_extract_spine_metadata_with_gemini", _gemini)
 
     result_json, status, error_message = celery_app._extract_metadata(b"fake-bytes")
 
     assert status == celery_app.ProcessingJobStatus.DONE
     assert error_message is None
-    assert result_json["source"] == "ocr"
+    assert result_json["source"] == "gemini_vision"
     assert result_json["title"] == "The Pragmatic Programmer"
     assert result_json["author"] == "Andrew Hunt"
+
+
+def test_gemini_fallback_returns_failed_when_gemini_returns_none(monkeypatch) -> None:
+    monkeypatch.setattr(celery_app, "_decode_image_bytes", lambda _bytes: np.zeros((10, 10, 3), dtype=np.uint8))
+    monkeypatch.setattr(celery_app, "_detect_isbn_from_barcode", lambda _image: None)
+
+    async def _gemini_none(_image_bytes: bytes) -> dict[str, object] | None:
+        return None
+
+    monkeypatch.setattr(celery_app, "_extract_spine_metadata_with_gemini", _gemini_none)
+
+    result_json, status, error_message = celery_app._extract_metadata(b"fake-bytes")
+
+    assert status == celery_app.ProcessingJobStatus.FAILED
+    assert result_json["source"] == "none"
+    assert error_message is not None
+
+
+def test_gemini_fallback_returns_failed_when_gemini_raises(monkeypatch) -> None:
+    monkeypatch.setattr(celery_app, "_decode_image_bytes", lambda _bytes: np.zeros((10, 10, 3), dtype=np.uint8))
+    monkeypatch.setattr(celery_app, "_detect_isbn_from_barcode", lambda _image: None)
+
+    async def _gemini_error(_image_bytes: bytes) -> dict[str, object] | None:
+        raise httpx.RequestError("connection failed")
+
+    monkeypatch.setattr(celery_app, "_extract_spine_metadata_with_gemini", _gemini_error)
+
+    result_json, status, error_message = celery_app._extract_metadata(b"fake-bytes")
+
+    assert status == celery_app.ProcessingJobStatus.FAILED
+    assert error_message is not None
 
 
 def test_process_book_image_stores_result_json(monkeypatch) -> None:
@@ -86,6 +126,14 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
             None,
         ),
     )
+    async def _no_metadata(_isbn: str) -> None:
+        return None
+
+    class FakeBook:
+        id = uuid.uuid4()
+
+    monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _no_metadata)
+    monkeypatch.setattr(celery_app, "_upsert_book_from_metadata", lambda _session, _image, _local, _meta: FakeBook())
 
     celery_app.process_book_image.run(job_id=str(job_id))
 
@@ -97,6 +145,7 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
         "title": None,
         "author": None,
         "source": "barcode",
+        "book_id": str(FakeBook.id),
     }
 
 

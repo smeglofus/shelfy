@@ -16,7 +16,7 @@ workers, and a React frontend for day-to-day catalog management.
 
 - **Frontend**: React + Vite + React Query + React Router.
 - **Backend**: FastAPI + SQLAlchemy async + Alembic + JWT auth.
-- **Worker pipeline**: Celery tasks for OCR/barcode extraction and metadata enrichment.
+- **Worker pipeline**: Celery tasks for barcode + Gemini Vision spine recognition and metadata enrichment.
 - **Storage**: PostgreSQL (relational state), Redis (broker/cache), MinIO (image objects).
 - **Observability**: structlog JSON logs and Prometheus metrics endpoint (`/metrics`).
 
@@ -100,6 +100,7 @@ The app reads from `.env` (see `.env.example`).
 |---|---|---:|---|
 | `CELERY_BROKER_URL` | `redis://redis:6379/0` | Yes | Celery broker URL. |
 | `CELERY_RESULT_BACKEND` | `redis://redis:6379/1` | Yes | Celery result backend URL. |
+| `GEMINI_API_KEY` | _unset_ | **Yes for vision fallback** | Google Gemini API key used when barcode detection fails. |
 
 ### MinIO / object storage
 

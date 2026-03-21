@@ -82,7 +82,7 @@ Do not change the stack. The following are fixed:
 | Migrations | Alembic |
 | Task queue | Celery + Redis |
 | Auth | python-jose (JWT) + passlib (bcrypt) |
-| OCR | pytesseract + OpenCV |
+| Vision fallback | Google Gemini Vision API |
 | Barcode | pyzbar |
 | Object storage | MinIO (boto3 client) |
 | HTTP client | httpx (async) |

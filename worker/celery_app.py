@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
 import json
-import os
 import re
 import uuid
 from time import perf_counter
@@ -18,7 +18,6 @@ from celery.exceptions import Retry
 import cv2
 import httpx
 import numpy as np
-import pytesseract
 try:
     from pyzbar.pyzbar import decode as decode_barcodes
 except ImportError:
@@ -27,6 +26,7 @@ from redis import Redis
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from settings import worker_settings
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
 
@@ -129,8 +129,8 @@ class ProcessingJob(Base):
 
 
 def get_celery_app() -> Celery:
-    broker_url = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
-    backend_url = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
+    broker_url = worker_settings.celery_broker_url
+    backend_url = worker_settings.celery_result_backend
 
     app = Celery("shelfy_worker", broker=broker_url, backend=backend_url)
     app.conf.update(task_default_queue="default")
@@ -142,24 +142,24 @@ celery_app = get_celery_app()
 
 @lru_cache(maxsize=1)
 def _get_engine():
-    database_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://shelfy:shelfy@postgres:5432/shelfy")
+    database_url = worker_settings.database_url
     sync_database_url = database_url.replace("+asyncpg", "+psycopg2")
     return create_engine(sync_database_url, pool_pre_ping=True)
 
 
 @lru_cache(maxsize=1)
 def _get_redis_client() -> Redis:
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    redis_url = worker_settings.redis_url
     return Redis.from_url(redis_url, decode_responses=True)
 
 
 def _get_minio_client():
-    endpoint = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
-    access_key = os.getenv("MINIO_ACCESS_KEY")
-    secret_key = os.getenv("MINIO_SECRET_KEY")
+    endpoint = worker_settings.minio_endpoint
+    access_key = worker_settings.minio_access_key
+    secret_key = worker_settings.minio_secret_key
     if not access_key or not secret_key:
         raise RuntimeError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set")
-    region = os.getenv("MINIO_REGION", "us-east-1")
+    region = worker_settings.minio_region
     return boto3.client(
         "s3",
         endpoint_url=endpoint,
@@ -171,7 +171,7 @@ def _get_minio_client():
 
 def _download_image_bytes(minio_path: str) -> bytes:
     client = _get_minio_client()
-    bucket = os.getenv("MINIO_BUCKET", "shelfy-images")
+    bucket = worker_settings.minio_bucket
     response = client.get_object(Bucket=bucket, Key=minio_path)
     body = response["Body"]
     try:
@@ -248,6 +248,28 @@ def _extract_title_author_from_text(text: str) -> tuple[str | None, str | None]:
     return title, author
 
 
+def _extract_json_object(text: str) -> dict[str, object] | None:
+    start_index = text.find("{")
+    end_index = text.rfind("}")
+    if start_index == -1 or end_index == -1 or end_index <= start_index:
+        return None
+
+    try:
+        parsed = json.loads(text[start_index : end_index + 1])
+    except json.JSONDecodeError:
+        return None
+
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _detect_mime_type(image_bytes: bytes) -> str:
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    return "image/jpeg"
+
+
 def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
     if decode_barcodes is None:
         return None
@@ -260,11 +282,96 @@ def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
     return None
 
 
-def _extract_text_with_ocr(image: np.ndarray) -> str:
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-    _, thresholded = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return pytesseract.image_to_string(thresholded)
+async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, object] | None:
+    api_key = worker_settings.gemini_api_key
+    if not api_key:
+        logger.warning(
+            "gemini_vision_disabled",
+            processing_step="spine_recognition",
+            reason="GEMINI_API_KEY not configured",
+        )
+        return None
+
+    prompt = (
+        "You are reading a photo of a book spine or cover. "
+        "Return only strict JSON object with keys: title (string|null), author (string|null), "
+        "isbn (string|null), observed_text (string|null). Do not include markdown."
+    )
+    mime_type = _detect_mime_type(image_bytes)
+    request_payload: dict[str, object] = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
+                ]
+            }
+        ],
+        "generationConfig": {"temperature": 0},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+                params={"key": api_key},
+                json=request_payload,
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "gemini_vision_http_error",
+            processing_step="spine_recognition",
+            status_code=exc.response.status_code,
+        )
+        return None
+    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(
+            "gemini_vision_failed",
+            processing_step="spine_recognition",
+            error_type=type(exc).__name__,
+        )
+        return None
+
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return None
+
+    content = candidates[0].get("content", {})
+    parts = content.get("parts", [])
+    if not isinstance(parts, list):
+        return None
+
+    text_blocks = [part.get("text") for part in parts if isinstance(part, dict) and isinstance(part.get("text"), str)]
+    if not text_blocks:
+        return None
+
+    parsed = _extract_json_object("\n".join(text_blocks))
+    if parsed is None:
+        return None
+
+    observed_text = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
+    candidate_isbn = parsed.get("isbn") if isinstance(parsed.get("isbn"), str) else None
+    normalized_isbn = normalize_isbn(candidate_isbn or "") if candidate_isbn else None
+    if normalized_isbn is None and observed_text:
+        normalized_isbn = _extract_isbn_from_text(observed_text)
+
+    title = parsed.get("title") if isinstance(parsed.get("title"), str) else None
+    author = parsed.get("author") if isinstance(parsed.get("author"), str) else None
+
+    if not (title or author or normalized_isbn):
+        return None
+
+    result: dict[str, object] = {
+        "isbn": normalized_isbn,
+        "title": title,
+        "author": author,
+        "source": "gemini_vision",
+    }
+    if observed_text:
+        result["observed_text"] = observed_text
+    return result
 
 
 def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], ProcessingJobStatus, str | None]:
@@ -283,18 +390,19 @@ def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], Processing
             None,
         )
 
-    ocr_text = _extract_text_with_ocr(image)
-    isbn_from_ocr = _extract_isbn_from_text(ocr_text)
-    title, author = _extract_title_author_from_text(ocr_text)
+    try:
+        vision_result = asyncio.run(_extract_spine_metadata_with_gemini(image_bytes))
+    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(
+            "gemini_vision_failed",
+            processing_step="spine_recognition",
+            error_type=type(exc).__name__,
+        )
+        vision_result = None
 
-    if ocr_text.strip():
+    if vision_result is not None:
         return (
-            {
-                "isbn": isbn_from_ocr,
-                "title": title,
-                "author": author,
-                "source": "ocr",
-            },
+            vision_result,
             ProcessingJobStatus.DONE,
             None,
         )
@@ -307,7 +415,7 @@ def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], Processing
             "source": "none",
         },
         ProcessingJobStatus.FAILED,
-        "No barcode or readable OCR text found",
+        "No barcode detected and Gemini Vision returned no book metadata",
     )
 
 
