@@ -6,7 +6,6 @@ from datetime import datetime
 from enum import Enum
 from functools import lru_cache
 import json
-import os
 import re
 import uuid
 from time import perf_counter
@@ -27,6 +26,7 @@ from redis import Redis
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from settings import worker_settings
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
 
@@ -129,8 +129,8 @@ class ProcessingJob(Base):
 
 
 def get_celery_app() -> Celery:
-    broker_url = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
-    backend_url = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
+    broker_url = worker_settings.celery_broker_url
+    backend_url = worker_settings.celery_result_backend
 
     app = Celery("shelfy_worker", broker=broker_url, backend=backend_url)
     app.conf.update(task_default_queue="default")
@@ -142,24 +142,24 @@ celery_app = get_celery_app()
 
 @lru_cache(maxsize=1)
 def _get_engine():
-    database_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://shelfy:shelfy@postgres:5432/shelfy")
+    database_url = worker_settings.database_url
     sync_database_url = database_url.replace("+asyncpg", "+psycopg2")
     return create_engine(sync_database_url, pool_pre_ping=True)
 
 
 @lru_cache(maxsize=1)
 def _get_redis_client() -> Redis:
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    redis_url = worker_settings.redis_url
     return Redis.from_url(redis_url, decode_responses=True)
 
 
 def _get_minio_client():
-    endpoint = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
-    access_key = os.getenv("MINIO_ACCESS_KEY")
-    secret_key = os.getenv("MINIO_SECRET_KEY")
+    endpoint = worker_settings.minio_endpoint
+    access_key = worker_settings.minio_access_key
+    secret_key = worker_settings.minio_secret_key
     if not access_key or not secret_key:
         raise RuntimeError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set")
-    region = os.getenv("MINIO_REGION", "us-east-1")
+    region = worker_settings.minio_region
     return boto3.client(
         "s3",
         endpoint_url=endpoint,
@@ -171,7 +171,7 @@ def _get_minio_client():
 
 def _download_image_bytes(minio_path: str) -> bytes:
     client = _get_minio_client()
-    bucket = os.getenv("MINIO_BUCKET", "shelfy-images")
+    bucket = worker_settings.minio_bucket
     response = client.get_object(Bucket=bucket, Key=minio_path)
     body = response["Body"]
     try:
@@ -283,7 +283,7 @@ def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
 
 
 async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, object] | None:
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = worker_settings.gemini_api_key
     if not api_key:
         logger.warning(
             "gemini_vision_disabled",
