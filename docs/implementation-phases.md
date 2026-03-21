@@ -320,6 +320,35 @@ Definition of done:
 
 ---
 
+## Phase 13 – Replace OCR with Gemini Vision spine recognition
+
+Goal:
+- Replace local OCR fallback with Gemini Vision-based spine recognition.
+
+Deliverables:
+- keep barcode/ISBN detection using pyzbar as first path
+- replace OCR fallback with Gemini Vision API call when no barcode is found
+- parse structured title/author/isbn response from Gemini output
+- update worker configuration to use `GEMINI_API_KEY`
+- result stored in `ProcessingJob.result_json` as:
+  `{ "isbn": "...", "title": "...", "author": "...", "source": "barcode|gemini_vision|none" }`
+
+Tests required:
+- barcode detection returns correct ISBN from a test image
+- Gemini Vision fallback is triggered when no barcode is found
+- result is stored correctly in the job record
+
+Out of scope:
+- custom computer-vision models
+- frontend upload flow changes
+
+Definition of done:
+- worker extracts barcode or Gemini-derived spine metadata from a real book image
+- result is stored in job record
+- all test cases pass
+
+---
+
 ## Phase 9 – External metadata providers
 
 Goal:

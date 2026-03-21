@@ -27,7 +27,7 @@ User workflow:
 
 1. Take a photo of a book
 2. The system accepts the image and creates a processing job
-3. The job runs OCR / barcode detection asynchronously
+3. The job runs barcode / vision-based spine recognition asynchronously
 4. Metadata about the book is fetched from external APIs
 5. The book is stored in the database
 6. The user assigns the physical location of the book in the house
@@ -52,7 +52,7 @@ Backend processing pipeline (asynchronous):
 
 1. Image is uploaded and stored in object storage (MinIO)
 2. A processing job is queued (Celery + Redis)
-3. Worker attempts to detect: ISBN (barcode), title, author (OCR)
+3. Worker attempts to detect: ISBN (barcode), title, author (Gemini Vision spine recognition fallback)
 4. Worker queries external book APIs with detected data
 5. Result is written to the database
 6. Frontend polls job status endpoint until complete
@@ -167,7 +167,7 @@ Browser (React SPA)
    → Returns: { job_id: "...", status: "pending" }
 
 2. Celery worker picks up job
-   → Runs OCR + barcode detection on image
+   → Runs barcode detection with Gemini Vision fallback on image
    → Queries Google Books API (or OpenLibrary fallback)
    → Writes book record to PostgreSQL
    → Updates job status to "done" or "failed"
@@ -210,7 +210,7 @@ via a CLI command or environment variable on first startup.
 - **Migrations:** Alembic
 - **Task queue:** Celery with Redis broker
 - **Auth:** python-jose (JWT), passlib (password hashing)
-- **OCR:** pytesseract + OpenCV
+- **Vision fallback:** Google Gemini Vision API
 - **Barcode detection:** pyzbar
 - **Object storage client:** boto3 (MinIO-compatible S3 API)
 - **HTTP client:** httpx (async, for external APIs)
@@ -325,6 +325,7 @@ REDIS_PASSWORD
 MINIO_ROOT_PASSWORD
 JWT_SECRET_KEY
 GOOGLE_BOOKS_API_KEY
+GEMINI_API_KEY
 ```
 
 The backend reads secrets from environment variables. In Swarm mode,
@@ -376,7 +377,7 @@ both sources (env var takes precedence).
 
 ## Image Processing Failures
 
-- If OCR finds no text and no barcode is detected: job status = `failed`
+- If Gemini Vision returns no usable metadata and no barcode is detected: job status = `failed`
 - User is notified and can manually enter book details
 - Original image is retained in MinIO for potential retry
 
@@ -560,7 +561,7 @@ Target: `backend/app/services/`, `backend/app/workers/`
 
 Examples:
 
-- ISBN extraction from OCR text
+- ISBN extraction from Gemini Vision observed text
 - Metadata parsing from Google Books API response
 - Fallback logic when primary API fails
 - JWT token creation and validation
@@ -743,9 +744,10 @@ The `docs/adr/` directory contains the following ADRs:
 | ADR | Decision |
 |---|---|
 | 001 | FastAPI over Django — async-native, lighter, typed |
-| 002 | Async image processing via Celery — blocking OCR must not block API |
+| 002 | Async image processing via Celery — blocking vision calls must not block API |
 | 003 | MinIO for file storage — ephemeral container filesystem is unsuitable |
 | 004 | React over Next.js — SSR not needed for single-user homelab tool |
+| 006 | Gemini Vision fallback for spine recognition when barcode detection fails |
 
 ---
 
