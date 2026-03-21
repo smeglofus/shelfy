@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateBook, useUploadBookImage, useJobStatus } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
@@ -54,16 +54,15 @@ export function AddBookPage() {
     }
   }, [uploadJobStatusQuery.data?.status, uploadJobStatusQuery.data?.error_message, showError])
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     uploadMutation.mutate(file, {
       onSuccess: res => setUploadJobId(res.job_id),
-      onError:   ()  => showError('Upload obrázku selhal.'),
     })
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) { showError('Název knihy je povinný.'); return }
     const payload: BookCreateRequest = {

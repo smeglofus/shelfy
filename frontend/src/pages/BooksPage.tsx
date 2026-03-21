@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useBooks, useCreateBook, useDeleteBook, useJobStatus, useUpdateBook, useUploadBookImage } from '../hooks/useBooks'
+import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { useToastStore } from '../lib/toast-store'
 import { BookCard } from '../components/BookCard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { StatBar } from '../components/StatBar'
-import type { Book, BookCreateRequest, Location } from '../lib/types'
+import type { Book, Location } from '../lib/types'
 
 const PAGE_SIZE = 20
-
-const EMPTY_FORM: BookCreateRequest = {
-  title: '', author: '', isbn: '', location_id: null, reading_status: 'unread',
-}
 
 export function BooksPage() {
   const [searchInput, setSearchInput]         = useState('')
@@ -29,7 +25,6 @@ export function BooksPage() {
   const booksQuery          = useBooks(queryParams)
   const locationsQuery      = useLocations()
   const deleteMutation      = useDeleteBook()
-  const uploadMutation      = useUploadBookImage()
   const uploadJobStatusQuery = useJobStatus(uploadJobId)
   const showError           = useToastStore(s => s.showError)
 
