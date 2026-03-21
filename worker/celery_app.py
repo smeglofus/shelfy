@@ -605,10 +605,8 @@ def _upsert_book_from_metadata(
     metadata_or_empty = metadata or {}
 
     book: Book | None = None
-    if book_image.book_id is not None:
-        book = session.get(Book, book_image.book_id)
 
-    if book is None and isbn:
+    if isbn:
         book = session.execute(select(Book).where(Book.isbn == isbn)).scalar_one_or_none()
 
     if book is None:
