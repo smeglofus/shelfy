@@ -262,6 +262,51 @@ def _extract_json_object(text: str) -> dict[str, object] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+
+
+def _extract_json_array(text: str) -> list[dict[str, object]] | None:
+    start_index = text.find("[")
+    end_index = text.rfind("]")
+    if start_index == -1 or end_index == -1 or end_index <= start_index:
+        return None
+
+    try:
+        parsed = json.loads(text[start_index : end_index + 1])
+    except json.JSONDecodeError:
+        return None
+
+    if not isinstance(parsed, list):
+        return None
+
+    out: list[dict[str, object]] = []
+    for item in parsed:
+        if isinstance(item, dict):
+            out.append(item)
+    return out or None
+
+
+def _normalize_vision_result(parsed: dict[str, object]) -> dict[str, object] | None:
+    observed_text = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
+    candidate_isbn = parsed.get("isbn") if isinstance(parsed.get("isbn"), str) else None
+    normalized_isbn = normalize_isbn(candidate_isbn or "") if candidate_isbn else None
+    if normalized_isbn is None and observed_text:
+        normalized_isbn = _extract_isbn_from_text(observed_text)
+
+    title = parsed.get("title") if isinstance(parsed.get("title"), str) else None
+    author = parsed.get("author") if isinstance(parsed.get("author"), str) else None
+
+    if not (title or author or normalized_isbn):
+        return None
+
+    result: dict[str, object] = {
+        "isbn": normalized_isbn,
+        "title": title,
+        "author": author,
+        "source": "gemini_vision",
+    }
+    if observed_text:
+        result["observed_text"] = observed_text
+    return result
 def _detect_mime_type(image_bytes: bytes) -> str:
     if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
         return "image/png"
@@ -282,7 +327,7 @@ def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
     return None
 
 
-async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, object] | None:
+async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[str, object]] | None:
     api_key = worker_settings.gemini_api_key
     if not api_key:
         logger.warning(
@@ -294,7 +339,7 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, o
 
     prompt = (
         "You are reading a photo of a book spine or cover. "
-        "Return only strict JSON object with keys: title (string|null), author (string|null), "
+        "Return only strict JSON array. Each array item must be object with keys: title (string|null), author (string|null), "
         "isbn (string|null), observed_text (string|null). Do not include markdown."
     )
     mime_type = _detect_mime_type(image_bytes)
@@ -313,7 +358,7 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, o
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 params={"key": api_key},
                 json=request_payload,
             )
@@ -347,48 +392,39 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> dict[str, o
     if not text_blocks:
         return None
 
-    parsed = _extract_json_object("\n".join(text_blocks))
-    if parsed is None:
-        return None
+    blob = "\n".join(text_blocks)
+    parsed_array = _extract_json_array(blob)
+    parsed_items: list[dict[str, object]]
+    if parsed_array is not None:
+        parsed_items = parsed_array
+    else:
+        parsed_obj = _extract_json_object(blob)
+        if parsed_obj is None:
+            return None
+        parsed_items = [parsed_obj]
 
-    observed_text = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
-    candidate_isbn = parsed.get("isbn") if isinstance(parsed.get("isbn"), str) else None
-    normalized_isbn = normalize_isbn(candidate_isbn or "") if candidate_isbn else None
-    if normalized_isbn is None and observed_text:
-        normalized_isbn = _extract_isbn_from_text(observed_text)
+    normalized_results: list[dict[str, object]] = []
+    for parsed in parsed_items:
+        normalized = _normalize_vision_result(parsed)
+        if normalized is not None:
+            normalized_results.append(normalized)
 
-    title = parsed.get("title") if isinstance(parsed.get("title"), str) else None
-    author = parsed.get("author") if isinstance(parsed.get("author"), str) else None
-
-    if not (title or author or normalized_isbn):
-        return None
-
-    result: dict[str, object] = {
-        "isbn": normalized_isbn,
-        "title": title,
-        "author": author,
-        "source": "gemini_vision",
-    }
-    if observed_text:
-        result["observed_text"] = observed_text
-    return result
+    return normalized_results or None
 
 
-def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], ProcessingJobStatus, str | None]:
+def _extract_metadata(image_bytes: bytes) -> tuple[list[dict[str, object]], ProcessingJobStatus, str | None]:
     image = _decode_image_bytes(image_bytes)
 
     barcode_isbn = _detect_isbn_from_barcode(image)
     if barcode_isbn is not None:
-        return (
+        return ([
             {
                 "isbn": barcode_isbn,
                 "title": None,
                 "author": None,
                 "source": "barcode",
-            },
-            ProcessingJobStatus.DONE,
-            None,
-        )
+            }
+        ], ProcessingJobStatus.DONE, None)
 
     try:
         vision_result = asyncio.run(_extract_spine_metadata_with_gemini(image_bytes))
@@ -401,41 +437,42 @@ def _extract_metadata(image_bytes: bytes) -> tuple[dict[str, object], Processing
         vision_result = None
 
     if vision_result is not None:
-        return (
-            vision_result,
-            ProcessingJobStatus.DONE,
-            None,
-        )
+        return (vision_result, ProcessingJobStatus.DONE, None)
 
-    return (
+    return ([
         {
             "isbn": None,
             "title": None,
             "author": None,
             "source": "none",
-        },
-        ProcessingJobStatus.FAILED,
-        "No barcode detected and Gemini Vision returned no book metadata",
-    )
+        }
+    ], ProcessingJobStatus.FAILED, "No barcode detected and Gemini Vision returned no book metadata")
 
 
-def _cache_key(isbn: str) -> str:
-    return f"book-metadata:{isbn}"
+def _cache_key(isbn: str | None, title: str | None = None) -> str | None:
+    if isbn:
+        return f"book-metadata:{isbn}"
+    if title:
+        return f"book-metadata:title:{title.lower().strip()}"
+    return None
 
 
-async def _fetch_google_books_metadata(isbn: str) -> dict[str, object] | None:
+async def _fetch_google_books_metadata(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
     start = perf_counter()
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 "https://www.googleapis.com/books/v1/volumes",
-                params={"q": f"isbn:{isbn}", "maxResults": 1},
+                params={"q": (f"isbn:{isbn}" if isbn else "+".join([p for p in [f"intitle:{title}" if title else "", f"inauthor:{author}" if author else ""] if p])), "maxResults": 1},
                 timeout=10.0,
             )
             response.raise_for_status()
             payload = response.json()
     finally:
-        logger.info("external_api_call", provider="google_books", isbn=isbn, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
+        logger.info("external_api_call", provider="google_books", isbn=isbn, title=title, author=author, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
+
+    if not isbn and not title:
+        return None
 
     items = payload.get("items")
     if not items:
@@ -449,7 +486,7 @@ async def _fetch_google_books_metadata(isbn: str) -> dict[str, object] | None:
     return {
         "title": volume.get("title"),
         "author": (volume.get("authors") or [None])[0],
-        "isbn": isbn,
+        "isbn": isbn or None,
         "publisher": volume.get("publisher"),
         "language": volume.get("language"),
         "description": volume.get("description"),
@@ -459,24 +496,51 @@ async def _fetch_google_books_metadata(isbn: str) -> dict[str, object] | None:
     }
 
 
-async def _fetch_open_library_metadata(isbn: str) -> dict[str, object] | None:
-    bib_key = f"ISBN:{isbn}"
+async def _fetch_open_library_metadata(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
     start = perf_counter()
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://openlibrary.org/api/books",
-                params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
-                timeout=10.0,
-            )
+            if isbn:
+                bib_key = f"ISBN:{isbn}"
+                response = await client.get(
+                    "https://openlibrary.org/api/books",
+                    params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
+                    timeout=10.0,
+                )
+            elif title:
+                response = await client.get(
+                    "https://openlibrary.org/search.json",
+                    params={"title": title, "author": author or "", "limit": 1},
+                    timeout=10.0,
+                )
+            else:
+                return None
             response.raise_for_status()
             payload = response.json()
     finally:
-        logger.info("external_api_call", provider="open_library", isbn=isbn, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
+        logger.info("external_api_call", provider="open_library", isbn=isbn, title=title, author=author, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
 
-    book_data = payload.get(bib_key)
-    if not book_data:
-        return None
+    if isbn:
+        bib_key = f"ISBN:{isbn}"
+        book_data = payload.get(bib_key)
+        if not book_data:
+            return None
+    else:
+        docs = payload.get("docs") or []
+        if not docs:
+            return None
+        doc = docs[0]
+        book_data = {
+            "title": doc.get("title"),
+            "authors": [{"name": (doc.get("author_name") or [None])[0]}],
+            "publishers": [{"name": (doc.get("publisher") or [None])[0]}],
+            "publish_date": str((doc.get("first_publish_year") or "")),
+            "languages": [{"key": f"/languages/{(doc.get('language') or [None])[0]}"}] if doc.get("language") else [],
+            "description": None,
+            "cover": {
+                "large": f"https://covers.openlibrary.org/b/id/{doc.get('cover_i')}-L.jpg" if doc.get("cover_i") else None,
+            },
+        }
 
     publish_date = str(book_data.get("publish_date", ""))
     publication_year: int | None = None
@@ -504,27 +568,30 @@ async def _fetch_open_library_metadata(isbn: str) -> dict[str, object] | None:
     }
 
 
-async def _enrich_metadata_with_fallback(isbn: str) -> dict[str, object] | None:
+async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
     cache = _get_redis_client()
-    cached = cache.get(_cache_key(isbn))
+    cache_key = _cache_key(isbn, title)
+    if cache_key is None:
+        return None
+    cached = cache.get(cache_key)
     if cached:
         return json.loads(cached)
 
     metadata: dict[str, object] | None = None
 
     try:
-        metadata = await _fetch_google_books_metadata(isbn)
+        metadata = await _fetch_google_books_metadata(isbn, title=title, author=author)
     except Exception:
         metadata = None
 
     if metadata is None:
         try:
-            metadata = await _fetch_open_library_metadata(isbn)
+            metadata = await _fetch_open_library_metadata(isbn, title=title, author=author)
         except Exception:
             metadata = None
 
     if metadata is not None:
-        cache.setex(_cache_key(isbn), CACHE_TTL_SECONDS, json.dumps(metadata))
+        cache.setex(cache_key, CACHE_TTL_SECONDS, json.dumps(metadata))
     return metadata
 
 
@@ -617,37 +684,44 @@ def process_book_image(self, job_id: str) -> None:
             session.commit()
 
             image_bytes = _download_image_bytes(image.minio_path)
-            local_result, local_status, error_message = _extract_metadata(image_bytes)
+            local_results, local_status, error_message = _extract_metadata(image_bytes)
 
             if local_status == ProcessingJobStatus.FAILED:
                 job.status = local_status
-                job.result_json = local_result
+                job.result_json = {"books": local_results}
                 job.error_message = error_message
                 session.commit()
                 return
 
-            isbn = local_result.get("isbn")
-            metadata: dict[str, object] | None = None
-            if isinstance(isbn, str):
-                structlog.contextvars.bind_contextvars(isbn=isbn, processing_step="metadata_enrichment")
-                metadata = asyncio.run(_enrich_metadata_with_fallback(isbn))
+            processed_books: list[dict[str, object]] = []
+            had_partial = False
 
-            if isinstance(isbn, str) and metadata is None:
-                logger.warning("metadata_enrichment_partial", job_id=job_id, isbn=isbn, processing_step="metadata_enrichment")
+            for local_result in local_results:
+                isbn = local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None
+                title = local_result.get("title") if isinstance(local_result.get("title"), str) else None
+                author = local_result.get("author") if isinstance(local_result.get("author"), str) else None
 
-            book = _upsert_book_from_metadata(session, image, local_result, metadata)
+                metadata: dict[str, object] | None = None
+                if isbn or title:
+                    structlog.contextvars.bind_contextvars(isbn=isbn, processing_step="metadata_enrichment")
+                    metadata = asyncio.run(_enrich_metadata_with_fallback(isbn, title=title, author=author))
 
-            result_json = {**local_result}
-            if metadata is not None:
-                result_json["metadata"] = metadata
-            result_json["book_id"] = str(book.id)
+                if metadata is None:
+                    had_partial = True
+                    logger.warning("metadata_enrichment_partial", job_id=job_id, isbn=isbn, title=title, author=author, processing_step="metadata_enrichment")
+
+                book = _upsert_book_from_metadata(session, image, local_result, metadata)
+                item_result = {**local_result, "book_id": str(book.id)}
+                if metadata is not None:
+                    item_result["metadata"] = metadata
+                processed_books.append(item_result)
 
             job.status = ProcessingJobStatus.DONE
-            job.result_json = result_json
+            job.result_json = {"books": processed_books}
             job.error_message = None
             session.commit()
-            processing_result = "partial" if metadata is None else "success"
-            logger.info("process_book_image_completed", job_id=job_id, isbn=isbn, processing_step="job_complete", status=processing_result)
+            processing_result = "partial" if had_partial else "success"
+            logger.info("process_book_image_completed", job_id=job_id, processing_step="job_complete", status=processing_result, books_count=len(processed_books))
     except Retry:
         raise
     except (exc.OperationalError, exc.InterfaceError):
@@ -682,7 +756,7 @@ def retry_book_enrichment(self, book_id: str) -> None:
                 _mark_book_partial(book_id, "Retry skipped: book ISBN is missing")
                 return
 
-            metadata = asyncio.run(_enrich_metadata_with_fallback(book.isbn))
+            metadata = asyncio.run(_enrich_metadata_with_fallback(book.isbn, title=book.title, author=book.author))
             if metadata is None:
                 _mark_book_partial(book_id, "Retry enrichment failed for all providers")
                 logger.warning("retry_book_enrichment_partial", book_id=book_id, processing_step="retry_enrichment")
