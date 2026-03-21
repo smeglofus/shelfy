@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     admin_password: str | None = None
     seed_admin_on_startup: bool = False
 
+    google_books_api_key: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("jwt_secret_key")

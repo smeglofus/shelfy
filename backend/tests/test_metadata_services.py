@@ -35,7 +35,7 @@ def test_google_books_client_returns_normalized_metadata() -> None:
 
     async def _run() -> dict[str, object] | None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            return await fetch_google_books_metadata(client, "9780132350884")
+            return await fetch_google_books_metadata(client, "9780132350884", title=None, author=None)
 
     metadata = asyncio.run(_run())
 
@@ -47,14 +47,14 @@ def test_google_books_client_returns_normalized_metadata() -> None:
 
 
 def test_open_library_fallback_called_when_google_books_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def _google(_client: httpx.AsyncClient, _isbn: str) -> None:
+    async def _google(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None, api_key: str | None = None) -> None:
         return None
 
-    async def _open_library(_client: httpx.AsyncClient, isbn: str) -> dict[str, object]:
+    async def _open_library(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
         return {
             "title": "Refactoring",
             "author": "Martin Fowler",
-            "isbn": isbn,
+            "isbn": isbn or "9780201485677",
             "publisher": "Addison-Wesley",
             "language": "eng",
             "description": "Improving existing code.",
@@ -83,7 +83,7 @@ def test_open_library_fallback_called_when_google_books_fails(monkeypatch: pytes
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library)
     monkeypatch.setattr("app.services.metadata.service.redis_async.from_url", lambda *_args, **_kwargs: fake_redis)
 
-    metadata = asyncio.run(enrich_metadata_with_fallback("9780201485677"))
+    metadata = asyncio.run(enrich_metadata_with_fallback("9780201485677", title=None, author=None))
 
     assert metadata is not None
     assert metadata["provider"] == "open_library"
@@ -112,7 +112,7 @@ def test_cache_hit_skips_external_calls(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _raise_if_called)
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _raise_if_called)
 
-    metadata = asyncio.run(enrich_metadata_with_fallback("9780134494166"))
+    metadata = asyncio.run(enrich_metadata_with_fallback("9780134494166", title=None, author=None))
 
     assert metadata == cached_payload
 
@@ -136,10 +136,46 @@ def test_open_library_client_normalizes_response() -> None:
 
     async def _run() -> dict[str, object] | None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            return await fetch_open_library_metadata(client, "9780134494166")
+            return await fetch_open_library_metadata(client, "9780134494166", title=None, author=None)
 
     metadata = asyncio.run(_run())
 
     assert metadata is not None
     assert metadata["provider"] == "open_library"
     assert metadata["publication_year"] == 2017
+
+
+def test_title_author_fallback_without_isbn_calls_google_then_openlibrary(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, object, object]] = []
+
+    async def _google(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None, api_key: str | None = None) -> None:
+        calls.append(("google", title, author))
+        return None
+
+    async def _open_library(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        calls.append(("open_library", title, author))
+        return {"title": "Clean Code", "author": "Martin", "provider": "open_library"}
+
+    class FakeRedis:
+        storage: dict[str, str] = {}
+
+        async def get(self, key: str) -> str | None:
+            return self.storage.get(key)
+
+        async def set(self, key: str, value: str, ex: int) -> None:
+            assert key == "book-metadata:title:clean code"
+            assert ex == 24 * 60 * 60
+            self.storage[key] = value
+
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _google)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr("app.services.metadata.service.redis_async.from_url", lambda *_args, **_kwargs: FakeRedis())
+
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Clean Code", author="Martin"))
+
+    assert metadata is not None
+    assert calls[0] == ("google", "Clean Code", "Martin")
+    assert calls[1] == ("open_library", "Clean Code", "Martin")

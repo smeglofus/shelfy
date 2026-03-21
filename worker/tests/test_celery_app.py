@@ -54,7 +54,7 @@ def test_gemini_fallback_returns_failed_when_gemini_returns_none(monkeypatch) ->
     result_json, status, error_message = celery_app._extract_metadata(b"fake-bytes")
 
     assert status == celery_app.ProcessingJobStatus.FAILED
-    assert result_json["source"] == "none"
+    assert result_json[0]["source"] == "none"
     assert error_message is not None
 
 
@@ -121,12 +121,12 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
         celery_app,
         "_extract_metadata",
         lambda _bytes: (
-            {"isbn": "9780306406157", "title": None, "author": None, "source": "barcode"},
+            [{"isbn": "9780306406157", "title": None, "author": None, "source": "barcode"}],
             celery_app.ProcessingJobStatus.DONE,
             None,
         ),
     )
-    async def _no_metadata(_isbn: str) -> None:
+    async def _no_metadata(_isbn: str | None, title: str | None = None, author: str | None = None) -> None:
         return None
 
     class FakeBook:
@@ -141,11 +141,15 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
     assert fake_job.attempts == 1
     assert fake_job.error_message is None
     assert fake_job.result_json == {
-        "isbn": "9780306406157",
-        "title": None,
-        "author": None,
-        "source": "barcode",
-        "book_id": str(FakeBook.id),
+        "books": [
+            {
+                "isbn": "9780306406157",
+                "title": None,
+                "author": None,
+                "source": "barcode",
+                "book_id": str(FakeBook.id),
+            }
+        ]
     }
 
 
@@ -259,13 +263,13 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
         celery_app,
         "_extract_metadata",
         lambda _bytes: (
-            {"isbn": "9780306406157", "title": "Fallback title", "author": "Fallback author", "source": "ocr"},
+            [{"isbn": "9780306406157", "title": "Fallback title", "author": "Fallback author", "source": "ocr"}],
             celery_app.ProcessingJobStatus.DONE,
             None,
         ),
     )
 
-    async def _no_metadata(_isbn):
+    async def _no_metadata(_isbn: str | None, title: str | None = None, author: str | None = None):
         return None
 
     monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _no_metadata)
@@ -339,12 +343,12 @@ def test_worker_logs_include_job_id(monkeypatch, capsys) -> None:
         celery_app,
         "_extract_metadata",
         lambda _bytes: (
-            {"isbn": "9780306406157", "title": "Fallback title", "author": "Fallback author", "source": "ocr"},
+            [{"isbn": "9780306406157", "title": "Fallback title", "author": "Fallback author", "source": "ocr"}],
             celery_app.ProcessingJobStatus.DONE,
             None,
         ),
     )
-    async def _metadata(_isbn):
+    async def _metadata(_isbn: str | None, title: str | None = None, author: str | None = None):
         return None
 
     monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _metadata)
