@@ -3,9 +3,10 @@ export const ROUTES = {
   login: '/login',
   books: '/books',
   bookDetail: '/books/:bookId',
+  addBook: '/books/new',
   locations: '/locations',
 } as const
 
 export function getBookDetailRoute(bookId: string): string {
-  return ROUTES.bookDetail.replace(':bookId', bookId)
+  return `/books/${bookId}`
 }
