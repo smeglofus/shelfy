@@ -83,6 +83,7 @@ export async function listBooks(params: BookListParams = {}): Promise<BookListRe
     params: {
       search: params.search,
       location_id: params.locationId,
+      reading_status: params.readingStatus,
       page: params.page ?? 1,
       page_size: params.pageSize ?? 20,
     },

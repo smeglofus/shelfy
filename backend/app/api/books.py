@@ -22,13 +22,14 @@ router = APIRouter(prefix="/api/v1/books", tags=["books"])
 async def read_books(
     search: str | None = Query(default=None, min_length=1),
     location_id: uuid.UUID | None = None,
+    reading_status: str | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_session),
     _current_user: User = Depends(get_current_user),
 ) -> BookListResponse:
     books, total = await list_books(
-        session, search=search, location_id=location_id, page=page, page_size=page_size
+        session, search=search, location_id=location_id, reading_status=reading_status, page=page, page_size=page_size
     )
     return BookListResponse(
         total=total,

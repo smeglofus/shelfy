@@ -27,8 +27,8 @@ export function BooksPage() {
   const toastedFailedIdsRef = useRef<Set<string>>(new Set())
 
   const queryParams = useMemo(
-    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined }),
-    [page, search],
+    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, readingStatus: readingFilter ?? undefined }),
+    [page, search, readingFilter],
   )
 
   const booksQuery = useBooks(queryParams)
@@ -71,20 +71,16 @@ export function BooksPage() {
   ])
 
   const books = useMemo(() => booksQuery.data?.items ?? [], [booksQuery.data?.items])
-  const filteredBooks = useMemo(() => {
-    if (!readingFilter) return books
-    return books.filter((b) => (b.reading_status ?? 'unread') === readingFilter)
-  }, [books, readingFilter])
 
   const groups = useMemo(() => {
     const map = new Map<string | null, Book[]>()
-    for (const b of filteredBooks) {
+    for (const b of books) {
       const key = b.location_id ?? null
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(b)
     }
     return map
-  }, [filteredBooks])
+  }, [books])
 
   const total = booksQuery.data?.total ?? 0
 
@@ -206,7 +202,7 @@ export function BooksPage() {
           </div>
         )}
 
-        {!booksQuery.isLoading && !booksQuery.isError && total > 0 && readingFilter && filteredBooks.length === 0 && (
+        {!booksQuery.isLoading && !booksQuery.isError && total > 0 && readingFilter && books.length === 0 && (
           <div style={{ textAlign: 'center', padding: '48px 24px', color: '#aaa' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
             <p style={{ fontSize: 16, fontWeight: 500, color: '#555', marginBottom: 6 }}>

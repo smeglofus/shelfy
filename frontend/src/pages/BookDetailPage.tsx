@@ -69,7 +69,7 @@ export function BookDetailPage() {
 
   const selectedLocation =
     locationSelection === undefined ? (book.location_id ?? '') : (locationSelection ?? '')
-  const selectedReading = readingSelection === undefined ? (book.reading_status ?? null) : readingSelection
+  const selectedReading = readingSelection === undefined ? (book.reading_status ?? "unread") : readingSelection
   const selectedLentTo = lentToSelection === undefined ? (book.lent_to ?? '') : lentToSelection
 
   const loc = (locationsQuery.data ?? []).find((l) => l.id === selectedLocation)
@@ -206,11 +206,14 @@ export function BookDetailPage() {
               <label style={{ fontSize: 12, color: '#777' }}>Umístění</label>
               <select
                 aria-label="Assign location"
+                disabled={locationsQuery.isLoading || locationsQuery.isError}
                 value={selectedLocation}
                 onChange={(event) => setLocationSelection(event.target.value || null)}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '0.5px solid rgba(0,0,0,0.18)', marginTop: 4 }}
               >
                 <option value="">Nezařazeno</option>
+                {locationsQuery.isLoading && <option disabled>Načítám lokace…</option>}
+                {locationsQuery.isError && <option disabled>Chyba při načítání lokací</option>}
                 {(locationsQuery.data ?? []).map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.room} / {location.furniture} / {location.shelf}

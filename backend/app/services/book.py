@@ -19,6 +19,7 @@ async def list_books(
     *,
     search: str | None,
     location_id: uuid.UUID | None,
+    reading_status: str | None,
     page: int,
     page_size: int,
 ) -> tuple[list[Book], int]:
@@ -26,6 +27,9 @@ async def list_books(
 
     if location_id is not None:
         filters.append(Book.location_id == location_id)
+
+    if reading_status:
+        filters.append(Book.reading_status == reading_status)
 
     normalized_search = search.strip() if search else ""
     if normalized_search:
