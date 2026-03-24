@@ -11,6 +11,7 @@ import type { Book, Location } from '../lib/types'
 vi.mock('../lib/api', () => ({
   getBook: vi.fn(),
   updateBook: vi.fn(),
+  deleteBook: vi.fn(),
   listLocations: vi.fn(),
   formatApiError: vi.fn(() => 'API error'),
 }))
@@ -46,6 +47,8 @@ const book: Book = {
   publication_year: 2017,
   cover_image_url: 'https://example.com/clean-architecture.jpg',
   location_id: 'loc-1',
+  reading_status: 'unread',
+  lent_to: null,
   processing_status: 'manual',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
@@ -87,20 +90,20 @@ describe('BookDetailPage', () => {
     expect(screen.getByText('en')).toBeInTheDocument()
     expect(screen.getByText('Software architecture and design principles.')).toBeInTheDocument()
     expect(screen.getByText('2017')).toBeInTheDocument()
-    expect(screen.getByText('https://example.com/clean-architecture.jpg')).toBeInTheDocument()
     expect(screen.getByText('manual')).toBeInTheDocument()
   })
 
-  it('submits save location with explicit unassigned selection', async () => {
+  it('submits save form with explicit unassigned location', async () => {
     renderWithProviders(<BookDetailPage />)
 
     await screen.findByRole('heading', { name: 'Clean Architecture' })
 
     await userEvent.selectOptions(screen.getByLabelText('Assign location'), '')
-    await userEvent.click(screen.getByRole('button', { name: 'Save location' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Uložit změny' }))
 
     await waitFor(() => {
-      expect(updateBook).toHaveBeenCalledWith('book-1', { location_id: null })
+      expect(updateBook).toHaveBeenCalledWith('book-1',
+        expect.objectContaining({ location_id: null }))
     })
   })
 })

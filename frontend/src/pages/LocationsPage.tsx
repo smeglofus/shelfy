@@ -96,7 +96,13 @@ export function LocationsPage() {
       )}
 
       {!locationsQuery.isLoading && !locationsQuery.isError && sortedLocations.length === 0 && (
-        <p>No locations yet.</p>
+        <div style={{ textAlign: 'center', padding: '48px 24px', color: '#6b7280' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🗺</div>
+          <p style={{ fontSize: 16, fontWeight: 500, color: '#4b5563', marginBottom: 6 }}>
+            Žádné lokace
+          </p>
+          <p style={{ fontSize: 13 }}>Přidej místnost, nábytek a polici výše</p>
+        </div>
       )}
 
       {sortedLocations.length > 0 && (
