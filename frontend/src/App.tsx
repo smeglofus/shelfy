@@ -1,14 +1,16 @@
 import { Route, Routes, useLocation } from 'react-router-dom'
+
+// Shared components
 import { ErrorToast } from './components/ErrorToast'
-import { ProtectedRoute } from './components/ProtectedRoute'
 import { BottomNav } from './components/BottomNav'
-import { ROUTES } from './lib/routes'
-import { BookDetailPage } from './pages/BookDetailPage'
-import { BooksPage } from './pages/BooksPage'
+
+// Feature barrels
+import { LoginPage, ProtectedRoute } from './features/auth'
 import { HomePage } from './pages/HomePage'
-import { LocationsPage } from './pages/LocationsPage'
-import { LoginPage } from './pages/LoginPage'
-import { AddBookPage } from './pages/AddBookPage'
+import { BooksPage, AddBookPage, BookDetailPage } from './features/books'
+import { LocationsPage } from './features/locations'
+
+import { ROUTES } from './lib/routes'
 
 export { ROUTES }
 
@@ -17,16 +19,8 @@ function AppShell() {
   const hideNav = location.pathname === ROUTES.login
 
   return (
-    <div style={{
-      maxWidth: 480,
-      margin: '0 auto',
-      minHeight: '100dvh',
-      background: 'white',
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: hideNav ? 0 : 80 }}>
+    <div className="sh-app">
+      <div className={`sh-scroll${hideNav ? ' no-nav' : ''}`}>
         <Routes>
           <Route path={ROUTES.login} element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>

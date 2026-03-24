@@ -86,16 +86,18 @@ export function BooksPage() {
 
   return (
     <div>
-      <div style={{ padding: '16px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 500 }}>Shelfy</h1>
-          <p style={{ fontSize: 13, color: '#888' }}>{total} knih</p>
+          <h1 className="text-h1">Moje Knihovna</h1>
+          <p className="text-p">{total} {total === 1 ? 'kniha' : (total > 1 && total < 5) ? 'knihy' : 'knih'}</p>
         </div>
       </div>
 
-      <StatBar books={books} total={total} />
+      <div style={{ padding: '0 8px' }}>
+        <StatBar books={books} total={total} />
+      </div>
 
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 16px 0', scrollbarWidth: 'none' }}>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '12px 24px 0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {TAB_ITEMS.map((tab) => {
           const isActive = readingFilter === tab.value
           return (
@@ -107,15 +109,17 @@ export function BooksPage() {
                 setPage(1)
               }}
               style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 500,
+                padding: '8px 18px',
+                borderRadius: 'var(--sh-radius-pill)',
+                fontSize: 14,
+                fontWeight: 600,
                 whiteSpace: 'nowrap',
-                border: 'none',
+                border: isActive ? 'none' : '1.5px solid var(--sh-border)',
                 cursor: 'pointer',
-                background: isActive ? '#1D9E75' : '#F7F7F5',
-                color: isActive ? 'white' : '#888',
+                background: isActive ? 'var(--sh-teal)' : 'transparent',
+                color: isActive ? 'white' : 'var(--sh-text-muted)',
+                transition: 'all 0.2s ease',
+                boxShadow: isActive ? '0 4px 12px rgba(15,157,88,0.2)' : 'none',
               }}
             >
               {tab.label}
@@ -131,61 +135,63 @@ export function BooksPage() {
           setPage(1)
           setSearch(searchInput.trim())
         }}
-        style={{ margin: '12px 16px 0', display: 'flex', gap: 8 }}
+        style={{ margin: '20px 24px 0', display: 'flex', gap: 12 }}
       >
         <div
           style={{
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            background: '#F7F7F5',
-            border: '0.5px solid rgba(0,0,0,0.10)',
-            borderRadius: 12,
-            padding: '10px 14px',
+            gap: 12,
+            background: 'var(--sh-surface)',
+            border: '1.5px solid var(--sh-border)',
+            borderRadius: 'var(--sh-radius-md)',
+            padding: '4px 16px',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--sh-teal)'
+            e.currentTarget.style.boxShadow = '0 0 0 4px var(--sh-border-focus)'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'var(--sh-border)'
+            e.currentTarget.style.boxShadow = 'none'
           }}
         >
-          <span style={{ fontSize: 16, color: '#888' }}>⌕</span>
+          <span style={{ fontSize: 18, color: 'var(--sh-text-muted)' }}>⌕</span>
           <input
             aria-label="Search books"
             placeholder="Hledat knihy, autory..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, outline: 'none' }}
+            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15, fontFamily: "'Outfit', sans-serif", outline: 'none', padding: '10px 0', color: 'var(--sh-text-main)' }}
           />
         </div>
         <button
           type="submit"
-          style={{
-            padding: '0 16px',
-            background: '#1D9E75',
-            color: 'white',
-            border: 'none',
-            borderRadius: 12,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
+          className="sh-btn-primary"
+          style={{ padding: '0 20px', borderRadius: 'var(--sh-radius-md)' }}
         >
           Hledat
         </button>
       </form>
 
       {uploadJobId && (
-        <p style={{ margin: '8px 16px', fontSize: 13, color: '#BA7517' }}>
+        <p style={{ margin: '16px 24px', fontSize: 14, color: 'var(--sh-amber)', fontWeight: 500, background: 'var(--sh-amber-bg)', padding: '12px 16px', borderRadius: 'var(--sh-radius-md)' }}>
           ⏳ Zpracovávám obrázek… ({uploadJobStatusQuery.data?.status ?? 'pending'})
         </p>
       )}
 
-      <div style={{ padding: '14px 16px 0' }}>
-        {booksQuery.isLoading && <p style={{ color: '#888', fontSize: 14 }}>Načítám knihy…</p>}
+      <div style={{ padding: '24px 24px 0' }}>
+        {booksQuery.isLoading && <p className="text-p">Načítám knihy…</p>}
 
         {booksQuery.isError && (
-          <p style={{ color: '#E24B4A', fontSize: 14 }}>
+          <p style={{ color: 'var(--sh-red)', fontSize: 15, fontWeight: 500 }}>
             Nepodařilo se načíst knihy.{' '}
             <button
               onClick={() => void booksQuery.refetch()}
-              style={{ color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer' }}
+              className="sh-btn-secondary"
+              style={{ marginLeft: 12, background: 'var(--sh-red-bg)', color: 'var(--sh-red-text)' }}
             >
               Zkusit znovu
             </button>
@@ -193,19 +199,19 @@ export function BooksPage() {
         )}
 
         {!booksQuery.isLoading && !booksQuery.isError && total === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 24px', color: '#aaa' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
-            <p style={{ fontSize: 16, fontWeight: 500, color: '#555', marginBottom: 6 }}>Žádné knihy</p>
-            <p style={{ fontSize: 13 }}>
-              {search ? `Nic nenalezeno pro „${search}"` : 'Přidej svou první knihu tlačítkem níže'}
+          <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--sh-text-muted)' }}>
+            <div style={{ fontSize: 64, marginBottom: 20 }}>📚</div>
+            <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>Žádné knihy</p>
+            <p className="text-p">
+              {search ? `Nic nenalezeno pro „${search}"` : 'Přidej svou první knihu tlačítkem ↓'}
             </p>
           </div>
         )}
 
         {!booksQuery.isLoading && !booksQuery.isError && total > 0 && readingFilter && books.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 24px', color: '#aaa' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-            <p style={{ fontSize: 16, fontWeight: 500, color: '#555', marginBottom: 6 }}>
+          <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--sh-text-muted)' }}>
+            <div style={{ fontSize: 56, marginBottom: 20 }}>🔍</div>
+            <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>
               Žádné knihy v této kategorii
             </p>
           </div>
@@ -214,13 +220,13 @@ export function BooksPage() {
         {Array.from(groups.entries()).map(([locId, groupBooks]) => {
           const loc = locId ? locationById.get(locId) : null
           return (
-            <div key={locId ?? 'unassigned'} style={{ marginBottom: 18 }}>
+            <div key={locId ?? 'unassigned'} style={{ marginBottom: 32 }}>
               {loc ? (
-                <ShelfBreadcrumb location={loc} />
+                <div style={{ marginBottom: 16 }}><ShelfBreadcrumb location={loc} /></div>
               ) : (
-                <p style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>Bez umístění</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)', marginBottom: 16, borderBottom: '1px solid var(--sh-border)', paddingBottom: 8 }}>Bez umístění</p>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
                 {groupBooks.map((b) => (
                   <BookCard key={b.id} book={b} onDelete={setDeleteTargetId} />
                 ))}
@@ -230,35 +236,23 @@ export function BooksPage() {
         })}
 
         {total > PAGE_SIZE && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: '0.5px solid rgba(0,0,0,0.15)',
-                background: 'none',
-                cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                opacity: page <= 1 ? 0.4 : 1,
-              }}
+              className="sh-btn-secondary"
+              style={{ opacity: page <= 1 ? 0.3 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
             >
               ← Předchozí
             </button>
-            <span style={{ fontSize: 13, color: '#888' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)' }}>
               {page} / {Math.ceil(total / PAGE_SIZE)}
             </span>
             <button
               disabled={page >= Math.ceil(total / PAGE_SIZE)}
               onClick={() => setPage((p) => p + 1)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: '0.5px solid rgba(0,0,0,0.15)',
-                background: 'none',
-                cursor: page >= Math.ceil(total / PAGE_SIZE) ? 'not-allowed' : 'pointer',
-                opacity: page >= Math.ceil(total / PAGE_SIZE) ? 0.4 : 1,
-              }}
+              className="sh-btn-secondary"
+              style={{ opacity: page >= Math.ceil(total / PAGE_SIZE) ? 0.3 : 1, cursor: page >= Math.ceil(total / PAGE_SIZE) ? 'not-allowed' : 'pointer' }}
             >
               Další →
             </button>
@@ -273,28 +267,33 @@ export function BooksPage() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 200,
             padding: '0 24px',
+            animation: 'fadeIn 0.2s ease',
           }}
         >
-          <div style={{ background: 'white', borderRadius: 16, padding: '20px 20px 16px', width: '100%', maxWidth: 360 }}>
-            <p style={{ fontSize: 15, marginBottom: 16 }}>Opravdu chceš smazat tuto knihu?</p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div style={{ background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-xl)', padding: '24px', width: '100%', maxWidth: 380, boxShadow: 'var(--sh-shadow-lg)' }}>
+            <h3 className="text-h3" style={{ marginTop: 0 }}>Smazat knihu?</h3>
+            <p className="text-p" style={{ marginBottom: 24 }}>Tato akce je nevratná. Opravdu chceš knihu odstranit?</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setDeleteTargetId(null)}
-                style={{ padding: '9px 18px', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.15)', background: 'none', cursor: 'pointer', fontSize: 14 }}
+                className="sh-btn-secondary"
               >
                 Zrušit
               </button>
               <button
                 onClick={() => deleteMutation.mutate(deleteTargetId, { onSuccess: () => setDeleteTargetId(null) })}
-                style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#E24B4A', color: 'white', cursor: 'pointer', fontSize: 14 }}
+                className="sh-btn-primary"
+                style={{ background: 'var(--sh-red)' }}
               >
-                {deleteMutation.isPending ? 'Mažu…' : 'Smazat'}
+                {deleteMutation.isPending ? 'Mažu…' : 'Smazat knihu'}
               </button>
             </div>
           </div>

@@ -6,16 +6,6 @@ import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import type { BookCreateRequest, ReadingStatus } from '../lib/types'
 
-const inputStyle = {
-  width: '100%',
-  padding: '9px 12px',
-  border: '0.5px solid rgba(0,0,0,0.18)',
-  borderRadius: 10,
-  fontSize: 14,
-  background: 'white',
-  outline: 'none',
-} as const
-
 export function AddBookPage() {
   const navigate      = useNavigate()
   const showError     = useToastStore(s => s.showError)
@@ -80,75 +70,88 @@ export function AddBookPage() {
   }
 
   return (
-    <div style={{ padding: '16px 16px 0' }}>
+    <div className="container">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
         <button
           onClick={() => navigate(ROUTES.books)}
-          style={{ width: 36, height: 36, borderRadius: 10, border: '0.5px solid rgba(0,0,0,0.15)', background: '#F7F7F5', cursor: 'pointer', fontSize: 16 }}
+          style={{ width: 40, height: 40, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', background: 'var(--sh-surface)', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="hover-lift"
         >
           ←
         </button>
-        <h2 style={{ fontSize: 18, fontWeight: 500 }}>Přidat knihu</h2>
+        <h2 className="text-h2" style={{ marginBottom: 0 }}>Přidat knihu</h2>
       </div>
 
       {/* Scan area */}
       <div
         onClick={() => fileInputRef.current?.click()}
         style={{
-          border: '1.5px dashed rgba(0,0,0,0.18)',
-          borderRadius: 14,
-          height: 150,
+          border: '2px dashed var(--sh-border-2)',
+          borderRadius: 'var(--sh-radius-lg)',
+          height: 160,
+          background: 'var(--sh-surface)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8,
+          gap: 12,
           cursor: 'pointer',
-          marginBottom: 18,
-          color: '#888',
+          marginBottom: 24,
+          color: 'var(--sh-text-muted)',
+          transition: 'all 0.2s ease',
         }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--sh-teal)';
+          e.currentTarget.style.background = 'var(--sh-teal-bg)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--sh-border-2)';
+          e.currentTarget.style.background = 'var(--sh-surface)';
+        }}
+        className="hover-lift"
       >
-        <span style={{ fontSize: 32 }}>📸</span>
-        <span style={{ fontSize: 14, fontWeight: 500 }}>
+        <span style={{ fontSize: 36, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>📸</span>
+        <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-text-main)' }}>
           {uploadMutation.isPending ? 'Nahrávám…' : 'Naskenovat hřbet'}
         </span>
-        <span style={{ fontSize: 11, color: '#aaa' }}>AI rozpozná název a autora</span>
+        <span className="text-small">AI rozpozná název a autora</span>
         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" style={{ display: 'none' }} onChange={handleFileChange} />
       </div>
       {uploadJobId && (
-        <p style={{ fontSize: 12, color: '#BA7517', marginBottom: 10, textAlign: 'center' }}>
+        <p style={{ fontSize: 13, color: 'var(--sh-amber-text)', background: 'var(--sh-amber-bg)', padding: '12px', borderRadius: 'var(--sh-radius-md)', marginBottom: 20, textAlign: 'center', fontWeight: 500 }}>
           ⏳ Zpracovávám obrázek…
         </p>
       )}
 
       {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-        <hr style={{ flex: 1, border: 'none', borderTop: '0.5px solid rgba(0,0,0,0.12)' }} />
-        <span style={{ fontSize: 12, color: '#aaa' }}>nebo zadat ručně</span>
-        <hr style={{ flex: 1, border: 'none', borderTop: '0.5px solid rgba(0,0,0,0.12)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
+        <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--sh-border)' }} />
+        <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>nebo zadat ručně</span>
+        <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--sh-border)' }} />
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Název *</label>
-          <input style={inputStyle} placeholder="např. Duna" value={title} onChange={e => setTitle(e.target.value)} required />
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Název <span style={{ color: 'var(--sh-red)' }}>*</span></label>
+          <input className="sh-input" placeholder="např. Duna" value={title} onChange={e => setTitle(e.target.value)} required />
         </div>
 
         <div>
-          <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Autor</label>
-          <input style={inputStyle} placeholder="např. Frank Herbert" value={author} onChange={e => setAuthor(e.target.value)} />
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Autor</label>
+          <input className="sh-input" placeholder="např. Frank Herbert" value={author} onChange={e => setAuthor(e.target.value)} />
         </div>
 
         {/* 3-level location */}
-        <div>
-          <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Umístění</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        <div style={{ background: 'var(--sh-surface)', padding: 16, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)' }}>
+          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 12 }}>Umístění</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: '#aaa', display: 'block', marginBottom: 3 }}>Místnost</label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Místnost</label>
               <select
-                style={inputStyle}
+                className="sh-select"
+                style={{ padding: '10px 12px' }}
                 value={selRoom}
                 onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}
               >
@@ -157,9 +160,10 @@ export function AddBookPage() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: '#aaa', display: 'block', marginBottom: 3 }}>Knihovna</label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Knihovna</label>
               <select
-                style={inputStyle}
+                className="sh-select"
+                style={{ padding: '10px 12px' }}
                 value={selFurniture}
                 disabled={!selRoom}
                 onChange={e => { setSelFurniture(e.target.value); setSelShelf('') }}
@@ -169,9 +173,10 @@ export function AddBookPage() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: '#aaa', display: 'block', marginBottom: 3 }}>Police</label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Police</label>
               <select
-                style={inputStyle}
+                className="sh-select"
+                style={{ padding: '10px 12px' }}
                 value={selShelf}
                 disabled={!selFurniture}
                 onChange={e => setSelShelf(e.target.value)}
@@ -184,47 +189,46 @@ export function AddBookPage() {
         </div>
 
         {/* Reading status */}
-        <div>
-          <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Stav</label>
-          <select
-            style={inputStyle}
-            value={reading}
-            onChange={e => setReading(e.target.value as ReadingStatus)}
-          >
-            <option value="unread">Nepřečteno</option>
-            <option value="reading">Čtu</option>
-            <option value="read">Přečteno</option>
-            <option value="lent">Půjčeno</option>
-          </select>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Stav</label>
+            <select
+              className="sh-select"
+              value={reading}
+              onChange={e => setReading(e.target.value as ReadingStatus)}
+            >
+              <option value="unread">Nepřečteno</option>
+              <option value="reading">Čtu</option>
+              <option value="read">Přečteno</option>
+              <option value="lent">Půjčeno</option>
+            </select>
+          </div>
+
+          {reading === 'lent' && (
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Komu</label>
+              <input className="sh-input" placeholder="Jméno..." value={lentTo} onChange={e => setLentTo(e.target.value)} />
+            </div>
+          )}
         </div>
 
-        {reading === 'lent' && (
-          <div>
-            <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Půjčeno komu</label>
-            <input style={inputStyle} placeholder="Jméno nebo přezdívka" value={lentTo} onChange={e => setLentTo(e.target.value)} />
-          </div>
-        )}
-
         <div>
-          <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>ISBN (volitelné)</label>
-          <input style={inputStyle} placeholder="978-80-…" value={isbn} onChange={e => setIsbn(e.target.value)} />
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>ISBN <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>(volitelné)</span></label>
+          <input className="sh-input" placeholder="978-80-…" value={isbn} onChange={e => setIsbn(e.target.value)} />
         </div>
 
         <button
           type="submit"
+          className="sh-btn-primary hover-scale"
           disabled={createMutation.isPending}
           style={{
             width: '100%',
-            padding: 13,
-            background: createMutation.isPending ? '#9FE1CB' : '#1D9E75',
-            color: 'white',
-            border: 'none',
-            borderRadius: 10,
-            fontSize: 14,
-            fontWeight: 500,
+            opacity: createMutation.isPending ? 0.7 : 1,
             cursor: createMutation.isPending ? 'not-allowed' : 'pointer',
-            marginTop: 4,
-            marginBottom: 24,
+            marginTop: 12,
+            marginBottom: 32,
+            padding: '16px',
+            fontSize: 18,
           }}
         >
           {createMutation.isPending ? 'Přidávám…' : 'Přidat do knihovny'}

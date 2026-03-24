@@ -6,10 +6,10 @@ interface Props {
 }
 
 const CONFIG: Record<ReadingStatus, { label: string; bg: string; color: string }> = {
-  read:    { label: 'Přečteno',  bg: '#E1F5EE', color: '#085041' },
-  reading: { label: 'Čtu',       bg: '#FAEEDA', color: '#633806' },
-  lent:    { label: 'Půjčeno',   bg: '#E6F1FB', color: '#042C53' },
-  unread:  { label: 'Nepřečteno',bg: '#F1EFE8', color: '#5F5E5A' },
+  read:    { label: 'Přečteno',  bg: 'var(--sh-teal-bg)', color: 'var(--sh-teal-text)' },
+  reading: { label: 'Čtu',       bg: 'var(--sh-amber-bg)', color: 'var(--sh-amber-text)' },
+  lent:    { label: 'Půjčeno',   bg: 'var(--sh-blue-bg)', color: 'var(--sh-blue-text)' },
+  unread:  { label: 'Nepřečteno',bg: '#F5F6F8', color: 'var(--sh-text-muted)' },
 }
 
 export function ReadingStatusBadge({ status, lentTo }: Props) {
@@ -18,13 +18,14 @@ export function ReadingStatusBadge({ status, lentTo }: Props) {
 
   return (
     <span style={{
-      fontSize: 10,
-      padding: '2px 8px',
-      borderRadius: 4,
+      fontSize: 11,
+      padding: '4px 10px',
+      borderRadius: 'var(--sh-radius-pill)',
       background: bg,
       color,
-      fontWeight: 500,
+      fontWeight: 600,
       whiteSpace: 'nowrap',
+      letterSpacing: '0.02em',
     }}>
       {text}
     </span>

@@ -26,24 +26,27 @@ export function HomePage() {
   const isLocationCountsError = booksPerLocationQueries.some((query) => query.isError)
 
   if (summaryQuery.isLoading || locationsQuery.isLoading || isLocationCountsLoading) {
-    return <p>Loading dashboard…</p>
+    return <div className="container"><p className="text-p">Načítám přehled…</p></div>
   }
 
   if (summaryQuery.isError || locationsQuery.isError || isLocationCountsError) {
     return (
-      <p>
-        Failed to load dashboard.
+      <div className="container">
+        <p className="text-p" style={{ color: 'var(--sh-red)' }}>
+          Nepodařilo se načíst přehled.
+        </p>
         <button
-          type="button"
+          className="sh-btn-secondary"
+          style={{ marginTop: 12 }}
           onClick={() => {
             void summaryQuery.refetch()
             void locationsQuery.refetch()
             void Promise.all(booksPerLocationQueries.map((query) => query.refetch()))
           }}
         >
-          Retry
+          Zkusit znovu
         </button>
-      </p>
+      </div>
     )
   }
 
@@ -55,28 +58,63 @@ export function HomePage() {
   }
 
   return (
-    <section style={{ marginTop: '1.5rem' }}>
-      <h2>Dashboard</h2>
-      <p>Total books: {summaryQuery.data?.total ?? 0}</p>
+    <section className="container flex-col gap-6">
+      <div>
+        <h2 className="text-h1" style={{ marginBottom: 4 }}>Přehled</h2>
+        <p className="text-p">Celkem máte <strong style={{ color: 'var(--sh-teal)' }}>{summaryQuery.data?.total ?? 0}</strong> knih.</p>
+      </div>
 
-      <h3>Books per location</h3>
-      <ul>
-        {(locationsQuery.data ?? []).map((location) => (
-          <li key={location.id}>
-            {location.room} / {location.furniture} / {location.shelf}:{' '}
-            {booksPerLocationTotalById.get(location.id) ?? 0}
-          </li>
-        ))}
-      </ul>
+      <div>
+        <h3 className="text-h3">Knihy podle umístění</h3>
+        <div className="flex-col gap-3">
+          {(locationsQuery.data ?? []).map((location) => (
+            <div key={location.id} style={{
+              background: 'var(--sh-surface)',
+              border: '1px solid var(--sh-border)',
+              borderRadius: 'var(--sh-radius-md)',
+              padding: '16px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              boxShadow: 'var(--sh-shadow-sm)',
+            }} className="hover-lift">
+              <span className="text-p" style={{ fontWeight: 500 }}>
+                {location.room} / {location.furniture} / {location.shelf}
+              </span>
+              <span style={{
+                background: 'var(--sh-teal-bg)',
+                color: 'var(--sh-teal-text)',
+                padding: '4px 12px',
+                borderRadius: 'var(--sh-radius-pill)',
+                fontWeight: 600,
+                fontSize: 14,
+              }}>
+                {booksPerLocationTotalById.get(location.id) ?? 0}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      <h3>Recent additions</h3>
-      <ul>
-        {(summaryQuery.data?.items ?? []).map((book) => (
-          <li key={book.id}>
-            {book.title} ({DATE_FORMATTER.format(new Date(book.created_at))})
-          </li>
-        ))}
-      </ul>
+      <div>
+        <h3 className="text-h3">Naposledy přidáno</h3>
+        <div className="flex-col gap-3">
+          {(summaryQuery.data?.items ?? []).map((book) => (
+            <div key={book.id} style={{
+              background: 'var(--sh-surface)',
+              border: '1px solid var(--sh-border)',
+              borderRadius: 'var(--sh-radius-md)',
+              padding: '16px',
+              boxShadow: 'var(--sh-shadow-sm)',
+            }} className="hover-lift flex-col gap-2">
+              <span className="text-p" style={{ fontWeight: 600 }}>{book.title}</span>
+              <span className="text-small" style={{ color: 'var(--sh-text-muted)' }}>
+                Přidáno {DATE_FORMATTER.format(new Date(book.created_at))}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   )
 }

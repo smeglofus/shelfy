@@ -8,11 +8,11 @@ import type { ReadingStatus } from '../lib/types'
 
 const GRADIENTS: [string, string][] = [
   ['#1D9E75', '#085041'],
-  ['#BA7517', '#633806'],
-  ['#534AB7', '#26215C'],
-  ['#185FA5', '#042C53'],
+  ['#F4B400', '#7a5a00'],
+  ['#9b51e0', '#41156d'],
+  ['#4285F4', '#174ea6'],
   ['#639922', '#173404'],
-  ['#993556', '#4B1528'],
+  ['#DB4437', '#7C1004'],
 ]
 
 function hashTitle(title: string): number {
@@ -23,9 +23,9 @@ function hashTitle(title: string): number {
 
 function metadataRow(label: string, value: string | number | null | undefined) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8, padding: '6px 0' }}>
-      <span style={{ color: '#777', fontSize: 12 }}>{label}</span>
-      <span style={{ fontSize: 14 }}>{value ?? '—'}</span>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--sh-border)', alignItems: 'center' }}>
+      <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--sh-text-main)' }}>{value ?? '—'}</span>
     </div>
   )
 }
@@ -53,14 +53,14 @@ export function BookDetailPage() {
   const [lentToSelection, setLentToSelection] = useState<string | undefined>(undefined)
 
   if (bookQuery.isLoading) {
-    return <p>Loading book…</p>
+    return <div className="container"><p className="text-p">Načítám detail knihy…</p></div>
   }
 
   if (bookQuery.isError || !bookQuery.data) {
     return (
-      <div>
-        <p>Failed to load book.</p>
-        <Link to={ROUTES.books}>Back to books</Link>
+      <div className="container">
+        <p className="text-p" style={{ color: 'var(--sh-red)' }}>Nepodařilo se načíst knihu.</p>
+        <button onClick={() => navigate(ROUTES.books)} className="sh-btn-secondary" style={{ marginTop: 16 }}>Zpět do knihovny</button>
       </div>
     )
   }
@@ -79,58 +79,74 @@ export function BookDetailPage() {
   const longDesc = (book.description ?? '').length > 160
 
   return (
-    <section style={{ marginTop: '1.5rem', maxWidth: 760, marginInline: 'auto', padding: '0 16px 24px' }}>
-      <div style={{ marginBottom: 10 }}>
-        <Link to={ROUTES.books}>← Back to books</Link>
+    <section className="container" style={{ maxWidth: 760, paddingBottom: 40 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+        <button
+          onClick={() => navigate(ROUTES.books)}
+          style={{ width: 40, height: 40, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', background: 'var(--sh-surface)', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="hover-lift"
+        >
+          ←
+        </button>
+        <h2 className="text-h2" style={{ marginBottom: 0 }}>Detail knihy</h2>
       </div>
 
-      <article style={{ border: '0.5px solid rgba(0,0,0,0.10)', borderRadius: 14, overflow: 'hidden', background: 'white' }}>
+      <article style={{ border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-xl)', overflow: 'hidden', background: 'var(--sh-surface)', boxShadow: 'var(--sh-shadow-md)' }}>
         {book.cover_image_url ? (
-          <img
-            src={book.cover_image_url}
-            alt={book.title}
-            style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }}
-          />
+          <div style={{ position: 'relative' }}>
+            <img
+              src={book.cover_image_url}
+              alt={book.title}
+              style={{ width: '100%', height: 260, objectFit: 'cover', display: 'block' }}
+            />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)', pointerEvents: 'none' }} />
+          </div>
         ) : (
           <div
             style={{
               width: '100%',
-              height: 200,
+              height: 240,
               background: `linear-gradient(135deg, ${from}, ${to})`,
               display: 'flex',
               alignItems: 'flex-end',
-              padding: 16,
+              padding: 24,
+              position: 'relative',
             }}
           >
-            <span style={{ color: 'white', fontSize: 18, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)', pointerEvents: 'none' }} />
+            <span style={{ color: 'white', fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', textShadow: '0 2px 6px rgba(0,0,0,0.4)', position: 'relative', zIndex: 1, maxWidth: '90%' }}>
               {book.title}
             </span>
           </div>
         )}
 
-        <div style={{ padding: 16 }}>
-          <h2 style={{ fontSize: 26, lineHeight: 1.2, marginBottom: 6 }}>{book.title}</h2>
-          <p style={{ color: '#666', marginBottom: 12 }}>{book.author ?? '—'}</p>
+        <div style={{ padding: 24 }}>
+          <h2 className="text-h1" style={{ marginBottom: 4, lineHeight: 1.2 }}>{book.title}</h2>
+          <p className="text-p" style={{ fontSize: 18, color: 'var(--sh-text-muted)', marginBottom: 24, fontWeight: 500 }}>{book.author ?? 'Neznámý autor'}</p>
 
-          <hr style={{ border: 0, borderTop: '0.5px solid rgba(0,0,0,0.12)', margin: '10px 0 12px' }} />
-          {metadataRow('ISBN', book.isbn)}
-          {metadataRow('Vydavatel', book.publisher)}
-          {metadataRow('Rok vydání', book.publication_year)}
-          {metadataRow('Jazyk', book.language)}
-          {metadataRow('Stav', book.processing_status)}
+          <div style={{ background: '#FAFAFB', padding: '0 16px', borderRadius: 'var(--sh-radius-lg)', marginBottom: 24, border: '1px solid var(--sh-border)' }}>
+            {metadataRow('ISBN', book.isbn)}
+            {metadataRow('Vydavatel', book.publisher)}
+            {metadataRow('Rok vydání', book.publication_year)}
+            {metadataRow('Jazyk', book.language)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '12px 0', alignItems: 'center' }}>
+              <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>Stav skenu</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{book.processing_status}</span>
+            </div>
+          </div>
 
-          <hr style={{ border: 0, borderTop: '0.5px solid rgba(0,0,0,0.12)', margin: '12px 0 12px' }} />
           <div>
-            <p style={{ fontSize: 12, color: '#777', marginBottom: 6 }}>Popis</p>
+            <h3 className="text-h3" style={{ marginTop: 0 }}>Anotace</h3>
             {book.description ? (
               <>
                 <p
+                  className="text-p"
                   style={{
-                    fontSize: 14,
-                    color: '#333',
-                    lineHeight: 1.5,
+                    lineHeight: 1.6,
+                    color: 'var(--sh-text-main)',
                     display: '-webkit-box',
-                    WebkitLineClamp: !expandedDescription ? 3 : 'unset',
+                    WebkitLineClamp: !expandedDescription ? 4 : 'unset',
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                   }}
@@ -141,19 +157,20 @@ export function BookDetailPage() {
                   <button
                     type="button"
                     onClick={() => setExpandedDescription((v) => !v)}
-                    style={{ marginTop: 6, border: 'none', background: 'transparent', color: '#1D9E75', cursor: 'pointer', padding: 0 }}
+                    style={{ marginTop: 8, border: 'none', background: 'transparent', color: 'var(--sh-teal)', cursor: 'pointer', padding: 0, fontWeight: 600, fontSize: 14 }}
                   >
-                    {expandedDescription ? 'Sbalit' : 'Rozbalit'}
+                    {expandedDescription ? 'Sbalit text ↑' : 'Číst dál ↓'}
                   </button>
                 )}
               </>
             ) : (
-              <p style={{ fontSize: 14 }}>—</p>
+              <p className="text-p" style={{ fontStyle: 'italic', color: 'var(--sh-text-muted)' }}>Žádný popis není k dispozici.</p>
             )}
           </div>
 
-          <hr style={{ border: 0, borderTop: '0.5px solid rgba(0,0,0,0.12)', margin: '14px 0 12px' }} />
+          <hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
 
+          <h3 className="text-h3" style={{ marginTop: 0 }}>Správa knihy</h3>
           <form
             aria-label="assign-location-form"
             onSubmit={(event) => {
@@ -167,49 +184,53 @@ export function BookDetailPage() {
                 },
               })
             }}
-            style={{ display: 'grid', gap: 12 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
           >
-            <div>
-              <label style={{ fontSize: 12, color: '#777' }}>Stav čtení</label>
-              <select
-                aria-label="Reading status"
-                value={selectedReading ?? ''}
-                onChange={(event) => {
-                  const raw = event.target.value as ReadingStatus | ''
-                  setReadingSelection(raw ? raw : null)
-                }}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '0.5px solid rgba(0,0,0,0.18)', marginTop: 4 }}
-              >
-                <option value="">Nepřiřazeno</option>
-                <option value="unread">Nepřečteno</option>
-                <option value="reading">Čtu</option>
-                <option value="read">Přečteno</option>
-                <option value="lent">Půjčeno</option>
-              </select>
-              <p style={{ marginTop: 4, fontSize: 12, color: '#666' }}>Aktuálně: {readingStatusLabel(selectedReading)}</p>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>Stav čtení</label>
+                <select
+                  aria-label="Reading status"
+                  className="sh-select"
+                  value={selectedReading ?? ''}
+                  onChange={(event) => {
+                    const raw = event.target.value as ReadingStatus | ''
+                    setReadingSelection(raw ? raw : null)
+                  }}
+                  style={{ padding: '12px 14px' }}
+                >
+                  <option value="">Nepřiřazeno</option>
+                  <option value="unread">Nepřečteno</option>
+                  <option value="reading">Čtu</option>
+                  <option value="read">Přečteno</option>
+                  <option value="lent">Půjčeno</option>
+                </select>
+              </div>
+
+              {selectedReading === 'lent' && (
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>Komu půjčeno</label>
+                  <input
+                    aria-label="Lent to"
+                    className="sh-input"
+                    value={selectedLentTo}
+                    onChange={(event) => setLentToSelection(event.target.value)}
+                    placeholder="Jméno nebo vizitka"
+                    style={{ padding: '12px 14px' }}
+                  />
+                </div>
+              )}
             </div>
 
-            {selectedReading === 'lent' && (
-              <div>
-                <label style={{ fontSize: 12, color: '#777' }}>Komu půjčeno</label>
-                <input
-                  aria-label="Lent to"
-                  value={selectedLentTo}
-                  onChange={(event) => setLentToSelection(event.target.value)}
-                  placeholder="Jméno"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '0.5px solid rgba(0,0,0,0.18)', marginTop: 4 }}
-                />
-              </div>
-            )}
-
             <div>
-              <label style={{ fontSize: 12, color: '#777' }}>Umístění</label>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>Fyzické umístění</label>
               <select
                 aria-label="Assign location"
                 disabled={locationsQuery.isLoading || locationsQuery.isError}
+                className="sh-select"
                 value={selectedLocation}
                 onChange={(event) => setLocationSelection(event.target.value || null)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '0.5px solid rgba(0,0,0,0.18)', marginTop: 4 }}
+                style={{ padding: '12px 14px' }}
               >
                 <option value="">Nezařazeno</option>
                 {locationsQuery.isLoading && <option disabled>Načítám lokace…</option>}
@@ -220,49 +241,43 @@ export function BookDetailPage() {
                   </option>
                 ))}
               </select>
-              <p style={{ marginTop: 4, fontSize: 12, color: '#666' }}>{selectedLocLabel ?? 'Nezařazeno'}</p>
             </div>
 
             <button
               type="submit"
+              className="sh-btn-primary hover-scale"
               disabled={updateMutation.isPending}
               style={{
-                justifySelf: 'start',
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: 'none',
-                background: '#1D9E75',
-                color: 'white',
-                cursor: 'pointer',
+                alignSelf: 'flex-start',
+                marginTop: 8,
               }}
             >
-              {updateMutation.isPending ? 'Saving…' : 'Uložit změny'}
+              {updateMutation.isPending ? 'Ukládám…' : 'Uložit změny'}
             </button>
           </form>
 
-          <hr style={{ border: 0, borderTop: '0.5px solid rgba(0,0,0,0.12)', margin: '14px 0 12px' }} />
-          <button
-            type="button"
-            disabled={deleteMutation.isPending}
-            onClick={() => {
-              if (deleteMutation.isPending) return
-              if (!confirm('Opravdu smazat tuto knihu?')) return
-              deleteMutation.mutate(book.id, {
-                onSuccess: () => navigate(ROUTES.books),
-              })
-            }}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              border: '0.5px solid rgba(200,70,70,0.35)',
-              background: '#fff1f1',
-              color: '#a33434',
-              cursor: deleteMutation.isPending ? 'not-allowed' : 'pointer',
-              opacity: deleteMutation.isPending ? 0.7 : 1,
-            }}
-          >
-            {deleteMutation.isPending ? 'Mažu…' : 'Smazat knihu'}
-          </button>
+          <hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deleteMutation.isPending) return
+                if (!confirm('Opravdu smazat tuto knihu? Tato akce je nevratná.')) return
+                deleteMutation.mutate(book.id, {
+                  onSuccess: () => navigate(ROUTES.books),
+                })
+              }}
+              className="sh-btn-primary hover-scale"
+              style={{
+                background: '#fff1f1',
+                color: 'var(--sh-red)',
+                boxShadow: 'none',
+              }}
+            >
+              {deleteMutation.isPending ? 'Mažu…' : 'Smazat knihu navždy'}
+            </button>
+          </div>
         </div>
       </article>
     </section>
