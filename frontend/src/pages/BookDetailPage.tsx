@@ -243,7 +243,9 @@ export function BookDetailPage() {
           <hr style={{ border: 0, borderTop: '0.5px solid rgba(0,0,0,0.12)', margin: '14px 0 12px' }} />
           <button
             type="button"
+            disabled={deleteMutation.isPending}
             onClick={() => {
+              if (deleteMutation.isPending) return
               if (!confirm('Opravdu smazat tuto knihu?')) return
               deleteMutation.mutate(book.id, {
                 onSuccess: () => navigate(ROUTES.books),
@@ -255,7 +257,8 @@ export function BookDetailPage() {
               border: '0.5px solid rgba(200,70,70,0.35)',
               background: '#fff1f1',
               color: '#a33434',
-              cursor: 'pointer',
+              cursor: deleteMutation.isPending ? 'not-allowed' : 'pointer',
+              opacity: deleteMutation.isPending ? 0.7 : 1,
             }}
           >
             {deleteMutation.isPending ? 'Mažu…' : 'Smazat knihu'}
