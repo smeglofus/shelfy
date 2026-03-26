@@ -46,10 +46,11 @@ export function LoginPage() {
           style={{ display: 'grid', gap: '20px' }}
         >
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>
+            <label htmlFor="login-email" style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>
               Email
             </label>
             <input
+              id="login-email"
               className="sh-input"
               required
               type="email"
@@ -60,10 +61,11 @@ export function LoginPage() {
             />
           </div>
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>
+            <label htmlFor="login-password" style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>
               Heslo
             </label>
             <input
+              id="login-password"
               className="sh-input"
               required
               type="password"

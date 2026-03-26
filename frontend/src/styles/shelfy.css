@@ -265,3 +265,29 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   .sh-btn-secondary:hover { background: rgba(63,185,80,0.2); }
 }
 
+
+html.dark {
+  --sh-bg: #0d1117;
+  --sh-bg-main: #0d1117;
+  --sh-surface: #161b22;
+  --sh-text-main: #e6edf3;
+  --sh-text-muted: #8b949e;
+  --sh-border: rgba(255,255,255,0.08);
+  --sh-border-2: rgba(255,255,255,0.14);
+  --sh-input-bg: #0d1117;
+  --sh-placeholder: #484f58;
+  --sh-teal: #3fb950;
+  --sh-teal-dark: #2ea043;
+  --sh-teal-bg: rgba(63,185,80,0.12);
+  --sh-teal-text: #56d364;
+}
+
+html.light {
+  --sh-bg: #F8F9FA;
+  --sh-bg-main: #F8F9FA;
+  --sh-surface: #FFFFFF;
+  --sh-text-main: #202124;
+  --sh-text-muted: #5F6368;
+  --sh-border: rgba(0,0,0,0.06);
+  --sh-border-2: rgba(0,0,0,0.12);
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
@@ -28,14 +28,6 @@ function metadataRow(label: string, value: string | number | null | undefined) {
       <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--sh-text-main)' }}>{value ?? '—'}</span>
     </div>
   )
-}
-
-function readingStatusLabel(status: ReadingStatus | null | undefined): string {
-  if (!status) return 'Nepřiřazeno'
-  if (status === 'unread') return 'Nepřečteno'
-  if (status === 'reading') return 'Čtu'
-  if (status === 'read') return 'Přečteno'
-  return 'Půjčeno'
 }
 
 export function BookDetailPage() {
@@ -71,10 +63,6 @@ export function BookDetailPage() {
     locationSelection === undefined ? (book.location_id ?? '') : (locationSelection ?? '')
   const selectedReading = readingSelection === undefined ? (book.reading_status ?? "unread") : readingSelection
   const selectedLentTo = lentToSelection === undefined ? (book.lent_to ?? '') : lentToSelection
-
-  const loc = (locationsQuery.data ?? []).find((l) => l.id === selectedLocation)
-  const selectedLocLabel = loc ? `${loc.room} / ${loc.furniture} / ${loc.shelf}` : null
-
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
   const longDesc = (book.description ?? '').length > 160
 

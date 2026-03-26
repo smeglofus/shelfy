@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes, forwardRef } from 'react'
+import { type ButtonHTMLAttributes, type CSSProperties, forwardRef } from 'react'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 type ButtonSize = 'sm' | 'md' | 'lg'
@@ -16,7 +16,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:     'sh-btn-ghost',
 }
 
-const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
+const sizeStyles: Record<ButtonSize, CSSProperties> = {
   sm: { padding: '6px 12px',  fontSize: 13 },
   md: { padding: '10px 20px', fontSize: 15 },
   lg: { padding: '14px 28px', fontSize: 16 },
@@ -25,7 +25,7 @@ const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', fullWidth = false, className = '', style, children, ...rest }, ref) => {
     const baseClass = `${variantStyles[variant]} hover-scale${className ? ` ${className}` : ''}`
-    const combinedStyle: React.CSSProperties = {
+    const combinedStyle: CSSProperties = {
       ...(fullWidth ? { width: '100%', display: 'flex', justifyContent: 'center' } : {}),
       ...sizeStyles[size],
       ...style,

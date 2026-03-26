@@ -157,11 +157,17 @@ cd ../frontend
 npm ci
 npm run lint
 npm test -- --run
+
+# End-to-end tests
+cd ../e2e
+npm ci
+npm run e2e
 ```
 
 ## Key docs
 
 - Architecture details: `docs/architecture.md`
+- OpenAPI spec: `docs/openapi.yaml`
 - ADRs: `docs/adr/`
 - Implementation roadmap: `docs/implementation-phases.md`
 - Coding standards: `docs/coding-standards.md`

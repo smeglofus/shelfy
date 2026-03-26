@@ -348,3 +348,32 @@ async def test_retry_enrichment_missing_book_returns_404(test_session: async_ses
         response = await client.patch(f"/api/v1/books/{uuid.uuid4()}/retry-enrichment", headers=headers)
 
     assert response.status_code == 404
+
+
+
+@pytest.mark.asyncio
+async def test_books_export_returns_csv(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with test_session() as session:
+        location_id = await _create_location(session)
+        session.add(Book(title="Export Me", author="Tester", location_id=location_id, isbn="1234567890"))
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get('/api/v1/books/export', headers=headers)
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/csv')
+    assert 'attachment; filename="shelfy-export.csv"' in response.headers.get('content-disposition', '')
+    assert 'title,author,isbn,publisher,language,publication_year,location,reading_status,lent_to,created_at' in response.text
+    assert 'Export Me,Tester,1234567890' in response.text
+
+
+
+@pytest.mark.asyncio
+async def test_books_export_requires_authentication() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get('/api/v1/books/export')
+    assert response.status_code == 401

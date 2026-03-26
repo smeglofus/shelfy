@@ -170,3 +170,16 @@ docker service logs library-app_backend --tail 100
 docker service logs library-app_worker --tail 100
 docker service logs library-app_traefik --tail 100
 ```
+
+
+## 10) Production security checklist
+
+Before exposing Shelfy publicly, confirm:
+
+- [ ] ENVIRONMENT=production is set for backend/worker services.
+- [ ] JWT_SECRET_KEY is unique and not change-me.
+- [ ] MINIO_ACCESS_KEY / MINIO_SECRET_KEY are not default values.
+- [ ] ADMIN_PASSWORD is at least 12 characters.
+- [ ] Docker secrets are used for all credentials and rotated periodically.
+- [ ] CORS allowlist contains only trusted frontend origins.
+- [ ] Images are pinned to explicit tags (avoid latest).

@@ -51,6 +51,14 @@ class Settings(BaseSettings):
             raise ValueError("MinIO credentials must not use default values outside development")
         return value
 
+    @field_validator("admin_password")
+    @classmethod
+    def validate_admin_password(cls, value: str | None, info: object) -> str | None:
+        env_value = getattr(info, "data", {}).get("environment")
+        if env_value == "production" and value is not None and len(value) < 12:
+            raise ValueError("ADMIN_PASSWORD must be at least 12 characters in production")
+        return value
+
 
 @lru_cache
 def get_settings() -> Settings:
