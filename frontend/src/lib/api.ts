@@ -123,3 +123,9 @@ export async function getJobStatus(id: string): Promise<JobStatusResponse> {
   const response = await apiClient.get<JobStatusResponse>(`/api/v1/jobs/${id}`)
   return response.data
 }
+
+
+export async function exportBooksCsv(): Promise<Blob> {
+  const response = await apiClient.get('/api/v1/books/export', { responseType: 'blob' })
+  return response.data as Blob
+}

@@ -5,6 +5,7 @@ export const ROUTES = {
   bookDetail: '/books/:bookId',
   addBook: '/books/new',
   locations: '/locations',
+  settings: '/settings',
 } as const
 
 export function getBookDetailRoute(bookId: string): string {

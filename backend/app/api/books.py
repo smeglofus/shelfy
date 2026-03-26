@@ -2,6 +2,7 @@ import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
@@ -10,7 +11,7 @@ from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.models.user import User
 from app.schemas.book import BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest, RetryEnrichmentResponse
 from app.schemas.job import UploadResponse
-from app.services.book import create_book, delete_book, get_book_or_404, list_books, update_book
+from app.services.book import build_books_export_csv, create_book, delete_book, get_book_or_404, list_books, update_book
 from app.services.job import create_upload_job
 from app.services.job_queue import get_celery_client
 from app.services.storage import delete_image_bytes
@@ -38,6 +39,18 @@ async def read_books(
         items=[BookResponse.model_validate(book) for book in books],
     )
 
+
+
+
+@router.get("/export")
+async def export_books_csv(
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    content = await build_books_export_csv(session)
+    response = StreamingResponse(iter([content]), media_type="text/csv")
+    response.headers["Content-Disposition"] = 'attachment; filename="shelfy-export.csv"'
+    return response
 
 @router.post("", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 async def create_book_endpoint(

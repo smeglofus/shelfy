@@ -9,4 +9,4 @@ export {
   useUploadBookImage,
   useJobStatus,
   BOOKS_QUERY_KEY,
-} from '../../../hooks/useBooks'
+} from '../../hooks/useBooks'

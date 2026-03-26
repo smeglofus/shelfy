@@ -1,3 +1,5 @@
+import csv
+from io import StringIO
 import uuid
 
 from fastapi import HTTPException, status
@@ -29,7 +31,7 @@ async def list_books(
         filters.append(Book.location_id == location_id)
 
     if reading_status:
-        filters.append(Book.reading_status == reading_status)
+        filters.append(Book.processing_status == reading_status)
 
     normalized_search = search.strip() if search else ""
     if normalized_search:
@@ -138,3 +140,46 @@ def _map_integrity_error(_exc: IntegrityError) -> HTTPException:
         status_code=status.HTTP_409_CONFLICT,
         detail="Book with this ISBN already exists",
     )
+
+
+
+async def build_books_export_csv(session: AsyncSession) -> bytes:
+    result = await session.execute(
+        select(Book, Location)
+        .outerjoin(Location, Book.location_id == Location.id)
+        .order_by(Book.created_at.desc(), Book.id.desc())
+    )
+    rows = result.all()
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([
+        "title", "author", "isbn", "publisher", "language",
+        "publication_year", "location", "reading_status", "lent_to", "created_at",
+    ])
+
+    for book, location in rows:
+        location_value = ""
+        if location is not None:
+            location_value = f"{location.room} / {location.furniture} / {location.shelf}"
+
+        reading_status_value = getattr(book, "reading_status", None)
+        if reading_status_value is None:
+            reading_status_value = getattr(book, "processing_status", "")
+
+        lent_to_value = getattr(book, "lent_to", None) or ""
+
+        writer.writerow([
+            book.title,
+            book.author or "",
+            book.isbn or "",
+            book.publisher or "",
+            book.language or "",
+            book.publication_year or "",
+            location_value,
+            str(reading_status_value or ""),
+            lent_to_value,
+            book.created_at.isoformat() if book.created_at else "",
+        ])
+
+    return buffer.getvalue().encode("utf-8")

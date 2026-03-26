@@ -69,7 +69,6 @@ export function BookCard({ book, onDelete }: Props) {
           borderRadius: 'var(--sh-radius-lg)',
           border: '1px solid var(--sh-border)',
           overflow: 'hidden',
-          display: 'block',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',

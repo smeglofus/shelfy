@@ -2,9 +2,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../lib/routes'
 
 const TABS = [
-  { label: 'Knihovna', icon: '⊞', path: ROUTES.books },
-  { label: 'Přidat',   icon: '⊕', path: ROUTES.addBook },
-  { label: 'Domů',     icon: '⌂', path: ROUTES.home },
+  { label: 'Knihovna',  icon: '⊞', path: ROUTES.books },
+  { label: 'Přidat',    icon: '⊕', path: ROUTES.addBook },
+  { label: 'Domů',      icon: '⌂', path: ROUTES.home },
+  { label: 'Lokace',    icon: '⌗', path: ROUTES.locations },
+  { label: 'Nastavení', icon: '⎈', path: ROUTES.settings },
 ] as const
 
 export function BottomNav() {
@@ -54,8 +56,8 @@ export function BottomNav() {
               transform: isActive ? 'scale(1.05)' : 'scale(1)',
             }}
           >
-            <span style={{ 
-              fontSize: 22, 
+            <span style={{
+              fontSize: 22,
               lineHeight: 1,
               marginBottom: 2,
               filter: isActive ? 'drop-shadow(0 2px 4px rgba(15, 157, 88, 0.3))' : 'none'

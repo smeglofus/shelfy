@@ -4,4 +4,4 @@ export {
   useCreateLocation,
   useUpdateLocation,
   useDeleteLocation,
-} from '../../../hooks/useLocations'
+} from '../../hooks/useLocations'
