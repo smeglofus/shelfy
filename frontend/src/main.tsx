@@ -1,4 +1,5 @@
 import './styles/shelfy.css'
+import './i18n/index'
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
