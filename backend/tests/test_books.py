@@ -377,3 +377,72 @@ async def test_books_export_requires_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get('/api/v1/books/export')
     assert response.status_code == 401
+
+
+
+@pytest.mark.asyncio
+async def test_create_book_with_reading_status(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.post(
+            "/api/v1/books",
+            json={"title": "Reading Status Book", "reading_status": "reading"},
+            headers=headers,
+        )
+
+    assert response.status_code == 201
+    assert response.json()["reading_status"] == "reading"
+
+
+@pytest.mark.asyncio
+async def test_update_book_reading_status_to_lent(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        created = await client.post(
+            "/api/v1/books",
+            json={"title": "Lendable Book"},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        book_id = created.json()["id"]
+
+        updated = await client.patch(
+            f"/api/v1/books/{book_id}",
+            json={"reading_status": "lent", "lent_to": "John"},
+            headers=headers,
+        )
+
+    assert updated.status_code == 200
+    assert updated.json()["reading_status"] == "lent"
+    assert updated.json()["lent_to"] == "John"
+
+
+@pytest.mark.asyncio
+async def test_lent_to_cleared_when_status_changes_from_lent(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        created = await client.post(
+            "/api/v1/books",
+            json={"title": "Previously Lent", "reading_status": "lent", "lent_to": "John"},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        book_id = created.json()["id"]
+
+        updated = await client.patch(
+            f"/api/v1/books/{book_id}",
+            json={"reading_status": "read", "lent_to": None},
+            headers=headers,
+        )
+
+    assert updated.status_code == 200
+    assert updated.json()["reading_status"] == "read"
+    assert updated.json()["lent_to"] is None

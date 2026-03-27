@@ -23,12 +23,12 @@ Last updated: 2026-03-27
 
 ## In Progress
 
-- `reading_status` + `lent_to` fields on Book (branch: `feat/alembic-reading-status-migration`, PR #83)
-- Frontend BookDetailPage tabs + empty states (PR #84)
-- Production readiness foundation v2 (PR #96)
+Nothing active. All planned phases complete as of 2026-03-27.
 
 ## Known Issues
 
+- reading_status + lent_to were missing from backend model/schemas after PR #96 merge conflict — restored in this PR
+- CI backend tests were using SQLite instead of PostgreSQL — fixed in this PR
 - Entity design doc (`docs/entity-design.md`) was missing `reading_status` and `lent_to` — now updated
 - Branch naming in practice uses `feat/` and `fix/` prefixes, not `feature/` as originally documented — standard updated to match reality
 

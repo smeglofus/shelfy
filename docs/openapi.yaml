@@ -527,6 +527,30 @@
         }
       }
     },
+    "/api/v1/books/export": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Export Books Csv",
+        "operationId": "export_books_csv_api_v1_books_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/books/{book_id}": {
       "get": {
         "tags": [
@@ -956,6 +980,30 @@
             ],
             "title": "Location Id"
           },
+          "reading_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "unread"
+          },
+          "lent_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lent To"
+          },
           "processing_status": {
             "$ref": "#/components/schemas/BookProcessingStatus",
             "default": "manual"
@@ -1109,6 +1157,27 @@
             ],
             "title": "Location Id"
           },
+          "reading_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lent_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lent To"
+          },
           "processing_status": {
             "$ref": "#/components/schemas/BookProcessingStatus"
           },
@@ -1135,6 +1204,8 @@
           "publication_year",
           "cover_image_url",
           "location_id",
+          "reading_status",
+          "lent_to",
           "processing_status",
           "created_at",
           "updated_at"
@@ -1256,6 +1327,29 @@
               }
             ],
             "title": "Location Id"
+          },
+          "reading_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lent_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lent To"
           },
           "processing_status": {
             "anyOf": [
@@ -1513,6 +1607,16 @@
           "failed"
         ],
         "title": "ProcessingJobStatus"
+      },
+      "ReadingStatus": {
+        "type": "string",
+        "enum": [
+          "unread",
+          "reading",
+          "read",
+          "lent"
+        ],
+        "title": "ReadingStatus"
       },
       "RefreshRequest": {
         "properties": {
