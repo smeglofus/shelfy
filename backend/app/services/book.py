@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app.models.book import Book
+from app.models.book import Book, ReadingStatus
 from app.models.location import Location
 from app.schemas.book import BookCreateRequest, BookUpdateRequest
 
@@ -97,6 +97,9 @@ async def update_book(session: AsyncSession, book_id: uuid.UUID, payload: BookUp
 
     for field_name, value in update_data.items():
         setattr(book, field_name, value)
+
+    if book.reading_status != ReadingStatus.LENT:
+        book.lent_to = None
 
     try:
         await session.commit()
