@@ -446,3 +446,31 @@ async def test_lent_to_cleared_when_status_changes_from_lent(
     assert updated.status_code == 200
     assert updated.json()["reading_status"] == "read"
     assert updated.json()["lent_to"] is None
+
+
+
+@pytest.mark.asyncio
+async def test_lent_to_auto_cleared_when_status_changes_without_explicit_null(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        created = await client.post(
+            "/api/v1/books",
+            json={"title": "Implicit clear", "reading_status": "lent", "lent_to": "John"},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        book_id = created.json()["id"]
+
+        updated = await client.patch(
+            f"/api/v1/books/{book_id}",
+            json={"reading_status": "read"},
+            headers=headers,
+        )
+
+    assert updated.status_code == 200
+    assert updated.json()["reading_status"] == "read"
+    assert updated.json()["lent_to"] is None
