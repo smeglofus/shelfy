@@ -15,6 +15,8 @@ The coding agent must always follow these rules:
 
 ## Phase 0 – Planning
 
+Status: Completed
+
 Goal:
 - Produce implementation-ready architecture and breakdown.
 
@@ -43,6 +45,8 @@ Definition of done:
 ---
 
 ## Phase 1 – Project skeleton and CI foundation
+
+Status: Completed
 
 Goal:
 - Bootstrap the repository, core services, and CI pipeline so that
@@ -80,6 +84,8 @@ Definition of done:
 
 ## Phase 2 – Auth
 
+Status: Completed
+
 Goal:
 - Implement JWT-based authentication so all subsequent phases can
   build on protected endpoints from the start.
@@ -116,6 +122,8 @@ Definition of done:
 
 ## Phase 3 – Locations backend
 
+Status: Completed
+
 Goal:
 - Implement the physical location resource on the backend only.
   Frontend comes in Phase 4.
@@ -149,6 +157,8 @@ Definition of done:
 
 ## Phase 4 – Locations frontend
 
+Status: Completed
+
 Goal:
 - Build the frontend UI for location management.
 
@@ -177,6 +187,8 @@ Definition of done:
 ---
 
 ## Phase 5 – Books backend
+
+Status: Completed
 
 Goal:
 - Implement the core book catalog on the backend.
@@ -220,6 +232,8 @@ Definition of done:
 
 ## Phase 6 – Books frontend
 
+Status: Completed
+
 Goal:
 - Build the frontend UI for the book catalog.
 
@@ -249,6 +263,8 @@ Definition of done:
 ---
 
 ## Phase 7 – Image upload and processing job skeleton
+
+Status: Completed
 
 Goal:
 - Add the upload flow and async processing pipeline with a stub worker.
@@ -294,19 +310,21 @@ Definition of done:
 
 ## Phase 8 – Barcode and OCR integration
 
+Status: Completed (OCR portion superseded by Phase 13 — Gemini Vision)
+
 Goal:
 - Replace the worker stub with real metadata extraction.
 
 Deliverables:
 - barcode/ISBN detection using pyzbar
-- OCR fallback using pytesseract + OpenCV when no barcode is found
+- ~~OCR fallback using pytesseract + OpenCV~~ replaced by Gemini Vision (Phase 13)
 - ISBN normalization and validation
 - result stored in `ProcessingJob.result_json` as:
-  `{ "isbn": "...", "title": "...", "author": "...", "source": "barcode|ocr|none" }`
+  `{ "isbn": "...", "title": "...", "author": "...", "source": "barcode|gemini_vision|none" }`
 
 Tests required:
 - barcode detection returns correct ISBN from a test image
-- OCR fallback is triggered when no barcode is found
+- Gemini Vision fallback is triggered when no barcode is found
 - result is stored correctly in the job record
 
 Out of scope:
@@ -321,6 +339,8 @@ Definition of done:
 ---
 
 ## Phase 9 – External metadata providers
+
+Status: Completed
 
 Goal:
 - Enrich processing results with metadata from external APIs.
@@ -354,6 +374,8 @@ Definition of done:
 ---
 
 ## Phase 10 – Observability
+
+Status: Completed
 
 Goal:
 - Add structured logging and Prometheus metrics throughout the application.
@@ -424,6 +446,8 @@ Definition of done:
 
 ## Phase 12 – Homelab deployment
 
+Status: Completed
+
 Goal:
 - Prepare real deployment in the homelab Docker Swarm environment.
 
@@ -456,6 +480,8 @@ Definition of done:
 ---
 
 ## Phase 13 – Replace OCR with Gemini Vision spine recognition
+
+Status: Completed
 
 Goal:
 - Replace local OCR fallback with Gemini Vision-based spine recognition.

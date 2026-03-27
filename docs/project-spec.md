@@ -442,7 +442,7 @@ Contains:
 
 - how to set up local dev environment
 - how to run tests
-- branch naming convention: `feature/`, `fix/`, `chore/`
+- branch naming convention: `feat/`, `fix/`, `chore/`
 - PR rules: CI must pass, small focused PRs preferred
 - commit message format: Conventional Commits
 
@@ -471,86 +471,10 @@ Architecture Decision Records for all major technology choices.
 
 ---
 
-# AGENTS.md — Full Content
+# Agent Rules
 
-> This section defines the rules for AI agents (Codex) working on this
-> repository. Agents must read and follow these rules before making
-> any changes.
-
-## Allowed Actions
-
-- Implement features described in a GitHub issue
-- Fix bugs described in a GitHub issue
-- Write or update tests for changed code
-- Update documentation for changed code
-- Add new files within the existing repository structure
-
-## Prohibited Actions
-
-- Change the technology stack (no new frameworks, no replacing
-  existing ones)
-- Introduce architectural changes not explicitly requested in the issue
-- Refactor code outside the scope of the current task
-- Add new Python packages to `requirements.txt` without including a
-  justification comment in the PR description
-- Add new npm packages to `package.json` without justification
-- Modify Alembic migrations that have already been applied
-  (create new migrations instead)
-- Change any file in `infra/` without explicit instruction
-- Remove or weaken any existing test
-
-## Code Rules
-
-### Backend (Python)
-
-- Use SQLAlchemy ORM only — never write raw SQL
-- All endpoints must have Pydantic response models (no bare dicts)
-- All service functions must be async
-- Use `structlog.get_logger()` for all logging — never use `print()`
-- All external API calls must go through `app/services/` — never
-  call httpx directly from a router
-- New endpoints must be covered by at least one API test
-- New business logic must be covered by unit tests
-
-### Frontend (React)
-
-- Use React Query for all server state — no manual fetch calls
-  in components
-- Use Zustand only for UI state (modals, sidebar open/closed, etc.)
-- Components must not contain business logic — extract to hooks
-- All new pages must be added to React Router config
-
-### General
-
-- Follow Conventional Commits format:
-  `feat:`, `fix:`, `chore:`, `test:`, `docs:`
-- Every PR must have a description explaining what was changed and why
-- Branch naming: `feature/<issue-number>-short-description`
-
-## Test Requirements
-
-Before opening a PR, the agent must verify that all of the following
-pass locally:
-
-```bash
-# Backend
-cd backend
-pytest --cov=app tests/
-ruff check app/
-mypy app/
-
-# Frontend
-cd frontend
-npm test
-npm run lint
-```
-
-## Iteration Limit
-
-If CI fails or review comments are not resolved after **2 automated
-iterations**, the agent must stop and add the label
-`needs-human-review` to the PR. The agent must not make further
-commits until a human reviews the situation.
+All rules for AI agents working on this repository are defined in `docs/AGENTS.md`.
+The AI operating model (role definitions, workflow, escalation) is in `docs/ai-operating-model.md`.
 
 ---
 
@@ -558,7 +482,7 @@ commits until a human reviews the situation.
 
 ## Unit Tests
 
-Target: `backend/app/services/`, `backend/app/workers/`
+Target: `backend/app/services/`, `worker/`
 
 Examples:
 
@@ -748,6 +672,7 @@ The `docs/adr/` directory contains the following ADRs:
 | 002 | Async image processing via Celery — blocking vision calls must not block API |
 | 003 | MinIO for file storage — ephemeral container filesystem is unsuitable |
 | 004 | React over Next.js — SSR not needed for single-user homelab tool |
+| 005 | Docker Swarm + Traefik for homelab deployment |
 | 006 | Gemini Vision fallback for spine recognition when barcode detection fails |
 
 ---

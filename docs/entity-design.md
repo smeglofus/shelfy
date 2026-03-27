@@ -58,7 +58,7 @@ Delete is blocked (409) when any Book references this Location.
 
 ### Book
 
-Core entity. Introduced in Phase 5.
+Core entity. Introduced in Phase 5. Extended with reading status fields post-Phase 13.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -67,31 +67,49 @@ Core entity. Introduced in Phase 5.
 | `author` | VARCHAR(500) | nullable; some books have no author |
 | `isbn` | VARCHAR(20) UNIQUE | nullable; not all books have ISBN |
 | `publisher` | VARCHAR(300) | nullable |
-| `publication_year` | SMALLINT | nullable |
+| `publication_year` | INTEGER | nullable |
 | `language` | VARCHAR(10) | nullable; ISO 639-1, e.g. "cs", "en" |
 | `description` | TEXT | nullable |
-| `cover_image_key` | VARCHAR(500) | nullable; MinIO object key |
-| `source` | ENUM NOT NULL | see BookSource below |
-| `location_id` | UUID FK → Location | nullable; SET NULL on location delete |
+| `cover_image_url` | VARCHAR(500) | nullable; MinIO presigned URL or external URL |
+| `location_id` | UUID FK → Location | nullable; RESTRICT on location delete |
+| `reading_status` | ENUM | nullable; default "unread"; see ReadingStatus below |
+| `lent_to` | VARCHAR(300) | nullable; name of person book is lent to |
+| `processing_status` | ENUM NOT NULL | default "manual"; see BookProcessingStatus below |
 | `created_at` | TIMESTAMP WITH TIME ZONE | server default now() |
 | `updated_at` | TIMESTAMP WITH TIME ZONE | auto-updated |
 
-#### BookSource enum
+#### ReadingStatus enum
 
 ```python
-class BookSource(str, Enum):
+class ReadingStatus(str, Enum):
+    UNREAD = "unread"
+    READING = "reading"
+    READ = "read"
+    LENT = "lent"
+```
+
+#### BookProcessingStatus enum
+
+```python
+class BookProcessingStatus(str, Enum):
     MANUAL = "manual"       # user typed it in
-    VISION = "vision"       # recognized from a photo
-    BARCODE = "barcode"     # scanned from barcode (future)
+    PENDING = "pending"     # processing job queued
+    DONE = "done"           # processing completed successfully
+    FAILED = "failed"       # processing failed
+    PARTIAL = "partial"     # metadata incomplete (API fallback failed)
 ```
 
 #### Notes
 
-- `cover_image_key` is the raw MinIO object key (e.g. `covers/uuid.jpg`).
-  The API layer constructs the presigned URL on the fly — never store full URLs.
+- `cover_image_url` stores a URL (presigned MinIO or external). Column was renamed
+  from the original spec's `cover_image_key` during implementation.
 - `isbn` has a UNIQUE constraint but is nullable (NULL ≠ NULL in SQL).
-- Deleting a Location sets `location_id = NULL` on all related books (SET NULL),
-  not a cascade delete. Books are not deleted with their location.
+- Deleting a Location is RESTRICTED when books reference it (returns 409).
+  This differs from the original spec (SET NULL) — decided during Phase 5 implementation.
+- `reading_status` defaults to "unread". When set to "lent", the `lent_to` field
+  should contain the borrower's name.
+- `processing_status` replaced the original `source` enum to better represent
+  the async processing pipeline states.
 
 ---
 
@@ -135,7 +153,7 @@ class TaskStatus(str, Enum):
 
 | Relationship | Cardinality | FK behaviour |
 |---|---|---|
-| Book → Location | many-to-one (optional) | SET NULL on location delete |
+| Book → Location | many-to-one (optional) | RESTRICT on location delete |
 | ImageProcessingTask → Book | many-to-one | CASCADE DELETE |
 
 ---
@@ -155,11 +173,11 @@ class TaskStatus(str, Enum):
 
 ---
 
-## Out of scope (future phases)
+## Out of scope (future)
 
 | Feature | Notes |
 |---|---|
-| Tag / genre | Phase 9+ |
-| Loan tracking | Phase 9+ |
+| Tag / genre | Not planned for v1 |
 | Multi-user / shared library | Not planned for v1 |
-| Barcode scanning | Phase 10+ |
+| Real-time barcode scanning from camera | Not planned for v1 |
+| Import/export (CSV, Goodreads) | Candidate for v1.1 |
