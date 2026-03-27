@@ -67,7 +67,7 @@ body {
 
 /* Layout App Shell */
 .sh-app {
-  max-width: 520px;
+  width: 100%;
   margin: 0 auto;
   min-height: 100dvh;
   background: var(--sh-surface);
@@ -80,11 +80,31 @@ body {
 .sh-scroll {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 100px;
+  padding-bottom: 100px; /* Space for mobile nav */
 }
 .sh-scroll.no-nav {
   padding-bottom: 0;
 }
+
+/* Base Desktop Layout (min-width: 768px) */
+@media (min-width: 768px) {
+  .sh-app {
+    flex-direction: row;
+    max-width: 1440px;
+  }
+  
+  .sh-scroll {
+    padding-bottom: 0;
+    padding-left: 240px; /* Space for sidebar */
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .sh-scroll.no-nav {
+    padding-left: 0;
+  }
+}
+
 
 /* Base Elements */
 a { color: inherit; text-decoration: none; }
@@ -216,7 +236,35 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
 .gap-6 { gap: 24px; }
 
 /* Container */
-.container { padding: 0 24px; padding-top: 24px; padding-bottom: 24px; }
+.container { 
+  padding: 0 24px; 
+  padding-top: 24px; 
+  padding-bottom: 24px; 
+}
+
+/* Responsive Utilities */
+@media (min-width: 768px) {
+  .md-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .md-flex-row {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+  }
+  .md-max-w-3xl {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .md-max-w-4xl {
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
 
 /* ── Dark Mode ───────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {

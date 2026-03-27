@@ -1,7 +1,7 @@
 import { Route, Routes, useLocation } from 'react-router-dom'
 
 import { ErrorToast } from './components/ErrorToast'
-import { BottomNav } from './components/BottomNav'
+import { Navigation } from './components/Navigation'
 
 import { LoginPage, ProtectedRoute } from './features/auth'
 import { HomePage } from './pages/HomePage'
@@ -32,7 +32,7 @@ function AppShell() {
           </Route>
         </Routes>
       </div>
-      {!hideNav && <BottomNav />}
+      {!hideNav && <Navigation />}
       <ErrorToast />
     </div>
   )

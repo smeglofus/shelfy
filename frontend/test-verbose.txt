@@ -1,0 +1,3269 @@
+
+> shelfy-frontend@0.1.0 test
+> vitest run --run --reporter=verbose --no-color
+
+
+ RUN  v3.2.4 C:/Users/Dell/Desktop/HomeLab/shelfy/frontend
+
+stderr | src/pages/BookDetailPage.test.tsx > BookDetailPage > renders all book metadata fields
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ × src/pages/LocationsPage.test.tsx > LocationsPage > shows loading state while locations are being fetched 170ms
+   → Unable to find an element with the text: Loading locations…. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+      [36m>[39m
+        [0mNačítám lokace…[0m
+      [36m</p>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+stderr | src/pages/BooksPage.test.tsx > BooksPage > renders book list and submits search input
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/pages/BookDetailPage.test.tsx > BookDetailPage > renders all book metadata fields 356ms
+ ✓ src/pages/BookDetailPage.test.tsx > BookDetailPage > submits save form with explicit unassigned location 231ms
+ ✓ src/pages/BooksPage.test.tsx > BooksPage > renders book list and submits search input 671ms
+ × src/pages/BooksPage.test.tsx > BooksPage > requires confirmation before deleting a book 306ms
+   → Unable to find an accessible element with the role "button" and name "Smazat"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Moje Knihovna":
+  [36m<h1[39m
+    [33mclass[39m=[32m"text-h1"[39m
+  [36m/>[39m
+
+  Name "Smazat knihu?":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mstyle[39m=[32m"font-size: 13px; color: var(--sh-text-muted); margin-bottom: 4px; font-weight: 500;"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mstyle[39m=[32m"font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 12px; color: var(--sh-text-main); flex: 1 1 0%; display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden;"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vše":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; background: var(--sh-teal); color: white; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(15,157,88,0.2);"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Čtu":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Přečteno":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Půjčeno":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Nepřečteno":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Hledat":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary"[39m
+    [33mstyle[39m=[32m"padding: 0px 20px; border-radius: var(--sh-radius-md);"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "delete-book-1":
+  [36m<button[39m
+    [33maria-label[39m=[32m"delete-book-1"[39m
+    [33mclass[39m=[32m"hover-lift"[39m
+    [33mstyle[39m=[32m"position: absolute; top: -8px; right: -8px; z-index: 2; border: 1px solid rgba(255, 255, 255, 0.8); border-radius: var(--sh-radius-pill); width: 28px; height: 28px; cursor: pointer; background: var(--sh-surface); color: var(--sh-text-muted); font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0px; box-shadow: var(--sh-shadow-sm); transition: all 0.2s ease;"[39m
+    [33mtitle[39m=[32m"Smazat knihu"[39m
+  [36m/>[39m
+
+  Name "Zrušit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-secondary"[39m
+  [36m/>[39m
+
+  Name "Smazat knihu":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary"[39m
+    [33mstyle[39m=[32m"background: var(--sh-red);"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "book-search-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"book-search-form"[39m
+    [33mstyle[39m=[32m"margin: 20px 24px 0px; display: flex; gap: 12px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Search books":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Search books"[39m
+    [33mplaceholder[39m=[32m"Hledat knihy, autory..."[39m
+    [33mstyle[39m=[32m"flex: 1 1 0%; background: transparent; font-size: 15px; font-family: \"Outfit\", sans-serif; outline: none; padding: 10px 0px; color: var(--sh-text-main);"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Clean Code Robert C. Martin Clean Code Nepřečteno":
+  [36m<a[39m
+    [33mhref[39m=[32m"/books/book-1"[39m
+    [33mstyle[39m=[32m"background: var(--sh-surface); border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; height: 100%; display: flex; flex-direction: column; box-shadow: var(--sh-shadow-sm);"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  dialog:
+
+  Name "delete-book-dialog":
+  [36m<div[39m
+    [33maria-label[39m=[32m"delete-book-dialog"[39m
+    [33mrole[39m=[32m"dialog"[39m
+    [33mstyle[39m=[32m"position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 0px 24px; animation: fadeIn 0.2s ease;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"md-max-w-4xl"[39m
+      [33mstyle[39m=[32m"margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 24px 24px 0px; display: flex; justify-content: space-between; align-items: flex-start;"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"text-h1"[39m
+          [36m>[39m
+            [0mMoje Knihovna[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-p"[39m
+          [36m>[39m
+            [0m1[0m
+            [0m [0m
+            [0mkniha[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 0px 8px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 16px 0px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(17, 17, 17); line-height: 1;"[39m
+            [36m>[39m
+              [0m1[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mCelkem[0m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(29, 158, 117); line-height: 1;"[39m
+            [36m>[39m
+              [0m0[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mPřečteno[0m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(186, 117, 23); line-height: 1;"[39m
+            [36m>[39m
+              [0m0[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mČtu[0m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(24, 95, 165); line-height: 1;"[39m
+            [36m>[39m
+              [0m0[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mPůjčeno[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"display: flex; gap: 10px; overflow-x: auto; padding: 12px 24px 0px; scrollbar-width: none;"[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; background: var(--sh-teal); color: white; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(15,157,88,0.2);"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mVše[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mČtu[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mPřečteno[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mPůjčeno[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mNepřečteno[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<form[39m
+        [33maria-label[39m=[32m"book-search-form"[39m
+        [33mstyle[39m=[32m"margin: 20px 24px 0px; display: flex; gap: 12px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mstyle[39m=[32m"flex: 1 1 0%; display: flex; align-items: center; gap: 12px; background: var(--sh-surface); border: 1.5px solid var(--sh-border); border-radius: var(--sh-radius-md); padding: 4px 16px; transition: border-color 0.2s, box-shadow 0.2s;"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mstyle[39m=[32m"font-size: 18px; color: var(--sh-text-muted);"[39m
+          [36m>[39m
+            [0m⌕[0m
+          [36m</span>[39m
+          [36m<input[39m
+            [33maria-label[39m=[32m"Search books"[39m
+            [33mplaceholder[39m=[32m"Hledat knihy, autory..."[39m
+            [33mstyle[39m=[32m"flex: 1 1 0%; background: transparent; font-size: 15px; font-family: \"Outfit\", sans-se...
+ ✓ src/pages/BooksPage.test.tsx > BooksPage > shows aggregated toast for failed books 71ms
+ × src/pages/LocationsPage.test.tsx > LocationsPage > shows error state when loading locations fails 1033ms
+   → Unable to find an element with the text: Failed to load locations.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 16px; background: var(--sh-red); color: white; border-radius: var(--sh-radius-md);"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mstyle[39m=[32m"margin: 0px 0px 12px 0px;"[39m
+        [36m>[39m
+          [0mChyba při načítání lokací.[0m
+        [36m</p>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"sh-btn-secondary hover-scale"[39m
+          [33mstyle[39m=[32m"background: white; color: var(--sh-red);"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mZkusit znovu[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 16px; background: var(--sh-red); color: white; border-radius: var(--sh-radius-md);"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mstyle[39m=[32m"margin: 0px 0px 12px 0px;"[39m
+        [36m>[39m
+          [0mChyba při načítání lokací.[0m
+        [36m</p>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"sh-btn-secondary hover-scale"[39m
+          [33mstyle[39m=[32m"background: white; color: var(--sh-red);"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mZkusit znovu[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ✓ src/pages/LocationsPage.test.tsx > LocationsPage > renders location list with mock data 53ms
+ × src/pages/LocationsPage.test.tsx > LocationsPage > submits create form and refreshes the list 670ms
+   → Unable to find an accessible element with the role "button" and name "Create location"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Správa umístění":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-h2"[39m
+    [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+  [36m/>[39m
+
+  Name "Přidat nové umístění":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "create-location-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"create-location-form"[39m
+    [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Room":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Room"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Obývák"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"Living Room"[39m
+  [36m/>[39m
+
+  Name "Furniture":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Furniture"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Billy 1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"Cabinet"[39m
+  [36m/>[39m
+
+  Name "Shelf":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Shelf"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"Top"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vytvořit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+    [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "Upravit":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Smazat":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mcellpadding[39m=[32m"16"[39m
+    [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+    [33mwidth[39m=[32m"100%"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead[39m
+    [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Místnost Knihovna Police Akce":
+  [36m<tr />[39m
+
+  Name "Office Bookshelf Shelf 1 Upravit Smazat":
+  [36m<tr[39m
+    [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Místnost":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Knihovna":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Police":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Akce":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Office":
+  [36m<td />[39m
+
+  Name "Bookshelf":
+  [36m<td />[39m
+
+  Name "Shelf 1":
+  [36m<td />[39m
+
+  Name "Upravit Smazat":
+  [36m<td[39m
+    [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m"Living Room"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m"Cabinet"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m"Top"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; background: var(--sh-surface);"[39m
+      [36m>[39m
+        [36m<table[39m
+          [33mcellpadding[39m=[32m"16"[39m
+          [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+          [33mwidth[39m=[32m"100%"[39m
+        [36m>[39m
+          [36m<thead[39m
+            [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+          [36m>[39m
+            [36m<tr>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mMístnost[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mKnihovna[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mPolice[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+              [36m>[39m
+                [0mAkce[0m
+              [36m</th>[39m
+            [36m</tr>[39m
+          [36m</thead>[39m
+          [36m<tbody>[39m
+            [36m<tr[39m
+              [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+            [36m>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"font-weight: 500;"[39m
+                [36m>[39m
+                  [0mOffice[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mBookshelf[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mShelf 1[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td[39m
+                [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mUpravit[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mSmazat[0m
+                [36m</button>[39m
+              [36m</td>[39m
+            [36m</tr>[39m
+          [36m</tbody>[39m
+        [36m</table>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ × src/pages/LocationsPage.test.tsx > LocationsPage > updates a location using inline edit form 153ms
+   → Unable to find an accessible element with the role "button" and name "Edit"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Správa umístění":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-h2"[39m
+    [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+  [36m/>[39m
+
+  Name "Přidat nové umístění":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "create-location-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"create-location-form"[39m
+    [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Room":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Room"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Obývák"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Furniture":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Furniture"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Billy 1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Shelf":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Shelf"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vytvořit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+    [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "Upravit":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Smazat":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mcellpadding[39m=[32m"16"[39m
+    [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+    [33mwidth[39m=[32m"100%"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead[39m
+    [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Místnost Knihovna Police Akce":
+  [36m<tr />[39m
+
+  Name "Office Bookshelf Shelf 1 Upravit Smazat":
+  [36m<tr[39m
+    [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Místnost":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Knihovna":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Police":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Akce":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Office":
+  [36m<td />[39m
+
+  Name "Bookshelf":
+  [36m<td />[39m
+
+  Name "Shelf 1":
+  [36m<td />[39m
+
+  Name "Upravit Smazat":
+  [36m<td[39m
+    [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; background: var(--sh-surface);"[39m
+      [36m>[39m
+        [36m<table[39m
+          [33mcellpadding[39m=[32m"16"[39m
+          [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+          [33mwidth[39m=[32m"100%"[39m
+        [36m>[39m
+          [36m<thead[39m
+            [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+          [36m>[39m
+            [36m<tr>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mMístnost[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mKnihovna[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mPolice[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+              [36m>[39m
+                [0mAkce[0m
+              [36m</th>[39m
+            [36m</tr>[39m
+          [36m</thead>[39m
+          [36m<tbody>[39m
+            [36m<tr[39m
+              [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+            [36m>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"font-weight: 500;"[39m
+                [36m>[39m
+                  [0mOffice[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mBookshelf[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mShelf 1[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td[39m
+                [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mUpravit[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mSmazat[0m
+                [36m</button>[39m
+              [36m</td>[39m
+            [36m</tr>[39m
+          [36m</tbody>[39m
+        [36m</table>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ × src/pages/LocationsPage.test.tsx > LocationsPage > requires confirmation before deleting a location 101ms
+   → Unable to find an accessible element with the role "button" and name "Delete"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Správa umístění":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-h2"[39m
+    [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+  [36m/>[39m
+
+  Name "Přidat nové umístění":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "create-location-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"create-location-form"[39m
+    [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Room":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Room"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Obývák"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Furniture":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Furniture"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Billy 1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Shelf":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Shelf"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vytvořit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+    [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "Upravit":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Smazat":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mcellpadding[39m=[32m"16"[39m
+    [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+    [33mwidth[39m=[32m"100%"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead[39m
+    [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Místnost Knihovna Police Akce":
+  [36m<tr />[39m
+
+  Name "Office Bookshelf Shelf 1 Upravit Smazat":
+  [36m<tr[39m
+    [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Místnost":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Knihovna":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Police":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Akce":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Office":
+  [36m<td />[39m
+
+  Name "Bookshelf":
+  [36m<td />[39m
+
+  Name "Shelf 1":
+  [36m<td />[39m
+
+  Name "Upravit Smazat":
+  [36m<td[39m
+    [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; background: var(--sh-surface);"[39m
+      [36m>[39m
+        [36m<table[39m
+          [33mcellpadding[39m=[32m"16"[39m
+          [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+          [33mwidth[39m=[32m"100%"[39m
+        [36m>[39m
+          [36m<thead[39m
+            [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+          [36m>[39m
+            [36m<tr>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mMístnost[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mKnihovna[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mPolice[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+              [36m>[39m
+                [0mAkce[0m
+              [36m</th>[39m
+            [36m</tr>[39m
+          [36m</thead>[39m
+          [36m<tbody>[39m
+            [36m<tr[39m
+              [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+            [36m>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"font-weight: 500;"[39m
+                [36m>[39m
+                  [0mOffice[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mBookshelf[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mShelf 1[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td[39m
+                [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mUpravit[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mSmazat[0m
+                [36m</button>[39m
+              [36m</td>[39m
+            [36m</tr>[39m
+          [36m</tbody>[39m
+        [36m</table>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/BooksPage.test.tsx > BooksPage > requires confirmation before deleting a book
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Smazat"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Moje Knihovna":
+  [36m<h1[39m
+    [33mclass[39m=[32m"text-h1"[39m
+  [36m/>[39m
+
+  Name "Smazat knihu?":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mstyle[39m=[32m"font-size: 13px; color: var(--sh-text-muted); margin-bottom: 4px; font-weight: 500;"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mstyle[39m=[32m"font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 12px; color: var(--sh-text-main); flex: 1 1 0%; display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden;"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vše":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; background: var(--sh-teal); color: white; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(15,157,88,0.2);"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Čtu":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Přečteno":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Půjčeno":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Nepřečteno":
+  [36m<button[39m
+    [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Hledat":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary"[39m
+    [33mstyle[39m=[32m"padding: 0px 20px; border-radius: var(--sh-radius-md);"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "delete-book-1":
+  [36m<button[39m
+    [33maria-label[39m=[32m"delete-book-1"[39m
+    [33mclass[39m=[32m"hover-lift"[39m
+    [33mstyle[39m=[32m"position: absolute; top: -8px; right: -8px; z-index: 2; border: 1px solid rgba(255, 255, 255, 0.8); border-radius: var(--sh-radius-pill); width: 28px; height: 28px; cursor: pointer; background: var(--sh-surface); color: var(--sh-text-muted); font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0px; box-shadow: var(--sh-shadow-sm); transition: all 0.2s ease;"[39m
+    [33mtitle[39m=[32m"Smazat knihu"[39m
+  [36m/>[39m
+
+  Name "Zrušit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-secondary"[39m
+  [36m/>[39m
+
+  Name "Smazat knihu":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary"[39m
+    [33mstyle[39m=[32m"background: var(--sh-red);"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "book-search-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"book-search-form"[39m
+    [33mstyle[39m=[32m"margin: 20px 24px 0px; display: flex; gap: 12px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Search books":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Search books"[39m
+    [33mplaceholder[39m=[32m"Hledat knihy, autory..."[39m
+    [33mstyle[39m=[32m"flex: 1 1 0%; background: transparent; font-size: 15px; font-family: \"Outfit\", sans-serif; outline: none; padding: 10px 0px; color: var(--sh-text-main);"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Clean Code Robert C. Martin Clean Code Nepřečteno":
+  [36m<a[39m
+    [33mhref[39m=[32m"/books/book-1"[39m
+    [33mstyle[39m=[32m"background: var(--sh-surface); border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; height: 100%; display: flex; flex-direction: column; box-shadow: var(--sh-shadow-sm);"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  dialog:
+
+  Name "delete-book-dialog":
+  [36m<div[39m
+    [33maria-label[39m=[32m"delete-book-dialog"[39m
+    [33mrole[39m=[32m"dialog"[39m
+    [33mstyle[39m=[32m"position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 0px 24px; animation: fadeIn 0.2s ease;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"md-max-w-4xl"[39m
+      [33mstyle[39m=[32m"margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 24px 24px 0px; display: flex; justify-content: space-between; align-items: flex-start;"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"text-h1"[39m
+          [36m>[39m
+            [0mMoje Knihovna[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-p"[39m
+          [36m>[39m
+            [0m1[0m
+            [0m [0m
+            [0mkniha[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 0px 8px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 16px 0px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(17, 17, 17); line-height: 1;"[39m
+            [36m>[39m
+              [0m1[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mCelkem[0m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(29, 158, 117); line-height: 1;"[39m
+            [36m>[39m
+              [0m0[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mPřečteno[0m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(186, 117, 23); line-height: 1;"[39m
+            [36m>[39m
+              [0m0[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mČtu[0m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"background: rgb(247, 247, 245); border-radius: 10px; padding: 10px 8px; text-align: center;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 20px; font-weight: 500; color: rgb(24, 95, 165); line-height: 1;"[39m
+            [36m>[39m
+              [0m0[0m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mstyle[39m=[32m"font-size: 10px; color: rgb(136, 136, 136); margin-top: 3px;"[39m
+            [36m>[39m
+              [0mPůjčeno[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"display: flex; gap: 10px; overflow-x: auto; padding: 12px 24px 0px; scrollbar-width: none;"[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; background: var(--sh-teal); color: white; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(15,157,88,0.2);"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mVše[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mČtu[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mPřečteno[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mPůjčeno[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mstyle[39m=[32m"padding: 8px 18px; border-radius: var(--sh-radius-pill); font-size: 14px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--sh-border); cursor: pointer; background: transparent; color: var(--sh-text-muted); transition: all 0.2s ease; box-shadow: none;"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mNepřečteno[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<form[39m
+        [33maria-label[39m=[32m"book-search-form"[39m
+        [33mstyle[39m=[32m"margin: 20px 24px 0px; display: flex; gap: 12px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mstyle[39m=[32m"flex: 1 1 0%; display: flex; align-items: center; gap: 12px; background: var(--sh-surface); border: 1.5px solid var(--sh-border); border-radius: var(--sh-radius-md); padding: 4px 16px; transition: border-color 0.2s, box-shadow 0.2s;"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mstyle[39m=[32m"font-size: 18px; color: var(--sh-text-muted);"[39m
+          [36m>[39m
+            [0m⌕[0m
+          [36m</span>[39m
+          [36m<input[39m
+            [33maria-label[39m=[32m"Search books"[39m
+            [33mplaceholder[39m=[32m"Hledat knihy, autory..."[39m
+            [33mstyle[39m=[32m"flex: 1 1 0%; background: transparent; font-size: 15px; font-family: \"Outfit\", sans-se...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/BooksPage.test.tsx:109:34
+    107|     expect(screen.getByRole('dialog', { name: 'delete-book-dialog' }))…
+    108| 
+    109|     await userEvent.click(screen.getByRole('button', { name: 'Smazat' …
+       |                                  ^
+    110| 
+    111|     await waitFor(() => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/pages/LocationsPage.test.tsx > LocationsPage > shows loading state while locations are being fetched
+TestingLibraryElementError: Unable to find an element with the text: Loading locations…. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+      [36m>[39m
+        [0mNačítám lokace…[0m
+      [36m</p>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/LocationsPage.test.tsx:57:19
+     55|     renderWithProviders(<LocationsPage />)
+     56| 
+     57|     expect(screen.getByText('Loading locations…')).toBeInTheDocument()
+       |                   ^
+     58|   })
+     59| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/pages/LocationsPage.test.tsx > LocationsPage > shows error state when loading locations fails
+TestingLibraryElementError: Unable to find an element with the text: Failed to load locations.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 16px; background: var(--sh-red); color: white; border-radius: var(--sh-radius-md);"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mstyle[39m=[32m"margin: 0px 0px 12px 0px;"[39m
+        [36m>[39m
+          [0mChyba při načítání lokací.[0m
+        [36m</p>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"sh-btn-secondary hover-scale"[39m
+          [33mstyle[39m=[32m"background: white; color: var(--sh-red);"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mZkusit znovu[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"padding: 16px; background: var(--sh-red); color: white; border-radius: var(--sh-radius-md);"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mstyle[39m=[32m"margin: 0px 0px 12px 0px;"[39m
+        [36m>[39m
+          [0mChyba při načítání lokací.[0m
+        [36m</p>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"sh-btn-secondary hover-scale"[39m
+          [33mstyle[39m=[32m"background: white; color: var(--sh-red);"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mZkusit znovu[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/LocationsPage.test.tsx:65:25
+     63|     renderWithProviders(<LocationsPage />)
+     64| 
+     65|     expect(await screen.findByText('Failed to load locations.')).toBeI…
+       |                         ^
+     66|     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDoc…
+     67|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/pages/LocationsPage.test.tsx > LocationsPage > submits create form and refreshes the list
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Create location"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Správa umístění":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-h2"[39m
+    [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+  [36m/>[39m
+
+  Name "Přidat nové umístění":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "create-location-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"create-location-form"[39m
+    [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Room":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Room"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Obývák"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"Living Room"[39m
+  [36m/>[39m
+
+  Name "Furniture":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Furniture"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Billy 1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"Cabinet"[39m
+  [36m/>[39m
+
+  Name "Shelf":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Shelf"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m"Top"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vytvořit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+    [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "Upravit":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Smazat":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mcellpadding[39m=[32m"16"[39m
+    [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+    [33mwidth[39m=[32m"100%"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead[39m
+    [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Místnost Knihovna Police Akce":
+  [36m<tr />[39m
+
+  Name "Office Bookshelf Shelf 1 Upravit Smazat":
+  [36m<tr[39m
+    [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Místnost":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Knihovna":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Police":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Akce":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Office":
+  [36m<td />[39m
+
+  Name "Bookshelf":
+  [36m<td />[39m
+
+  Name "Shelf 1":
+  [36m<td />[39m
+
+  Name "Upravit Smazat":
+  [36m<td[39m
+    [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m"Living Room"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m"Cabinet"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m"Top"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; background: var(--sh-surface);"[39m
+      [36m>[39m
+        [36m<table[39m
+          [33mcellpadding[39m=[32m"16"[39m
+          [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+          [33mwidth[39m=[32m"100%"[39m
+        [36m>[39m
+          [36m<thead[39m
+            [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+          [36m>[39m
+            [36m<tr>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mMístnost[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mKnihovna[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mPolice[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+              [36m>[39m
+                [0mAkce[0m
+              [36m</th>[39m
+            [36m</tr>[39m
+          [36m</thead>[39m
+          [36m<tbody>[39m
+            [36m<tr[39m
+              [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+            [36m>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"font-weight: 500;"[39m
+                [36m>[39m
+                  [0mOffice[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mBookshelf[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mShelf 1[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td[39m
+                [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mUpravit[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mSmazat[0m
+                [36m</button>[39m
+              [36m</td>[39m
+            [36m</tr>[39m
+          [36m</tbody>[39m
+        [36m</table>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/LocationsPage.test.tsx:97:34
+     95|     await userEvent.type(screen.getByLabelText('Furniture'), 'Cabinet')
+     96|     await userEvent.type(screen.getByLabelText('Shelf'), 'Top')
+     97|     await userEvent.click(screen.getByRole('button', { name: 'Create l…
+       |                                  ^
+     98| 
+     99|     expect(await screen.findByText('Living Room')).toBeInTheDocument()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/pages/LocationsPage.test.tsx > LocationsPage > updates a location using inline edit form
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Edit"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Správa umístění":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-h2"[39m
+    [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+  [36m/>[39m
+
+  Name "Přidat nové umístění":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "create-location-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"create-location-form"[39m
+    [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Room":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Room"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Obývák"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Furniture":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Furniture"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Billy 1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Shelf":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Shelf"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vytvořit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+    [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "Upravit":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Smazat":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mcellpadding[39m=[32m"16"[39m
+    [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+    [33mwidth[39m=[32m"100%"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead[39m
+    [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Místnost Knihovna Police Akce":
+  [36m<tr />[39m
+
+  Name "Office Bookshelf Shelf 1 Upravit Smazat":
+  [36m<tr[39m
+    [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Místnost":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Knihovna":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Police":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Akce":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Office":
+  [36m<td />[39m
+
+  Name "Bookshelf":
+  [36m<td />[39m
+
+  Name "Shelf 1":
+  [36m<td />[39m
+
+  Name "Upravit Smazat":
+  [36m<td[39m
+    [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; background: var(--sh-surface);"[39m
+      [36m>[39m
+        [36m<table[39m
+          [33mcellpadding[39m=[32m"16"[39m
+          [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+          [33mwidth[39m=[32m"100%"[39m
+        [36m>[39m
+          [36m<thead[39m
+            [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+          [36m>[39m
+            [36m<tr>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mMístnost[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mKnihovna[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mPolice[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+              [36m>[39m
+                [0mAkce[0m
+              [36m</th>[39m
+            [36m</tr>[39m
+          [36m</thead>[39m
+          [36m<tbody>[39m
+            [36m<tr[39m
+              [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+            [36m>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"font-weight: 500;"[39m
+                [36m>[39m
+                  [0mOffice[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mBookshelf[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mShelf 1[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td[39m
+                [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mUpravit[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mSmazat[0m
+                [36m</button>[39m
+              [36m</td>[39m
+            [36m</tr>[39m
+          [36m</tbody>[39m
+        [36m</table>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/LocationsPage.test.tsx:115:34
+    113| 
+    114|     await screen.findByText('Office')
+    115|     await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+       |                                  ^
+    116| 
+    117|     const editRoom = screen.getByLabelText('Edit room')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/pages/LocationsPage.test.tsx > LocationsPage > requires confirmation before deleting a location
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Delete"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Správa umístění":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-h2"[39m
+    [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+  [36m/>[39m
+
+  Name "Přidat nové umístění":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-h3"[39m
+    [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-p"[39m
+    [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "create-location-form":
+  [36m<form[39m
+    [33maria-label[39m=[32m"create-location-form"[39m
+    [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Room":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Room"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Obývák"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Furniture":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Furniture"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. Billy 1"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Shelf":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Shelf"[39m
+    [33mclass[39m=[32m"sh-input"[39m
+    [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+    [33mrequired[39m=[32m""[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Vytvořit":
+  [36m<button[39m
+    [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+    [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "Upravit":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Smazat":
+  [36m<button[39m
+    [33mclass[39m=[32m"hover-scale"[39m
+    [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mcellpadding[39m=[32m"16"[39m
+    [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+    [33mwidth[39m=[32m"100%"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead[39m
+    [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Místnost Knihovna Police Akce":
+  [36m<tr />[39m
+
+  Name "Office Bookshelf Shelf 1 Upravit Smazat":
+  [36m<tr[39m
+    [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Místnost":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Knihovna":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Police":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+  [36m/>[39m
+
+  Name "Akce":
+  [36m<th[39m
+    [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Office":
+  [36m<td />[39m
+
+  Name "Bookshelf":
+  [36m<td />[39m
+
+  Name "Shelf 1":
+  [36m<td />[39m
+
+  Name "Upravit Smazat":
+  [36m<td[39m
+    [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"container md-max-w-3xl"[39m
+      [33mstyle[39m=[32m"padding-top: 24px; padding-bottom: 40px; margin: 0px auto; width: 100%;"[39m
+    [36m>[39m
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-h2"[39m
+        [33mstyle[39m=[32m"margin-bottom: 4px;"[39m
+      [36m>[39m
+        [0mSpráva umístění[0m
+      [36m</h2>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-p"[39m
+        [33mstyle[39m=[32m"color: var(--sh-text-muted); margin-bottom: 24px;"[39m
+      [36m>[39m
+        [0mSpravujte seznam místností, nábytku a polic pro rychlé řazení knih.[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"background: var(--sh-surface); padding: 20px; border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); margin-bottom: 32px; box-shadow: var(--sh-shadow-sm);"[39m
+      [36m>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-h3"[39m
+          [33mstyle[39m=[32m"margin-top: 0px; margin-bottom: 16px; font-size: 16px;"[39m
+        [36m>[39m
+          [0mPřidat nové umístění[0m
+        [36m</h3>[39m
+        [36m<form[39m
+          [33maria-label[39m=[32m"create-location-form"[39m
+          [33mstyle[39m=[32m"display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mMístnost[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Room"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Obývák"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mKnihovna[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Furniture"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. Billy 1"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div>[39m
+            [36m<label[39m
+              [33mstyle[39m=[32m"font-size: 12px; font-weight: 500; color: var(--sh-text-muted); display: block; margin-bottom: 6px;"[39m
+            [36m>[39m
+              [0mPolice[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33maria-label[39m=[32m"Shelf"[39m
+              [33mclass[39m=[32m"sh-input"[39m
+              [33mplaceholder[39m=[32m"např. 3 odspodu"[39m
+              [33mrequired[39m=[32m""[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"sh-btn-primary hover-scale"[39m
+            [33mstyle[39m=[32m"padding: 12px 16px;"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mVytvořit[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mstyle[39m=[32m"border-radius: var(--sh-radius-lg); border: 1px solid var(--sh-border); overflow: hidden; background: var(--sh-surface);"[39m
+      [36m>[39m
+        [36m<table[39m
+          [33mcellpadding[39m=[32m"16"[39m
+          [33mstyle[39m=[32m"border-collapse: collapse; text-align: left; font-size: 14px;"[39m
+          [33mwidth[39m=[32m"100%"[39m
+        [36m>[39m
+          [36m<thead[39m
+            [33mstyle[39m=[32m"background: rgba(0, 0, 0, 0.02); border-bottom: 1px solid var(--sh-border);"[39m
+          [36m>[39m
+            [36m<tr>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mMístnost[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mKnihovna[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); white-space: nowrap;"[39m
+              [36m>[39m
+                [0mPolice[0m
+              [36m</th>[39m
+              [36m<th[39m
+                [33mstyle[39m=[32m"font-weight: 600; color: var(--sh-text-muted); text-align: right; white-space: nowrap;"[39m
+              [36m>[39m
+                [0mAkce[0m
+              [36m</th>[39m
+            [36m</tr>[39m
+          [36m</thead>[39m
+          [36m<tbody>[39m
+            [36m<tr[39m
+              [33mstyle[39m=[32m"border-bottom: 1px solid var(--sh-border); transition: background 0.2s; background: transparent;"[39m
+            [36m>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"font-weight: 500;"[39m
+                [36m>[39m
+                  [0mOffice[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mBookshelf[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td>[39m
+                [36m<span[39m
+                  [33mstyle[39m=[32m"color: var(--sh-text-muted);"[39m
+                [36m>[39m
+                  [0mShelf 1[0m
+                [36m</span>[39m
+              [36m</td>[39m
+              [36m<td[39m
+                [33mstyle[39m=[32m"display: flex; gap: 8px; justify-content: flex-end; align-items: center; min-height: 48px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-teal); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mUpravit[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"hover-scale"[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--sh-red); cursor: pointer; font-size: 13px; font-weight: 500; padding: 6px 8px;"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mSmazat[0m
+                [36m</button>[39m
+              [36m</td>[39m
+            [36m</tr>[39m
+          [36m</tbody>[39m
+        [36m</table>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/LocationsPage.test.tsx:140:34
+    138| 
+    139|     await screen.findByText('Office')
+    140|     await userEvent.click(screen.getByRole('button', { name: 'Delete' …
+       |                                  ^
+    141| 
+    142|     expect(screen.getByRole('dialog', { name: 'delete-location-dialog'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  6 failed | 5 passed (11)
+   Start at  18:20:34
+   Duration  6.05s (transform 1.18s, setup 1.27s, collect 3.66s, tests 3.82s, environment 4.56s, prepare 665ms)
+

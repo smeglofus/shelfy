@@ -8,7 +8,7 @@ export function SettingsPage() {
   const showError = useToastStore((s) => s.showError)
 
   return (
-    <section className='container' style={{ maxWidth: 760 }}>
+    <section className='container md-max-w-3xl' style={{ margin: '0 auto', width: '100%' }}>
       <h2 className='text-h2'>Nastavení</h2>
 
       <article

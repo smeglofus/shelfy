@@ -58,61 +58,67 @@ export function HomePage() {
   }
 
   return (
-    <section className="container flex-col gap-6">
-      <div>
-        <h2 className="text-h1" style={{ marginBottom: 4 }}>Přehled</h2>
-        <p className="text-p">Celkem máte <strong style={{ color: 'var(--sh-teal)' }}>{summaryQuery.data?.total ?? 0}</strong> knih.</p>
-      </div>
+    <section className="container md-max-w-4xl flex-col gap-6" style={{ margin: '0 auto', width: '100%' }}>
+      <div className="md-grid-2">
+        <div className="flex-col gap-6">
+          <div>
+            <h2 className="text-h1" style={{ marginBottom: 4 }}>Přehled</h2>
+            <p className="text-p">Celkem máte <strong style={{ color: 'var(--sh-teal)' }}>{summaryQuery.data?.total ?? 0}</strong> knih.</p>
+          </div>
 
-      <div>
-        <h3 className="text-h3">Knihy podle umístění</h3>
-        <div className="flex-col gap-3">
-          {(locationsQuery.data ?? []).map((location) => (
-            <div key={location.id} style={{
-              background: 'var(--sh-surface)',
-              border: '1px solid var(--sh-border)',
-              borderRadius: 'var(--sh-radius-md)',
-              padding: '16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              boxShadow: 'var(--sh-shadow-sm)',
-            }} className="hover-lift">
-              <span className="text-p" style={{ fontWeight: 500 }}>
-                {location.room} / {location.furniture} / {location.shelf}
-              </span>
-              <span style={{
-                background: 'var(--sh-teal-bg)',
-                color: 'var(--sh-teal-text)',
-                padding: '4px 12px',
-                borderRadius: 'var(--sh-radius-pill)',
-                fontWeight: 600,
-                fontSize: 14,
-              }}>
-                {booksPerLocationTotalById.get(location.id) ?? 0}
-              </span>
+          <div>
+            <h3 className="text-h3" style={{ marginTop: 0 }}>Knihy podle umístění</h3>
+            <div className="flex-col gap-3">
+              {(locationsQuery.data ?? []).map((location) => (
+                <div key={location.id} style={{
+                  background: 'var(--sh-surface)',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  padding: '16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  boxShadow: 'var(--sh-shadow-sm)',
+                }} className="hover-lift">
+                  <span className="text-p" style={{ fontWeight: 500 }}>
+                    {location.room} / {location.furniture} / {location.shelf}
+                  </span>
+                  <span style={{
+                    background: 'var(--sh-teal-bg)',
+                    color: 'var(--sh-teal-text)',
+                    padding: '4px 12px',
+                    borderRadius: 'var(--sh-radius-pill)',
+                    fontWeight: 600,
+                    fontSize: 14,
+                  }}>
+                    {booksPerLocationTotalById.get(location.id) ?? 0}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
-      </div>
 
-      <div>
-        <h3 className="text-h3">Naposledy přidáno</h3>
-        <div className="flex-col gap-3">
-          {(summaryQuery.data?.items ?? []).map((book) => (
-            <div key={book.id} style={{
-              background: 'var(--sh-surface)',
-              border: '1px solid var(--sh-border)',
-              borderRadius: 'var(--sh-radius-md)',
-              padding: '16px',
-              boxShadow: 'var(--sh-shadow-sm)',
-            }} className="hover-lift flex-col gap-2">
-              <span className="text-p" style={{ fontWeight: 600 }}>{book.title}</span>
-              <span className="text-small" style={{ color: 'var(--sh-text-muted)' }}>
-                Přidáno {DATE_FORMATTER.format(new Date(book.created_at))}
-              </span>
+        <div className="flex-col gap-6">
+          <div>
+            <h3 className="text-h3" style={{ marginTop: 0 }}>Naposledy přidáno</h3>
+            <div className="flex-col gap-3">
+              {(summaryQuery.data?.items ?? []).map((book) => (
+                <div key={book.id} style={{
+                  background: 'var(--sh-surface)',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  padding: '16px',
+                  boxShadow: 'var(--sh-shadow-sm)',
+                }} className="hover-lift flex-col gap-2">
+                  <span className="text-p" style={{ fontWeight: 600 }}>{book.title}</span>
+                  <span className="text-small" style={{ color: 'var(--sh-text-muted)' }}>
+                    Přidáno {DATE_FORMATTER.format(new Date(book.created_at))}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>

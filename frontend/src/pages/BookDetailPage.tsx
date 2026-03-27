@@ -67,7 +67,7 @@ export function BookDetailPage() {
   const longDesc = (book.description ?? '').length > 160
 
   return (
-    <section className="container" style={{ maxWidth: 760, paddingBottom: 40 }}>
+    <section className="container md-max-w-3xl" style={{ paddingBottom: 40, margin: '0 auto', width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <button

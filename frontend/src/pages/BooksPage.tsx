@@ -85,7 +85,7 @@ export function BooksPage() {
   const total = booksQuery.data?.total ?? 0
 
   return (
-    <div>
+    <div className="md-max-w-4xl" style={{ margin: '0 auto', width: '100%' }}>
       <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="text-h1">Moje Knihovna</h1>

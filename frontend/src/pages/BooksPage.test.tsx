@@ -106,7 +106,7 @@ describe('BooksPage', () => {
 
     expect(screen.getByRole('dialog', { name: 'delete-book-dialog' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Smazat' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Smazat knihu' }))
 
     await waitFor(() => {
       expect(deleteBook).toHaveBeenCalledWith('book-1')

@@ -54,7 +54,7 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    expect(screen.getByText('Loading locations…')).toBeInTheDocument()
+    expect(screen.getByText('Načítám lokace…')).toBeInTheDocument()
   })
 
   it('shows error state when loading locations fails', async () => {
@@ -62,8 +62,8 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    expect(await screen.findByText('Failed to load locations.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(await screen.findByText('Chyba při načítání lokací.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Zkusit znovu' })).toBeInTheDocument()
   })
 
   it('renders location list with mock data', async () => {
@@ -94,7 +94,7 @@ describe('LocationsPage', () => {
     await userEvent.type(screen.getByLabelText('Room'), 'Living Room')
     await userEvent.type(screen.getByLabelText('Furniture'), 'Cabinet')
     await userEvent.type(screen.getByLabelText('Shelf'), 'Top')
-    await userEvent.click(screen.getByRole('button', { name: 'Create location' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Vytvořit' }))
 
     expect(await screen.findByText('Living Room')).toBeInTheDocument()
     expect(screen.getByText('Cabinet')).toBeInTheDocument()
@@ -112,12 +112,12 @@ describe('LocationsPage', () => {
     renderWithProviders(<LocationsPage />)
 
     await screen.findByText('Office')
-    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Upravit' }))
 
     const editRoom = screen.getByLabelText('Edit room')
     await userEvent.clear(editRoom)
     await userEvent.type(editRoom, 'Study')
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Uložit' }))
 
     await waitFor(() => {
       expect(updateLocation).toHaveBeenCalledWith('loc-1', {
@@ -137,11 +137,11 @@ describe('LocationsPage', () => {
     renderWithProviders(<LocationsPage />)
 
     await screen.findByText('Office')
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Smazat' }))
 
     expect(screen.getByRole('dialog', { name: 'delete-location-dialog' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Smazat navždy' }))
 
     await waitFor(() => {
       expect(screen.queryByText('Office')).not.toBeInTheDocument()

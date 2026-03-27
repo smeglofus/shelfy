@@ -38,7 +38,7 @@ export function LocationsPage() {
   }, [locationsQuery.data])
 
   return (
-    <section className="container" style={{ paddingTop: 24, paddingBottom: 40, maxWidth: 800 }}>
+    <section className="container md-max-w-3xl" style={{ paddingTop: 24, paddingBottom: 40, margin: '0 auto', width: '100%' }}>
       <h2 className="text-h2" style={{ marginBottom: 4 }}>Správa umístění</h2>
       <p className="text-p" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>Spravujte seznam místností, nábytku a polic pro rychlé řazení knih.</p>
 

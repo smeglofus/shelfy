@@ -70,7 +70,7 @@ export function AddBookPage() {
   }
 
   return (
-    <div className="container">
+    <div className="container md-max-w-3xl" style={{ margin: '0 auto', width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
         <button
@@ -133,14 +133,16 @@ export function AddBookPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Název <span style={{ color: 'var(--sh-red)' }}>*</span></label>
-          <input className="sh-input" placeholder="např. Duna" value={title} onChange={e => setTitle(e.target.value)} required />
-        </div>
+        <div className="md-grid-2">
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Název <span style={{ color: 'var(--sh-red)' }}>*</span></label>
+            <input className="sh-input" placeholder="např. Duna" value={title} onChange={e => setTitle(e.target.value)} required />
+          </div>
 
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Autor</label>
-          <input className="sh-input" placeholder="např. Frank Herbert" value={author} onChange={e => setAuthor(e.target.value)} />
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Autor</label>
+            <input className="sh-input" placeholder="např. Frank Herbert" value={author} onChange={e => setAuthor(e.target.value)} />
+          </div>
         </div>
 
         {/* 3-level location */}
@@ -188,33 +190,35 @@ export function AddBookPage() {
           </div>
         </div>
 
-        {/* Reading status */}
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Stav</label>
-            <select
-              className="sh-select"
-              value={reading}
-              onChange={e => setReading(e.target.value as ReadingStatus)}
-            >
-              <option value="unread">Nepřečteno</option>
-              <option value="reading">Čtu</option>
-              <option value="read">Přečteno</option>
-              <option value="lent">Půjčeno</option>
-            </select>
+        <div className="md-grid-2">
+          {/* Reading status */}
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Stav</label>
+              <select
+                className="sh-select"
+                value={reading}
+                onChange={e => setReading(e.target.value as ReadingStatus)}
+              >
+                <option value="unread">Nepřečteno</option>
+                <option value="reading">Čtu</option>
+                <option value="read">Přečteno</option>
+                <option value="lent">Půjčeno</option>
+              </select>
+            </div>
+
+            {reading === 'lent' && (
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Komu</label>
+                <input className="sh-input" placeholder="Jméno..." value={lentTo} onChange={e => setLentTo(e.target.value)} />
+              </div>
+            )}
           </div>
 
-          {reading === 'lent' && (
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Komu</label>
-              <input className="sh-input" placeholder="Jméno..." value={lentTo} onChange={e => setLentTo(e.target.value)} />
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>ISBN <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>(volitelné)</span></label>
-          <input className="sh-input" placeholder="978-80-…" value={isbn} onChange={e => setIsbn(e.target.value)} />
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>ISBN <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>(volitelné)</span></label>
+            <input className="sh-input" placeholder="978-80-…" value={isbn} onChange={e => setIsbn(e.target.value)} />
+          </div>
         </div>
 
         <button
