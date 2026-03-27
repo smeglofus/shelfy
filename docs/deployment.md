@@ -183,3 +183,48 @@ Before exposing Shelfy publicly, confirm:
 - [ ] Docker secrets are used for all credentials and rotated periodically.
 - [ ] CORS allowlist contains only trusted frontend origins.
 - [ ] Images are pinned to explicit tags (avoid latest).
+
+
+## 11) Local Docker Compose troubleshooting
+
+### White screen on `/login`
+
+Most common cause in local dev is missing frontend API base URL.
+
+Create `frontend/.env` (local, gitignored):
+
+```env
+VITE_API_BASE_URL=http://192.168.88.3:8000
+```
+
+Then restart frontend service:
+
+```bash
+cd infra
+docker compose restart frontend
+```
+
+### "Network error" on login
+
+Usually CORS mismatch between frontend origin and backend allowlist.
+
+Create/update `infra/.env` (local, gitignored):
+
+```env
+CORS_ALLOWED_ORIGINS=["http://localhost:5173","http://192.168.88.3:5173"]
+```
+
+Recreate backend so env change is applied:
+
+```bash
+cd infra
+docker compose up -d --force-recreate backend
+```
+
+Validate preflight:
+
+```bash
+curl -i -X OPTIONS http://127.0.0.1:8000/api/v1/auth/login   -H "Origin: http://192.168.88.3:5173"   -H "Access-Control-Request-Method: POST"   -H "Access-Control-Request-Headers: content-type"
+```
+
+Expected: `HTTP/1.1 200 OK` and `access-control-allow-origin: http://192.168.88.3:5173`.

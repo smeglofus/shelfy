@@ -5,3 +5,7 @@ node_modules/
 frontend/dist/
 .env
 backend/test_*.db
+frontend/.env
+infra/.env
+.env.local
+infra/.env.local

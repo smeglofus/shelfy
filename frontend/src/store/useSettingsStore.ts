@@ -15,23 +15,48 @@ function applyThemeClass(isDark: boolean): void {
   root.classList.toggle('light', !isDark)
 }
 
+function safeReadPersistedDarkMode(): boolean | null {
+  try {
+    const persisted = localStorage.getItem(STORAGE_KEY)
+    if (persisted === null) return null
+    return persisted === 'true'
+  } catch {
+    return null
+  }
+}
+
+function safeWritePersistedDarkMode(value: boolean): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, String(value))
+  } catch {
+    // no-op for locked-down browsers/storage
+  }
+}
+
+function safeSystemPrefersDark(): boolean {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  } catch {
+    return false
+  }
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   darkMode: false,
   initialize: () => {
-    const persisted = localStorage.getItem(STORAGE_KEY)
-    const fromStorage = persisted !== null ? persisted === 'true' : null
-    const preferred = fromStorage ?? window.matchMedia('(prefers-color-scheme: dark)').matches
+    const fromStorage = safeReadPersistedDarkMode()
+    const preferred = fromStorage ?? safeSystemPrefersDark()
     applyThemeClass(preferred)
     set({ darkMode: preferred })
   },
   setDarkMode: (value: boolean) => {
-    localStorage.setItem(STORAGE_KEY, String(value))
+    safeWritePersistedDarkMode(value)
     applyThemeClass(value)
     set({ darkMode: value })
   },
   toggleDarkMode: () => {
     const next = !get().darkMode
-    localStorage.setItem(STORAGE_KEY, String(next))
+    safeWritePersistedDarkMode(next)
     applyThemeClass(next)
     set({ darkMode: next })
   },
