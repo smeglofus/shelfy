@@ -8,6 +8,20 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: shelfy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout
@@ -35,7 +49,7 @@ jobs:
       - name: Pytest with coverage gate
         working-directory: backend
         env:
-          TEST_DATABASE_URL: sqlite+aiosqlite:///./ci_test.db
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
         run: pytest --cov=app --cov-fail-under=80 tests
 
 

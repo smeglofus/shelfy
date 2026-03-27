@@ -8,6 +8,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
+class ReadingStatus(str, Enum):
+    UNREAD = "unread"
+    READING = "reading"
+    READ = "read"
+    LENT = "lent"
+
+
 class BookProcessingStatus(str, Enum):
     MANUAL = "manual"
     PENDING = "pending"
@@ -31,6 +38,19 @@ class Book(Base):
     location_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("locations.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    reading_status: Mapped[ReadingStatus | None] = mapped_column(
+        SAEnum(
+            ReadingStatus,
+            values_callable=lambda e: [member.value for member in e],
+            validate_strings=True,
+            name="reading_status",
+            create_type=False,
+        ),
+        nullable=True,
+        default=ReadingStatus.UNREAD,
+        server_default=ReadingStatus.UNREAD.value,
+    )
+    lent_to: Mapped[str | None] = mapped_column(String(300), nullable=True)
     processing_status: Mapped[BookProcessingStatus] = mapped_column(
         SAEnum(
             BookProcessingStatus,
