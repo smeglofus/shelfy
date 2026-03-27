@@ -9,7 +9,7 @@ const CONFIG: Record<ReadingStatus, { label: string; bg: string; color: string }
   read:    { label: 'Přečteno',  bg: 'var(--sh-teal-bg)', color: 'var(--sh-teal-text)' },
   reading: { label: 'Čtu',       bg: 'var(--sh-amber-bg)', color: 'var(--sh-amber-text)' },
   lent:    { label: 'Půjčeno',   bg: 'var(--sh-blue-bg)', color: 'var(--sh-blue-text)' },
-  unread:  { label: 'Nepřečteno',bg: '#F5F6F8', color: 'var(--sh-text-muted)' },
+  unread:  { label: 'Nepřečteno',bg: 'var(--sh-surface-elevated)', color: 'var(--sh-text-muted)' },
 }
 
 export function ReadingStatusBadge({ status, lentTo }: Props) {

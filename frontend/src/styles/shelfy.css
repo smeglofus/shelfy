@@ -25,6 +25,7 @@
   --sh-bg:        #F8F9FA;
   --sh-bg-main:   #F8F9FA; /* alias */
   --sh-surface:   #FFFFFF;
+  --sh-surface-elevated: #F7F7F5;
   --sh-text-main: #202124;
   --sh-text-muted:#5F6368;
   --sh-input-bg:  #FAFAFB;
@@ -81,16 +82,32 @@ body {
   flex: 1;
   overflow-y: auto;
   padding-bottom: 100px; /* Space for mobile nav */
+  background: var(--sh-bg);
 }
 .sh-scroll.no-nav {
   padding-bottom: 0;
+}
+
+/* ── Bottom Nav (mobile) ──────────────────────────────────────────── */
+.sh-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--sh-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--sh-border);
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+  z-index: 100;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.03);
 }
 
 /* Base Desktop Layout (min-width: 768px) */
 @media (min-width: 768px) {
   .sh-app {
     flex-direction: row;
-    max-width: 1440px;
   }
   
   .sh-scroll {
@@ -102,6 +119,10 @@ body {
   }
   .sh-scroll.no-nav {
     padding-left: 0;
+  }
+
+  .sh-bottom-nav {
+    display: none;
   }
 }
 
@@ -242,8 +263,11 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   padding-bottom: 24px; 
 }
 
-/* Responsive Utilities */
+/* Responsive Utilities — 768px (tablet+) */
 @media (min-width: 768px) {
+  .container {
+    padding: 32px 40px;
+  }
   .md-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -264,14 +288,162 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
     margin-left: auto;
     margin-right: auto;
   }
+  /* Hide on desktop */
+  .md-hide { display: none !important; }
+  /* Show on desktop only */
+  .md-show { display: block !important; }
+  .md-show-flex { display: flex !important; }
 }
 
-/* ── Dark Mode ───────────────────────────────────────────────────────────── */
+/* Responsive Utilities — 1024px (desktop) */
+@media (min-width: 1024px) {
+  .container {
+    padding: 40px 48px;
+  }
+  .lg-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .md-max-w-4xl {
+    max-width: 1100px;
+  }
+}
+
+/* Responsive Utilities — 1280px (widescreen) */
+@media (min-width: 1280px) {
+  .md-max-w-4xl {
+    max-width: 1200px;
+  }
+  .md-max-w-3xl {
+    max-width: 900px;
+  }
+}
+
+/* ── Desktop sidebar active indicator ──────────────────────────── */
+.sh-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: var(--sh-radius-md);
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+  background: transparent;
+  color: var(--sh-text-muted);
+  font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  position: relative;
+}
+.sh-sidebar-btn:hover {
+  background: var(--sh-border);
+  color: var(--sh-text-main);
+}
+.sh-sidebar-btn.active {
+  background: var(--sh-teal-bg);
+  color: var(--sh-teal);
+  font-weight: 600;
+}
+.sh-sidebar-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--sh-teal);
+}
+
+/* ── LocationsPage responsive table → cards on mobile ──────────── */
+.sh-locations-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+.sh-locations-table th {
+  font-weight: 600;
+  color: var(--sh-text-muted);
+  white-space: nowrap;
+  padding: 16px;
+}
+.sh-locations-table td {
+  padding: 16px;
+}
+.sh-locations-table thead {
+  background: var(--sh-surface-elevated);
+  border-bottom: 1px solid var(--sh-border);
+}
+.sh-locations-table tr {
+  border-bottom: 1px solid var(--sh-border);
+  transition: background 0.2s;
+}
+
+/* Mobile: card-based locations */
+@media (max-width: 767px) {
+  .sh-locations-desktop { display: none !important; }
+}
+@media (min-width: 768px) {
+  .sh-locations-mobile { display: none !important; }
+}
+
+/* ── BookDetail desktop side-by-side ───────────────────────────── */
+@media (min-width: 1024px) {
+  .sh-book-detail-article {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+  }
+  .sh-book-detail-cover {
+    height: 100% !important;
+    min-height: 400px;
+    position: sticky;
+    top: 0;
+  }
+}
+
+/* ── Login desktop split ───────────────────────────────────────── */
+.sh-login-branding {
+  display: none;
+}
+@media (min-width: 768px) {
+  .sh-login-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .sh-login-branding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0F9D58 0%, #085041 100%);
+    color: white;
+    padding: 48px;
+    gap: 24px;
+  }
+}
+
+/* ── AddBook desktop layout ────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .sh-addbook-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+}
+
+/* ── Dark Mode ───────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
     --sh-bg:            #0d1117;
     --sh-bg-main:       #0d1117;
     --sh-surface:       #161b22;
+    --sh-surface-elevated: #1c2129;
 
     --sh-text-main:     #e6edf3;
     --sh-text-muted:    #8b949e;
@@ -318,6 +490,7 @@ html.dark {
   --sh-bg: #0d1117;
   --sh-bg-main: #0d1117;
   --sh-surface: #161b22;
+  --sh-surface-elevated: #1c2129;
   --sh-text-main: #e6edf3;
   --sh-text-muted: #8b949e;
   --sh-border: rgba(255,255,255,0.08);
@@ -334,6 +507,7 @@ html.light {
   --sh-bg: #F8F9FA;
   --sh-bg-main: #F8F9FA;
   --sh-surface: #FFFFFF;
+  --sh-surface-elevated: #F7F7F5;
   --sh-text-main: #202124;
   --sh-text-muted: #5F6368;
   --sh-border: rgba(0,0,0,0.06);
