@@ -19,6 +19,7 @@ export function BooksPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [uploadJobId, setUploadJobId] = useState<string | null>(null)
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
+  const [locationFilter, setLocationFilter] = useState<string>('all')
   const toastedFailedIdsRef = useRef<Set<string>>(new Set())
 
   const tabItems: { label: string; value: ReadingStatus | null }[] = useMemo(
@@ -26,15 +27,14 @@ export function BooksPage() {
       { label: t('tabs.all'), value: null },
       { label: t('tabs.reading'), value: 'reading' },
       { label: t('tabs.read'), value: 'read' },
-      { label: t('tabs.lent'), value: 'lent' },
       { label: t('tabs.unread'), value: 'unread' },
     ],
     [t],
   )
 
   const queryParams = useMemo(
-    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, readingStatus: readingFilter ?? undefined }),
-    [page, search, readingFilter],
+    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, readingStatus: readingFilter ?? undefined, locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined }),
+    [page, search, readingFilter, locationFilter],
   )
 
   const booksQuery = useBooks(queryParams)
@@ -82,7 +82,14 @@ export function BooksPage() {
     uploadJobStatusQuery.isError,
   ])
 
-  const books = useMemo(() => booksQuery.data?.items ?? [], [booksQuery.data?.items])
+  const books = useMemo(() => {
+    const raw = booksQuery.data?.items ?? []
+    if (locationFilter === 'unassigned') {
+      return raw.filter((book) => !book.location_id)
+    }
+
+    return raw
+  }, [booksQuery.data?.items, locationFilter])
 
   const groups = useMemo(() => {
     const map = new Map<string | null, Book[]>()
@@ -193,6 +200,26 @@ export function BooksPage() {
           {t('books.search_button')}
         </button>
       </form>
+
+      <div style={{ margin: '12px 24px 0', display: 'flex', justifyContent: 'flex-end' }}>
+        <select
+          className="sh-select"
+          value={locationFilter}
+          onChange={(event) => {
+            setLocationFilter(event.target.value)
+            setPage(1)
+          }}
+          style={{ minWidth: 220 }}
+        >
+          <option value="all">All locations</option>
+          <option value="unassigned">Unassigned</option>
+          {(locationsQuery.data ?? []).map((location) => (
+            <option key={location.id} value={location.id}>
+              {location.room} / {location.furniture} / {location.shelf}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {uploadJobId && (
         <p style={{ margin: '16px 24px', fontSize: 14, color: 'var(--sh-amber)', fontWeight: 500, background: 'var(--sh-amber-bg)', padding: '12px 16px', borderRadius: 'var(--sh-radius-md)' }}>
