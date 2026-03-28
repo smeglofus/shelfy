@@ -132,9 +132,12 @@ export function BookCard({ book, onDelete }: Props) {
             {book.title}
           </p>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
-            <ReadingStatusBadge
-              status={book.reading_status ?? 'unread'}
-            />
+            <ReadingStatusBadge status={book.reading_status ?? 'unread'} />
+            {book.is_currently_lent && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)', fontSize: 12, fontWeight: 600, background: 'var(--sh-amber-bg)', color: 'var(--sh-amber)' }}>
+                Lent
+              </span>
+            )}
           </div>
         </div>
       </Link>

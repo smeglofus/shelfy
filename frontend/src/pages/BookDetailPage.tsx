@@ -6,6 +6,7 @@ import { useBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES } from '../lib/routes'
 import type { ReadingStatus } from '../lib/types'
+import { LoanHistory } from '../components/LoanHistory'
 
 const GRADIENTS: [string, string][] = [
   ['#1D9E75', '#085041'],
@@ -228,7 +229,10 @@ export function BookDetailPage() {
             </button>
           </form>
 
+          
           <hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
+          <LoanHistory bookId={book.id} />
+<hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"

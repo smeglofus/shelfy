@@ -1,87 +1,85 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
-import { formatApiError, login } from '../lib/api'
-import { persistTokens } from '../lib/auth'
-import { useToastStore } from '../lib/toast-store'
+import { useAuth } from '../contexts/AuthContext'
+import { formatApiError } from '../lib/api'
 
 interface RouteState {
   from?: string
 }
 
+type AuthMode = 'signin' | 'register'
+
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const showError = useToastStore((state) => state.showError)
+  const { login, register, isAuthenticated } = useAuth()
 
+  const [mode, setMode] = useState<AuthMode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const loginMutation = useMutation({
-    mutationFn: login,
-    onSuccess: (tokens) => {
-      persistTokens(tokens.access_token)
-      const state = location.state as RouteState | undefined
-      navigate(state?.from ?? '/books', { replace: true }) // Defaulting to /books for better UX
-    },
-    onError: (error: unknown) => {
-      showError(formatApiError(error))
-    },
-  })
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />
+  }
 
   return (
     <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--sh-bg)' }}>
-      <div style={{ background: 'var(--sh-surface)', padding: '40px 32px', borderRadius: 'var(--sh-radius-xl)', width: '100%', maxWidth: 400, boxShadow: 'var(--sh-shadow-lg)', border: '1px solid var(--sh-border)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <h2 className="text-h1" style={{ marginBottom: 8 }}>Přihlášení</h2>
-          <p className="text-p" style={{ color: 'var(--sh-text-muted)' }}>Vítejte zpět ve své knihovně</p>
+      <div style={{ background: 'var(--sh-surface)', padding: '40px 32px', borderRadius: 'var(--sh-radius-xl)', width: '100%', maxWidth: 420, boxShadow: 'var(--sh-shadow-lg)', border: '1px solid var(--sh-border)' }}>
+        <div style={{ display: 'flex', marginBottom: 24, border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-pill)', overflow: 'hidden' }}>
+          <button type="button" onClick={() => setMode('signin')} style={{ flex: 1, border: 'none', padding: '10px 12px', background: mode === 'signin' ? 'var(--sh-teal-bg)' : 'transparent', color: 'var(--sh-text-main)', fontWeight: 600, cursor: 'pointer' }}>Sign in</button>
+          <button type="button" onClick={() => setMode('register')} style={{ flex: 1, border: 'none', padding: '10px 12px', background: mode === 'register' ? 'var(--sh-teal-bg)' : 'transparent', color: 'var(--sh-text-main)', fontWeight: 600, cursor: 'pointer' }}>Register</button>
         </div>
 
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            loginMutation.mutate({ email, password })
+            setError(null)
+
+            if (mode === 'register' && password !== confirmPassword) {
+              setError('Passwords do not match.')
+              return
+            }
+
+            setIsSubmitting(true)
+            const authAction = mode === 'signin' ? login(email, password) : register(email, password)
+
+            authAction
+              .then(() => {
+                const state = location.state as RouteState | undefined
+                navigate(state?.from ?? '/', { replace: true })
+              })
+              .catch((authError: unknown) => {
+                setError(formatApiError(authError))
+              })
+              .finally(() => setIsSubmitting(false))
           }}
-          style={{ display: 'grid', gap: '20px' }}
+          style={{ display: 'grid', gap: 16 }}
         >
-          <div>
-            <label htmlFor="login-email" style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>
-              Email
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span>Email</span>
+            <input className="sh-input" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </label>
+
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span>Password</span>
+            <input className="sh-input" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </label>
+
+          {mode === 'register' && (
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span>Confirm password</span>
+              <input className="sh-input" required type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
             </label>
-            <input
-              id="login-email"
-              className="sh-input"
-              required
-              type="email"
-              value={email}
-              placeholder="knihomol@email.cz"
-              onChange={(event) => setEmail(event.target.value)}
-              style={{ width: '100%', padding: '12px 16px' }}
-            />
-          </div>
-          <div>
-            <label htmlFor="login-password" style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>
-              Heslo
-            </label>
-            <input
-              id="login-password"
-              className="sh-input"
-              required
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              style={{ width: '100%', padding: '12px 16px' }}
-            />
-          </div>
-          <button 
-            type="submit" 
-            className="sh-btn-primary hover-scale"
-            disabled={loginMutation.isPending}
-            style={{ marginTop: 12, padding: '14px', fontSize: 16 }}
-          >
-            {loginMutation.isPending ? 'Přihlašování…' : 'Přihlásit se'}
+          )}
+
+          {error && <p style={{ color: 'var(--sh-red)', margin: 0 }}>{error}</p>}
+
+          <button type="submit" className="sh-btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Register'}
           </button>
         </form>
       </div>

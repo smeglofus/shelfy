@@ -1,50 +1,29 @@
-const ACCESS_TOKEN_KEY = 'shelfy.accessToken'
+const REFRESH_TOKEN_KEY = 'shelfy.refreshToken'
 
-function parseJwtExp(token: string): number | null {
-  try {
-    const [, payloadSegment] = token.split('.')
-    if (!payloadSegment) {
-      return null
-    }
-
-    const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized.padEnd(
-      normalized.length + ((4 - (normalized.length % 4)) % 4),
-      '=',
-    )
-
-    const payload = JSON.parse(atob(padded)) as { exp?: number }
-    return typeof payload.exp === 'number' ? payload.exp : null
-  } catch {
-    return null
-  }
-}
+let accessToken: string | null = null
 
 export function getAccessToken(): string | null {
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY)
+  return accessToken
 }
 
-export function isAccessTokenValid(token: string | null): boolean {
+export function setAccessToken(token: string | null): void {
+  accessToken = token
+}
+
+export function getRefreshToken(): string | null {
+  return window.localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+export function setRefreshToken(token: string | null): void {
   if (!token) {
-    return false
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY)
+    return
   }
 
-  const exp = parseJwtExp(token)
-  if (!exp) {
-    return false
-  }
-
-  return exp * 1000 > Date.now()
-}
-
-export function hasValidAccessToken(): boolean {
-  return isAccessTokenValid(getAccessToken())
-}
-
-export function persistTokens(accessToken: string): void {
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  window.localStorage.setItem(REFRESH_TOKEN_KEY, token)
 }
 
 export function clearTokens(): void {
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+  accessToken = null
+  window.localStorage.removeItem(REFRESH_TOKEN_KEY)
 }

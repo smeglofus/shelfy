@@ -7,6 +7,11 @@ export interface Location {
   updated_at: string
 }
 
+export interface User {
+  id: string
+  email: string
+}
+
 export interface LocationCreateRequest {
   room: string
   furniture: string
@@ -56,6 +61,21 @@ export interface Book {
   updated_at: string
 }
 
+
+export interface LoanCreateRequest {
+  borrower_name: string
+  borrower_contact?: string | null
+  lent_date: string
+  due_date?: string | null
+  notes?: string | null
+}
+
+export interface LoanReturnRequest {
+  returned_date: string
+  return_condition: 'perfect' | 'good' | 'fair' | 'damaged' | 'lost'
+  notes?: string | null
+}
+
 export interface BookListResponse {
   total: number
   page: number
@@ -101,9 +121,19 @@ export interface LoginRequest {
   password: string
 }
 
+export interface RegisterRequest {
+  email: string
+  password: string
+}
+
 export interface TokenResponse {
   access_token: string
   refresh_token: string
+  token_type: string
+}
+
+export interface AccessTokenResponse {
+  access_token: string
   token_type: string
 }
 

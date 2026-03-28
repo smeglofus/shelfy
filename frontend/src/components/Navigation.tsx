@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '../lib/routes'
+import { useAuth } from '../contexts/AuthContext'
 
 export function Navigation() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768)
+  const { logout } = useAuth()
 
   const tabs = useMemo(
     () => [
@@ -83,6 +85,29 @@ export function Navigation() {
             </button>
           )
         })}
+
+        <button
+          onClick={logout}
+          className="hover-lift"
+          style={{
+            marginTop: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            padding: '14px 16px',
+            background: 'transparent',
+            border: '1px solid var(--sh-border)',
+            borderRadius: 'var(--sh-radius-md)',
+            cursor: 'pointer',
+            color: 'var(--sh-text-muted)',
+            fontSize: 15,
+            fontWeight: 500,
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>↩</span>
+          <span>Logout</span>
+        </button>
       </div>
     )
   }
@@ -147,6 +172,27 @@ export function Navigation() {
           </button>
         )
       })}
+      <button
+        onClick={logout}
+        style={{
+          width: 72,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          padding: '12px 0 8px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--sh-text-muted)',
+          fontSize: 12,
+          fontWeight: 500,
+        }}
+      >
+        <span style={{ fontSize: 20 }}>↩</span>
+        <span>Logout</span>
+      </button>
     </div>
   )
 }
