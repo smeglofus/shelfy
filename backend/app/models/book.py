@@ -1,18 +1,23 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.loan import Loan
 
 
 class ReadingStatus(str, Enum):
     UNREAD = "unread"
     READING = "reading"
     READ = "read"
-    LENT = "lent"
 
 
 class BookProcessingStatus(str, Enum):
@@ -50,7 +55,6 @@ class Book(Base):
         default=ReadingStatus.UNREAD,
         server_default=ReadingStatus.UNREAD.value,
     )
-    lent_to: Mapped[str | None] = mapped_column(String(300), nullable=True)
     processing_status: Mapped[BookProcessingStatus] = mapped_column(
         SAEnum(
             BookProcessingStatus,
@@ -69,3 +73,20 @@ class Book(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+    loans: Mapped[list[Loan]] = relationship(
+        back_populates="book",
+        cascade="all, delete-orphan",
+        order_by="Loan.lent_date.desc()",
+    )
+
+    @property
+    def active_loan(self) -> Loan | None:
+        for loan in self.loans:
+            if loan.returned_date is None:
+                return loan
+        return None
+
+    @property
+    def is_currently_lent(self) -> bool:
+        return self.active_loan is not None

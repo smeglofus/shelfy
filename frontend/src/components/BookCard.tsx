@@ -134,7 +134,6 @@ export function BookCard({ book, onDelete }: Props) {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
             <ReadingStatusBadge
               status={book.reading_status ?? 'unread'}
-              lentTo={book.lent_to}
             />
           </div>
         </div>

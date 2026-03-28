@@ -5,11 +5,13 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy import ColumnElement
 from sqlalchemy import func, or_, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app.models.book import Book, ReadingStatus
+from app.models.book import Book
+from app.models.loan import Loan
 from app.models.location import Location
 from app.schemas.book import BookCreateRequest, BookUpdateRequest
 
@@ -46,7 +48,7 @@ async def list_books(
     if filters:
         count_query = count_query.where(*filters)
 
-    query = select(Book).order_by(Book.created_at.desc(), Book.id.desc())
+    query = select(Book).options(selectinload(Book.loans)).order_by(Book.created_at.desc(), Book.id.desc())
     if filters:
         query = query.where(*filters)
     query = query.offset((page - 1) * page_size).limit(page_size)
@@ -60,7 +62,6 @@ async def create_book(session: AsyncSession, payload: BookCreateRequest) -> Book
     await _validate_location_exists(session, payload.location_id)
     book = Book(**payload.model_dump())
     session.add(book)
-
     try:
         await session.commit()
     except IntegrityError as exc:
@@ -76,12 +77,13 @@ async def create_book(session: AsyncSession, payload: BookCreateRequest) -> Book
         raise
 
     await session.refresh(book)
+    await session.refresh(book, attribute_names=["loans"])
     logger.info("book_created", book_id=str(book.id), location_id=str(book.location_id) if book.location_id else None)
     return book
 
 
 async def get_book_or_404(session: AsyncSession, book_id: uuid.UUID) -> Book:
-    result = await session.execute(select(Book).where(Book.id == book_id))
+    result = await session.execute(select(Book).options(selectinload(Book.loans)).where(Book.id == book_id))
     book = result.scalar_one_or_none()
     if book is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
@@ -98,9 +100,6 @@ async def update_book(session: AsyncSession, book_id: uuid.UUID, payload: BookUp
     for field_name, value in update_data.items():
         setattr(book, field_name, value)
 
-    if book.reading_status != ReadingStatus.LENT:
-        book.lent_to = None
-
     try:
         await session.commit()
     except IntegrityError as exc:
@@ -116,6 +115,7 @@ async def update_book(session: AsyncSession, book_id: uuid.UUID, payload: BookUp
         raise
 
     await session.refresh(book)
+    await session.refresh(book, attribute_names=["loans"])
     logger.info("book_updated", book_id=str(book.id), fields=list(update_data.keys()))
     return book
 
@@ -148,8 +148,9 @@ def _map_integrity_error(_exc: IntegrityError) -> HTTPException:
 
 async def build_books_export_csv(session: AsyncSession) -> bytes:
     result = await session.execute(
-        select(Book, Location)
+        select(Book, Location, Loan.id)
         .outerjoin(Location, Book.location_id == Location.id)
+        .outerjoin(Loan, (Loan.book_id == Book.id) & (Loan.returned_date.is_(None)))
         .order_by(Book.created_at.desc(), Book.id.desc())
     )
     rows = result.all()
@@ -158,10 +159,10 @@ async def build_books_export_csv(session: AsyncSession) -> bytes:
     writer = csv.writer(buffer)
     writer.writerow([
         "title", "author", "isbn", "publisher", "language",
-        "publication_year", "location", "reading_status", "lent_to", "created_at",
+        "publication_year", "location", "reading_status", "is_currently_lent", "created_at",
     ])
 
-    for book, location in rows:
+    for book, location, active_loan_id in rows:
         location_value = ""
         if location is not None:
             location_value = f"{location.room} / {location.furniture} / {location.shelf}"
@@ -169,8 +170,6 @@ async def build_books_export_csv(session: AsyncSession) -> bytes:
         reading_status_value = getattr(book, "reading_status", None)
         if reading_status_value is None:
             reading_status_value = getattr(book, "processing_status", "")
-
-        lent_to_value = getattr(book, "lent_to", None) or ""
 
         writer.writerow([
             book.title,
@@ -181,7 +180,7 @@ async def build_books_export_csv(session: AsyncSession) -> bytes:
             book.publication_year or "",
             location_value,
             str(reading_status_value or ""),
-            lent_to_value,
+            str(active_loan_id is not None),
             book.created_at.isoformat() if book.created_at else "",
         ])
 

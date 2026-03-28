@@ -12,7 +12,7 @@ export function StatBar({ books, total }: Props) {
   const { t } = useTranslation()
   const read = books.filter((b) => b.reading_status === 'read').length
   const reading = books.filter((b) => b.reading_status === 'reading').length
-  const lent = books.filter((b) => b.reading_status === 'lent').length
+  const lent = books.filter((b) => b.is_currently_lent).length
 
   const stats = useMemo(
     () => [

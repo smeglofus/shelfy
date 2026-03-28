@@ -19,7 +19,6 @@ export function AddBookPage() {
   const [author, setAuthor]           = useState('')
   const [isbn, setIsbn]               = useState('')
   const [reading, setReading]         = useState<ReadingStatus>('unread')
-  const [lentTo, setLentTo]           = useState('')
 
   // Three-level location picker
   const [selRoom, setSelRoom]       = useState('')
@@ -61,7 +60,6 @@ export function AddBookPage() {
       isbn:           isbn.trim()   || null,
       location_id:    resolvedId,
       reading_status: reading,
-      lent_to:        reading === 'lent' ? (lentTo.trim() || null) : null,
     }
     createMutation.mutate(payload, {
       onSuccess: () => navigate(ROUTES.books),
@@ -203,16 +201,8 @@ export function AddBookPage() {
                 <option value="unread">Nepřečteno</option>
                 <option value="reading">Čtu</option>
                 <option value="read">Přečteno</option>
-                <option value="lent">Půjčeno</option>
               </select>
             </div>
-
-            {reading === 'lent' && (
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Komu</label>
-                <input className="sh-input" placeholder="Jméno..." value={lentTo} onChange={e => setLentTo(e.target.value)} />
-              </div>
-            )}
           </div>
 
           <div>

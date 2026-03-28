@@ -48,7 +48,6 @@ const book: Book = {
   cover_image_url: 'https://example.com/clean-architecture.jpg',
   location_id: 'loc-1',
   reading_status: 'unread',
-  lent_to: null,
   processing_status: 'manual',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
