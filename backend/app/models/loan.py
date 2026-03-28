@@ -36,5 +36,12 @@ class Loan(Base):
         default=datetime.utcnow,
         server_default=func.now(),
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     book: Mapped[Book] = relationship(back_populates="loans")

@@ -19,7 +19,21 @@ export interface LocationUpdateRequest {
   shelf?: string
 }
 
-export type ReadingStatus = 'unread' | 'reading' | 'read' | 'lent'
+export type ReadingStatus = 'unread' | 'reading' | 'read'
+
+export interface Loan {
+  id: string
+  book_id: string
+  borrower_name: string
+  borrower_contact: string | null
+  lent_date: string
+  due_date: string | null
+  returned_date: string | null
+  return_condition: 'perfect' | 'good' | 'fair' | 'damaged' | 'lost' | null
+  notes: string | null
+  created_at: string
+  is_active: boolean
+}
 
 export type BookProcessingStatus = 'manual' | 'pending' | 'done' | 'failed' | 'partial'
 
@@ -36,7 +50,8 @@ export interface Book {
   location_id: string | null
   processing_status: BookProcessingStatus
   reading_status?: ReadingStatus   // optional until backend migration applied
-  lent_to?: string | null
+  is_currently_lent?: boolean
+  active_loan?: Loan | null
   created_at: string
   updated_at: string
 }
@@ -66,7 +81,6 @@ export interface BookCreateRequest {
   cover_image_url?: string | null
   location_id?: string | null
   reading_status?: ReadingStatus
-  lent_to?: string | null
 }
 
 export interface BookUpdateRequest {
@@ -80,7 +94,6 @@ export interface BookUpdateRequest {
   cover_image_url?: string | null
   location_id?: string | null
   reading_status?: ReadingStatus
-  lent_to?: string | null
 }
 
 export interface LoginRequest {

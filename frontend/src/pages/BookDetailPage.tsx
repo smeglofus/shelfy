@@ -45,7 +45,6 @@ export function BookDetailPage() {
 
   const [locationSelection, setLocationSelection] = useState<string | null | undefined>(undefined)
   const [readingSelection, setReadingSelection] = useState<ReadingStatus | null | undefined>(undefined)
-  const [lentToSelection, setLentToSelection] = useState<string | undefined>(undefined)
 
   if (bookQuery.isLoading) {
     return <div className="container"><p className="text-p">{t('book_detail.loading')}</p></div>
@@ -65,7 +64,6 @@ export function BookDetailPage() {
   const selectedLocation =
     locationSelection === undefined ? (book.location_id ?? '') : (locationSelection ?? '')
   const selectedReading = readingSelection === undefined ? (book.reading_status ?? 'unread') : readingSelection
-  const selectedLentTo = lentToSelection === undefined ? (book.lent_to ?? '') : lentToSelection
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
   const longDesc = (book.description ?? '').length > 160
 
@@ -170,7 +168,6 @@ export function BookDetailPage() {
                 payload: {
                   location_id: selectedLocation || null,
                   reading_status: selectedReading,
-                  lent_to: selectedReading === 'lent' ? (selectedLentTo || null) : null,
                 },
               })
             }}
@@ -193,23 +190,8 @@ export function BookDetailPage() {
                   <option value="unread">{t('reading_status.unread')}</option>
                   <option value="reading">{t('reading_status.reading')}</option>
                   <option value="read">{t('reading_status.read')}</option>
-                  <option value="lent">{t('reading_status.lent')}</option>
                 </select>
               </div>
-
-              {selectedReading === 'lent' && (
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.lent_to_label')}</label>
-                  <input
-                    aria-label={t('book_detail.lent_to_label')}
-                    className="sh-input"
-                    value={selectedLentTo}
-                    onChange={(event) => setLentToSelection(event.target.value)}
-                    placeholder={t('book_detail.lent_to_placeholder')}
-                    style={{ padding: '12px 14px' }}
-                  />
-                </div>
-              )}
             </div>
 
             <div>

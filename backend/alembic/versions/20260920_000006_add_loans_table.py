@@ -57,6 +57,7 @@ LOANS_TABLE = table(
     column("return_condition", sa.String()),
     column("notes", sa.Text()),
     column("created_at", sa.DateTime(timezone=True)),
+    column("updated_at", sa.DateTime(timezone=True)),
 )
 
 
@@ -76,6 +77,7 @@ def upgrade() -> None:
         sa.Column("return_condition", sa.String(length=50), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.ForeignKeyConstraint(["book_id"], ["books.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -140,6 +142,7 @@ def _migrate_lent_to_data(bind: Connection) -> None:
                 "return_condition": None,
                 "notes": None,
                 "created_at": now,
+                "updated_at": now,
             }
         )
 
