@@ -337,14 +337,21 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         return None
 
     prompt = (
-        "You are looking at a photo of a bookshelf. "
-        "Identify ALL books visible on the shelf, reading their spines from LEFT to RIGHT. "
-        "Return only a strict JSON array, ordered from the leftmost book to the rightmost. "
-        "Each array item must be an object with keys: title (string|null), author (string|null), "
-        "isbn (string|null), observed_text (string|null). "
-        "observed_text should contain the raw text you can read on the spine. "
-        "If you cannot read a spine clearly, still include the item with observed_text containing "
-        "whatever you can make out, and set title/author to null. Do not include markdown."
+        "You are an expert librarian analyzing a photo of books on a shelf. "
+        "Read EVERY book spine visible in the image, strictly from LEFT to RIGHT.\n\n"
+        "IMPORTANT RULES:\n"
+        "- Copy the text EXACTLY as printed on the spine. Do NOT guess or hallucinate titles.\n"
+        "- If a spine is partially obscured or blurry, set title to null and put whatever you CAN read in observed_text.\n"
+        "- Do NOT skip any book, even if you cannot read it — include it with observed_text describing what you see.\n"
+        "- For each book, rate your confidence: \"high\" if you can clearly read the full title, "
+        "\"medium\" if partially readable, \"low\" if mostly guessing.\n"
+        "- Many books may be in Czech or other languages — transcribe them exactly as written.\n\n"
+        "Return ONLY a strict JSON array (no markdown). Each item must have these keys:\n"
+        "  title (string|null) — full title as printed\n"
+        "  author (string|null) — author name if visible\n"
+        "  isbn (string|null) — ISBN if visible\n"
+        "  observed_text (string|null) — raw text visible on the spine\n"
+        "  confidence (\"high\"|\"medium\"|\"low\") — how confident you are in the reading"
     )
     mime_type = _detect_mime_type(image_bytes)
     request_payload: dict[str, object] = {
@@ -398,20 +405,22 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
 
     normalized_results: list[dict[str, object]] = []
     for parsed in parsed_array:
+        confidence = parsed.get("confidence") if isinstance(parsed.get("confidence"), str) else "medium"
         normalized = _normalize_vision_result(parsed)
         if normalized is not None:
+            normalized["confidence"] = confidence
             normalized_results.append(normalized)
         else:
             # Still include unrecognized items for user review
             observed = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
-            if observed:
-                normalized_results.append({
-                    "isbn": None,
-                    "title": None,
-                    "author": None,
-                    "observed_text": observed,
-                    "source": "gemini_vision",
-                })
+            normalized_results.append({
+                "isbn": None,
+                "title": None,
+                "author": None,
+                "observed_text": observed,
+                "confidence": confidence if observed else "low",
+                "source": "gemini_vision",
+            })
 
     return normalized_results or None
 
@@ -930,12 +939,14 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                         metadata = None
 
                 # Build result item
+                confidence = local_result.get("confidence", "medium")
                 item: dict[str, object] = {
                     "position": idx,
                     "isbn": metadata.get("isbn") if metadata and isinstance(metadata.get("isbn"), str) else isbn,
                     "title": (metadata.get("title") if metadata and isinstance(metadata.get("title"), str) else None) or title,
                     "author": (metadata.get("author") if metadata and isinstance(metadata.get("author"), str) else None) or author,
                     "observed_text": local_result.get("observed_text"),
+                    "confidence": confidence,
                     "source": local_result.get("source", "gemini_vision"),
                 }
                 if metadata:
