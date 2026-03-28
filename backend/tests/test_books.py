@@ -367,7 +367,7 @@ async def test_books_export_returns_csv(test_session: async_sessionmaker[AsyncSe
     assert response.status_code == 200
     assert response.headers['content-type'].startswith('text/csv')
     assert 'attachment; filename="shelfy-export.csv"' in response.headers.get('content-disposition', '')
-    assert 'title,author,isbn,publisher,language,publication_year,location,reading_status,lent_to,created_at' in response.text
+    assert 'title,author,isbn,publisher,language,publication_year,location,reading_status,is_currently_lent,created_at' in response.text
     assert 'Export Me,Tester,1234567890' in response.text
 
 
@@ -396,70 +396,16 @@ async def test_create_book_with_reading_status(test_session: async_sessionmaker[
     assert response.json()["reading_status"] == "reading"
 
 
+
 @pytest.mark.asyncio
-async def test_update_book_reading_status_to_lent(test_session: async_sessionmaker[AsyncSession]) -> None:
+async def test_update_book_reading_status_to_read(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         async with test_session() as session:
             headers = await _auth_headers(client, session)
 
         created = await client.post(
             "/api/v1/books",
-            json={"title": "Lendable Book"},
-            headers=headers,
-        )
-        assert created.status_code == 201
-        book_id = created.json()["id"]
-
-        updated = await client.patch(
-            f"/api/v1/books/{book_id}",
-            json={"reading_status": "lent", "lent_to": "John"},
-            headers=headers,
-        )
-
-    assert updated.status_code == 200
-    assert updated.json()["reading_status"] == "lent"
-    assert updated.json()["lent_to"] == "John"
-
-
-@pytest.mark.asyncio
-async def test_lent_to_cleared_when_status_changes_from_lent(
-    test_session: async_sessionmaker[AsyncSession],
-) -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        async with test_session() as session:
-            headers = await _auth_headers(client, session)
-
-        created = await client.post(
-            "/api/v1/books",
-            json={"title": "Previously Lent", "reading_status": "lent", "lent_to": "John"},
-            headers=headers,
-        )
-        assert created.status_code == 201
-        book_id = created.json()["id"]
-
-        updated = await client.patch(
-            f"/api/v1/books/{book_id}",
-            json={"reading_status": "read", "lent_to": None},
-            headers=headers,
-        )
-
-    assert updated.status_code == 200
-    assert updated.json()["reading_status"] == "read"
-    assert updated.json()["lent_to"] is None
-
-
-
-@pytest.mark.asyncio
-async def test_lent_to_auto_cleared_when_status_changes_without_explicit_null(
-    test_session: async_sessionmaker[AsyncSession],
-) -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        async with test_session() as session:
-            headers = await _auth_headers(client, session)
-
-        created = await client.post(
-            "/api/v1/books",
-            json={"title": "Implicit clear", "reading_status": "lent", "lent_to": "John"},
+            json={"title": "Readable Book"},
             headers=headers,
         )
         assert created.status_code == 201
@@ -473,4 +419,3 @@ async def test_lent_to_auto_cleared_when_status_changes_without_explicit_null(
 
     assert updated.status_code == 200
     assert updated.json()["reading_status"] == "read"
-    assert updated.json()["lent_to"] is None

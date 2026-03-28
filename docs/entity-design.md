@@ -1,7 +1,7 @@
 # Entity Design — Shelfy
 
 > **Status:** Phase 0 deliverable  
-> **Last updated:** 2026-03-12  
+> **Last updated:** 2026-03-28  
 > This document is the authoritative reference for all data models.
 > Update it before adding new fields or relations.
 
@@ -12,12 +12,15 @@
 ```
 User ──< Book >── Location
               │
+              ├─< Loan
+              │
               └─< ImageProcessingTask
 ```
 
 - **User** — single admin user (seeded from env); owns everything
 - **Location** — physical place in the house (room / furniture / shelf)
 - **Book** — the core entity; optionally linked to a Location
+- **Loan** — lending history record for one lend/return cycle
 - **ImageProcessingTask** — async Celery job that processes a book cover photo
 
 ---
@@ -73,7 +76,6 @@ Core entity. Introduced in Phase 5. Extended with reading status fields post-Pha
 | `cover_image_url` | VARCHAR(500) | nullable; MinIO presigned URL or external URL |
 | `location_id` | UUID FK → Location | nullable; RESTRICT on location delete |
 | `reading_status` | ENUM | nullable; default "unread"; see ReadingStatus below |
-| `lent_to` | VARCHAR(300) | nullable; name of person book is lent to |
 | `processing_status` | ENUM NOT NULL | default "manual"; see BookProcessingStatus below |
 | `created_at` | TIMESTAMP WITH TIME ZONE | server default now() |
 | `updated_at` | TIMESTAMP WITH TIME ZONE | auto-updated |
@@ -85,7 +87,6 @@ class ReadingStatus(str, Enum):
     UNREAD = "unread"
     READING = "reading"
     READ = "read"
-    LENT = "lent"
 ```
 
 #### BookProcessingStatus enum
@@ -106,10 +107,35 @@ class BookProcessingStatus(str, Enum):
 - `isbn` has a UNIQUE constraint but is nullable (NULL ≠ NULL in SQL).
 - Deleting a Location is RESTRICTED when books reference it (returns 409).
   This differs from the original spec (SET NULL) — decided during Phase 5 implementation.
-- `reading_status` defaults to "unread". When set to "lent", the `lent_to` field
-  should contain the borrower's name.
+- `reading_status` is independent from lending. A book can be `read` and also currently lent.
+- Current lending state is derived from whether there is an active `Loan` (`returned_date IS NULL`).
 - `processing_status` replaced the original `source` enum to better represent
   the async processing pipeline states.
+
+
+---
+
+### Loan
+
+Introduced post-Phase 13 to support lending history and return tracking.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `book_id` | UUID FK → Book NOT NULL | CASCADE on book delete |
+| `borrower_name` | VARCHAR(255) NOT NULL | required |
+| `borrower_contact` | VARCHAR(255) | nullable (email/phone) |
+| `lent_date` | DATE NOT NULL | defaults to current date |
+| `due_date` | DATE | nullable |
+| `returned_date` | DATE | nullable; NULL means active loan |
+| `return_condition` | VARCHAR(50) | nullable; set on return (`perfect/good/fair/damaged/lost`) |
+| `notes` | TEXT | nullable |
+| `created_at` | TIMESTAMP WITH TIME ZONE | server default now() |
+
+#### Notes
+
+- One book may have many historical loans but at most one active loan at a time.
+- Loan history is immutable audit data except admin delete operations.
 
 ---
 
@@ -154,6 +180,7 @@ class TaskStatus(str, Enum):
 | Relationship | Cardinality | FK behaviour |
 |---|---|---|
 | Book → Location | many-to-one (optional) | RESTRICT on location delete |
+| Loan → Book | many-to-one | CASCADE DELETE |
 | ImageProcessingTask → Book | many-to-one | CASCADE DELETE |
 
 ---
@@ -165,6 +192,7 @@ class TaskStatus(str, Enum):
 | `books` | `ix_books_isbn` | lookup by ISBN |
 | `books` | `ix_books_location_id` | list books by location |
 | `books` | `ix_books_title` (gin/trgm) | full-text title search (Phase 8) |
+| `loans` | `ix_loans_book_id` | list loans by book efficiently |
 | `image_processing_tasks` | `ix_tasks_book_id` | list tasks for a book |
 | `image_processing_tasks` | `ix_tasks_status` | worker queue polling |
 
