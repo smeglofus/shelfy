@@ -89,8 +89,8 @@ describe('BooksPage', () => {
 
     expect(await screen.findByRole('button', { name: /delete-book-/ })).toBeInTheDocument()
 
-    await userEvent.type(screen.getByLabelText('Search books'), 'Martin')
-    await userEvent.click(screen.getByRole('button', { name: 'Hledat' }))
+    await userEvent.type(screen.getByLabelText('books.search_label'), 'Martin')
+    await userEvent.click(screen.getByRole('button', { name: 'books.search_button' }))
 
     await waitFor(() => {
       expect(listBooks).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'Martin' }))
@@ -106,7 +106,7 @@ describe('BooksPage', () => {
 
     expect(screen.getByRole('dialog', { name: 'delete-book-dialog' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Smazat knihu' }))
+    await userEvent.click(screen.getByRole('button', { name: 'books.delete_confirm' }))
 
     await waitFor(() => {
       expect(deleteBook).toHaveBeenCalledWith('book-1')
@@ -132,7 +132,7 @@ describe('BooksPage', () => {
     await waitFor(() => {
       expect(showErrorSpy).toHaveBeenCalledTimes(1)
       expect(showErrorSpy).toHaveBeenCalledWith(
-        'Zpracování selhalo pro 2 knih: "Book Failed 1", "Book Failed 2"',
+        'books.processing_failed_bulk',
       )
     })
   })

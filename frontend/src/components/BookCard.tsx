@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import type { Book } from '../lib/types'
 import { ReadingStatusBadge } from './ReadingStatusBadge'
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function BookCard({ book, onDelete }: Props) {
+  const { t } = useTranslation()
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
 
   return (
@@ -57,7 +59,7 @@ export function BookCard({ book, onDelete }: Props) {
             boxShadow: "var(--sh-shadow-sm)",
             transition: "all 0.2s ease"
           }}
-          title="Smazat knihu"
+          title={t('books.delete_title')}
         >
           ×
         </button>

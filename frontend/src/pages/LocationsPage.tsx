@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 
 import { useCreateLocation, useDeleteLocation, useLocations, useUpdateLocation } from '../hooks/useLocations'
 import { formatApiError } from '../lib/api'
@@ -18,6 +19,7 @@ const EMPTY_FORM: LocationFormValues = {
 }
 
 export function LocationsPage() {
+  const { t } = useTranslation()
   const locationsQuery = useLocations()
   const createMutation = useCreateLocation()
   const updateMutation = useUpdateLocation()
@@ -39,11 +41,11 @@ export function LocationsPage() {
 
   return (
     <section className="container md-max-w-3xl" style={{ paddingTop: 24, paddingBottom: 40, margin: '0 auto', width: '100%' }}>
-      <h2 className="text-h2" style={{ marginBottom: 4 }}>Správa umístění</h2>
-      <p className="text-p" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>Spravujte seznam místností, nábytku a polic pro rychlé řazení knih.</p>
+      <h2 className="text-h2" style={{ marginBottom: 4 }}>{t('locations.title')}</h2>
+      <p className="text-p" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('locations.description')}</p>
 
       <div style={{ background: 'var(--sh-surface)', padding: 20, borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)', marginBottom: 32, boxShadow: 'var(--sh-shadow-sm)' }}>
-        <h3 className="text-h3" style={{ marginTop: 0, marginBottom: 16, fontSize: 16 }}>Přidat nové umístění</h3>
+        <h3 className="text-h3" style={{ marginTop: 0, marginBottom: 16, fontSize: 16 }}>{t('locations.add_title')}</h3>
         <form
           aria-label="create-location-form"
           onSubmit={(event) => {
@@ -55,49 +57,49 @@ export function LocationsPage() {
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, alignItems: 'end' }}
         >
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Místnost</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.room')}</label>
             <input
               className="sh-input"
-              aria-label="Room"
+              aria-label={t('locations.room')}
               required
-              placeholder="např. Obývák"
+              placeholder={t('locations.room_placeholder')}
               value={createForm.room}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, room: event.target.value }))}
             />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Knihovna</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.furniture')}</label>
             <input
               className="sh-input"
-              aria-label="Furniture"
+              aria-label={t('locations.furniture')}
               required
-              placeholder="např. Billy 1"
+              placeholder={t('locations.furniture_placeholder')}
               value={createForm.furniture}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, furniture: event.target.value }))}
             />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Police</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.shelf')}</label>
             <input
               className="sh-input"
-              aria-label="Shelf"
+              aria-label={t('locations.shelf')}
               required
-              placeholder="např. 3 odspodu"
+              placeholder={t('locations.shelf_placeholder')}
               value={createForm.shelf}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, shelf: event.target.value }))}
             />
           </div>
           <button type="submit" className="sh-btn-primary hover-scale" disabled={createMutation.isPending} style={{ padding: '12px 16px' }}>
-            {createMutation.isPending ? 'Přidávám…' : 'Vytvořit'}
+            {createMutation.isPending ? t('locations.creating') : t('locations.create')}
           </button>
         </form>
       </div>
 
-      {locationsQuery.isLoading && <p className="text-p">Načítám lokace…</p>}
+      {locationsQuery.isLoading && <p className="text-p">{t('locations.loading')}</p>}
 
       {locationsQuery.isError && (
         <div style={{ padding: 16, background: 'var(--sh-red)', color: 'white', borderRadius: 'var(--sh-radius-md)' }}>
-          <p style={{ margin: 0, marginBottom: 12 }}>Chyba při načítání lokací.</p>
+          <p style={{ margin: 0, marginBottom: 12 }}>{t('locations.error')}</p>
           <button
             type="button"
             className="sh-btn-secondary hover-scale"
@@ -107,7 +109,7 @@ export function LocationsPage() {
               void locationsQuery.refetch()
             }}
           >
-            Zkusit znovu
+            {t('locations.retry')}
           </button>
         </div>
       )}
@@ -116,9 +118,9 @@ export function LocationsPage() {
         <div style={{ textAlign: 'center', padding: '64px 24px', background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-lg)', border: '1px dashed var(--sh-border-2)' }}>
           <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.8 }}>🗺️</div>
           <p className="text-h3" style={{ marginBottom: 8, color: 'var(--sh-text-main)' }}>
-            Zatím žádná umístění
+            {t('locations.empty_title')}
           </p>
-          <p className="text-p" style={{ color: 'var(--sh-text-muted)' }}>Vytvořte své první umístění výše, ať víte, kde své knihy najít.</p>
+          <p className="text-p" style={{ color: 'var(--sh-text-muted)' }}>{t('locations.empty_body')}</p>
         </div>
       )}
 
@@ -127,10 +129,10 @@ export function LocationsPage() {
           <table width="100%" cellPadding={16} style={{ borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--sh-border)' }}>
               <tr>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>Místnost</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>Knihovna</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>Police</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>Akce</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.room')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.furniture')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.shelf')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>{t('locations.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -139,9 +141,9 @@ export function LocationsPage() {
 
                 return (
                   <tr key={location.id} style={{ borderBottom: '1px solid var(--sh-border)', transition: 'background 0.2s', background: isEditing ? 'rgba(0,0,0,0.01)' : 'transparent' }}>
-                    <td>{isEditing ? <input className="sh-input" aria-label="Edit room" value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : <span style={{ fontWeight: 500 }}>{location.room}</span>}</td>
-                    <td>{isEditing ? <input className="sh-input" aria-label="Edit furniture" value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.furniture}</span>}</td>
-                    <td>{isEditing ? <input className="sh-input" aria-label="Edit shelf" value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.shelf}</span>}</td>
+                    <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_room')} value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : <span style={{ fontWeight: 500 }}>{location.room}</span>}</td>
+                    <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_furniture')} value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.furniture}</span>}</td>
+                    <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_shelf')} value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.shelf}</span>}</td>
                     <td style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', minHeight: 48 }}>
                       {isEditing ? (
                         <>
@@ -157,7 +159,7 @@ export function LocationsPage() {
                               )
                             }}
                           >
-                            {updateMutation.isPending ? 'Ukládám…' : 'Uložit'}
+                            {updateMutation.isPending ? t('locations.saving') : t('locations.save')}
                           </button>
                           <button
                             type="button"
@@ -169,7 +171,7 @@ export function LocationsPage() {
                               setEditForm(EMPTY_FORM)
                             }}
                           >
-                            Zrušit
+                            {t('locations.cancel')}
                           </button>
                         </>
                       ) : (
@@ -188,7 +190,7 @@ export function LocationsPage() {
                               })
                             }}
                           >
-                            Upravit
+                            {t('locations.edit')}
                           </button>
                           <button
                             type="button"
@@ -196,7 +198,7 @@ export function LocationsPage() {
                             style={{ background: 'transparent', border: 'none', color: 'var(--sh-red)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: '6px 8px' }}
                             onClick={() => setDeleteTarget(location)}
                           >
-                            Smazat
+                            {t('locations.delete')}
                           </button>
                         </>
                       )}
@@ -226,14 +228,17 @@ export function LocationsPage() {
           }}
         >
           <div style={{ background: 'var(--sh-surface)', padding: 24, borderRadius: 'var(--sh-radius-xl)', width: '100%', maxWidth: 400, boxShadow: 'var(--sh-shadow-lg)', border: '1px solid var(--sh-border)' }}>
-            <h3 className="text-h3" style={{ marginTop: 0, color: 'var(--sh-red)' }}>Smazat umístění</h3>
+            <h3 className="text-h3" style={{ marginTop: 0, color: 'var(--sh-red)' }}>{t('locations.delete_title')}</h3>
             <p className="text-p" style={{ marginBottom: 24 }}>
-              Opravdu smazat <strong>{deleteTarget.room}</strong> / {deleteTarget.furniture} / {deleteTarget.shelf}?
-              Tato akce nesmaže knihy v tomto umístění, ale ztratí informaci o jejich uložení.
+              <Trans
+                i18nKey="locations.delete_body"
+                values={{ room: deleteTarget.room, furniture: deleteTarget.furniture, shelf: deleteTarget.shelf }}
+                components={{ strong: <strong /> }}
+              />
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button className="sh-btn-secondary hover-scale" type="button" onClick={() => setDeleteTarget(null)}>
-                Zrušit
+                {t('locations.cancel')}
               </button>
               <button
                 type="button"
@@ -246,7 +251,7 @@ export function LocationsPage() {
                   })
                 }}
               >
-                {deleteMutation.isPending ? 'Mažu…' : 'Smazat navždy'}
+                {deleteMutation.isPending ? t('locations.deleting') : t('locations.delete_forever')}
               </button>
             </div>
           </div>

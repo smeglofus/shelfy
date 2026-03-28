@@ -1,23 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
-import { useLocations } from '../hooks/useLocations'
-import { useToastStore } from '../lib/toast-store'
+import { useTranslation } from 'react-i18next'
+
 import { BookCard } from '../components/BookCard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { StatBar } from '../components/StatBar'
+import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
+import { useLocations } from '../hooks/useLocations'
+import { useToastStore } from '../lib/toast-store'
 import type { Book, Location, ReadingStatus } from '../lib/types'
 
 const PAGE_SIZE = 20
 
-const TAB_ITEMS: { label: string; value: ReadingStatus | null }[] = [
-  { label: 'Vše', value: null },
-  { label: 'Čtu', value: 'reading' },
-  { label: 'Přečteno', value: 'read' },
-  { label: 'Půjčeno', value: 'lent' },
-  { label: 'Nepřečteno', value: 'unread' },
-]
-
 export function BooksPage() {
+  const { t } = useTranslation()
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -25,6 +20,17 @@ export function BooksPage() {
   const [uploadJobId, setUploadJobId] = useState<string | null>(null)
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
   const toastedFailedIdsRef = useRef<Set<string>>(new Set())
+
+  const tabItems: { label: string; value: ReadingStatus | null }[] = useMemo(
+    () => [
+      { label: t('tabs.all'), value: null },
+      { label: t('tabs.reading'), value: 'reading' },
+      { label: t('tabs.read'), value: 'read' },
+      { label: t('tabs.lent'), value: 'lent' },
+      { label: t('tabs.unread'), value: 'unread' },
+    ],
+    [t],
+  )
 
   const queryParams = useMemo(
     () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, readingStatus: readingFilter ?? undefined }),
@@ -49,22 +55,28 @@ export function BooksPage() {
     )
     if (!failed.length) return
     for (const b of failed) toastedFailedIdsRef.current.add(b.id)
-    showError(`Zpracování selhalo pro ${failed.length} knih: ${failed.map((b) => `"${b.title}"`).join(', ')}`)
-  }, [booksQuery.data?.items, showError])
+    showError(
+      t('books.processing_failed_bulk', {
+        count: failed.length,
+        titles: failed.map((b) => `"${b.title}"`).join(', '),
+      }),
+    )
+  }, [booksQuery.data?.items, showError, t])
 
   useEffect(() => {
     const status = uploadJobStatusQuery.data?.status
     if (status === 'done' || status === 'failed') {
-      if (status === 'failed') showError(uploadJobStatusQuery.data?.error_message ?? 'Zpracování obrázku selhalo.')
+      if (status === 'failed') showError(uploadJobStatusQuery.data?.error_message ?? t('books.processing_failed'))
       setUploadJobId(null)
       void booksQuery.refetch()
     }
     if (uploadJobStatusQuery.isError) {
-      showError('Nepodařilo se zkontrolovat stav uploadu.')
+      showError(t('books.processing_status_check_failed'))
     }
   }, [
     booksQuery,
     showError,
+    t,
     uploadJobStatusQuery.data?.error_message,
     uploadJobStatusQuery.data?.status,
     uploadJobStatusQuery.isError,
@@ -77,19 +89,25 @@ export function BooksPage() {
     for (const b of books) {
       const key = b.location_id ?? null
       if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(b)
+      map.get(key)?.push(b)
     }
     return map
   }, [books])
 
   const total = booksQuery.data?.total ?? 0
 
+  const booksCountLabel = useMemo(() => {
+    if (total === 1) return t('books.count_one', { count: total })
+    if (total > 1 && total < 5) return t('books.count_few', { count: total })
+    return t('books.count_many', { count: total })
+  }, [t, total])
+
   return (
     <div className="md-max-w-4xl" style={{ margin: '0 auto', width: '100%' }}>
       <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="text-h1">Moje Knihovna</h1>
-          <p className="text-p">{total} {total === 1 ? 'kniha' : (total > 1 && total < 5) ? 'knihy' : 'knih'}</p>
+          <h1 className="text-h1">{t('books.title')}</h1>
+          <p className="text-p">{booksCountLabel}</p>
         </div>
       </div>
 
@@ -98,7 +116,7 @@ export function BooksPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '12px 24px 0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {TAB_ITEMS.map((tab) => {
+        {tabItems.map((tab) => {
           const isActive = readingFilter === tab.value
           return (
             <button
@@ -160,8 +178,8 @@ export function BooksPage() {
         >
           <span style={{ fontSize: 18, color: 'var(--sh-text-muted)' }}>⌕</span>
           <input
-            aria-label="Search books"
-            placeholder="Hledat knihy, autory..."
+            aria-label={t('books.search_label')}
+            placeholder={t('books.search_placeholder')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15, fontFamily: "'Outfit', sans-serif", outline: 'none', padding: '10px 0', color: 'var(--sh-text-main)' }}
@@ -172,28 +190,28 @@ export function BooksPage() {
           className="sh-btn-primary"
           style={{ padding: '0 20px', borderRadius: 'var(--sh-radius-md)' }}
         >
-          Hledat
+          {t('books.search_button')}
         </button>
       </form>
 
       {uploadJobId && (
         <p style={{ margin: '16px 24px', fontSize: 14, color: 'var(--sh-amber)', fontWeight: 500, background: 'var(--sh-amber-bg)', padding: '12px 16px', borderRadius: 'var(--sh-radius-md)' }}>
-          ⏳ Zpracovávám obrázek… ({uploadJobStatusQuery.data?.status ?? 'pending'})
+          {t('books.processing_banner', { status: uploadJobStatusQuery.data?.status ?? 'pending' })}
         </p>
       )}
 
       <div style={{ padding: '24px 24px 0' }}>
-        {booksQuery.isLoading && <p className="text-p">Načítám knihy…</p>}
+        {booksQuery.isLoading && <p className="text-p">{t('books.loading')}</p>}
 
         {booksQuery.isError && (
           <p style={{ color: 'var(--sh-red)', fontSize: 15, fontWeight: 500 }}>
-            Nepodařilo se načíst knihy.{' '}
+            {t('books.error')}{' '}
             <button
               onClick={() => void booksQuery.refetch()}
               className="sh-btn-secondary"
               style={{ marginLeft: 12, background: 'var(--sh-red-bg)', color: 'var(--sh-red-text)' }}
             >
-              Zkusit znovu
+              {t('books.retry')}
             </button>
           </p>
         )}
@@ -201,9 +219,9 @@ export function BooksPage() {
         {!booksQuery.isLoading && !booksQuery.isError && total === 0 && (
           <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--sh-text-muted)' }}>
             <div style={{ fontSize: 64, marginBottom: 20 }}>📚</div>
-            <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>Žádné knihy</p>
+            <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>{t('books.empty_title')}</p>
             <p className="text-p">
-              {search ? `Nic nenalezeno pro „${search}"` : 'Přidej svou první knihu tlačítkem ↓'}
+              {search ? t('books.empty_search', { query: search }) : t('books.empty_library')}
             </p>
           </div>
         )}
@@ -212,7 +230,7 @@ export function BooksPage() {
           <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--sh-text-muted)' }}>
             <div style={{ fontSize: 56, marginBottom: 20 }}>🔍</div>
             <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>
-              Žádné knihy v této kategorii
+              {t('books.empty_category')}
             </p>
           </div>
         )}
@@ -224,7 +242,7 @@ export function BooksPage() {
               {loc ? (
                 <div style={{ marginBottom: 16 }}><ShelfBreadcrumb location={loc} /></div>
               ) : (
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)', marginBottom: 16, borderBottom: '1px solid var(--sh-border)', paddingBottom: 8 }}>Bez umístění</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)', marginBottom: 16, borderBottom: '1px solid var(--sh-border)', paddingBottom: 8 }}>{t('books.no_location')}</p>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
                 {groupBooks.map((b) => (
@@ -243,7 +261,7 @@ export function BooksPage() {
               className="sh-btn-secondary"
               style={{ opacity: page <= 1 ? 0.3 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
             >
-              ← Předchozí
+              {t('books.prev_page')}
             </button>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)' }}>
               {page} / {Math.ceil(total / PAGE_SIZE)}
@@ -254,7 +272,7 @@ export function BooksPage() {
               className="sh-btn-secondary"
               style={{ opacity: page >= Math.ceil(total / PAGE_SIZE) ? 0.3 : 1, cursor: page >= Math.ceil(total / PAGE_SIZE) ? 'not-allowed' : 'pointer' }}
             >
-              Další →
+              {t('books.next_page')}
             </button>
           </div>
         )}
@@ -279,21 +297,21 @@ export function BooksPage() {
           }}
         >
           <div style={{ background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-xl)', padding: '24px', width: '100%', maxWidth: 380, boxShadow: 'var(--sh-shadow-lg)' }}>
-            <h3 className="text-h3" style={{ marginTop: 0 }}>Smazat knihu?</h3>
-            <p className="text-p" style={{ marginBottom: 24 }}>Tato akce je nevratná. Opravdu chceš knihu odstranit?</p>
+            <h3 className="text-h3" style={{ marginTop: 0 }}>{t('books.delete_confirm_title')}</h3>
+            <p className="text-p" style={{ marginBottom: 24 }}>{t('books.delete_confirm_body')}</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setDeleteTargetId(null)}
                 className="sh-btn-secondary"
               >
-                Zrušit
+                {t('books.delete_cancel')}
               </button>
               <button
                 onClick={() => deleteMutation.mutate(deleteTargetId, { onSuccess: () => setDeleteTargetId(null) })}
                 className="sh-btn-primary"
                 style={{ background: 'var(--sh-red)' }}
               >
-                {deleteMutation.isPending ? 'Mažu…' : 'Smazat knihu'}
+                {deleteMutation.isPending ? t('books.deleting') : t('books.delete_confirm')}
               </button>
             </div>
           </div>

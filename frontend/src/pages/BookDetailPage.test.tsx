@@ -90,7 +90,7 @@ describe('BookDetailPage', () => {
     expect(screen.getByText('en')).toBeInTheDocument()
     expect(screen.getByText('Software architecture and design principles.')).toBeInTheDocument()
     expect(screen.getByText('2017')).toBeInTheDocument()
-    expect(screen.getByText('manual')).toBeInTheDocument()
+    expect(screen.getByText('processing_status.manual')).toBeInTheDocument()
   })
 
   it('submits save form with explicit unassigned location', async () => {
@@ -98,8 +98,8 @@ describe('BookDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Clean Architecture' })
 
-    await userEvent.selectOptions(screen.getByLabelText('Assign location'), '')
-    await userEvent.click(screen.getByRole('button', { name: 'Uložit změny' }))
+    await userEvent.selectOptions(screen.getByLabelText('book_detail.location_label'), '')
+    await userEvent.click(screen.getByRole('button', { name: 'book_detail.save' }))
 
     await waitFor(() => {
       expect(updateBook).toHaveBeenCalledWith('book-1',
