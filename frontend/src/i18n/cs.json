@@ -2,9 +2,11 @@
   "nav": {
     "library": "Knihovna",
     "add": "Přidat",
+    "scan": "Sken",
     "home": "Domů",
     "locations": "Lokace",
-    "settings": "Nastavení"
+    "settings": "Nastavení",
+    "bookshelf": "Knihovny"
   },
   "books": {
     "title": "Moje Knihovna",
@@ -194,5 +196,43 @@
     "condition_fair": "Opotřebovaný",
     "condition_damaged": "Poškozený",
     "condition_lost": "Ztracený"
+  },
+  "scan": {
+    "title": "Skenovat polici",
+    "step_location": "1. Vyberte umístění",
+    "step_location_desc": "Zvolte místnost, knihovnu a polici, kterou budete skenovat.",
+    "step_scan": "2. Vyfoťte polici",
+    "step_scan_desc": "Vyfoťte celou polici tak, aby byly viditelné hřbety všech knih zleva doprava.",
+    "step_review": "3. Zkontrolujte knihy",
+    "step_review_desc": "Nalezeno {{count}} knih. Zkontrolujte a případně opravte údaje.",
+    "select_location": "Nejdřív vyberte umístění.",
+    "fill_location": "Vyplňte všechna pole nového umístění.",
+    "add_new_location": "+ Přidat nové umístění",
+    "hide_new_location": "Skrýt formulář",
+    "next_step": "Pokračovat ke skenování",
+    "take_photo": "Vyfotit polici",
+    "take_photo_desc": "AI rozpozná knihy na polici zleva doprava",
+    "scanning": "Zpracovávám fotku…",
+    "scanning_desc": "AI čte hřbety knih na polici",
+    "back_to_location": "Zpět na výběr umístění",
+    "needs_review": "Potřebuje upřesnění",
+    "book_title": "Název",
+    "book_title_placeholder": "Zadejte název knihy",
+    "book_author": "Autor",
+    "book_author_placeholder": "Zadejte autora",
+    "rescan": "Skenovat znovu",
+    "confirm_books": "Uložit {{count}} knih",
+    "saving": "Ukládám…",
+    "no_books": "Žádné knihy k uložení.",
+    "no_books_found": "Nebyly nalezeny žádné knihy. Zkuste to znovu.",
+    "error_failed": "Skenování selhalo."
+  },
+  "bookshelf": {
+    "title": "Moje knihovny",
+    "scan_shelf": "Skenovat polici",
+    "books_count": "knih",
+    "empty_title": "Žádné knihovny",
+    "empty_desc": "Naskenujte svou první polici a vytvořte digitální dvojče knihovny.",
+    "empty_shelf": "Prázdná police"
   }
 }

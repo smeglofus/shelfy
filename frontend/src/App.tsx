@@ -6,6 +6,8 @@ import { Navigation } from './components/Navigation'
 import { LoginPage, ProtectedRoute } from './features/auth'
 import { HomePage } from './pages/HomePage'
 import { BooksPage, AddBookPage, BookDetailPage } from './features/books'
+import { ScanShelfPage } from './pages/ScanShelfPage'
+import { BookshelfViewPage } from './pages/BookshelfViewPage'
 import { LocationsPage } from './features/locations'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -26,6 +28,8 @@ function AppShell() {
             <Route path={ROUTES.home} element={<HomePage />} />
             <Route path={ROUTES.books} element={<BooksPage />} />
             <Route path={ROUTES.addBook} element={<AddBookPage />} />
+            <Route path={ROUTES.scanShelf} element={<ScanShelfPage />} />
+            <Route path={ROUTES.bookshelfView} element={<BookshelfViewPage />} />
             <Route path={ROUTES.bookDetail} element={<BookDetailPage />} />
             <Route path={ROUTES.locations} element={<LocationsPage />} />
             <Route path={ROUTES.settings} element={<SettingsPage />} />

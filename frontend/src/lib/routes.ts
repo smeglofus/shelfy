@@ -4,6 +4,8 @@ export const ROUTES = {
   books: '/books',
   bookDetail: '/books/:bookId',
   addBook: '/books/new',
+  scanShelf: '/scan',
+  bookshelfView: '/bookshelf',
   locations: '/locations',
   settings: '/settings',
 } as const

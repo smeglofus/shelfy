@@ -1,0 +1,141 @@
+from __future__ import annotations
+
+import asyncio
+import uuid
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies.auth import get_current_user
+from app.db.session import get_db_session
+from app.models.processing_job import ProcessingJob, ProcessingJobStatus
+from app.models.user import User
+from app.schemas.scan import (
+    ScannedBookItem,
+    ShelfScanConfirmRequest,
+    ShelfScanConfirmResponse,
+    ShelfScanResponse,
+    ShelfScanResultResponse,
+)
+from app.services.job import create_upload_job
+from app.services.job_queue import get_celery_client
+from app.services.scan import confirm_shelf_scan
+from app.services.storage import delete_image_bytes
+
+router = APIRouter(prefix="/api/v1/scan", tags=["scan"])
+
+
+@router.post("/shelf", response_model=ShelfScanResponse, status_code=status.HTTP_202_ACCEPTED)
+async def scan_shelf(
+    image: UploadFile = File(...),
+    location_id: str | None = Form(default=None),
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> ShelfScanResponse:
+    """Upload a photo of a shelf. Starts async processing to extract all book spines."""
+    job, minio_path = await create_upload_job(session, image)
+    job_id = job.id
+    job_status = job.status.value
+
+    parsed_location_id: uuid.UUID | None = None
+    if location_id:
+        try:
+            parsed_location_id = uuid.UUID(location_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid location_id")
+
+    try:
+        await session.commit()
+        celery_client = get_celery_client()
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: celery_client.send_task(
+                "worker.celery_app.process_shelf_scan",
+                args=[str(job_id), str(parsed_location_id) if parsed_location_id else None],
+            ),
+        )
+    except Exception as publish_exc:
+        try:
+            cleanup_loop = asyncio.get_running_loop()
+            await cleanup_loop.run_in_executor(None, lambda: delete_image_bytes(minio_path))
+        except Exception:
+            pass
+        try:
+            async with AsyncSession(session.bind) as cleanup_session:
+                orphaned_job = await cleanup_session.get(ProcessingJob, job_id)
+                if orphaned_job is not None:
+                    orphaned_job.status = ProcessingJobStatus.FAILED
+                    orphaned_job.error_message = "Queue unavailable"
+                    await cleanup_session.commit()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Image processing queue is unavailable",
+        ) from publish_exc
+
+    return ShelfScanResponse(job_id=job_id, status=job_status)
+
+
+@router.get("/shelf/{job_id}", response_model=ShelfScanResultResponse)
+async def get_shelf_scan_result(
+    job_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> ShelfScanResultResponse:
+    """Poll for shelf scan results. Returns extracted books once processing is done."""
+    from app.services.job import get_job_or_404
+
+    job = await get_job_or_404(session, job_id)
+    books: list[ScannedBookItem] = []
+
+    if job.status == ProcessingJobStatus.DONE and job.result_json:
+        raw_books_obj = job.result_json.get("books", [])
+        raw_books: list[object] = raw_books_obj if isinstance(raw_books_obj, list) else []
+        location_id_str = job.result_json.get("location_id")
+        location_id = uuid.UUID(str(location_id_str)) if location_id_str else None
+
+        for idx, raw in enumerate(raw_books):
+            if not isinstance(raw, dict):
+                continue
+            title = raw.get("title") if isinstance(raw.get("title"), str) else None
+            author = raw.get("author") if isinstance(raw.get("author"), str) else None
+            isbn = raw.get("isbn") if isinstance(raw.get("isbn"), str) else None
+            observed_text = raw.get("observed_text") if isinstance(raw.get("observed_text"), str) else None
+
+            has_title = bool(title and title != "Unknown title")
+            confidence = "auto" if has_title else "needs_review"
+
+            books.append(ScannedBookItem(
+                position=idx,
+                title=title,
+                author=author,
+                isbn=isbn,
+                observed_text=observed_text,
+                confidence=confidence,
+            ))
+
+        return ShelfScanResultResponse(
+            job_id=job.id,
+            status=job.status.value,
+            location_id=location_id,
+            books=books,
+        )
+
+    return ShelfScanResultResponse(
+        job_id=job.id,
+        status=job.status.value,
+        error_message=job.error_message,
+    )
+
+
+@router.post("/confirm", response_model=ShelfScanConfirmResponse, status_code=status.HTTP_201_CREATED)
+async def confirm_shelf_books(
+    payload: ShelfScanConfirmRequest,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> ShelfScanConfirmResponse:
+    """Confirm scanned books and save them to the library with positions."""
+    book_ids = await confirm_shelf_scan(session, payload)
+    return ShelfScanConfirmResponse(created_count=len(book_ids), book_ids=book_ids)

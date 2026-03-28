@@ -17,6 +17,10 @@ import type {
   LocationUpdateRequest,
   LoginRequest,
   RegisterRequest,
+  ShelfScanConfirmRequest,
+  ShelfScanConfirmResponse,
+  ShelfScanResponse,
+  ShelfScanResultResponse,
   TokenResponse,
   UploadJobResponse,
   User,
@@ -225,4 +229,33 @@ export async function exportBooksCsv(): Promise<Blob> {
 export async function purgeLibrary(password: string): Promise<PurgeLibraryResponse> {
   const response = await apiClient.post<PurgeLibraryResponse>('/api/v1/settings/purge-library', { password })
   return response.data
+}
+
+// Shelf scanning
+export async function scanShelf(file: File, locationId?: string): Promise<ShelfScanResponse> {
+  const formData = new FormData()
+  formData.append('image', file)
+  if (locationId) {
+    formData.append('location_id', locationId)
+  }
+  const response = await apiClient.post<ShelfScanResponse>('/api/v1/scan/shelf', formData)
+  return response.data
+}
+
+export async function getShelfScanResult(jobId: string): Promise<ShelfScanResultResponse> {
+  const response = await apiClient.get<ShelfScanResultResponse>(`/api/v1/scan/shelf/${jobId}`)
+  return response.data
+}
+
+export async function confirmShelfScan(payload: ShelfScanConfirmRequest): Promise<ShelfScanConfirmResponse> {
+  const response = await apiClient.post<ShelfScanConfirmResponse>('/api/v1/scan/confirm', payload)
+  return response.data
+}
+
+// Books by location with position ordering
+export async function listBooksByLocation(locationId: string): Promise<Book[]> {
+  const response = await apiClient.get<BookListResponse>('/api/v1/books', {
+    params: { location_id: locationId, page: 1, page_size: 100 },
+  })
+  return response.data.items
 }

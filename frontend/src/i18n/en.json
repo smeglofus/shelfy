@@ -2,9 +2,11 @@
   "nav": {
     "library": "Library",
     "add": "Add",
+    "scan": "Scan",
     "home": "Home",
     "locations": "Locations",
-    "settings": "Settings"
+    "settings": "Settings",
+    "bookshelf": "Shelves"
   },
   "books": {
     "title": "My Library",
@@ -194,5 +196,43 @@
     "condition_fair": "Fair",
     "condition_damaged": "Damaged",
     "condition_lost": "Lost"
+  },
+  "scan": {
+    "title": "Scan shelf",
+    "step_location": "1. Select location",
+    "step_location_desc": "Choose the room, bookcase, and shelf you want to scan.",
+    "step_scan": "2. Photograph the shelf",
+    "step_scan_desc": "Take a photo of the entire shelf so all book spines are visible from left to right.",
+    "step_review": "3. Review books",
+    "step_review_desc": "Found {{count}} books. Review and correct the details if needed.",
+    "select_location": "Please select a location first.",
+    "fill_location": "Fill in all fields for the new location.",
+    "add_new_location": "+ Add new location",
+    "hide_new_location": "Hide form",
+    "next_step": "Continue to scanning",
+    "take_photo": "Photograph shelf",
+    "take_photo_desc": "AI will recognize books on the shelf from left to right",
+    "scanning": "Processing photo…",
+    "scanning_desc": "AI is reading book spines on the shelf",
+    "back_to_location": "Back to location selection",
+    "needs_review": "Needs review",
+    "book_title": "Title",
+    "book_title_placeholder": "Enter book title",
+    "book_author": "Author",
+    "book_author_placeholder": "Enter author",
+    "rescan": "Scan again",
+    "confirm_books": "Save {{count}} books",
+    "saving": "Saving…",
+    "no_books": "No books to save.",
+    "no_books_found": "No books found. Please try again.",
+    "error_failed": "Scanning failed."
+  },
+  "bookshelf": {
+    "title": "My bookshelves",
+    "scan_shelf": "Scan shelf",
+    "books_count": "books",
+    "empty_title": "No bookshelves",
+    "empty_desc": "Scan your first shelf to create a digital twin of your bookshelf.",
+    "empty_shelf": "Empty shelf"
   }
 }

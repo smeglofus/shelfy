@@ -80,6 +80,8 @@ class Book(Base):
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     publication_year: Mapped[int | None] = mapped_column(Integer(), nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    shelf_position: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    location_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     processing_status: Mapped[BookProcessingStatus] = mapped_column(
         SAEnum(
             BookProcessingStatus,
@@ -325,6 +327,93 @@ def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
         if normalized is not None:
             return normalized
     return None
+
+
+async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[str, object]] | None:
+    """Extract all book spines from a shelf photo, ordered left-to-right."""
+    api_key = worker_settings.gemini_api_key
+    if not api_key:
+        logger.warning("gemini_vision_disabled", processing_step="shelf_scan", reason="GEMINI_API_KEY not configured")
+        return None
+
+    prompt = (
+        "You are looking at a photo of a bookshelf. "
+        "Identify ALL books visible on the shelf, reading their spines from LEFT to RIGHT. "
+        "Return only a strict JSON array, ordered from the leftmost book to the rightmost. "
+        "Each array item must be an object with keys: title (string|null), author (string|null), "
+        "isbn (string|null), observed_text (string|null). "
+        "observed_text should contain the raw text you can read on the spine. "
+        "If you cannot read a spine clearly, still include the item with observed_text containing "
+        "whatever you can make out, and set title/author to null. Do not include markdown."
+    )
+    mime_type = _detect_mime_type(image_bytes)
+    request_payload: dict[str, object] = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
+                ]
+            }
+        ],
+        "generationConfig": {"temperature": 0},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                params={"key": api_key},
+                json=request_payload,
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPStatusError as exc:
+        logger.warning("gemini_shelf_scan_http_error", status_code=exc.response.status_code)
+        return None
+    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning("gemini_shelf_scan_failed", error_type=type(exc).__name__)
+        return None
+
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return None
+
+    content = candidates[0].get("content", {})
+    parts = content.get("parts", [])
+    if not isinstance(parts, list):
+        return None
+
+    text_blocks = [part.get("text") for part in parts if isinstance(part, dict) and isinstance(part.get("text"), str)]
+    if not text_blocks:
+        return None
+
+    blob = "\n".join(text_blocks)
+    parsed_array = _extract_json_array(blob)
+    if parsed_array is None:
+        parsed_obj = _extract_json_object(blob)
+        if parsed_obj is None:
+            return None
+        parsed_array = [parsed_obj]
+
+    normalized_results: list[dict[str, object]] = []
+    for parsed in parsed_array:
+        normalized = _normalize_vision_result(parsed)
+        if normalized is not None:
+            normalized_results.append(normalized)
+        else:
+            # Still include unrecognized items for user review
+            observed = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
+            if observed:
+                normalized_results.append({
+                    "isbn": None,
+                    "title": None,
+                    "author": None,
+                    "observed_text": observed,
+                    "source": "gemini_vision",
+                })
+
+    return normalized_results or None
 
 
 async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[str, object]] | None:
@@ -777,6 +866,95 @@ def retry_book_enrichment(self, book_id: str) -> None:
     except Exception as error:
         logger.exception("retry_enrichment_failed", book_id=book_id, processing_step="retry_enrichment", error=str(error))
         _mark_book_partial(book_id, "Retry enrichment failed")
+        raise
+    finally:
+        structlog.contextvars.clear_contextvars()
+
+
+@celery_app.task(
+    name="worker.celery_app.process_shelf_scan",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(exc.OperationalError, exc.InterfaceError),
+    retry_backoff=True,
+    retry_backoff_max=60,
+    max_retries=3,
+)
+def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> None:
+    """Process a shelf photo: extract all book spines left-to-right, enrich metadata."""
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(service="worker", job_id=job_id, processing_step="shelf_scan")
+    try:
+        logger.info("process_shelf_scan_started")
+        with Session(_get_engine()) as session:
+            job = session.get(ProcessingJob, uuid.UUID(job_id))
+            if job is None:
+                raise self.retry(exc=RuntimeError(f"ProcessingJob {job_id} not found"), countdown=2)
+
+            image = session.get(BookImage, job.book_image_id)
+            if image is None:
+                raise self.retry(exc=RuntimeError(f"BookImage for job {job_id} not found"), countdown=2)
+
+            job.status = ProcessingJobStatus.PROCESSING
+            job.attempts += 1
+            session.commit()
+
+            image_bytes = _download_image_bytes(image.minio_path)
+
+            # Use shelf-specific Gemini prompt
+            try:
+                vision_results = asyncio.run(_extract_shelf_metadata_with_gemini(image_bytes))
+            except Exception as vision_exc:
+                logger.warning("shelf_scan_vision_failed", error=str(vision_exc))
+                vision_results = None
+
+            if vision_results is None:
+                job.status = ProcessingJobStatus.FAILED
+                job.result_json = {"books": [], "location_id": location_id}
+                job.error_message = "Could not extract books from shelf photo"
+                session.commit()
+                return
+
+            # Enrich each book with metadata
+            processed_books: list[dict[str, object]] = []
+            for idx, local_result in enumerate(vision_results):
+                isbn = local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None
+                title = local_result.get("title") if isinstance(local_result.get("title"), str) else None
+                author = local_result.get("author") if isinstance(local_result.get("author"), str) else None
+
+                metadata: dict[str, object] | None = None
+                if isbn or title:
+                    try:
+                        metadata = asyncio.run(_enrich_metadata_with_fallback(isbn, title=title, author=author))
+                    except Exception:
+                        metadata = None
+
+                # Build result item
+                item: dict[str, object] = {
+                    "position": idx,
+                    "isbn": metadata.get("isbn") if metadata and isinstance(metadata.get("isbn"), str) else isbn,
+                    "title": (metadata.get("title") if metadata and isinstance(metadata.get("title"), str) else None) or title,
+                    "author": (metadata.get("author") if metadata and isinstance(metadata.get("author"), str) else None) or author,
+                    "observed_text": local_result.get("observed_text"),
+                    "source": local_result.get("source", "gemini_vision"),
+                }
+                if metadata:
+                    item["cover_image_url"] = metadata.get("cover_image_url")
+                    item["publisher"] = metadata.get("publisher")
+                processed_books.append(item)
+
+            job.status = ProcessingJobStatus.DONE
+            job.result_json = {"books": processed_books, "location_id": location_id}
+            job.error_message = None
+            session.commit()
+            logger.info("process_shelf_scan_completed", job_id=job_id, books_count=len(processed_books))
+    except Retry:
+        raise
+    except (exc.OperationalError, exc.InterfaceError):
+        raise
+    except Exception as error:
+        logger.exception("process_shelf_scan_failed", job_id=job_id, error=str(error))
+        _mark_failed(job_id, str(error))
         raise
     finally:
         structlog.contextvars.clear_contextvars()

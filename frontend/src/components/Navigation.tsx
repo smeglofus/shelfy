@@ -16,6 +16,8 @@ export function Navigation() {
     () => [
       { label: t('nav.library'), icon: '⊞', path: ROUTES.books },
       { label: t('nav.add'), icon: '⊕', path: ROUTES.addBook },
+      { label: t('nav.scan'), icon: '⎘', path: ROUTES.scanShelf },
+      { label: t('nav.bookshelf'), icon: '▤', path: ROUTES.bookshelfView },
       { label: t('nav.home'), icon: '⌂', path: ROUTES.home },
       { label: t('nav.locations'), icon: '⌗', path: ROUTES.locations },
       { label: t('nav.settings'), icon: '⎈', path: ROUTES.settings },
@@ -58,6 +60,8 @@ export function Navigation() {
             || (tab.path === ROUTES.books
               && location.pathname.startsWith('/books')
               && location.pathname !== ROUTES.addBook)
+            || (tab.path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
+            || (tab.path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
 
           return (
             <button
@@ -135,6 +139,8 @@ export function Navigation() {
           || (tab.path === ROUTES.books
             && location.pathname.startsWith('/books')
             && location.pathname !== ROUTES.addBook)
+          || (tab.path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
+          || (tab.path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
 
         return (
           <button

@@ -17,6 +17,7 @@ class BookBaseRequest(BaseModel):
     publication_year: int | None = Field(default=None, ge=0, le=9999)
     cover_image_url: str | None = Field(default=None, max_length=500)
     location_id: uuid.UUID | None = None
+    shelf_position: int | None = None
     reading_status: ReadingStatus | None = ReadingStatus.UNREAD
     processing_status: BookProcessingStatus = BookProcessingStatus.MANUAL
 
@@ -35,6 +36,7 @@ class BookUpdateRequest(BaseModel):
     publication_year: int | None = Field(default=None, ge=0, le=9999)
     cover_image_url: str | None = Field(default=None, max_length=500)
     location_id: uuid.UUID | None = None
+    shelf_position: int | None = None
     reading_status: ReadingStatus | None = None
     processing_status: BookProcessingStatus | None = None
 
@@ -49,6 +51,7 @@ class BookUpdateRequest(BaseModel):
             "publication_year",
             "cover_image_url",
             "location_id",
+            "shelf_position",
             "reading_status",
         }
         for field_name in self.model_fields_set:
@@ -70,6 +73,7 @@ class BookResponse(BaseModel):
     publication_year: int | None
     cover_image_url: str | None
     location_id: uuid.UUID | None
+    shelf_position: int | None
     reading_status: ReadingStatus | None
     processing_status: BookProcessingStatus
     is_currently_lent: bool

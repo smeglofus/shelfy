@@ -18,6 +18,7 @@ from app.api.jobs import router as jobs_router
 from app.api.locations import router as locations_router
 from app.routers.loans import router as loans_router
 from app.api.metrics import router as metrics_router
+from app.api.scan import router as scan_router
 from app.api.settings import router as settings_router
 from app.core.config import get_settings
 from app.core.logging import configure_structlog
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(locations_router)
     app.include_router(books_router)
     app.include_router(loans_router)
+    app.include_router(scan_router)
     app.include_router(settings_router)
     app.include_router(jobs_router)
     return app

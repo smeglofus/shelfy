@@ -53,6 +53,7 @@ export interface Book {
   publication_year: number | null
   cover_image_url: string | null
   location_id: string | null
+  shelf_position: number | null
   processing_status: BookProcessingStatus
   reading_status?: ReadingStatus   // optional until backend migration applied
   is_currently_lent?: boolean
@@ -160,4 +161,44 @@ export interface PurgeLibraryResponse {
   deleted_books: number
   deleted_locations: number
   deleted_loans: number
+}
+
+// Shelf scanning types
+export interface ScannedBookItem {
+  position: number
+  title: string | null
+  author: string | null
+  isbn: string | null
+  observed_text: string | null
+  confidence: 'auto' | 'needs_review'
+}
+
+export interface ShelfScanResponse {
+  job_id: string
+  status: string
+}
+
+export interface ShelfScanResultResponse {
+  job_id: string
+  status: string
+  location_id: string | null
+  books: ScannedBookItem[]
+  error_message: string | null
+}
+
+export interface ConfirmBookItem {
+  position: number
+  title: string
+  author: string | null
+  isbn: string | null
+}
+
+export interface ShelfScanConfirmRequest {
+  location_id: string
+  books: ConfirmBookItem[]
+}
+
+export interface ShelfScanConfirmResponse {
+  created_count: number
+  book_ids: string[]
 }
