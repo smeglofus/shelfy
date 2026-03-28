@@ -20,6 +20,7 @@ import type {
   TokenResponse,
   UploadJobResponse,
   User,
+  PurgeLibraryResponse,
 } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
@@ -218,4 +219,10 @@ export async function getJobStatus(id: string): Promise<JobStatusResponse> {
 export async function exportBooksCsv(): Promise<Blob> {
   const response = await apiClient.get('/api/v1/books/export', { responseType: 'blob' })
   return response.data as Blob
+}
+
+
+export async function purgeLibrary(password: string): Promise<PurgeLibraryResponse> {
+  const response = await apiClient.post<PurgeLibraryResponse>('/api/v1/settings/purge-library', { password })
+  return response.data
 }

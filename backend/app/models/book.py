@@ -18,6 +18,7 @@ class ReadingStatus(str, Enum):
     UNREAD = "unread"
     READING = "reading"
     READ = "read"
+    LENT = "lent"
 
 
 class BookProcessingStatus(str, Enum):

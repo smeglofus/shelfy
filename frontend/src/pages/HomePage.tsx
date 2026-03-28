@@ -12,7 +12,7 @@ export function HomePage() {
   const locationsQuery = useLocations()
 
   const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', {
+    () => new Intl.DateTimeFormat('en-GB', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

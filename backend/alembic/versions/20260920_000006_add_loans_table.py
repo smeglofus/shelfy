@@ -153,6 +153,7 @@ def _migrate_lent_to_data(bind: Connection) -> None:
 def _migrate_postgres_reading_status_enum(bind: Connection) -> None:
     new_reading_status_enum.create(bind, checkfirst=True)
 
+    op.execute(sa.text("ALTER TABLE books ALTER COLUMN reading_status DROP DEFAULT"))
     op.execute(
         sa.text(
             "ALTER TABLE books ALTER COLUMN reading_status TYPE reading_status_new "
@@ -161,6 +162,7 @@ def _migrate_postgres_reading_status_enum(bind: Connection) -> None:
     )
     old_reading_status_enum.drop(bind, checkfirst=True)
     op.execute(sa.text("ALTER TYPE reading_status_new RENAME TO reading_status"))
+    op.execute(sa.text("ALTER TABLE books ALTER COLUMN reading_status SET DEFAULT 'unread'"))
 
 
 def _restore_lent_to_data(bind: Connection) -> None:

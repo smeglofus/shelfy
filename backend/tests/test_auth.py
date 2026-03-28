@@ -129,3 +129,29 @@ async def test_refresh_returns_new_access_token(test_session: AsyncSession) -> N
     assert response.status_code == 200
     assert response.json()["token_type"] == "bearer"
     assert "access_token" in response.json()
+
+
+
+@pytest.mark.asyncio
+async def test_register_creates_user(test_session: AsyncSession) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "new.user@example.com", "password": "secret123"},
+        )
+
+    assert response.status_code == 201
+    assert response.json()["email"] == "new.user@example.com"
+
+
+@pytest.mark.asyncio
+async def test_register_duplicate_email_returns_409(test_session: AsyncSession) -> None:
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+
+    assert response.status_code == 409

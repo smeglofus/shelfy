@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.core.config import Settings
-from app.core.security import create_token, decode_token, verify_password
+from app.core.security import create_token, decode_token, get_password_hash, verify_password
 from app.models.user import User
 
 logger = structlog.get_logger()
@@ -59,3 +59,17 @@ def read_refresh_token_subject(token: str) -> str:
     if token_type != "refresh" or not isinstance(subject, str):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     return subject
+
+
+
+async def register_user(session: AsyncSession, email: str, password: str) -> User:
+    existing = await get_user_by_email(session, email)
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    user = User(email=email, hashed_password=get_password_hash(password))
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    logger.info("registration_success", user_id=str(user.id))
+    return user

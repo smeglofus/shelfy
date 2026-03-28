@@ -24,7 +24,7 @@ export interface LocationUpdateRequest {
   shelf?: string
 }
 
-export type ReadingStatus = 'unread' | 'reading' | 'read'
+export type ReadingStatus = 'unread' | 'reading' | 'read' | 'lent'
 
 export interface Loan {
   id: string
@@ -153,4 +153,11 @@ export interface JobStatusResponse {
   attempts: number
   created_at: string
   updated_at: string
+}
+
+
+export interface PurgeLibraryResponse {
+  deleted_books: number
+  deleted_locations: number
+  deleted_loans: number
 }
