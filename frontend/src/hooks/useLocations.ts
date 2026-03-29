@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { useTranslation } from 'react-i18next'
+
 import { createLocation, deleteLocation, formatApiError, listLocations, updateLocation } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import type { Location, LocationCreateRequest, LocationUpdateRequest } from '../lib/types'
@@ -17,6 +19,8 @@ export function useLocations() {
 export function useCreateLocation() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const showSuccess = useToastStore((state) => state.showSuccess)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: (payload: LocationCreateRequest) => createLocation(payload),
@@ -25,6 +29,7 @@ export function useCreateLocation() {
         ...(current ?? []),
         createdLocation,
       ])
+      showSuccess(t('toast.location_created', 'Location created.'))
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))
@@ -35,6 +40,8 @@ export function useCreateLocation() {
 export function useUpdateLocation() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const showSuccess = useToastStore((state) => state.showSuccess)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: LocationUpdateRequest }) =>
@@ -45,6 +52,7 @@ export function useUpdateLocation() {
           location.id === updatedLocation.id ? updatedLocation : location,
         ),
       )
+      showSuccess(t('toast.location_saved', 'Location saved.'))
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))
@@ -55,6 +63,8 @@ export function useUpdateLocation() {
 export function useDeleteLocation() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const showSuccess = useToastStore((state) => state.showSuccess)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: (id: string) => deleteLocation(id),
@@ -62,6 +72,7 @@ export function useDeleteLocation() {
       queryClient.setQueryData<Location[]>(LOCATIONS_QUERY_KEY, (current) =>
         (current ?? []).filter((location) => location.id !== deletedId),
       )
+      showSuccess(t('toast.location_deleted', 'Location deleted.'))
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))

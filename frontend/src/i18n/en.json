@@ -6,7 +6,22 @@
     "home": "Home",
     "locations": "Locations",
     "settings": "Settings",
-    "bookshelf": "Shelves"
+    "bookshelf": "Shelves",
+    "add_book": "Add book",
+    "scan_shelf": "Scan shelf",
+    "actions": "Actions",
+    "logout": "Logout"
+  },
+  "toast": {
+    "book_saved": "Changes saved successfully.",
+    "book_deleted": "Book deleted.",
+    "book_lent": "Book lent successfully.",
+    "book_returned": "Book returned successfully.",
+    "location_created": "Location created.",
+    "location_saved": "Location saved.",
+    "location_deleted": "Location deleted.",
+    "scan_confirmed": "Books saved to your library!",
+    "enrich_started": "Enrichment started. Data will update shortly."
   },
   "books": {
     "title": "My Library",
@@ -257,6 +272,8 @@
     "books_count": "books",
     "empty_title": "No bookshelves",
     "empty_desc": "Scan your first shelf to create a digital twin of your bookshelf.",
-    "empty_shelf": "Empty shelf"
+    "empty_shelf": "Empty shelf",
+    "tab_shelves": "Shelves view",
+    "tab_locations": "Locations management"
   }
 }

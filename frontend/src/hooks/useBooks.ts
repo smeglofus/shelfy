@@ -12,6 +12,7 @@ import {
 } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import type { BookCreateRequest, BookListParams, BookUpdateRequest } from '../lib/types'
+import { useTranslation } from 'react-i18next'
 
 export const BOOKS_QUERY_KEY = ['books']
 
@@ -49,11 +50,14 @@ export function useCreateBook() {
 export function useUpdateBook() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const showSuccess = useToastStore((state) => state.showSuccess)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: BookUpdateRequest }) => updateBook(id, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('toast.book_saved', 'Changes saved successfully.'))
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))
@@ -64,11 +68,14 @@ export function useUpdateBook() {
 export function useDeleteBook() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const showSuccess = useToastStore((state) => state.showSuccess)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: (id: string) => deleteBook(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('toast.book_deleted', 'Book deleted.'))
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))

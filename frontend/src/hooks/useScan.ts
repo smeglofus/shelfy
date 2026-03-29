@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { useTranslation } from 'react-i18next'
+
 import {
   confirmShelfScan,
   formatApiError,
@@ -39,11 +41,14 @@ export function useShelfScanResult(jobId: string | null) {
 export function useConfirmShelfScan() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const showSuccess = useToastStore((state) => state.showSuccess)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: (payload: ShelfScanConfirmRequest) => confirmShelfScan(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('toast.scan_confirmed', 'Books saved to your library!'))
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))

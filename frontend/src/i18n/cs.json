@@ -6,7 +6,22 @@
     "home": "Domů",
     "locations": "Lokace",
     "settings": "Nastavení",
-    "bookshelf": "Knihovny"
+    "bookshelf": "Knihovny",
+    "add_book": "Přidat knihu",
+    "scan_shelf": "Skenovat polici",
+    "actions": "Akce",
+    "logout": "Odhlásit"
+  },
+  "toast": {
+    "book_saved": "Změny uloženy.",
+    "book_deleted": "Kniha smazána.",
+    "book_lent": "Kniha úspěšně půjčena.",
+    "book_returned": "Kniha vrácena.",
+    "location_created": "Umístění vytvořeno.",
+    "location_saved": "Umístění uloženo.",
+    "location_deleted": "Umístění smazáno.",
+    "scan_confirmed": "Knihy uloženy do knihovny!",
+    "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují."
   },
   "books": {
     "title": "Moje Knihovna",
@@ -257,6 +272,8 @@
     "books_count": "knih",
     "empty_title": "Žádné knihovny",
     "empty_desc": "Naskenujte svou první polici a vytvořte digitální dvojče knihovny.",
-    "empty_shelf": "Prázdná police"
+    "empty_shelf": "Prázdná police",
+    "tab_shelves": "Digitální dvojče",
+    "tab_locations": "Správa pozic"
   }
 }

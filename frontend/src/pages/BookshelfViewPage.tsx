@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBooks } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
+import { LocationsPage } from './LocationsPage'
 import type { Book, Location } from '../lib/types'
 
 export function BookshelfViewPage() {
@@ -17,6 +18,7 @@ export function BookshelfViewPage() {
   const allBooks = booksData?.items ?? []
 
   const preselectedLocationId = searchParams.get('location_id')
+  const activeTab = searchParams.get('tab') === 'locations' ? 'locations' : 'shelves'
 
   // Group locations by room > furniture
   const locationTree = useMemo(() => {
@@ -80,6 +82,37 @@ export function BookshelfViewPage() {
         </button>
       </div>
 
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <button
+          type='button'
+          className='sh-btn-secondary'
+          onClick={() => navigate(ROUTES.bookshelfView)}
+          style={{
+            background: activeTab === 'shelves' ? 'var(--sh-teal)' : 'var(--sh-surface)',
+            color: activeTab === 'shelves' ? 'white' : 'var(--sh-text-main)',
+            borderColor: activeTab === 'shelves' ? 'var(--sh-teal)' : 'var(--sh-border)',
+          }}
+        >
+          {t('bookshelf.tab_shelves')}
+        </button>
+        <button
+          type='button'
+          className='sh-btn-secondary'
+          onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}
+          style={{
+            background: activeTab === 'locations' ? 'var(--sh-teal)' : 'var(--sh-surface)',
+            color: activeTab === 'locations' ? 'white' : 'var(--sh-text-main)',
+            borderColor: activeTab === 'locations' ? 'var(--sh-teal)' : 'var(--sh-border)',
+          }}
+        >
+          {t('bookshelf.tab_locations')}
+        </button>
+      </div>
+
+      {activeTab === 'locations' ? (
+        <LocationsPage />
+      ) : (<>
       {/* Room filter */}
       {roomNames.length > 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -199,6 +232,7 @@ export function BookshelfViewPage() {
       ))}
 
       <div style={{ height: 80 }} />
+      </>)}
     </div>
   )
 }

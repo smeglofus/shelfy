@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
+import { useTranslation } from 'react-i18next'
+
 import { enrichAll, enrichBook, enrichByLocation, formatApiError } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { BOOKS_QUERY_KEY } from './useBooks'
@@ -7,11 +9,14 @@ import { BOOKS_QUERY_KEY } from './useBooks'
 export function useEnrichBook() {
   const queryClient = useQueryClient()
   const showError = useToastStore((s) => s.showError)
+  const showInfo = useToastStore((s) => s.showInfo)
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: ({ bookId, force }: { bookId: string; force?: boolean }) =>
       enrichBook(bookId, force),
     onSuccess: async () => {
+      showInfo(t('toast.enrich_started', 'Enrichment started. Data will update shortly.'))
       // Invalidate after a delay to give the worker time to process
       setTimeout(() => {
         void queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })

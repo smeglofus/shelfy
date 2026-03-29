@@ -1,26 +1,141 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
 
+/* ── SVG Icons (Lucide-inspired, 24×24 viewBox) ──────────────────── */
+
+function IconHome({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  )
+}
+
+function IconLibrary({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  )
+}
+
+function IconPlus({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
+
+function IconCamera({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  )
+}
+
+function IconBookshelf({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 5h18M3 12h18M3 19h18" />
+      <path d="M7 5v14M11 5v14M17 5v14" />
+    </svg>
+  )
+}
+
+function IconLocations({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  )
+}
+
+function IconSettings({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+function IconLogout({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  )
+}
+
+function IconBookPlus({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <line x1="12" y1="8" x2="12" y2="14" />
+      <line x1="9" y1="11" x2="15" y2="11" />
+    </svg>
+  )
+}
+
+/* ── Icon map ─────────────────────────────────────────────────────── */
+
+const iconComponents = {
+  home: IconHome,
+  library: IconLibrary,
+  add: IconBookPlus,
+  scan: IconCamera,
+  bookshelf: IconBookshelf,
+  locations: IconLocations,
+  settings: IconSettings,
+}
+
+/* ── Navigation component ─────────────────────────────────────────── */
+
 export function Navigation() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768)
+  const [fabOpen, setFabOpen] = useState(false)
+  const fabRef = useRef<HTMLDivElement>(null)
   const { logout } = useAuth()
 
-  const tabs = useMemo(
+  /* All sidebar items (desktop shows all 7) */
+  const allTabs = useMemo(
     () => [
-      { label: t('nav.library'), icon: '⊞', path: ROUTES.books },
-      { label: t('nav.add'), icon: '⊕', path: ROUTES.addBook },
-      { label: t('nav.scan'), icon: '⎘', path: ROUTES.scanShelf },
-      { label: t('nav.bookshelf'), icon: '▤', path: ROUTES.bookshelfView },
-      { label: t('nav.home'), icon: '⌂', path: ROUTES.home },
-      { label: t('nav.locations'), icon: '⌗', path: ROUTES.locations },
-      { label: t('nav.settings'), icon: '⎈', path: ROUTES.settings },
+      { label: t('nav.home'), icon: 'home', path: ROUTES.home },
+      { label: t('nav.library'), icon: 'library', path: ROUTES.books },
+      { label: t('nav.add'), icon: 'add', path: ROUTES.addBook },
+      { label: t('nav.scan'), icon: 'scan', path: ROUTES.scanShelf },
+      { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
+      { label: t('nav.locations'), icon: 'locations', path: ROUTES.locations },
+      { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
+    ],
+    [t],
+  )
+
+  /* Mobile bottom nav: 4 items + center FAB */
+  const mobileTabs = useMemo(
+    () => [
+      { label: t('nav.home'), icon: 'home', path: ROUTES.home },
+      { label: t('nav.library'), icon: 'library', path: ROUTES.books },
+      // FAB placeholder (handled separately)
+      { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
+      { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
     ],
     [t],
   )
@@ -31,9 +146,49 @@ export function Navigation() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  /* Close FAB on click outside */
+  useEffect(() => {
+    if (!fabOpen) return
+    const handler = (e: MouseEvent) => {
+      if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
+        setFabOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [fabOpen])
+
+  /* Close FAB with Escape */
+  useEffect(() => {
+    if (!fabOpen) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFabOpen(false)
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [fabOpen])
+
+  /* Close FAB on route change */
+  useEffect(() => {
+    setFabOpen(false)
+  }, [location.pathname])
+
+  function isActive(path: string) {
+    return (
+      location.pathname === path
+      || (path === ROUTES.books
+        && location.pathname.startsWith('/books')
+        && location.pathname !== ROUTES.addBook)
+      || (path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
+      || (path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
+    )
+  }
+
+  /* ── Desktop Sidebar ─────────────────────────────────────────────── */
   if (isDesktop) {
     return (
-      <div
+      <nav
+        aria-label="Main navigation"
         style={{
           position: 'fixed',
           top: 0,
@@ -45,7 +200,7 @@ export function Navigation() {
           padding: '32px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
+          gap: 4,
           zIndex: 100,
         }}
       >
@@ -54,37 +209,17 @@ export function Navigation() {
           <h2 className="text-h3" style={{ margin: 0 }}>Shelfy</h2>
         </div>
 
-        {tabs.map((tab) => {
-          const isActive =
-            location.pathname === tab.path
-            || (tab.path === ROUTES.books
-              && location.pathname.startsWith('/books')
-              && location.pathname !== ROUTES.addBook)
-            || (tab.path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
-            || (tab.path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
+        {allTabs.map((tab) => {
+          const active = isActive(tab.path)
+          const Icon = iconComponents[tab.icon]
 
           return (
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className="hover-lift"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: '14px 16px',
-                background: isActive ? 'var(--sh-teal-bg)' : 'transparent',
-                border: 'none',
-                borderRadius: 'var(--sh-radius-md)',
-                cursor: 'pointer',
-                color: isActive ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
-                fontSize: 15,
-                fontWeight: isActive ? 600 : 500,
-                transition: 'all 0.2s ease',
-                textAlign: 'left',
-              }}
+              className={`sh-sidebar-btn${active ? ' active' : ''}`}
             >
-              <span style={{ fontSize: 22, lineHeight: 1 }}>{tab.icon}</span>
+              <Icon size={20} />
               <span>{tab.label}</span>
             </button>
           )
@@ -92,56 +227,43 @@ export function Navigation() {
 
         <button
           onClick={logout}
-          className="hover-lift"
-          style={{
-            marginTop: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            padding: '14px 16px',
-            background: 'transparent',
-            border: '1px solid var(--sh-border)',
-            borderRadius: 'var(--sh-radius-md)',
-            cursor: 'pointer',
-            color: 'var(--sh-text-muted)',
-            fontSize: 15,
-            fontWeight: 500,
-            textAlign: 'left',
-          }}
+          className="sh-sidebar-btn"
+          style={{ marginTop: 'auto' }}
         >
-          <span style={{ fontSize: 18 }}>↩</span>
-          <span>Logout</span>
+          <IconLogout size={20} />
+          <span>{t('nav.logout', 'Logout')}</span>
         </button>
-      </div>
+      </nav>
     )
   }
 
+  /* ── Mobile Bottom Nav ───────────────────────────────────────────── */
+  const isFabActionActive = isActive(ROUTES.addBook) || isActive(ROUTES.scanShelf)
+
   return (
-    <div
+    <nav
+      aria-label="Main navigation"
       style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
         display: 'flex',
-        background: 'var(--sh-surface-blur, rgba(255, 255, 255, 0.9))',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        alignItems: 'flex-end',
+        justifyContent: 'space-around',
+        background: 'var(--sh-surface-blur, rgba(255, 255, 255, 0.92))',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderTop: '1px solid var(--sh-border)',
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         zIndex: 100,
         boxShadow: '0 -4px 20px rgba(0,0,0,0.03)',
       }}
     >
-      {tabs.map((tab) => {
-        const isActive =
-          location.pathname === tab.path
-          || (tab.path === ROUTES.books
-            && location.pathname.startsWith('/books')
-            && location.pathname !== ROUTES.addBook)
-          || (tab.path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
-          || (tab.path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
-
+      {/* First two tabs */}
+      {mobileTabs.slice(0, 2).map((tab) => {
+        const active = isActive(tab.path)
+        const Icon = iconComponents[tab.icon]
         return (
           <button
             key={tab.path}
@@ -153,52 +275,180 @@ export function Navigation() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 4,
-              padding: '12px 0 8px',
+              padding: '10px 0 8px',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: isActive ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
-              fontSize: 12,
-              fontWeight: isActive ? 600 : 500,
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: isActive ? 'scale(1.05)' : 'scale(1)',
+              color: active ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
+              fontSize: 11,
+              fontWeight: active ? 600 : 500,
+              transition: 'color 0.2s ease',
+              minHeight: 56,
             }}
           >
-            <span
-              style={{
-                fontSize: 22,
-                lineHeight: 1,
-                marginBottom: 2,
-                filter: isActive ? 'drop-shadow(0 2px 4px rgba(15, 157, 88, 0.3))' : 'none',
-              }}
-            >
-              {tab.icon}
-            </span>
+            <Icon size={22} />
             <span>{tab.label}</span>
           </button>
         )
       })}
-      <button
-        onClick={logout}
-        style={{
-          width: 72,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 4,
-          padding: '12px 0 8px',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--sh-text-muted)',
-          fontSize: 12,
-          fontWeight: 500,
-        }}
-      >
-        <span style={{ fontSize: 20 }}>↩</span>
-        <span>Logout</span>
-      </button>
-    </div>
+
+      {/* Center FAB */}
+      <div ref={fabRef} style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+        {/* FAB popup menu */}
+        {fabOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.3)',
+                zIndex: 98,
+              }}
+              onClick={() => setFabOpen(false)}
+            />
+            <div
+              id="fab-actions-menu"
+              role="menu"
+              aria-label={t('nav.actions', 'Actions')}
+              className="sh-fab-menu"
+              style={{
+                position: 'absolute',
+                bottom: 64,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                zIndex: 99,
+              }}
+            >
+              <button
+                role="menuitem"
+                onClick={() => navigate(ROUTES.addBook)}
+                className="sh-fab-menu-item"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '12px 20px',
+                  background: 'var(--sh-surface)',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  cursor: 'pointer',
+                  color: 'var(--sh-text-main)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  fontFamily: "'Outfit', sans-serif",
+                  whiteSpace: 'nowrap',
+                  boxShadow: 'var(--sh-shadow-lg)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <IconBookPlus size={20} />
+                {t('nav.add_book', 'Přidat knihu')}
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => navigate(ROUTES.scanShelf)}
+                className="sh-fab-menu-item"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '12px 20px',
+                  background: 'var(--sh-surface)',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  cursor: 'pointer',
+                  color: 'var(--sh-text-main)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  fontFamily: "'Outfit', sans-serif",
+                  whiteSpace: 'nowrap',
+                  boxShadow: 'var(--sh-shadow-lg)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <IconCamera size={20} />
+                {t('nav.scan_shelf', 'Skenovat polici')}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* FAB button */}
+        <button
+          onClick={() => setFabOpen((v) => !v)}
+          aria-label={t('nav.actions', 'Actions')}
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: fabOpen ? 'var(--sh-teal-dark)' : 'var(--sh-teal)',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(15, 157, 88, 0.35)',
+            transform: `translateY(-14px) rotate(${fabOpen ? '45deg' : '0deg'})`,
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative',
+            zIndex: 101,
+          }}
+        >
+          <IconPlus size={26} />
+        </button>
+        {/* Active indicator dot for FAB when on add/scan page */}
+        {isFabActionActive && !fabOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 4,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: 'var(--sh-teal)',
+            }}
+          />
+        )}
+      </div>
+
+      {/* Last two tabs */}
+      {mobileTabs.slice(2).map((tab) => {
+        const active = isActive(tab.path)
+        const Icon = iconComponents[tab.icon]
+        return (
+          <button
+            key={tab.path}
+            onClick={() => navigate(tab.path)}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              padding: '10px 0 8px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: active ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
+              fontSize: 11,
+              fontWeight: active ? 600 : 500,
+              transition: 'color 0.2s ease',
+              minHeight: 56,
+            }}
+          >
+            <Icon size={22} />
+            <span>{tab.label}</span>
+          </button>
+        )
+      })}
+    </nav>
   )
 }
