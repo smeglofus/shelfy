@@ -262,7 +262,11 @@
     "segment_processing": "Zpracovávám…",
     "total_books_found": "Celkem nalezeno {{count}} knih ze všech fotek",
     "go_to_review": "Zkontrolovat {{count}} knih →",
-    "remove_item": "Odstranit položku"
+    "remove_item": "Odstranit položku",
+    "draft_found_title": "Nalezen rozpracovaný sken",
+    "draft_found_desc": "Máte nedokončené skenování police. Chcete ho obnovit?",
+    "restore_draft": "Obnovit sken",
+    "discard_draft": "Začít znovu"
   },
   "enrich": {
     "enriching": "Obohacuji…",

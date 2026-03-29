@@ -262,7 +262,11 @@
     "segment_processing": "Processing…",
     "total_books_found": "Total {{count}} books found across all photos",
     "go_to_review": "Review {{count}} books →",
-    "remove_item": "Remove item"
+    "remove_item": "Remove item",
+    "draft_found_title": "Draft scan found",
+    "draft_found_desc": "You have an unfinished shelf scan. Do you want to restore it?",
+    "restore_draft": "Restore draft",
+    "discard_draft": "Start over"
   },
   "enrich": {
     "enriching": "Enriching…",

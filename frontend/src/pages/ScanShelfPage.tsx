@@ -23,6 +23,24 @@ interface ScanSegment {
   books: ScannedBookItem[]
 }
 
+interface ScanDraft {
+  version: 1
+  step: WizardStep
+  selRoom: string
+  selFurniture: string
+  selShelf: string
+  newRoom: string
+  newFurniture: string
+  newShelf: string
+  showNewLocation: boolean
+  segments: ScanSegment[]
+  editableBooks: ReviewBookItem[]
+  locationId: string | null
+  savedAt: string
+}
+
+const SCAN_DRAFT_KEY = 'shelfy:scan-shelf-draft:v1'
+
 export function ScanShelfPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -59,6 +77,7 @@ export function ScanShelfPage() {
   // Review state
   const [editableBooks, setEditableBooks] = useState<ReviewBookItem[]>([])
   const [locationId, setLocationId] = useState<string | null>(null)
+  const [pendingDraft, setPendingDraft] = useState<ScanDraft | null>(null)
 
   // When an active scan job completes, update the segment
   useEffect(() => {
@@ -82,6 +101,63 @@ export function ScanShelfPage() {
       setActiveJobId(null)
     }
   }, [activeResult.data?.status])
+
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SCAN_DRAFT_KEY)
+      if (!raw) return
+      const draft = JSON.parse(raw) as ScanDraft
+      if (draft?.version !== 1) {
+        localStorage.removeItem(SCAN_DRAFT_KEY)
+        return
+      }
+      setPendingDraft(draft)
+    } catch {
+      localStorage.removeItem(SCAN_DRAFT_KEY)
+    }
+  }, [])
+
+  useEffect(() => {
+    const hasDraftData =
+      step !== 'location'
+      || !!selRoom
+      || !!selFurniture
+      || !!selShelf
+      || !!newRoom
+      || !!newFurniture
+      || !!newShelf
+      || showNewLocation
+      || segments.length > 0
+      || editableBooks.length > 0
+      || !!locationId
+
+    if (!hasDraftData) {
+      localStorage.removeItem(SCAN_DRAFT_KEY)
+      return
+    }
+
+    const timer = setTimeout(() => {
+      const draft: ScanDraft = {
+        version: 1,
+        step,
+        selRoom,
+        selFurniture,
+        selShelf,
+        newRoom,
+        newFurniture,
+        newShelf,
+        showNewLocation,
+        segments: segments.filter(seg => seg.status !== 'processing'),
+        editableBooks,
+        locationId,
+        savedAt: new Date().toISOString(),
+      }
+      localStorage.setItem(SCAN_DRAFT_KEY, JSON.stringify(draft))
+    }, 400)
+
+    return () => clearTimeout(timer)
+  }, [step, selRoom, selFurniture, selShelf, newRoom, newFurniture, newShelf, showNewLocation, segments, editableBooks, locationId])
 
   // Derived state
   const totalBooksFound = segments.reduce((sum, seg) => sum + seg.books.length, 0)
@@ -192,6 +268,29 @@ export function ScanShelfPage() {
       .map((b, i) => ({ ...b, position: i })))
   }
 
+
+  function clearDraft() {
+    localStorage.removeItem(SCAN_DRAFT_KEY)
+    setPendingDraft(null)
+  }
+
+  function restoreDraft() {
+    if (!pendingDraft) return
+    setStep(pendingDraft.step)
+    setSelRoom(pendingDraft.selRoom)
+    setSelFurniture(pendingDraft.selFurniture)
+    setSelShelf(pendingDraft.selShelf)
+    setNewRoom(pendingDraft.newRoom)
+    setNewFurniture(pendingDraft.newFurniture)
+    setNewShelf(pendingDraft.newShelf)
+    setShowNewLocation(pendingDraft.showNewLocation)
+    setSegments(pendingDraft.segments)
+    setEditableBooks(pendingDraft.editableBooks)
+    setLocationId(pendingDraft.locationId)
+    setActiveJobId(null)
+    setPendingDraft(null)
+  }
+
   function handleConfirm() {
     if (!locationId) {
       showError(t('scan.select_location'))
@@ -206,7 +305,12 @@ export function ScanShelfPage() {
     }
     confirmMutation.mutate(
       { location_id: locationId, books: validBooks },
-      { onSuccess: () => navigate(ROUTES.bookshelfView + '?location_id=' + locationId) }
+      {
+        onSuccess: () => {
+          clearDraft()
+          navigate(ROUTES.bookshelfView + '?location_id=' + locationId)
+        },
+      }
     )
   }
 
@@ -256,6 +360,34 @@ export function ScanShelfPage() {
           }} />
         ))}
       </div>
+
+      {pendingDraft && (
+        <div style={{
+          marginBottom: 20,
+          padding: 14,
+          background: 'var(--sh-amber-bg)',
+          border: '1px solid var(--sh-amber-text)',
+          borderRadius: 'var(--sh-radius-md)',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{t('scan.draft_found_title')}</div>
+          <div style={{ fontSize: 13, color: 'var(--sh-text-muted)', marginBottom: 10 }}>{t('scan.draft_found_desc')}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="sh-btn-primary" onClick={restoreDraft} style={{ padding: '8px 12px', fontSize: 14 }}>
+              {t('scan.restore_draft')}
+            </button>
+            <button
+              onClick={clearDraft}
+              style={{
+                padding: '8px 12px', fontSize: 14,
+                background: 'none', border: '1px solid var(--sh-border)',
+                borderRadius: 'var(--sh-radius-md)', cursor: 'pointer',
+              }}
+            >
+              {t('scan.discard_draft')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* STEP 1: Location */}
       {step === 'location' && (
