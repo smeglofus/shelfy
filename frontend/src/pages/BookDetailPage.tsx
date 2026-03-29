@@ -58,6 +58,7 @@ export function BookDetailPage() {
   const [languageEdit, setLanguageEdit] = useState<string | undefined>(undefined)
   const [yearEdit, setYearEdit] = useState<string | undefined>(undefined)
   const [descriptionEdit, setDescriptionEdit] = useState<string | undefined>(undefined)
+  const [positionEdit, setPositionEdit] = useState<string | undefined>(undefined)
 
   if (bookQuery.isLoading) {
     return (
@@ -94,6 +95,7 @@ export function BookDetailPage() {
   const selectedLanguage = languageEdit === undefined ? (book.language ?? '') : languageEdit
   const selectedYear = yearEdit === undefined ? (book.publication_year != null ? String(book.publication_year) : '') : yearEdit
   const selectedDescription = descriptionEdit === undefined ? (book.description ?? '') : descriptionEdit
+  const selectedPosition = positionEdit === undefined ? (book.shelf_position != null ? String(book.shelf_position) : '') : positionEdit
   const isDirty = (
     (titleEdit !== undefined && titleEdit !== book.title)
     || (authorEdit !== undefined && authorEdit !== (book.author ?? ''))
@@ -104,6 +106,7 @@ export function BookDetailPage() {
     || (descriptionEdit !== undefined && descriptionEdit !== (book.description ?? ''))
     || (locationSelection !== undefined && (locationSelection ?? '') !== (book.location_id ?? ''))
     || (readingSelection !== undefined && readingSelection !== (book.reading_status ?? 'unread'))
+    || (positionEdit !== undefined && positionEdit !== (book.shelf_position != null ? String(book.shelf_position) : ''))
   )
 
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
@@ -234,6 +237,7 @@ export function BookDetailPage() {
                   description: selectedDescription.trim() || null,
                   location_id: selectedLocation || null,
                   reading_status: selectedReading,
+                  shelf_position: selectedPosition.trim() ? Number(selectedPosition) : null,
                 },
               }, {
                 onSuccess: () => {
@@ -244,6 +248,7 @@ export function BookDetailPage() {
                   setLanguageEdit(undefined)
                   setYearEdit(undefined)
                   setDescriptionEdit(undefined)
+                  setPositionEdit(undefined)
                   setLocationSelection(undefined)
                   setReadingSelection(undefined)
                 },
@@ -310,8 +315,18 @@ export function BookDetailPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.shelf_position', 'Pozice v polici')}</label>
+                <input
+                  aria-label={t('book_detail.shelf_position', 'Pozice v polici')}
+                  className="sh-input"
+                  inputMode="numeric"
+                  value={selectedPosition}
+                  onChange={(e) => setPositionEdit(e.target.value.replace(/[^0-9]/g, ''))}
+                />
+              </div>
+              <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.reading_status_label')}</label>
                 <select
                   aria-label={t('book_detail.reading_status_label')}

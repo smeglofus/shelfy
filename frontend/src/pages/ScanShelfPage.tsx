@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { useLocations, useCreateLocation } from '../hooks/useLocations'
-import { useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
+import { useBooksByLocation, useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
-import type { ConfirmBookItem, ScannedBookItem } from '../lib/types'
+import type { Book, ConfirmBookItem, ScannedBookItem } from '../lib/types'
 
 type WizardStep = 'location' | 'scan' | 'review'
+type ScanMode = 'replace' | 'append-right'
 
 interface ReviewBookItem extends ConfirmBookItem {
   localId: string
@@ -36,6 +37,8 @@ interface ScanDraft {
   segments: ScanSegment[]
   editableBooks: ReviewBookItem[]
   locationId: string | null
+  scanMode: ScanMode
+  appendAfterBookId: string | null
   savedAt: string
 }
 
@@ -44,6 +47,7 @@ const SCAN_DRAFT_KEY = 'shelfy:scan-shelf-draft:v1'
 export function ScanShelfPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const showError = useToastStore(s => s.showError)
 
   const { data: locations = [] } = useLocations()
@@ -77,7 +81,12 @@ export function ScanShelfPage() {
   // Review state
   const [editableBooks, setEditableBooks] = useState<ReviewBookItem[]>([])
   const [locationId, setLocationId] = useState<string | null>(null)
+  const [scanMode, setScanMode] = useState<ScanMode>('replace')
+  const [appendAfterBookId, setAppendAfterBookId] = useState<string | null>(null)
   const [pendingDraft, setPendingDraft] = useState<ScanDraft | null>(null)
+
+  const { data: booksAtLocation = [] } = useBooksByLocation(locationId)
+  const existingShelfBooks = [...booksAtLocation].sort((a, b) => (a.shelf_position ?? 99999) - (b.shelf_position ?? 99999))
 
   // When an active scan job completes, update the segment
   useEffect(() => {
@@ -131,6 +140,8 @@ export function ScanShelfPage() {
       || segments.length > 0
       || editableBooks.length > 0
       || !!locationId
+      || scanMode !== 'replace'
+      || !!appendAfterBookId
 
     if (!hasDraftData) {
       localStorage.removeItem(SCAN_DRAFT_KEY)
@@ -151,13 +162,32 @@ export function ScanShelfPage() {
         segments: segments.filter(seg => seg.status !== 'processing'),
         editableBooks,
         locationId,
+        scanMode,
+        appendAfterBookId,
         savedAt: new Date().toISOString(),
       }
       localStorage.setItem(SCAN_DRAFT_KEY, JSON.stringify(draft))
     }, 400)
 
     return () => clearTimeout(timer)
-  }, [step, selRoom, selFurniture, selShelf, newRoom, newFurniture, newShelf, showNewLocation, segments, editableBooks, locationId])
+  }, [step, selRoom, selFurniture, selShelf, newRoom, newFurniture, newShelf, showNewLocation, segments, editableBooks, locationId, scanMode, appendAfterBookId])
+
+  useEffect(() => {
+    const preLocationId = searchParams.get('location_id')
+    const preAppendAfterBookId = searchParams.get('append_after_book_id')
+    if (!preLocationId || locations.length === 0) return
+    const loc = locations.find((l) => l.id === preLocationId)
+    if (!loc) return
+    setSelRoom(loc.room)
+    setSelFurniture(loc.furniture)
+    setSelShelf(loc.shelf)
+    setLocationId(loc.id)
+    if (preAppendAfterBookId) {
+      setScanMode('append-right')
+      setAppendAfterBookId(preAppendAfterBookId)
+      setStep('scan')
+    }
+  }, [searchParams, locations])
 
   // Derived state
   const totalBooksFound = segments.reduce((sum, seg) => sum + seg.books.length, 0)
@@ -170,6 +200,8 @@ export function ScanShelfPage() {
       return
     }
     setLocationId(resolvedId)
+    setScanMode('replace')
+    setAppendAfterBookId(null)
     setStep('scan')
   }
 
@@ -287,6 +319,8 @@ export function ScanShelfPage() {
     setSegments(pendingDraft.segments)
     setEditableBooks(pendingDraft.editableBooks)
     setLocationId(pendingDraft.locationId)
+    setScanMode(pendingDraft.scanMode ?? 'replace')
+    setAppendAfterBookId(pendingDraft.appendAfterBookId ?? null)
     setActiveJobId(null)
     setPendingDraft(null)
   }
@@ -304,7 +338,11 @@ export function ScanShelfPage() {
       return
     }
     confirmMutation.mutate(
-      { location_id: locationId, books: validBooks },
+      {
+        location_id: locationId,
+        append_after_book_id: scanMode === 'append-right' ? appendAfterBookId : null,
+        books: validBooks,
+      },
       {
         onSuccess: () => {
           clearDraft()
@@ -399,21 +437,21 @@ export function ScanShelfPage() {
             <div className="sh-location-grid">
               <div>
                 <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.room')}</label>
-                <select className="sh-select" style={{ padding: '10px 12px' }} value={selRoom} onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}>
+                <select className="sh-select" style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }} value={selRoom} onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}>
                   <option value="">—</option>
                   {rooms.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.furniture')}</label>
-                <select className="sh-select" style={{ padding: '10px 12px' }} value={selFurniture} disabled={!selRoom} onChange={e => { setSelFurniture(e.target.value); setSelShelf('') }}>
+                <select className="sh-select" style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }} value={selFurniture} disabled={!selRoom} onChange={e => { setSelFurniture(e.target.value); setSelShelf('') }}>
                   <option value="">—</option>
                   {furnitures.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.shelf')}</label>
-                <select className="sh-select" style={{ padding: '10px 12px' }} value={selShelf} disabled={!selFurniture} onChange={e => setSelShelf(e.target.value)}>
+                <select className="sh-select" style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }} value={selShelf} disabled={!selFurniture} onChange={e => setSelShelf(e.target.value)}>
                   <option value="">—</option>
                   {shelves.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -494,6 +532,59 @@ export function ScanShelfPage() {
         <div>
           <h3 className="text-h3" style={{ marginBottom: 8 }}>{t('scan.step_scan')}</h3>
           <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('scan.step_scan_multi_desc')}</p>
+
+          <div style={{ background: 'var(--sh-surface)', border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-md)', padding: 12, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button
+                type="button"
+                className="sh-btn-secondary"
+                onClick={() => { setScanMode('replace'); setAppendAfterBookId(null) }}
+                style={{
+                  background: scanMode === 'replace' ? 'var(--sh-teal)' : 'var(--sh-surface)',
+                  color: scanMode === 'replace' ? 'white' : 'var(--sh-text-main)',
+                  borderColor: scanMode === 'replace' ? 'var(--sh-teal)' : 'var(--sh-border)',
+                }}
+              >
+                {t('scan.mode_replace')}
+              </button>
+              <button
+                type="button"
+                className="sh-btn-secondary"
+                onClick={() => setScanMode('append-right')}
+                style={{
+                  background: scanMode === 'append-right' ? 'var(--sh-teal)' : 'var(--sh-surface)',
+                  color: scanMode === 'append-right' ? 'white' : 'var(--sh-text-main)',
+                  borderColor: scanMode === 'append-right' ? 'var(--sh-teal)' : 'var(--sh-border)',
+                }}
+              >
+                {t('scan.mode_append_right')}
+              </button>
+            </div>
+
+            {scanMode === 'append-right' && (
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>
+                  {t('scan.start_from_book')}
+                </label>
+                <select
+                  className="sh-select"
+                  style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }}
+                  value={appendAfterBookId ?? ''}
+                  onChange={(e) => setAppendAfterBookId(e.target.value || null)}
+                >
+                  <option value="">{t('scan.select_start_book')}</option>
+                  {existingShelfBooks.map((book: Book) => (
+                    <option key={book.id} value={book.id}>
+                      #{(book.shelf_position ?? 0) + 1} — {book.title}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 12, color: 'var(--sh-text-muted)', marginTop: 6 }}>
+                  {t('scan.append_hint')}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Upload area */}
           <div
@@ -627,7 +718,7 @@ export function ScanShelfPage() {
               <button
                 className="sh-btn-primary hover-scale"
                 onClick={handleGoToReview}
-                disabled={isProcessing}
+                disabled={isProcessing || (scanMode === 'append-right' && !appendAfterBookId)}
                 style={{
                   flex: 2, padding: '12px', fontSize: 15,
                   opacity: isProcessing ? 0.6 : 1,

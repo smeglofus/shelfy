@@ -12,12 +12,25 @@ logger = structlog.get_logger()
 
 
 async def list_locations(session: AsyncSession) -> list[Location]:
-    result = await session.execute(select(Location).order_by(Location.room, Location.furniture, Location.shelf))
+    result = await session.execute(select(Location).order_by(Location.room, Location.furniture, Location.display_order, Location.shelf))
     return list(result.scalars().all())
 
 
 async def create_location(session: AsyncSession, payload: LocationCreateRequest) -> Location:
-    location = Location(room=payload.room, furniture=payload.furniture, shelf=payload.shelf)
+    max_order = (await session.execute(
+        select(func.max(Location.display_order)).where(
+            Location.room == payload.room,
+            Location.furniture == payload.furniture,
+        )
+    )).scalar_one()
+    next_order = (int(max_order) + 1) if max_order is not None else 0
+
+    location = Location(
+        room=payload.room,
+        furniture=payload.furniture,
+        shelf=payload.shelf,
+        display_order=payload.display_order if payload.display_order is not None else next_order,
+    )
     session.add(location)
     await session.commit()
     await session.refresh(location)

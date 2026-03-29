@@ -40,6 +40,7 @@ class ConfirmBookItem(BaseModel):
 class ShelfScanConfirmRequest(BaseModel):
     """User confirms the scanned books for a given location."""
     location_id: uuid.UUID
+    append_after_book_id: uuid.UUID | None = None
     books: list[ConfirmBookItem] = Field(min_length=1)
 
 

@@ -355,6 +355,10 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   outline: none;
 }
 .sh-input::placeholder, .sh-textarea::placeholder { color: var(--sh-placeholder); }
+.sh-select option {
+  background: var(--sh-surface);
+  color: var(--sh-text-main);
+}
 
 /* Grid / Flex Layouts */
 .grid-cards {

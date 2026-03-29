@@ -12,12 +12,14 @@ interface LocationFormValues {
   room: string
   furniture: string
   shelf: string
+  display_order: string
 }
 
 const EMPTY_FORM: LocationFormValues = {
   room: '',
   furniture: '',
   shelf: '',
+  display_order: '',
 }
 
 export function LocationsPage() {
@@ -35,9 +37,13 @@ export function LocationsPage() {
 
   const sortedLocations = useMemo(() => {
     return [...(locationsQuery.data ?? [])].sort((a, b) => {
-      const left = `${a.room}/${a.furniture}/${a.shelf}`.toLowerCase()
-      const right = `${b.room}/${b.furniture}/${b.shelf}`.toLowerCase()
-      return left.localeCompare(right)
+      const roomCmp = a.room.localeCompare(b.room, undefined, { sensitivity: 'base' })
+      if (roomCmp !== 0) return roomCmp
+      const furnCmp = a.furniture.localeCompare(b.furniture, undefined, { sensitivity: 'base' })
+      if (furnCmp !== 0) return furnCmp
+      const orderCmp = (a.display_order ?? 0) - (b.display_order ?? 0)
+      if (orderCmp !== 0) return orderCmp
+      return a.shelf.localeCompare(b.shelf, undefined, { numeric: true })
     })
   }, [locationsQuery.data])
 
@@ -64,7 +70,10 @@ export function LocationsPage() {
           aria-label="create-location-form"
           onSubmit={(event) => {
             event.preventDefault()
-            createMutation.mutate(createForm, {
+            createMutation.mutate({
+              ...createForm,
+              display_order: createForm.display_order.trim() ? Number(createForm.display_order) : null,
+            }, {
               onSuccess: () => setCreateForm(EMPTY_FORM),
             })
           }}
@@ -115,6 +124,16 @@ export function LocationsPage() {
               onChange={(event) => setCreateForm((prev) => ({ ...prev, shelf: event.target.value }))}
             />
           </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.display_order', 'Pořadí police')}</label>
+            <input
+              className="sh-input"
+              aria-label={t('locations.display_order', 'Pořadí police')}
+              placeholder={t('locations.display_order_placeholder', 'auto')}
+              value={createForm.display_order}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, display_order: event.target.value.replace(/[^0-9]/g, '') }))}
+            />
+          </div>
           <button type="submit" className="sh-btn-primary hover-scale" disabled={createMutation.isPending} style={{ padding: '12px 16px' }}>
             {createMutation.isPending ? t('locations.creating') : t('locations.create')}
           </button>
@@ -129,6 +148,7 @@ export function LocationsPage() {
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.room')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.furniture')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.shelf')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.display_order', 'Pořadí')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>{t('locations.actions')}</th>
               </tr>
             </thead>
@@ -176,6 +196,7 @@ export function LocationsPage() {
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.room')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.furniture')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.shelf')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.display_order', 'Pořadí')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>{t('locations.actions')}</th>
               </tr>
             </thead>
@@ -188,6 +209,7 @@ export function LocationsPage() {
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_room')} value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : <span style={{ fontWeight: 500 }}>{location.room}</span>}</td>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_furniture')} value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.furniture}</span>}</td>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_shelf')} value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.shelf}</span>}</td>
+                    <td>{isEditing ? <input className="sh-input" aria-label={t('locations.display_order', 'Pořadí police')} value={editForm.display_order} onChange={(event) => setEditForm((prev) => ({ ...prev, display_order: event.target.value.replace(/[^0-9]/g, '') }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.display_order ?? 0}</span>}</td>
                     <td style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', minHeight: 48 }}>
                       {isEditing ? (
                         <>
@@ -198,7 +220,7 @@ export function LocationsPage() {
                             disabled={updateMutation.isPending}
                             onClick={() => {
                               updateMutation.mutate(
-                                { id: location.id, payload: editForm },
+                                { id: location.id, payload: { ...editForm, display_order: editForm.display_order.trim() ? Number(editForm.display_order) : 0 } },
                                 { onSuccess: () => setEditingLocationId(null) },
                               )
                             }}
@@ -231,6 +253,7 @@ export function LocationsPage() {
                                 room: location.room,
                                 furniture: location.furniture,
                                 shelf: location.shelf,
+                                display_order: String(location.display_order ?? 0),
                               })
                             }}
                           >

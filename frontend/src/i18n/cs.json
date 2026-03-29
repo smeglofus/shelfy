@@ -266,7 +266,19 @@
     "draft_found_title": "Nalezen rozpracovaný sken",
     "draft_found_desc": "Máte nedokončené skenování police. Chcete ho obnovit?",
     "restore_draft": "Obnovit sken",
-    "discard_draft": "Začít znovu"
+    "discard_draft": "Začít znovu",
+    "mode_replace": "Přepsat polici od začátku",
+    "mode_append_right": "Rozšířit polici doprava",
+    "start_from_book": "Začít od knihy",
+    "select_start_book": "Vyber knihu, od které pokračovat",
+    "append_hint": "Nově naskenované knihy se vloží napravo od vybrané knihy.",
+    "manage_positions": "Upravit pozice",
+    "save_positions": "Uložit pozice",
+    "cancel_edit": "Zrušit",
+    "move_left": "Posun doleva",
+    "move_right": "Posun doprava",
+    "positions_saved": "Pozice uloženy",
+    "start_scan_here": "Skenovat odtud"
   },
   "enrich": {
     "enriching": "Obohacuji…",

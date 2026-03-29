@@ -266,7 +266,19 @@
     "draft_found_title": "Draft scan found",
     "draft_found_desc": "You have an unfinished shelf scan. Do you want to restore it?",
     "restore_draft": "Restore draft",
-    "discard_draft": "Start over"
+    "discard_draft": "Start over",
+    "mode_replace": "Replace shelf from start",
+    "mode_append_right": "Extend shelf to the right",
+    "start_from_book": "Start from book",
+    "select_start_book": "Select book to continue from",
+    "append_hint": "Newly scanned books will be inserted to the right of selected book.",
+    "manage_positions": "Manage positions",
+    "save_positions": "Save positions",
+    "cancel_edit": "Cancel",
+    "move_left": "Move left",
+    "move_right": "Move right",
+    "positions_saved": "Positions saved",
+    "start_scan_here": "Scan from here"
   },
   "enrich": {
     "enriching": "Enriching…",

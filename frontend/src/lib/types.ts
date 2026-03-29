@@ -3,6 +3,7 @@ export interface Location {
   room: string
   furniture: string
   shelf: string
+  display_order: number
   created_at: string
   updated_at: string
 }
@@ -16,12 +17,14 @@ export interface LocationCreateRequest {
   room: string
   furniture: string
   shelf: string
+  display_order?: number | null
 }
 
 export interface LocationUpdateRequest {
   room?: string
   furniture?: string
   shelf?: string
+  display_order?: number
 }
 
 export type ReadingStatus = 'unread' | 'reading' | 'read' | 'lent'
@@ -101,6 +104,7 @@ export interface BookCreateRequest {
   publication_year?: number | null
   cover_image_url?: string | null
   location_id?: string | null
+  shelf_position?: number | null
   reading_status?: ReadingStatus
 }
 
@@ -114,6 +118,7 @@ export interface BookUpdateRequest {
   publication_year?: number | null
   cover_image_url?: string | null
   location_id?: string | null
+  shelf_position?: number | null
   reading_status?: ReadingStatus
 }
 
@@ -195,6 +200,7 @@ export interface ConfirmBookItem {
 
 export interface ShelfScanConfirmRequest {
   location_id: string
+  append_after_book_id?: string | null
   books: ConfirmBookItem[]
 }
 

@@ -31,7 +31,7 @@ export function BookshelfViewPage() {
     // Sort shelves within each furniture
     for (const room of Object.values(tree)) {
       for (const furniture of Object.keys(room)) {
-        room[furniture].sort((a, b) => a.shelf.localeCompare(b.shelf, undefined, { numeric: true }))
+        room[furniture].sort((a, b) => ((a.display_order ?? 0) - (b.display_order ?? 0)) || a.shelf.localeCompare(b.shelf, undefined, { numeric: true }))
       }
     }
     return tree
