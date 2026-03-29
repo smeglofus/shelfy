@@ -140,6 +140,8 @@
     "export_description": "Download a CSV with all books for backup or further processing.",
     "export_button": "Download library (CSV)",
     "export_error": "Library export failed. Please try again.",
+    "enrich_title": "Metadata enrichment",
+    "enrich_description": "Automatically fill in ISBN, publisher, year, language, and description for all books using online databases.",
     "profile_title": "Profile",
     "profile_description": "Signed-in user for this session.",
     "profile_email": "Email",
@@ -239,6 +241,15 @@
     "total_books_found": "Total {{count}} books found across all photos",
     "go_to_review": "Review {{count}} books →",
     "remove_item": "Remove item"
+  },
+  "enrich": {
+    "enriching": "Enriching…",
+    "enrich_book": "Enrich",
+    "enrich_all": "Enrich all",
+    "enrich_location": "Enrich shelf",
+    "enrich_furniture": "Enrich",
+    "enrich_missing": "Enrich missing metadata",
+    "force_reindex": "Re-enrich all (force)"
   },
   "bookshelf": {
     "title": "My bookshelves",

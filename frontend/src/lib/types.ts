@@ -202,3 +202,15 @@ export interface ShelfScanConfirmResponse {
   created_count: number
   book_ids: string[]
 }
+
+// Enrichment types
+export interface EnrichResponse {
+  status: string
+  book_count: number
+  message: string
+}
+
+export interface EnrichBookResponse {
+  book_id: string
+  status: string
+}

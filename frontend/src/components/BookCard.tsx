@@ -82,32 +82,44 @@ export function BookCard({ book, onDelete }: Props) {
           height: 140,
           background: `linear-gradient(135deg, ${from}, ${to})`,
           position: 'relative',
-          padding: 16,
+          padding: book.cover_image_url ? 0 : 16,
           display: 'flex',
           alignItems: 'flex-end',
+          overflow: 'hidden',
         }}>
-          {/* Subtle overlay for depth */}
-          <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)',
-            pointerEvents: 'none',
-          }} />
-          <span style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: 'white',
-            lineHeight: 1.3,
-            position: 'relative',
-            zIndex: 1,
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}>
-            {book.title}
-          </span>
+          {book.cover_image_url ? (
+            <img
+              src={book.cover_image_url}
+              alt={book.title}
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <>
+              {/* Subtle overlay for depth */}
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)',
+                pointerEvents: 'none',
+              }} />
+              <span style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'white',
+                lineHeight: 1.3,
+                position: 'relative',
+                zIndex: 1,
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>
+                {book.title}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Info */}

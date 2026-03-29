@@ -143,6 +143,23 @@ async def confirm_shelf_books(
     session: AsyncSession = Depends(get_db_session),
     _current_user: User = Depends(get_current_user),
 ) -> ShelfScanConfirmResponse:
-    """Confirm scanned books and save them to the library with positions."""
+    """Confirm scanned books and save them to the library with positions.
+    Automatically queues background enrichment for all confirmed books."""
     book_ids = await confirm_shelf_scan(session, payload)
+
+    # Auto-trigger background enrichment
+    if book_ids:
+        try:
+            celery_client = get_celery_client()
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: celery_client.send_task(
+                    "worker.celery_app.enrich_books_batch",
+                    args=[[str(bid) for bid in book_ids], False],
+                ),
+            )
+        except Exception:
+            pass  # Enrichment is best-effort, don't fail the confirm
+
     return ShelfScanConfirmResponse(created_count=len(book_ids), book_ids=book_ids)

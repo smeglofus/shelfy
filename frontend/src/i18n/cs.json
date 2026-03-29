@@ -140,6 +140,8 @@
     "export_description": "Stáhne CSV se všemi knihami pro zálohu nebo další zpracování.",
     "export_button": "Stáhnout knihovnu (CSV)",
     "export_error": "Export knihovny selhal. Zkus to prosím znovu.",
+    "enrich_title": "Obohacení metadat",
+    "enrich_description": "Automaticky doplní ISBN, vydavatele, rok vydání, jazyk a anotaci ke všem knihám z online databází.",
     "profile_title": "Profil",
     "profile_description": "Přihlášený uživatel v této relaci.",
     "profile_email": "E-mail",
@@ -239,6 +241,15 @@
     "total_books_found": "Celkem nalezeno {{count}} knih ze všech fotek",
     "go_to_review": "Zkontrolovat {{count}} knih →",
     "remove_item": "Odstranit položku"
+  },
+  "enrich": {
+    "enriching": "Obohacuji…",
+    "enrich_book": "Obohatit",
+    "enrich_all": "Obohatit vše",
+    "enrich_location": "Obohatit polici",
+    "enrich_furniture": "Obohatit",
+    "enrich_missing": "Doplnit chybějící metadata",
+    "force_reindex": "Znovu obohatit vše (vynutit)"
   },
   "bookshelf": {
     "title": "Moje knihovny",

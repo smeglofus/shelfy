@@ -8,6 +8,8 @@ import type {
   BookListParams,
   BookListResponse,
   BookUpdateRequest,
+  EnrichBookResponse,
+  EnrichResponse,
   JobStatusResponse,
   Loan,
   LoanCreateRequest,
@@ -249,6 +251,28 @@ export async function getShelfScanResult(jobId: string): Promise<ShelfScanResult
 
 export async function confirmShelfScan(payload: ShelfScanConfirmRequest): Promise<ShelfScanConfirmResponse> {
   const response = await apiClient.post<ShelfScanConfirmResponse>('/api/v1/scan/confirm', payload)
+  return response.data
+}
+
+// Enrichment
+export async function enrichBook(bookId: string, force = false): Promise<EnrichBookResponse> {
+  const response = await apiClient.post<EnrichBookResponse>(`/api/v1/enrich/book/${bookId}`, null, {
+    params: { force },
+  })
+  return response.data
+}
+
+export async function enrichByLocation(locationId: string, force = false): Promise<EnrichResponse> {
+  const response = await apiClient.post<EnrichResponse>(`/api/v1/enrich/location/${locationId}`, null, {
+    params: { force },
+  })
+  return response.data
+}
+
+export async function enrichAll(force = false): Promise<EnrichResponse> {
+  const response = await apiClient.post<EnrichResponse>('/api/v1/enrich/all', null, {
+    params: { force },
+  })
   return response.data
 }
 

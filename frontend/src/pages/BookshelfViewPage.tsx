@@ -205,7 +205,9 @@ export function BookshelfViewPage() {
 
 
 function BookSpine({ book, onClick }: { book: Book; onClick: () => void }) {
-  // Generate a stable color from the title
+  const hasCover = Boolean(book.cover_image_url)
+
+  // Generate a stable color from the title (fallback when cover is missing)
   const color = useMemo(() => {
     const colors = [
       '#2563eb', '#7c3aed', '#db2777', '#ea580c',
@@ -229,15 +231,16 @@ function BookSpine({ book, onClick }: { book: Book; onClick: () => void }) {
         minWidth: 36,
         maxWidth: 52,
         height: 120,
-        background: color,
+        background: hasCover ? 'var(--sh-surface)' : color,
         borderRadius: '2px 4px 4px 2px',
-        border: 'none',
+        border: hasCover ? '1px solid var(--sh-border)' : 'none',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '4px 2px',
+        padding: hasCover ? 0 : '4px 2px',
         position: 'relative',
+        overflow: 'hidden',
         boxShadow: '2px 2px 4px rgba(0,0,0,0.15), inset -1px 0 2px rgba(0,0,0,0.1)',
         transition: 'transform 0.15s, box-shadow 0.15s',
         flexShrink: 0,
@@ -251,22 +254,30 @@ function BookSpine({ book, onClick }: { book: Book; onClick: () => void }) {
         e.currentTarget.style.boxShadow = '2px 2px 4px rgba(0,0,0,0.15), inset -1px 0 2px rgba(0,0,0,0.1)'
       }}
     >
-      <span style={{
-        writingMode: 'vertical-rl',
-        textOrientation: 'mixed',
-        color: 'white',
-        fontSize: 9,
-        fontWeight: 600,
-        lineHeight: 1.2,
-        textAlign: 'center',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        maxHeight: '100%',
-        letterSpacing: '0.02em',
-        textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-      }}>
-        {displayTitle}
-      </span>
+      {hasCover ? (
+        <img
+          src={book.cover_image_url ?? ''}
+          alt={book.title}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          loading='lazy'
+        />
+      ) : (
+        <span style={{
+          writingMode: 'vertical-rl',
+          textOrientation: 'mixed',
+          color: 'white',
+          fontSize: 9,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          textAlign: 'center',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxHeight: '100%',
+          letterSpacing: '0.02em',
+        }}>
+          {displayTitle}
+        </span>
+      )}
     </button>
   )
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { exportBooksCsv, purgeLibrary } from '../lib/api'
+import { useEnrichAll } from '../hooks/useEnrich'
 import { useToastStore } from '../lib/toast-store'
 import { useAuth } from '../contexts/AuthContext'
 import { setLanguage } from '../i18n'
@@ -13,6 +14,7 @@ export function SettingsPage() {
   const setDarkMode = useSettingsStore((s) => s.setDarkMode)
   const showError = useToastStore((s) => s.showError)
   const { user } = useAuth()
+  const enrichAllMutation = useEnrichAll()
   const [purgePassword, setPurgePassword] = useState('')
   const [purging, setPurging] = useState(false)
   const currentLang = i18n.language === 'en' ? 'en' : 'cs'
@@ -144,6 +146,45 @@ export function SettingsPage() {
         </button>
       </article>
     
+      <article
+        style={{
+          marginTop: 16,
+          border: '1px solid var(--sh-border)',
+          borderRadius: 'var(--sh-radius-lg)',
+          padding: 16,
+          background: 'var(--sh-surface)',
+          boxShadow: 'var(--sh-shadow-sm)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 16,
+        }}
+      >
+        <div>
+          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.enrich_title')}</h3>
+          <p className='text-small'>{t('settings.enrich_description')}</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+          <button
+            type='button'
+            className='sh-btn-secondary'
+            disabled={enrichAllMutation.isPending}
+            onClick={() => enrichAllMutation.mutate({ force: false })}
+          >
+            {enrichAllMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_missing')}
+          </button>
+          <button
+            type='button'
+            className='sh-btn-secondary'
+            disabled={enrichAllMutation.isPending}
+            onClick={() => enrichAllMutation.mutate({ force: true })}
+            style={{ fontSize: 12 }}
+          >
+            {t('enrich.force_reindex')}
+          </button>
+        </div>
+      </article>
+
       <article
         style={{
           marginTop: 16,

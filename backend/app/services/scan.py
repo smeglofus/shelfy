@@ -51,7 +51,7 @@ async def confirm_shelf_scan(
                 location_id=payload.location_id,
                 shelf_position=item.position,
                 reading_status=ReadingStatus.UNREAD,
-                processing_status=BookProcessingStatus.DONE,
+                processing_status=BookProcessingStatus.PARTIAL,
             )
             session.add(book)
             try:

@@ -800,7 +800,7 @@ def process_book_image(self, job_id: str) -> None:
                 metadata: dict[str, object] | None = None
                 if isbn or title:
                     structlog.contextvars.bind_contextvars(isbn=isbn, processing_step="metadata_enrichment")
-                    metadata = asyncio.run(_enrich_metadata_with_fallback(isbn, title=title, author=author))
+                    metadata = asyncio.run(_enrich_metadata_with_fallback(lookup_isbn, title=title, author=author))
 
                 if metadata is None:
                     had_partial = True
@@ -890,7 +890,7 @@ def retry_book_enrichment(self, book_id: str) -> None:
     max_retries=3,
 )
 def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> None:
-    """Process a shelf photo: extract all book spines left-to-right, enrich metadata."""
+    """Process a shelf photo: extract all book spines left-to-right (no enrichment – fast)."""
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(service="worker", job_id=job_id, processing_step="shelf_scan")
     try:
@@ -924,34 +924,19 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                 session.commit()
                 return
 
-            # Enrich each book with metadata
+            # Store raw vision results (no enrichment here – it runs separately on background)
             processed_books: list[dict[str, object]] = []
             for idx, local_result in enumerate(vision_results):
-                isbn = local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None
-                title = local_result.get("title") if isinstance(local_result.get("title"), str) else None
-                author = local_result.get("author") if isinstance(local_result.get("author"), str) else None
-
-                metadata: dict[str, object] | None = None
-                if isbn or title:
-                    try:
-                        metadata = asyncio.run(_enrich_metadata_with_fallback(isbn, title=title, author=author))
-                    except Exception:
-                        metadata = None
-
-                # Build result item
                 confidence = local_result.get("confidence", "medium")
                 item: dict[str, object] = {
                     "position": idx,
-                    "isbn": metadata.get("isbn") if metadata and isinstance(metadata.get("isbn"), str) else isbn,
-                    "title": (metadata.get("title") if metadata and isinstance(metadata.get("title"), str) else None) or title,
-                    "author": (metadata.get("author") if metadata and isinstance(metadata.get("author"), str) else None) or author,
+                    "isbn": local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None,
+                    "title": local_result.get("title") if isinstance(local_result.get("title"), str) else None,
+                    "author": local_result.get("author") if isinstance(local_result.get("author"), str) else None,
                     "observed_text": local_result.get("observed_text"),
                     "confidence": confidence,
                     "source": local_result.get("source", "gemini_vision"),
                 }
-                if metadata:
-                    item["cover_image_url"] = metadata.get("cover_image_url")
-                    item["publisher"] = metadata.get("publisher")
                 processed_books.append(item)
 
             job.status = ProcessingJobStatus.DONE
@@ -966,6 +951,191 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
     except Exception as error:
         logger.exception("process_shelf_scan_failed", job_id=job_id, error=str(error))
         _mark_failed(job_id, str(error))
+        raise
+    finally:
+        structlog.contextvars.clear_contextvars()
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting helpers for enrichment
+# ---------------------------------------------------------------------------
+
+_RATE_KEY_MINUTE = "enrichment:rate:minute"
+_RATE_KEY_DAY = "enrichment:rate:day"
+
+
+def _check_rate_limit() -> bool:
+    """Return True if we're within rate limits, False otherwise."""
+    redis = _get_redis_client()
+    pipe = redis.pipeline()
+    pipe.get(_RATE_KEY_MINUTE)
+    pipe.get(_RATE_KEY_DAY)
+    minute_count_raw, day_count_raw = pipe.execute()
+
+    minute_count = int(minute_count_raw or 0)
+    day_count = int(day_count_raw or 0)
+
+    if minute_count >= worker_settings.enrichment_max_per_minute:
+        return False
+    if day_count >= worker_settings.enrichment_max_per_day:
+        return False
+    return True
+
+
+def _increment_rate_counter() -> None:
+    """Increment rate counters after a successful API call."""
+    redis = _get_redis_client()
+    pipe = redis.pipeline()
+    pipe.incr(_RATE_KEY_MINUTE)
+    pipe.expire(_RATE_KEY_MINUTE, 60)
+    pipe.incr(_RATE_KEY_DAY)
+    pipe.expire(_RATE_KEY_DAY, 86400)
+    pipe.execute()
+
+
+def _enrich_single_book(session: Session, book_id: uuid.UUID, force: bool = False) -> str:
+    """Enrich a single book with metadata from external APIs. Returns status string."""
+    book = session.get(Book, book_id)
+    if book is None:
+        return "not_found"
+
+    # Skip if already fully enriched unless force re-enrichment is requested
+    if not force and (book.publisher and book.description and book.publication_year
+            and book.processing_status == BookProcessingStatus.DONE):
+        return "already_enriched"
+
+    isbn = book.isbn
+    title = book.title if book.title != "Unknown title" else None
+    author = book.author
+
+    # In force mode prefer title/author lookup to allow manual corrections
+    lookup_isbn = None if force and title else isbn
+
+    if not isbn and not title:
+        return "no_identifiers"
+
+    if not _check_rate_limit():
+        return "rate_limited"
+
+    metadata: dict[str, object] | None = None
+    try:
+        metadata = asyncio.run(_enrich_metadata_with_fallback(lookup_isbn, title=title, author=author))
+        _increment_rate_counter()
+    except Exception as enrich_exc:
+        logger.warning("enrichment_api_failed", book_id=str(book_id), error=str(enrich_exc))
+        return "api_error"
+
+    if metadata is None:
+        book.processing_status = BookProcessingStatus.PARTIAL
+        session.commit()
+        return "no_metadata"
+
+    if force:
+        # Overwrite mode: allow replacing stale metadata with fresher match
+        if isinstance(metadata.get("isbn"), str):
+            book.isbn = metadata["isbn"]
+        if isinstance(metadata.get("publisher"), str):
+            book.publisher = metadata["publisher"]
+        if isinstance(metadata.get("language"), str):
+            book.language = metadata["language"]
+        if isinstance(metadata.get("description"), str):
+            book.description = metadata["description"]
+        if isinstance(metadata.get("publication_year"), int):
+            book.publication_year = metadata["publication_year"]
+        if isinstance(metadata.get("cover_image_url"), str):
+            book.cover_image_url = metadata["cover_image_url"]
+        if isinstance(metadata.get("title"), str):
+            book.title = metadata["title"]
+        if isinstance(metadata.get("author"), str):
+            book.author = metadata["author"]
+    else:
+        # Fill in missing data only (don't overwrite user edits)
+        if not book.isbn and isinstance(metadata.get("isbn"), str):
+            book.isbn = metadata["isbn"]
+        if not book.publisher and isinstance(metadata.get("publisher"), str):
+            book.publisher = metadata["publisher"]
+        if not book.language and isinstance(metadata.get("language"), str):
+            book.language = metadata["language"]
+        if not book.description and isinstance(metadata.get("description"), str):
+            book.description = metadata["description"]
+        if not book.publication_year and isinstance(metadata.get("publication_year"), int):
+            book.publication_year = metadata["publication_year"]
+        if not book.cover_image_url and isinstance(metadata.get("cover_image_url"), str):
+            book.cover_image_url = metadata["cover_image_url"]
+        if book.title == "Unknown title" and isinstance(metadata.get("title"), str):
+            book.title = metadata["title"]
+        if not book.author and isinstance(metadata.get("author"), str):
+            book.author = metadata["author"]
+
+    book.processing_status = BookProcessingStatus.DONE
+    session.commit()
+    return "enriched"
+
+
+@celery_app.task(
+    name="worker.celery_app.enrich_books_batch",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(exc.OperationalError, exc.InterfaceError),
+    retry_backoff=True,
+    retry_backoff_max=60,
+    max_retries=3,
+)
+def enrich_books_batch(self, book_ids: list[str], force: bool = False) -> None:
+    """Enrich a batch of books with metadata from Google Books / Open Library.
+
+    Runs with rate limiting to respect API terms of service.
+    If force=True, re-enriches even if already enriched.
+    """
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        service="worker", processing_step="batch_enrichment", batch_size=len(book_ids)
+    )
+    try:
+        logger.info("enrich_books_batch_started", count=len(book_ids), force=force)
+        delay = worker_settings.enrichment_delay_seconds
+        stats: dict[str, int] = {"enriched": 0, "skipped": 0, "failed": 0, "rate_limited": 0}
+
+        with Session(_get_engine()) as session:
+            for idx, book_id_str in enumerate(book_ids):
+                book_id = uuid.UUID(book_id_str)
+
+                if force:
+                    book = session.get(Book, book_id)
+                    if book and book.processing_status == BookProcessingStatus.DONE:
+                        book.processing_status = BookProcessingStatus.PARTIAL
+                        session.commit()
+
+                result = _enrich_single_book(session, book_id, force=force)
+
+                if result == "enriched":
+                    stats["enriched"] += 1
+                elif result == "rate_limited":
+                    stats["rate_limited"] += 1
+                    remaining = book_ids[idx:]
+                    if remaining:
+                        logger.info("enrichment_rate_limited_rescheduling", remaining=len(remaining))
+                        enrich_books_batch.apply_async(
+                            args=[remaining, force],
+                            countdown=60,
+                        )
+                    break
+                elif result in ("already_enriched", "no_identifiers", "not_found"):
+                    stats["skipped"] += 1
+                else:
+                    stats["failed"] += 1
+
+                if idx < len(book_ids) - 1 and delay > 0:
+                    import time
+                    time.sleep(delay)
+
+        logger.info("enrich_books_batch_completed", **stats)
+    except Retry:
+        raise
+    except (exc.OperationalError, exc.InterfaceError):
+        raise
+    except Exception as error:
+        logger.exception("enrich_books_batch_failed", error=str(error))
         raise
     finally:
         structlog.contextvars.clear_contextvars()
