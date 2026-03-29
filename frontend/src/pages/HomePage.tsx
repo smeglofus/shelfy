@@ -96,7 +96,7 @@ export function HomePage() {
   }
 
   return (
-    <section className="container md-max-w-4xl flex-col gap-6" style={{ margin: '0 auto', width: '100%' }}>
+    <section className="container md-max-w-4xl flex-col gap-6 sh-page-enter" style={{ margin: '0 auto', width: '100%' }}>
       <div className="md-grid-2">
         <div className="flex-col gap-6">
           <div>

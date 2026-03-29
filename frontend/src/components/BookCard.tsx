@@ -22,14 +22,16 @@ function hashTitle(title: string): number {
 interface Props {
   book: Book
   onDelete?: (bookId: string) => void
+  /** Index in the grid, used for staggered entrance animation */
+  index?: number
 }
 
-export function BookCard({ book, onDelete }: Props) {
+export function BookCard({ book, onDelete, index = 0 }: Props) {
   const { t } = useTranslation()
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
 
   return (
-    <div style={{ position: "relative" }} className="hover-scale">
+    <div style={{ position: "relative", animationDelay: `${Math.min(index * 40, 400)}ms` }} className="hover-scale sh-card-enter">
       {onDelete && (
         <button
           className="hover-lift"

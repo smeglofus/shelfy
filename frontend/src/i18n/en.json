@@ -39,6 +39,7 @@
     "search_label": "Search books",
     "search_placeholder": "Search books, authors...",
     "search_button": "Search",
+    "search_clear": "Clear search",
     "delete_confirm_title": "Delete this book?",
     "delete_confirm_body": "This action cannot be undone. Do you really want to remove this book?",
     "delete_cancel": "Cancel",
@@ -87,6 +88,7 @@
     "unsaved_changes": "Unsaved changes",
     "save_no_changes": "Saved ✓",
     "metadata_edit_title": "Edit metadata",
+    "metadata_section": "Metadata",
     "title_label": "Title",
     "author_label": "Author"
   },

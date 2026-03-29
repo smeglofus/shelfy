@@ -7,6 +7,7 @@ import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
 import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
+import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useToastStore } from '../lib/toast-store'
 import type { Book, Location, ReadingStatus } from '../lib/types'
@@ -16,7 +17,7 @@ const PAGE_SIZE = 20
 export function BooksPage() {
   const { t } = useTranslation()
   const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(searchInput.trim(), 300)
   const [page, setPage] = useState(1)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [uploadJobId, setUploadJobId] = useState<string | null>(null)
@@ -34,9 +35,14 @@ export function BooksPage() {
     [t],
   )
 
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
   const queryParams = useMemo(
-    () => ({ page, pageSize: PAGE_SIZE, search: search || undefined, readingStatus: readingFilter ?? undefined, locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined }),
-    [page, search, readingFilter, locationFilter],
+    () => ({ page, pageSize: PAGE_SIZE, search: debouncedSearch || undefined, readingStatus: readingFilter ?? undefined, locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined }),
+    [page, debouncedSearch, readingFilter, locationFilter],
   )
 
   const booksQuery = useBooks(queryParams)
@@ -112,7 +118,7 @@ export function BooksPage() {
   }, [t, total])
 
   return (
-    <div className="md-max-w-4xl" style={{ margin: '0 auto', width: '100%' }}>
+    <div className="md-max-w-4xl sh-page-enter" style={{ margin: '0 auto', width: '100%' }}>
       <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="text-h1">{t('books.title')}</h1>
@@ -155,53 +161,46 @@ export function BooksPage() {
         })}
       </div>
 
-      <form
-        aria-label="book-search-form"
-        onSubmit={(e) => {
-          e.preventDefault()
-          setPage(1)
-          setSearch(searchInput.trim())
+      <div
+        style={{
+          margin: '20px 24px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          background: 'var(--sh-surface)',
+          border: '1.5px solid var(--sh-border)',
+          borderRadius: 'var(--sh-radius-md)',
+          padding: '4px 16px',
+          transition: 'border-color 0.2s, box-shadow 0.2s',
         }}
-        style={{ margin: '20px 24px 0', display: 'flex', gap: 12 }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = 'var(--sh-teal)'
+          e.currentTarget.style.boxShadow = '0 0 0 4px var(--sh-border-focus)'
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = 'var(--sh-border)'
+          e.currentTarget.style.boxShadow = 'none'
+        }}
       >
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: 'var(--sh-surface)',
-            border: '1.5px solid var(--sh-border)',
-            borderRadius: 'var(--sh-radius-md)',
-            padding: '4px 16px',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'var(--sh-teal)'
-            e.currentTarget.style.boxShadow = '0 0 0 4px var(--sh-border-focus)'
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'var(--sh-border)'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
-        >
-          <span style={{ fontSize: 18, color: 'var(--sh-text-muted)' }}>⌕</span>
-          <input
-            aria-label={t('books.search_label')}
-            placeholder={t('books.search_placeholder')}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15, fontFamily: "'Outfit', sans-serif", outline: 'none', padding: '10px 0', color: 'var(--sh-text-main)' }}
-          />
-        </div>
-        <button
-          type="submit"
-          className="sh-btn-primary"
-          style={{ padding: '0 20px', borderRadius: 'var(--sh-radius-md)' }}
-        >
-          {t('books.search_button')}
-        </button>
-      </form>
+        <span style={{ fontSize: 18, color: 'var(--sh-text-muted)' }}>⌕</span>
+        <input
+          aria-label={t('books.search_label')}
+          placeholder={t('books.search_placeholder')}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15, fontFamily: "'Outfit', sans-serif", outline: 'none', padding: '10px 0', color: 'var(--sh-text-main)' }}
+        />
+        {searchInput && (
+          <button
+            type="button"
+            onClick={() => setSearchInput('')}
+            aria-label={t('books.search_clear', 'Vymazat hledání')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 18, padding: '4px 0', lineHeight: 1, transition: 'color 0.15s' }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       <div style={{ margin: '12px 24px 0', display: 'flex', justifyContent: 'flex-end' }}>
         <select
@@ -250,7 +249,7 @@ export function BooksPage() {
             <div style={{ fontSize: 64, marginBottom: 20 }}>📚</div>
             <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>{t('books.empty_title')}</p>
             <p className="text-p">
-              {search ? t('books.empty_search', { query: search }) : t('books.empty_library')}
+              {debouncedSearch ? t('books.empty_search', { query: debouncedSearch }) : t('books.empty_library')}
             </p>
           </div>
         )}
@@ -274,8 +273,8 @@ export function BooksPage() {
                 <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)', marginBottom: 16, borderBottom: '1px solid var(--sh-border)', paddingBottom: 8 }}>{t('books.no_location')}</p>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
-                {groupBooks.map((b) => (
-                  <BookCard key={b.id} book={b} onDelete={setDeleteTargetId} />
+                {groupBooks.map((b, i) => (
+                  <BookCard key={b.id} book={b} onDelete={setDeleteTargetId} index={i} />
                 ))}
               </div>
             </div>

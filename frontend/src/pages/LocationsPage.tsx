@@ -54,7 +54,7 @@ export function LocationsPage() {
   )
 
   return (
-    <section className="container md-max-w-3xl" style={{ paddingTop: 24, paddingBottom: 40, margin: '0 auto', width: '100%' }}>
+    <section className="container md-max-w-3xl sh-page-enter" style={{ paddingTop: 24, paddingBottom: 40, margin: '0 auto', width: '100%' }}>
       <h2 className="text-h2" style={{ marginBottom: 4 }}>{t('locations.title')}</h2>
       <p className="text-p" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('locations.description')}</p>
 

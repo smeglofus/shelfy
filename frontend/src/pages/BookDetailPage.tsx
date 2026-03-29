@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { AccordionSection } from '../components/AccordionSection'
 import { Skeleton, SkeletonBookDetail } from '../components/Skeleton'
 import { useBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
 import { useEnrichBook } from '../hooks/useEnrich'
@@ -109,7 +110,7 @@ export function BookDetailPage() {
   const longDesc = (book.description ?? '').length > 160
 
   return (
-    <section className="container md-max-w-3xl" style={{ paddingBottom: 40, margin: '0 auto', width: '100%' }}>
+    <section className="container md-max-w-3xl sh-page-enter" style={{ paddingBottom: 40, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <button
           onClick={() => navigate(ROUTES.books)}
@@ -154,34 +155,35 @@ export function BookDetailPage() {
           <h2 className="text-h1" style={{ marginBottom: 4, lineHeight: 1.2 }}>{book.title}</h2>
           <p className="text-p" style={{ fontSize: 18, color: 'var(--sh-text-muted)', marginBottom: 24, fontWeight: 500 }}>{book.author ?? t('book_detail.unknown_author')}</p>
 
-          <div style={{ background: 'var(--sh-surface-elevated)', padding: '0 16px', borderRadius: 'var(--sh-radius-lg)', marginBottom: 24, border: '1px solid var(--sh-border)' }}>
-            {metadataRow(t('book_detail.isbn'), book.isbn)}
-            {metadataRow(t('book_detail.publisher'), book.publisher)}
-            {metadataRow(t('book_detail.year'), book.publication_year)}
-            {metadataRow(t('book_detail.language'), book.language)}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '12px 0', alignItems: 'center' }}>
-              <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{t('book_detail.scan_status')}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{t(`processing_status.${book.processing_status}`)}</span>
-                <button
-                  type="button"
-                  onClick={() => enrichMutation.mutate({ bookId: book.id, force: book.processing_status === 'done' })}
-                  disabled={enrichMutation.isPending}
-                  style={{
-                    background: 'none', border: '1px solid var(--sh-border)',
-                    borderRadius: 'var(--sh-radius-sm)', padding: '2px 10px',
-                    fontSize: 12, fontWeight: 500, cursor: enrichMutation.isPending ? 'wait' : 'pointer',
-                    color: 'var(--sh-teal)',
-                  }}
-                >
-                  {enrichMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_book')}
-                </button>
+          <AccordionSection title={t('book_detail.metadata_section', 'Metadata')}>
+            <div style={{ background: 'var(--sh-surface-elevated)', padding: '0 16px', borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)' }}>
+              {metadataRow(t('book_detail.isbn'), book.isbn)}
+              {metadataRow(t('book_detail.publisher'), book.publisher)}
+              {metadataRow(t('book_detail.year'), book.publication_year)}
+              {metadataRow(t('book_detail.language'), book.language)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '12px 0', alignItems: 'center' }}>
+                <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{t('book_detail.scan_status')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{t(`processing_status.${book.processing_status}`)}</span>
+                  <button
+                    type="button"
+                    onClick={() => enrichMutation.mutate({ bookId: book.id, force: book.processing_status === 'done' })}
+                    disabled={enrichMutation.isPending}
+                    style={{
+                      background: 'none', border: '1px solid var(--sh-border)',
+                      borderRadius: 'var(--sh-radius-sm)', padding: '2px 10px',
+                      fontSize: 12, fontWeight: 500, cursor: enrichMutation.isPending ? 'wait' : 'pointer',
+                      color: 'var(--sh-teal)',
+                    }}
+                  >
+                    {enrichMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_book')}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </AccordionSection>
 
-          <div>
-            <h3 className="text-h3" style={{ marginTop: 0 }}>{t('book_detail.description_title')}</h3>
+          <AccordionSection title={t('book_detail.description_title')}>
             {book.description ? (
               <>
                 <p
@@ -210,14 +212,12 @@ export function BookDetailPage() {
             ) : (
               <p className="text-p" style={{ fontStyle: 'italic', color: 'var(--sh-text-muted)' }}>{t('book_detail.no_description')}</p>
             )}
-          </div>
+          </AccordionSection>
 
-          <hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
-
-          <h3 className="text-h3" style={{ marginTop: 0 }}>
-            {t('book_detail.management_title')}
-            {isDirty && <span className="sh-dirty-dot" title={t('book_detail.unsaved_changes', 'Neuložené změny')} />}
-          </h3>
+          <AccordionSection
+            title={t('book_detail.management_title')}
+            badge={isDirty ? <span className="sh-dirty-dot" title={t('book_detail.unsaved_changes', 'Neuložené změny')} /> : undefined}
+          >
           <form
             aria-label="assign-location-form"
             onSubmit={(event) => {
@@ -366,12 +366,13 @@ export function BookDetailPage() {
               {updateMutation.isPending ? t('book_detail.saving') : isDirty ? t('book_detail.save') : t('book_detail.save_no_changes', 'Uloženo ✓')}
             </button>
           </form>
+          </AccordionSection>
 
-          
-          <hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
-          <LoanHistory bookId={book.id} />
-<hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <AccordionSection title={t('loans.history_title')} defaultOpen={false}>
+            <LoanHistory bookId={book.id} />
+          </AccordionSection>
+
+          <div style={{ paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
               disabled={deleteMutation.isPending}
