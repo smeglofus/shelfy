@@ -8,6 +8,7 @@ import { useLocations } from '../hooks/useLocations'
 import { ROUTES } from '../lib/routes'
 import type { ReadingStatus } from '../lib/types'
 import { LoanHistory } from '../components/LoanHistory'
+import { Modal } from '../components/Modal'
 
 const GRADIENTS: [string, string][] = [
   ['#1D9E75', '#085041'],
@@ -130,7 +131,7 @@ export function BookDetailPage() {
           <h2 className="text-h1" style={{ marginBottom: 4, lineHeight: 1.2 }}>{book.title}</h2>
           <p className="text-p" style={{ fontSize: 18, color: 'var(--sh-text-muted)', marginBottom: 24, fontWeight: 500 }}>{book.author ?? t('book_detail.unknown_author')}</p>
 
-          <div style={{ background: '#FAFAFB', padding: '0 16px', borderRadius: 'var(--sh-radius-lg)', marginBottom: 24, border: '1px solid var(--sh-border)' }}>
+          <div style={{ background: 'var(--sh-surface-elevated)', padding: '0 16px', borderRadius: 'var(--sh-radius-lg)', marginBottom: 24, border: '1px solid var(--sh-border)' }}>
             {metadataRow(t('book_detail.isbn'), book.isbn)}
             {metadataRow(t('book_detail.publisher'), book.publisher)}
             {metadataRow(t('book_detail.year'), book.publication_year)}
@@ -177,7 +178,7 @@ export function BookDetailPage() {
                   <button
                     type="button"
                     onClick={() => setExpandedDescription((v) => !v)}
-                    style={{ marginTop: 8, border: 'none', background: 'transparent', color: 'var(--sh-teal)', cursor: 'pointer', padding: 0, fontWeight: 600, fontSize: 14 }}
+                    style={{ marginTop: 4, border: 'none', background: 'transparent', color: 'var(--sh-teal)', cursor: 'pointer', padding: '8px 0', fontWeight: 600, fontSize: 14, minHeight: 44 }}
                   >
                     {expandedDescription ? t('book_detail.collapse') : t('book_detail.expand')}
                   </button>
@@ -338,11 +339,10 @@ export function BookDetailPage() {
                 if (deleteMutation.isPending) return
                 setDeleteConfirmOpen(true)
               }}
-              className="sh-btn-primary hover-scale"
+              className="sh-btn-ghost"
               style={{
-                background: '#fff1f1',
                 color: 'var(--sh-red)',
-                boxShadow: 'none',
+                borderColor: 'var(--sh-red-bg)',
               }}
             >
               {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete')}
@@ -351,49 +351,28 @@ export function BookDetailPage() {
         </div>
       </article>
 
-      {deleteConfirmOpen && (
-        <div
-          role="dialog"
-          aria-label="delete-book-dialog"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 200,
-            padding: '0 24px',
-            animation: 'fadeIn 0.2s ease',
-          }}
-        >
-          <div style={{ background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-xl)', padding: '24px', width: '100%', maxWidth: 380, boxShadow: 'var(--sh-shadow-lg)' }}>
-            <h3 className="text-h3" style={{ marginTop: 0 }}>{t('book_detail.delete_confirm_title')}</h3>
-            <p className="text-p" style={{ marginBottom: 24 }}>{t('book_detail.delete_confirm_body')}</p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setDeleteConfirmOpen(false)}
-                className="sh-btn-secondary"
-              >
-                {t('book_detail.delete_cancel')}
-              </button>
-              <button
-                onClick={() => {
-                  deleteMutation.mutate(book.id, {
-                    onSuccess: () => navigate(ROUTES.books),
-                  })
-                }}
-                className="sh-btn-primary"
-                style={{ background: 'var(--sh-red)' }}
-              >
-                {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete_confirm')}
-              </button>
-            </div>
-          </div>
+      <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} label={t('book_detail.delete_confirm_title')} maxWidth={380}>
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('book_detail.delete_confirm_title')}</h3>
+        <p className="text-p" style={{ marginBottom: 24 }}>{t('book_detail.delete_confirm_body')}</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setDeleteConfirmOpen(false)}
+            className="sh-btn-secondary"
+          >
+            {t('book_detail.delete_cancel')}
+          </button>
+          <button
+            onClick={() => {
+              deleteMutation.mutate(book.id, {
+                onSuccess: () => navigate(ROUTES.books),
+              })
+            }}
+            className="sh-btn-danger"
+          >
+            {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete_confirm')}
+          </button>
         </div>
-      )}
+      </Modal>
     </section>
   )
 }

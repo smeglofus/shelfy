@@ -89,6 +89,25 @@ body {
   transform: scale(0.97);
 }
 
+/* Modal animations */
+.sh-modal-overlay {
+  animation: sh-fade-in 0.2s ease;
+}
+.sh-modal-panel {
+  animation: sh-slide-in-top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus-visible ring for all interactive elements */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--sh-teal);
+  outline-offset: 2px;
+}
+
 .transition-fast { transition: all 0.15s ease; }
 .transition-normal { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .hover-scale { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -348,6 +367,38 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   .md-max-w-3xl {
     max-width: 900px;
   }
+}
+
+/* ── Responsive grids for scan/location pickers ─────────────────── */
+.sh-location-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 480px) {
+  .sh-location-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.sh-review-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 480px) {
+  .sh-review-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Touch target minimum size helper ───────────────────────────── */
+.sh-touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ── Desktop sidebar active indicator ──────────────────────────── */

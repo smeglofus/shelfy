@@ -264,7 +264,7 @@ export function ScanShelfPage() {
           <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('scan.step_location_desc')}</p>
 
           <div style={{ background: 'var(--sh-surface)', padding: 16, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="sh-location-grid">
               <div>
                 <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.room')}</label>
                 <select className="sh-select" style={{ padding: '10px 12px' }} value={selRoom} onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}>
@@ -305,7 +305,7 @@ export function ScanShelfPage() {
 
           {showNewLocation && (
             <div style={{ background: 'var(--sh-teal-bg)', padding: 16, borderRadius: 'var(--sh-radius-md)', marginTop: 8, marginBottom: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className="sh-location-grid" style={{ marginBottom: 12 }}>
                 <>
                   <input
                     className="sh-input"
@@ -456,7 +456,9 @@ export function ScanShelfPage() {
                     {seg.status !== 'processing' && (
                       <button
                         onClick={() => removeSegment(idx)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 14, padding: 4 }}
+                        aria-label={t('scan.remove_item')}
+                        className="sh-touch-target"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 16 }}
                       >
                         ✕
                       </button>
@@ -558,12 +560,13 @@ export function ScanShelfPage() {
                         e.stopPropagation()
                         removeBook(book.localId)
                       }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-red)', fontSize: 16, padding: 4 }}
+                      className="sh-touch-target"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-red)', fontSize: 16 }}
                     >
                       ✕
                     </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div className="sh-review-fields">
                     <div>
                       <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('scan.book_title')}</label>
                       <input

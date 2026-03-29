@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BookCard } from '../components/BookCard'
+import { Modal } from '../components/Modal'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { StatBar } from '../components/StatBar'
 import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
@@ -305,45 +306,24 @@ export function BooksPage() {
         )}
       </div>
 
-      {deleteTargetId && (
-        <div
-          role="dialog"
-          aria-label="delete-book-dialog"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 200,
-            padding: '0 24px',
-            animation: 'fadeIn 0.2s ease',
-          }}
-        >
-          <div style={{ background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-xl)', padding: '24px', width: '100%', maxWidth: 380, boxShadow: 'var(--sh-shadow-lg)' }}>
-            <h3 className="text-h3" style={{ marginTop: 0 }}>{t('books.delete_confirm_title')}</h3>
-            <p className="text-p" style={{ marginBottom: 24 }}>{t('books.delete_confirm_body')}</p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setDeleteTargetId(null)}
-                className="sh-btn-secondary"
-              >
-                {t('books.delete_cancel')}
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(deleteTargetId, { onSuccess: () => setDeleteTargetId(null) })}
-                className="sh-btn-primary"
-                style={{ background: 'var(--sh-red)' }}
-              >
-                {deleteMutation.isPending ? t('books.deleting') : t('books.delete_confirm')}
-              </button>
-            </div>
-          </div>
+      <Modal open={!!deleteTargetId} onClose={() => setDeleteTargetId(null)} label={t('books.delete_confirm_title')} maxWidth={380}>
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('books.delete_confirm_title')}</h3>
+        <p className="text-p" style={{ marginBottom: 24 }}>{t('books.delete_confirm_body')}</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setDeleteTargetId(null)}
+            className="sh-btn-secondary"
+          >
+            {t('books.delete_cancel')}
+          </button>
+          <button
+            onClick={() => deleteTargetId && deleteMutation.mutate(deleteTargetId, { onSuccess: () => setDeleteTargetId(null) })}
+            className="sh-btn-danger"
+          >
+            {deleteMutation.isPending ? t('books.deleting') : t('books.delete_confirm')}
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

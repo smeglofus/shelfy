@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
+import { Modal } from '../components/Modal'
 import { useCreateLocation, useDeleteLocation, useLocations, useUpdateLocation } from '../hooks/useLocations'
 import { formatApiError } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
@@ -39,6 +40,18 @@ export function LocationsPage() {
     })
   }, [locationsQuery.data])
 
+  const roomSuggestions = useMemo(
+    () => [...new Set((locationsQuery.data ?? []).map((l) => l.room))].sort((a, b) => a.localeCompare(b)),
+    [locationsQuery.data],
+  )
+
+  const furnitureSuggestions = useMemo(
+    () => [...new Set((locationsQuery.data ?? [])
+      .filter((l) => !createForm.room || l.room.toLowerCase() === createForm.room.toLowerCase())
+      .map((l) => l.furniture))].sort((a, b) => a.localeCompare(b)),
+    [locationsQuery.data, createForm.room],
+  )
+
   return (
     <section className="container md-max-w-3xl" style={{ paddingTop: 24, paddingBottom: 40, margin: '0 auto', width: '100%' }}>
       <h2 className="text-h2" style={{ marginBottom: 4 }}>{t('locations.title')}</h2>
@@ -62,10 +75,16 @@ export function LocationsPage() {
               className="sh-input"
               aria-label={t('locations.room')}
               required
+              list="location-room-suggestions"
               placeholder={t('locations.room_placeholder')}
               value={createForm.room}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, room: event.target.value }))}
             />
+            <datalist id="location-room-suggestions">
+              {roomSuggestions.map((room) => (
+                <option key={room} value={room} />
+              ))}
+            </datalist>
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.furniture')}</label>
@@ -73,10 +92,16 @@ export function LocationsPage() {
               className="sh-input"
               aria-label={t('locations.furniture')}
               required
+              list="location-furniture-suggestions"
               placeholder={t('locations.furniture_placeholder')}
               value={createForm.furniture}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, furniture: event.target.value }))}
             />
+            <datalist id="location-furniture-suggestions">
+              {furnitureSuggestions.map((furniture) => (
+                <option key={furniture} value={furniture} />
+              ))}
+            </datalist>
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.shelf')}</label>
@@ -211,52 +236,37 @@ export function LocationsPage() {
         </div>
       )}
 
-      {deleteTarget && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="delete-location-dialog"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(2px)',
-            display: 'grid',
-            placeItems: 'center',
-            zIndex: 1000,
-            padding: 16,
-          }}
-        >
-          <div style={{ background: 'var(--sh-surface)', padding: 24, borderRadius: 'var(--sh-radius-xl)', width: '100%', maxWidth: 400, boxShadow: 'var(--sh-shadow-lg)', border: '1px solid var(--sh-border)' }}>
-            <h3 className="text-h3" style={{ marginTop: 0, color: 'var(--sh-red)' }}>{t('locations.delete_title')}</h3>
-            <p className="text-p" style={{ marginBottom: 24 }}>
-              <Trans
-                i18nKey="locations.delete_body"
-                values={{ room: deleteTarget.room, furniture: deleteTarget.furniture, shelf: deleteTarget.shelf }}
-                components={{ strong: <strong /> }}
-              />
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button className="sh-btn-secondary hover-scale" type="button" onClick={() => setDeleteTarget(null)}>
-                {t('locations.cancel')}
-              </button>
-              <button
-                type="button"
-                className="hover-scale"
-                style={{ background: 'var(--sh-red)', color: 'white', border: 'none', padding: '10px 16px', borderRadius: 'var(--sh-radius-md)', fontWeight: 500, cursor: 'pointer' }}
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  deleteMutation.mutate(deleteTarget.id, {
-                    onSuccess: () => setDeleteTarget(null),
-                  })
-                }}
-              >
-                {deleteMutation.isPending ? t('locations.deleting') : t('locations.delete_forever')}
-              </button>
-            </div>
-          </div>
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} label={t('locations.delete_title')} maxWidth={400}>
+        <h3 className="text-h3" style={{ marginTop: 0, color: 'var(--sh-red)' }}>{t('locations.delete_title')}</h3>
+        <p className="text-p" style={{ marginBottom: 24 }}>
+          {deleteTarget && (
+            <Trans
+              i18nKey="locations.delete_body"
+              values={{ room: deleteTarget.room, furniture: deleteTarget.furniture, shelf: deleteTarget.shelf }}
+              components={{ strong: <strong /> }}
+            />
+          )}
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button className="sh-btn-secondary" type="button" onClick={() => setDeleteTarget(null)}>
+            {t('locations.cancel')}
+          </button>
+          <button
+            type="button"
+            className="sh-btn-danger"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (deleteTarget) {
+                deleteMutation.mutate(deleteTarget.id, {
+                  onSuccess: () => setDeleteTarget(null),
+                })
+              }
+            }}
+          >
+            {deleteMutation.isPending ? t('locations.deleting') : t('locations.delete_forever')}
+          </button>
         </div>
-      )}
+      </Modal>
     </section>
   )
 }
