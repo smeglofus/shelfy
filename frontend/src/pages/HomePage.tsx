@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
 
+import { Skeleton, SkeletonLocationRow, SkeletonRecentBook } from '../components/Skeleton'
 import { useBooks } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { listBooks } from '../lib/api'
@@ -32,7 +33,36 @@ export function HomePage() {
   const isLocationCountsError = booksPerLocationQueries.some((query) => query.isError)
 
   if (summaryQuery.isLoading || locationsQuery.isLoading || isLocationCountsLoading) {
-    return <div className="container"><p className="text-p">{t('home.loading')}</p></div>
+    return (
+      <section className="container md-max-w-4xl flex-col gap-6" style={{ margin: '0 auto', width: '100%' }}>
+        <div className="md-grid-2">
+          <div className="flex-col gap-6">
+            <div>
+              <Skeleton width="45%" height={32} style={{ marginBottom: 8 }} />
+              <Skeleton width="60%" height={16} />
+            </div>
+            <div>
+              <Skeleton width="40%" height={20} style={{ marginBottom: 14 }} />
+              <div className="flex-col gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <SkeletonLocationRow key={i} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex-col gap-6">
+            <div>
+              <Skeleton width="50%" height={20} style={{ marginBottom: 14 }} />
+              <div className="flex-col gap-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <SkeletonRecentBook key={i} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   if (summaryQuery.isError || locationsQuery.isError || isLocationCountsError) {

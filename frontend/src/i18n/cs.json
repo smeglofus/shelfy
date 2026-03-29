@@ -83,7 +83,12 @@
     "delete_confirm_title": "Smazat knihu?",
     "delete_confirm_body": "Tato akce je nevratná. Opravdu chceš knihu odstranit?",
     "delete_cancel": "Zrušit",
-    "delete_confirm": "Smazat knihu"
+    "delete_confirm": "Smazat knihu",
+    "unsaved_changes": "Neuložené změny",
+    "save_no_changes": "Uloženo ✓",
+    "metadata_edit_title": "Upravit metadata",
+    "title_label": "Název",
+    "author_label": "Autor"
   },
   "reading_status": {
     "unassigned": "Nepřiřazeno",

@@ -83,7 +83,12 @@
     "delete_confirm_title": "Delete this book?",
     "delete_confirm_body": "This action cannot be undone. Do you really want to remove this book?",
     "delete_cancel": "Cancel",
-    "delete_confirm": "Delete book"
+    "delete_confirm": "Delete book",
+    "unsaved_changes": "Unsaved changes",
+    "save_no_changes": "Saved ✓",
+    "metadata_edit_title": "Edit metadata",
+    "title_label": "Title",
+    "author_label": "Author"
   },
   "reading_status": {
     "unassigned": "Unassigned",

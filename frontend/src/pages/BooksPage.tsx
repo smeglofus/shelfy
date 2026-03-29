@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { BookCard } from '../components/BookCard'
 import { Modal } from '../components/Modal'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
+import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
 import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
@@ -229,7 +230,7 @@ export function BooksPage() {
       )}
 
       <div style={{ padding: '24px 24px 0' }}>
-        {booksQuery.isLoading && <p className="text-p">{t('books.loading')}</p>}
+        {booksQuery.isLoading && <SkeletonBookGrid count={8} />}
 
         {booksQuery.isError && (
           <p style={{ color: 'var(--sh-red)', fontSize: 15, fontWeight: 500 }}>

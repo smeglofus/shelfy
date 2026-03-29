@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { Skeleton, SkeletonBookDetail } from '../components/Skeleton'
 import { useBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
 import { useEnrichBook } from '../hooks/useEnrich'
 import { useLocations } from '../hooks/useLocations'
@@ -58,7 +59,17 @@ export function BookDetailPage() {
   const [descriptionEdit, setDescriptionEdit] = useState<string | undefined>(undefined)
 
   if (bookQuery.isLoading) {
-    return <div className="container"><p className="text-p">{t('book_detail.loading')}</p></div>
+    return (
+      <section className="container md-max-w-3xl" style={{ margin: '0 auto', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+          <Skeleton width={40} height={40} borderRadius="var(--sh-radius-md)" />
+          <Skeleton width="30%" height={24} />
+        </div>
+        <article style={{ border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-xl)', overflow: 'hidden', background: 'var(--sh-surface)' }}>
+          <SkeletonBookDetail />
+        </article>
+      </section>
+    )
   }
 
   if (bookQuery.isError || !bookQuery.data) {
@@ -82,6 +93,18 @@ export function BookDetailPage() {
   const selectedLanguage = languageEdit === undefined ? (book.language ?? '') : languageEdit
   const selectedYear = yearEdit === undefined ? (book.publication_year != null ? String(book.publication_year) : '') : yearEdit
   const selectedDescription = descriptionEdit === undefined ? (book.description ?? '') : descriptionEdit
+  const isDirty = (
+    (titleEdit !== undefined && titleEdit !== book.title)
+    || (authorEdit !== undefined && authorEdit !== (book.author ?? ''))
+    || (isbnEdit !== undefined && isbnEdit !== (book.isbn ?? ''))
+    || (publisherEdit !== undefined && publisherEdit !== (book.publisher ?? ''))
+    || (languageEdit !== undefined && languageEdit !== (book.language ?? ''))
+    || (yearEdit !== undefined && yearEdit !== (book.publication_year != null ? String(book.publication_year) : ''))
+    || (descriptionEdit !== undefined && descriptionEdit !== (book.description ?? ''))
+    || (locationSelection !== undefined && (locationSelection ?? '') !== (book.location_id ?? ''))
+    || (readingSelection !== undefined && readingSelection !== (book.reading_status ?? 'unread'))
+  )
+
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
   const longDesc = (book.description ?? '').length > 160
 
@@ -191,7 +214,10 @@ export function BookDetailPage() {
 
           <hr style={{ border: 0, borderTop: '1px solid var(--sh-border)', margin: '24px 0' }} />
 
-          <h3 className="text-h3" style={{ marginTop: 0 }}>{t('book_detail.management_title')}</h3>
+          <h3 className="text-h3" style={{ marginTop: 0 }}>
+            {t('book_detail.management_title')}
+            {isDirty && <span className="sh-dirty-dot" title={t('book_detail.unsaved_changes', 'Neuložené změny')} />}
+          </h3>
           <form
             aria-label="assign-location-form"
             onSubmit={(event) => {
@@ -208,6 +234,18 @@ export function BookDetailPage() {
                   description: selectedDescription.trim() || null,
                   location_id: selectedLocation || null,
                   reading_status: selectedReading,
+                },
+              }, {
+                onSuccess: () => {
+                  setTitleEdit(undefined)
+                  setAuthorEdit(undefined)
+                  setIsbnEdit(undefined)
+                  setPublisherEdit(undefined)
+                  setLanguageEdit(undefined)
+                  setYearEdit(undefined)
+                  setDescriptionEdit(undefined)
+                  setLocationSelection(undefined)
+                  setReadingSelection(undefined)
                 },
               })
             }}
@@ -317,13 +355,15 @@ export function BookDetailPage() {
             <button
               type="submit"
               className="sh-btn-primary hover-scale"
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || !isDirty}
               style={{
                 alignSelf: 'flex-start',
                 marginTop: 8,
+                opacity: isDirty ? 1 : 0.5,
+                cursor: isDirty ? 'pointer' : 'not-allowed',
               }}
             >
-              {updateMutation.isPending ? t('book_detail.saving') : t('book_detail.save')}
+              {updateMutation.isPending ? t('book_detail.saving') : isDirty ? t('book_detail.save') : t('book_detail.save_no_changes', 'Uloženo ✓')}
             </button>
           </form>
 

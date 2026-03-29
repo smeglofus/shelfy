@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
 import { Modal } from '../components/Modal'
+import { SkeletonLocationTableRow } from '../components/Skeleton'
 import { useCreateLocation, useDeleteLocation, useLocations, useUpdateLocation } from '../hooks/useLocations'
 import { formatApiError } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
@@ -120,7 +121,25 @@ export function LocationsPage() {
         </form>
       </div>
 
-      {locationsQuery.isLoading && <p className="text-p">{t('locations.loading')}</p>}
+      {locationsQuery.isLoading && (
+        <div style={{ borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)', overflow: 'hidden', background: 'var(--sh-surface)' }}>
+          <table width="100%" cellPadding={16} style={{ borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+            <thead style={{ background: 'var(--sh-surface-elevated)', borderBottom: '1px solid var(--sh-border)' }}>
+              <tr>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.room')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.furniture')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.shelf')}</th>
+                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>{t('locations.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonLocationTableRow key={i} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {locationsQuery.isError && (
         <div style={{ padding: 16, background: 'var(--sh-red)', color: 'white', borderRadius: 'var(--sh-radius-md)' }}>
@@ -152,7 +171,7 @@ export function LocationsPage() {
       {sortedLocations.length > 0 && (
         <div style={{ borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)', overflow: 'hidden', background: 'var(--sh-surface)' }}>
           <table width="100%" cellPadding={16} style={{ borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-            <thead style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--sh-border)' }}>
+            <thead style={{ background: 'var(--sh-surface-elevated)', borderBottom: '1px solid var(--sh-border)' }}>
               <tr>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.room')}</th>
                 <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.furniture')}</th>
@@ -165,7 +184,7 @@ export function LocationsPage() {
                 const isEditing = editingLocationId === location.id
 
                 return (
-                  <tr key={location.id} style={{ borderBottom: '1px solid var(--sh-border)', transition: 'background 0.2s', background: isEditing ? 'rgba(0,0,0,0.01)' : 'transparent' }}>
+                  <tr key={location.id} style={{ borderBottom: '1px solid var(--sh-border)', transition: 'background 0.2s', background: isEditing ? 'var(--sh-surface-elevated)' : 'transparent' }}>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_room')} value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : <span style={{ fontWeight: 500 }}>{location.room}</span>}</td>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_furniture')} value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.furniture}</span>}</td>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_shelf')} value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.shelf}</span>}</td>
