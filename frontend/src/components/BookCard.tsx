@@ -24,9 +24,10 @@ interface Props {
   onDelete?: (bookId: string) => void
   /** Index in the grid, used for staggered entrance animation */
   index?: number
+  highlighted?: boolean
 }
 
-export function BookCard({ book, onDelete, index = 0 }: Props) {
+export function BookCard({ book, onDelete, index = 0, highlighted = false }: Props) {
   const { t } = useTranslation()
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
 
@@ -71,12 +72,12 @@ export function BookCard({ book, onDelete, index = 0 }: Props) {
         style={{
           background: 'var(--sh-surface)',
           borderRadius: 'var(--sh-radius-lg)',
-          border: '1px solid var(--sh-border)',
+          border: highlighted ? '2px solid var(--sh-teal)' : '1px solid var(--sh-border)',
           overflow: 'hidden',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: 'var(--sh-shadow-sm)',
+          boxShadow: highlighted ? '0 0 0 4px var(--sh-border-focus), var(--sh-shadow-sm)' : 'var(--sh-shadow-sm)',
         }}
       >
         {/* Cover */}

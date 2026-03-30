@@ -123,6 +123,15 @@ export function BookDetailPage() {
           {t('book_detail.back')}
         </button>
         <h2 className="text-h2" style={{ marginBottom: 0 }}>{t('book_detail.title')}</h2>
+        <div style={{ marginLeft: 'auto' }}>
+          <button
+            type="button"
+            className="sh-btn-secondary"
+            onClick={() => navigate(`${ROUTES.bookshelfView}?location_id=${book.location_id ?? ''}&highlight_book_id=${book.id}`)}
+          >
+            {t('book_detail.show_in_twin', 'Ukázat v digitálním dvojčeti')}
+          </button>
+        </div>
       </div>
 
       <article style={{ border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-xl)', overflow: 'hidden', background: 'var(--sh-surface)', boxShadow: 'var(--sh-shadow-md)' }}>

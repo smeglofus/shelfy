@@ -13,6 +13,7 @@ import { useToastStore } from '../lib/toast-store'
 import type { Book, Location, ReadingStatus } from '../lib/types'
 
 const PAGE_SIZE = 20
+type StatFilter = 'total' | 'read' | 'reading' | 'lent'
 
 export function BooksPage() {
   const { t } = useTranslation()
@@ -23,6 +24,7 @@ export function BooksPage() {
   const [uploadJobId, setUploadJobId] = useState<string | null>(null)
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
   const [locationFilter, setLocationFilter] = useState<string>('all')
+  const [statFilter, setStatFilter] = useState<StatFilter>('total')
   const toastedFailedIdsRef = useRef<Set<string>>(new Set())
 
   const tabItems: { label: string; value: ReadingStatus | null }[] = useMemo(
@@ -91,13 +93,17 @@ export function BooksPage() {
   ])
 
   const books = useMemo(() => {
-    const raw = booksQuery.data?.items ?? []
+    let raw = booksQuery.data?.items ?? []
     if (locationFilter === 'unassigned') {
-      return raw.filter((book) => !book.location_id)
+      raw = raw.filter((book) => !book.location_id)
+    }
+
+    if (statFilter === 'lent') {
+      raw = raw.filter((book) => !!book.is_currently_lent)
     }
 
     return raw
-  }, [booksQuery.data?.items, locationFilter])
+  }, [booksQuery.data?.items, locationFilter, statFilter])
 
   const groups = useMemo(() => {
     const map = new Map<string | null, Book[]>()
@@ -127,7 +133,18 @@ export function BooksPage() {
       </div>
 
       <div style={{ padding: '0 8px' }}>
-        <StatBar books={books} total={total} />
+        <StatBar
+          books={books}
+          total={total}
+          active={statFilter}
+          onSelect={(key) => {
+            setStatFilter(key)
+            if (key === 'read') setReadingFilter('read')
+            else if (key === 'reading') setReadingFilter('reading')
+            else setReadingFilter(null)
+            setPage(1)
+          }}
+        />
       </div>
 
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '12px 24px 0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -139,6 +156,7 @@ export function BooksPage() {
               type="button"
               onClick={() => {
                 setReadingFilter(tab.value)
+                setStatFilter(tab.value === 'read' ? 'read' : tab.value === 'reading' ? 'reading' : 'total')
                 setPage(1)
               }}
               style={{
