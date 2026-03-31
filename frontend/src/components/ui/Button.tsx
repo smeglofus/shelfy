@@ -18,13 +18,13 @@ const variantStyles: Record<ButtonVariant, string> = {
 
 const sizeStyles: Record<ButtonSize, CSSProperties> = {
   sm: { padding: '6px 12px',  fontSize: 13 },
-  md: { padding: '10px 20px', fontSize: 15 },
-  lg: { padding: '14px 28px', fontSize: 16 },
+  md: { padding: '10px 20px', fontSize: 14 },
+  lg: { padding: '12px 24px', fontSize: 15 },
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', fullWidth = false, className = '', style, children, ...rest }, ref) => {
-    const baseClass = `${variantStyles[variant]} hover-scale${className ? ` ${className}` : ''}`
+    const baseClass = `${variantStyles[variant]}${className ? ` ${className}` : ''}`
     const combinedStyle: CSSProperties = {
       ...(fullWidth ? { width: '100%', display: 'flex', justifyContent: 'center' } : {}),
       ...sizeStyles[size],

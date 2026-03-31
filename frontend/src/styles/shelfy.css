@@ -1,53 +1,67 @@
 :root {
-  /* Premium Colors */
+  /* ── Colors ──────────────────────────────────────────────────────── */
   --sh-teal:      #0F9D58;
   --sh-teal-dark: #007936;
   --sh-teal-bg:   #eaf5f0;
   --sh-teal-text: #054c2a;
-  
+
   --sh-amber:     #F4B400;
   --sh-amber-bg:  #fdf6e3;
   --sh-amber-text:#7a5a00;
-  
+
   --sh-blue:      #4285F4;
   --sh-blue-bg:   #edf3ff;
   --sh-blue-text: #174ea6;
-  
+
   --sh-purple:    #9b51e0;
   --sh-purple-bg: #f5edfc;
   --sh-purple-text:#41156d;
-  
+
   --sh-red:       #DB4437;
   --sh-red-bg:    #fce8e6;
   --sh-red-text:  #a50e0e;
-  
-  /* Backgrounds & Text */
+
+  /* ── Backgrounds & Text ──────────────────────────────────────────── */
   --sh-bg:        #F8F9FA;
-  --sh-bg-main:   #F8F9FA; /* alias */
+  --sh-bg-main:   #F8F9FA;
   --sh-surface:   #FFFFFF;
   --sh-surface-elevated: #F7F7F5;
   --sh-text-main: #202124;
   --sh-text-muted:#5F6368;
   --sh-input-bg:  #FAFAFB;
   --sh-placeholder: #A0AAB5;
-  
-  /* Borders */
+
+  /* ── Borders ─────────────────────────────────────────────────────── */
   --sh-border:    rgba(0,0,0,0.06);
   --sh-border-2:  rgba(0,0,0,0.12);
   --sh-border-focus: rgba(15, 157, 88, 0.25);
-  
-  /* Border Radius */
-  --sh-radius-sm: 8px;
-  --sh-radius-md: 16px;
-  --sh-radius-lg: 24px;
-  --sh-radius-xl: 32px;
+
+  /* ── Border Radius (reduced from 8/16/24/32 to tighter scale) ──── */
+  --sh-radius-xs: 4px;
+  --sh-radius-sm: 6px;
+  --sh-radius-md: 10px;
+  --sh-radius-lg: 14px;
+  --sh-radius-xl: 18px;
   --sh-radius-pill: 9999px;
-  
-  /* Shadows */
-  --sh-shadow-sm: 0 4px 10px rgba(0,0,0,0.04);
-  --sh-shadow-md: 0 8px 24px rgba(0,0,0,0.06);
-  --sh-shadow-lg: 0 16px 36px rgba(0,0,0,0.1);
-  --sh-shadow-hover: 0 20px 48px rgba(0,0,0,0.12);
+
+  /* ── Spacing Scale (4px base) ────────────────────────────────────── */
+  --sh-space-1:   4px;
+  --sh-space-2:   8px;
+  --sh-space-3:   12px;
+  --sh-space-4:   16px;
+  --sh-space-5:   20px;
+  --sh-space-6:   24px;
+  --sh-space-8:   32px;
+  --sh-space-10:  40px;
+  --sh-space-12:  48px;
+  --sh-space-16:  64px;
+
+  /* ── Shadows (refined, less aggressive) ──────────────────────────── */
+  --sh-shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --sh-shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+  --sh-shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+  --sh-shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+  --sh-shadow-hover: 0 12px 28px rgba(0,0,0,0.10);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -145,9 +159,7 @@ body {
 .sh-toast-item {
   animation: sh-slide-in-top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.sh-toast-progress {
-  animation: sh-toast-progress 3.5s linear forwards;
-}
+/* sh-toast-progress animation duration is set inline per variant */
 .sh-fab-menu {
   animation: sh-fab-pop 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -177,7 +189,8 @@ a:focus-visible,
 .transition-fast { transition: all 0.15s ease; }
 .transition-normal { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .hover-scale { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.hover-scale:hover { transform: translateY(-6px); box-shadow: var(--sh-shadow-hover); }
+.hover-scale:hover { transform: translateY(-3px); box-shadow: var(--sh-shadow-hover); }
+.hover-scale:hover .sh-card-delete-btn { opacity: 1; }
 .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .hover-lift:hover { transform: translateY(-2px); box-shadow: var(--sh-shadow-md); }
 
@@ -254,42 +267,47 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
 .text-p { font-size: 15px; }
 .text-small { font-size: 13px; font-weight: 500; }
 
-/* Interactive Elements */
+/* ── Interactive Elements ─── buttons, inputs, selects ───────── */
+
+/* Shared button base */
+.sh-btn-primary,
+.sh-btn-secondary,
+.sh-btn-danger,
+.sh-btn-ghost {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  border-radius: var(--sh-radius-pill);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sh-space-2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Primary Button */
 .sh-btn-primary {
   background: var(--sh-teal);
   color: white;
   border: none;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  font-size: 16px;
-  padding: 14px 28px;
-  border-radius: var(--sh-radius-pill);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 6px 16px rgba(15, 157, 88, 0.25);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 15px;
+  padding: 10px 20px;
+  box-shadow: 0 2px 8px rgba(15, 157, 88, 0.15);
 }
 .sh-btn-primary:hover {
   background: var(--sh-teal-dark);
-  box-shadow: 0 8px 20px rgba(15, 157, 88, 0.35);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 157, 88, 0.25);
+  transform: translateY(-1px);
 }
-.sh-btn-primary:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(15, 157, 88, 0.25); }
+.sh-btn-primary:active { transform: translateY(1px); box-shadow: 0 1px 4px rgba(15, 157, 88, 0.2); }
 
 /* Secondary Button */
 .sh-btn-secondary {
   background: var(--sh-teal-bg);
   color: var(--sh-teal-text);
   border: none;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   padding: 10px 20px;
-  border-radius: var(--sh-radius-pill);
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 .sh-btn-secondary:hover {
   background: #d9f0e6;
@@ -301,19 +319,14 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   background: var(--sh-red);
   color: white;
   border: none;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   padding: 10px 20px;
-  border-radius: var(--sh-radius-pill);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(219, 68, 55, 0.25);
+  box-shadow: 0 2px 8px rgba(219, 68, 55, 0.15);
 }
 .sh-btn-danger:hover {
   background: #c62828;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(219, 68, 55, 0.35);
+  box-shadow: 0 4px 12px rgba(219, 68, 55, 0.25);
 }
 .sh-btn-danger:active { transform: translateY(1px); }
 
@@ -322,13 +335,9 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   background: transparent;
   color: var(--sh-text-muted);
   border: 1.5px solid var(--sh-border-2);
-  font-family: 'Outfit', sans-serif;
   font-weight: 500;
-  font-size: 15px;
+  font-size: 14px;
   padding: 10px 20px;
-  border-radius: var(--sh-radius-pill);
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 .sh-btn-ghost:hover {
   background: var(--sh-border);
@@ -337,21 +346,22 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   transform: translateY(-1px);
 }
 
+/* ── Inputs, Selects, Textareas ──────────────────────────────── */
 .sh-input, .sh-select, .sh-textarea {
   width: 100%;
-  padding: 14px 18px;
+  padding: 10px 14px;
   border-radius: var(--sh-radius-md);
   border: 1.5px solid var(--sh-border-2);
   background: var(--sh-input-bg);
   font-family: 'Outfit', sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--sh-text-main);
-  transition: all 0.25s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .sh-input:focus, .sh-select:focus, .sh-textarea:focus {
   border-color: var(--sh-teal);
   background: var(--sh-surface);
-  box-shadow: 0 0 0 4px var(--sh-border-focus);
+  box-shadow: 0 0 0 3px var(--sh-border-focus);
   outline: none;
 }
 .sh-input::placeholder, .sh-textarea::placeholder { color: var(--sh-placeholder); }
@@ -588,9 +598,9 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   }
 }
 
-/* ── Dark Mode ───────────────────────────────────────────────── */
+/* ── Dark Mode (system preference fallback) ─────────────────── */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --sh-bg:            #0d1117;
     --sh-bg-main:       #0d1117;
     --sh-surface:       #161b22;
@@ -606,28 +616,32 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
     --sh-input-bg:      #0d1117;
     --sh-placeholder:   #484f58;
 
-    /* Slightly desaturated teal for dark bg */
     --sh-teal:          #3fb950;
     --sh-teal-dark:     #2ea043;
     --sh-teal-bg:       rgba(63,185,80,0.12);
     --sh-teal-text:     #56d364;
 
+    --sh-amber:         #E5A100;
     --sh-amber-bg:      rgba(244,180,0,0.12);
     --sh-amber-text:    #d29922;
 
+    --sh-blue:          #58a6ff;
     --sh-blue-bg:       rgba(66,133,244,0.12);
     --sh-blue-text:     #79c0ff;
 
+    --sh-purple:        #bc8cff;
     --sh-purple-bg:     rgba(155,81,224,0.12);
     --sh-purple-text:   #c084fc;
 
+    --sh-red:           #f85149;
     --sh-red-bg:        rgba(219,68,55,0.12);
     --sh-red-text:      #f85149;
 
-    --sh-shadow-sm:     0 4px 10px rgba(0,0,0,0.3);
-    --sh-shadow-md:     0 8px 24px rgba(0,0,0,0.4);
-    --sh-shadow-lg:     0 16px 36px rgba(0,0,0,0.5);
-    --sh-shadow-hover:  0 20px 48px rgba(0,0,0,0.6);
+    --sh-shadow-xs:     0 1px 2px rgba(0,0,0,0.15);
+    --sh-shadow-sm:     0 2px 8px rgba(0,0,0,0.2);
+    --sh-shadow-md:     0 4px 16px rgba(0,0,0,0.25);
+    --sh-shadow-lg:     0 8px 24px rgba(0,0,0,0.3);
+    --sh-shadow-hover:  0 12px 28px rgba(0,0,0,0.35);
   }
 
   body { color-scheme: dark; }
@@ -636,31 +650,98 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   .sh-btn-secondary:hover { background: rgba(63,185,80,0.2); }
 }
 
-
+/* ── Dark Mode (manual toggle) ─── complete set of overrides ── */
 html.dark {
-  --sh-bg: #0d1117;
-  --sh-bg-main: #0d1117;
-  --sh-surface: #161b22;
+  --sh-bg:            #0d1117;
+  --sh-bg-main:       #0d1117;
+  --sh-surface:       #161b22;
   --sh-surface-elevated: #1c2129;
-  --sh-text-main: #e6edf3;
-  --sh-text-muted: #8b949e;
-  --sh-border: rgba(255,255,255,0.08);
-  --sh-border-2: rgba(255,255,255,0.14);
-  --sh-input-bg: #0d1117;
-  --sh-placeholder: #484f58;
-  --sh-teal: #3fb950;
-  --sh-teal-dark: #2ea043;
-  --sh-teal-bg: rgba(63,185,80,0.12);
-  --sh-teal-text: #56d364;
-}
 
+  --sh-text-main:     #e6edf3;
+  --sh-text-muted:    #8b949e;
+
+  --sh-border:        rgba(255,255,255,0.08);
+  --sh-border-2:      rgba(255,255,255,0.14);
+  --sh-border-focus:  rgba(15, 157, 88, 0.3);
+
+  --sh-input-bg:      #0d1117;
+  --sh-placeholder:   #484f58;
+
+  --sh-teal:          #3fb950;
+  --sh-teal-dark:     #2ea043;
+  --sh-teal-bg:       rgba(63,185,80,0.12);
+  --sh-teal-text:     #56d364;
+
+  --sh-amber:         #E5A100;
+  --sh-amber-bg:      rgba(244,180,0,0.12);
+  --sh-amber-text:    #d29922;
+
+  --sh-blue:          #58a6ff;
+  --sh-blue-bg:       rgba(66,133,244,0.12);
+  --sh-blue-text:     #79c0ff;
+
+  --sh-purple:        #bc8cff;
+  --sh-purple-bg:     rgba(155,81,224,0.12);
+  --sh-purple-text:   #c084fc;
+
+  --sh-red:           #f85149;
+  --sh-red-bg:        rgba(219,68,55,0.12);
+  --sh-red-text:      #f85149;
+
+  --sh-shadow-xs:     0 1px 2px rgba(0,0,0,0.15);
+  --sh-shadow-sm:     0 2px 8px rgba(0,0,0,0.2);
+  --sh-shadow-md:     0 4px 16px rgba(0,0,0,0.25);
+  --sh-shadow-lg:     0 8px 24px rgba(0,0,0,0.3);
+  --sh-shadow-hover:  0 12px 28px rgba(0,0,0,0.35);
+
+  color-scheme: dark;
+}
+html.dark .sh-app { box-shadow: none; }
+html.dark .sh-btn-secondary:hover { background: rgba(63,185,80,0.2); }
+
+/* ── Light Mode (manual toggle) ─── full reset to light ─────── */
 html.light {
-  --sh-bg: #F8F9FA;
-  --sh-bg-main: #F8F9FA;
-  --sh-surface: #FFFFFF;
+  --sh-bg:            #F8F9FA;
+  --sh-bg-main:       #F8F9FA;
+  --sh-surface:       #FFFFFF;
   --sh-surface-elevated: #F7F7F5;
-  --sh-text-main: #202124;
-  --sh-text-muted: #5F6368;
-  --sh-border: rgba(0,0,0,0.06);
-  --sh-border-2: rgba(0,0,0,0.12);
+
+  --sh-text-main:     #202124;
+  --sh-text-muted:    #5F6368;
+
+  --sh-border:        rgba(0,0,0,0.06);
+  --sh-border-2:      rgba(0,0,0,0.12);
+  --sh-border-focus:  rgba(15, 157, 88, 0.25);
+
+  --sh-input-bg:      #FAFAFB;
+  --sh-placeholder:   #A0AAB5;
+
+  --sh-teal:          #0F9D58;
+  --sh-teal-dark:     #007936;
+  --sh-teal-bg:       #eaf5f0;
+  --sh-teal-text:     #054c2a;
+
+  --sh-amber:         #F4B400;
+  --sh-amber-bg:      #fdf6e3;
+  --sh-amber-text:    #7a5a00;
+
+  --sh-blue:          #4285F4;
+  --sh-blue-bg:       #edf3ff;
+  --sh-blue-text:     #174ea6;
+
+  --sh-purple:        #9b51e0;
+  --sh-purple-bg:     #f5edfc;
+  --sh-purple-text:   #41156d;
+
+  --sh-red:           #DB4437;
+  --sh-red-bg:        #fce8e6;
+  --sh-red-text:      #a50e0e;
+
+  --sh-shadow-xs:     0 1px 2px rgba(0,0,0,0.04);
+  --sh-shadow-sm:     0 2px 8px rgba(0,0,0,0.04);
+  --sh-shadow-md:     0 4px 16px rgba(0,0,0,0.06);
+  --sh-shadow-lg:     0 8px 24px rgba(0,0,0,0.08);
+  --sh-shadow-hover:  0 12px 28px rgba(0,0,0,0.10);
+
+  color-scheme: light;
 }

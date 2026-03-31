@@ -35,7 +35,7 @@ export function BookCard({ book, onDelete, index = 0, highlighted = false }: Pro
     <div style={{ position: "relative", animationDelay: `${Math.min(index * 40, 400)}ms` }} className="hover-scale sh-card-enter">
       {onDelete && (
         <button
-          className="hover-lift"
+          className="sh-card-delete-btn"
           aria-label={`delete-${book.id}`}
           onClick={(e) => {
             e.preventDefault()
@@ -44,23 +44,24 @@ export function BookCard({ book, onDelete, index = 0, highlighted = false }: Pro
           }}
           style={{
             position: "absolute",
-            top: -8,
-            right: -8,
+            top: -6,
+            right: -6,
             zIndex: 2,
-            border: "1px solid rgba(255,255,255,0.8)",
+            border: "1px solid var(--sh-border-2)",
             borderRadius: "var(--sh-radius-pill)",
-            width: 28,
-            height: 28,
+            width: 26,
+            height: 26,
             cursor: "pointer",
             background: "var(--sh-surface)",
             color: "var(--sh-text-muted)",
-            fontSize: 16,
+            fontSize: 14,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: 0,
-            boxShadow: "var(--sh-shadow-sm)",
-            transition: "all 0.2s ease"
+            boxShadow: "var(--sh-shadow-xs)",
+            opacity: 0,
+            transition: "opacity 0.15s ease, transform 0.15s ease",
           }}
           title={t('books.delete_title')}
         >
@@ -126,17 +127,17 @@ export function BookCard({ book, onDelete, index = 0, highlighted = false }: Pro
         </div>
 
         {/* Info */}
-        <div style={{ padding: 14, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: 12, flex: 1, display: 'flex', flexDirection: 'column' }}>
           {book.author && (
-            <p style={{ fontSize: 13, color: 'var(--sh-text-muted)', marginBottom: 4, fontWeight: 500 }}>
+            <p style={{ fontSize: 12, color: 'var(--sh-text-muted)', marginBottom: 2, fontWeight: 500 }}>
               {book.author}
             </p>
           )}
-          <p style={{ 
-            fontSize: 15, 
-            fontWeight: 600, 
-            lineHeight: 1.4, 
-            marginBottom: 12,
+          <p style={{
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            marginBottom: 10,
             color: 'var(--sh-text-main)',
             flex: 1,
             display: '-webkit-box',

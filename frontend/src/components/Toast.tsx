@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react'
 
 import { type ToastMessage, type ToastVariant, useToastStore } from '../lib/toast-store'
 
-const TOAST_DURATION = 3500
+const TOAST_DURATIONS: Record<ToastVariant, number> = {
+  error: 6000,
+  warning: 5000,
+  success: 3000,
+  info: 3500,
+}
 
 const variantConfig: Record<ToastVariant, { bg: string; border: string; color: string; icon: string }> = {
   success: {
@@ -36,10 +41,12 @@ function ToastItem({ toast }: { toast: ToastMessage }) {
   const ref = useRef<HTMLDivElement>(null)
   const config = variantConfig[toast.variant]
 
+  const duration = TOAST_DURATIONS[toast.variant]
+
   useEffect(() => {
-    const timeout = window.setTimeout(() => dismiss(toast.id), TOAST_DURATION)
+    const timeout = window.setTimeout(() => dismiss(toast.id), duration)
     return () => window.clearTimeout(timeout)
-  }, [dismiss, toast.id])
+  }, [dismiss, toast.id, duration])
 
   return (
     <div
@@ -118,15 +125,16 @@ function ToastItem({ toast }: { toast: ToastMessage }) {
 
       {/* Progress bar */}
       <div
-        className="sh-toast-progress"
         style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           height: 3,
+          width: '100%',
           background: config.border,
           opacity: 0.4,
           borderRadius: '0 0 var(--sh-radius-md) var(--sh-radius-md)',
+          animation: `sh-toast-progress ${duration}ms linear forwards`,
         }}
       />
     </div>

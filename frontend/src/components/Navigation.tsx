@@ -251,7 +251,7 @@ export function Navigation() {
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'space-around',
-        background: 'var(--sh-surface-blur, rgba(255, 255, 255, 0.92))',
+        background: 'var(--sh-surface)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderTop: '1px solid var(--sh-border)',

@@ -10,6 +10,7 @@ const COLOR_CONFIG: Record<ReadingStatus, { bg: string; color: string }> = {
   read: { bg: 'var(--sh-teal-bg)', color: 'var(--sh-teal-text)' },
   reading: { bg: 'var(--sh-amber-bg)', color: 'var(--sh-amber-text)' },
   unread: { bg: 'var(--sh-surface-elevated)', color: 'var(--sh-text-muted)' },
+  lent: { bg: 'var(--sh-purple-bg)', color: 'var(--sh-purple-text)' },
 }
 
 export function ReadingStatusBadge({ status }: Props) {
