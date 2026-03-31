@@ -191,7 +191,16 @@ export function BookshelfViewPage() {
                           {t('bookshelf.empty_shelf')}
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                        <div style={{
+                          display: 'flex',
+                          gap: 5,
+                          overflowX: 'auto',
+                          paddingBottom: 0,
+                          paddingTop: 4,
+                          alignItems: 'flex-end',
+                          borderBottom: '3px solid var(--sh-border-2)',
+                          backgroundImage: 'linear-gradient(to top, var(--sh-surface-elevated) 3px, transparent 3px)',
+                        }}>
                           {shelfBooks.map((book) => (
                             <BookSpine
                               key={book.id}
@@ -227,38 +236,33 @@ function BookSpine({ book, onClick, highlighted = false, focusRef }: { book: Boo
     return colors[Math.abs(hash) % colors.length]
   }, [book.title])
 
-  const displayTitle = book.title.length > 30 ? `${book.title.slice(0, 28)}…` : book.title
+  const displayTitle = book.title.length > 40 ? `${book.title.slice(0, 38)}…` : book.title
 
   return (
     <button
       ref={focusRef}
       onClick={onClick}
-      title={`${book.title}${book.author ? ` – ${book.author}` : ''}`}
+      className="sh-book-spine"
+      title={`${book.title}${book.author ? ` — ${book.author}` : ''}`}
+      data-highlighted={highlighted ? '' : undefined}
       style={{
-        minWidth: 36,
-        maxWidth: 52,
-        height: 120,
+        minWidth: 44,
+        maxWidth: 56,
+        height: 150,
         background: hasCover ? 'var(--sh-surface)' : color,
-        borderRadius: '2px 4px 4px 2px',
+        borderRadius: '2px 3px 3px 2px',
         border: highlighted ? '2px solid var(--sh-teal)' : (hasCover ? '1px solid var(--sh-border)' : 'none'),
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: hasCover ? 0 : '4px 2px',
+        padding: hasCover ? 0 : '6px 3px',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: highlighted ? '0 0 0 3px var(--sh-border-focus), 2px 6px 12px rgba(0,0,0,0.22)' : '2px 2px 4px rgba(0,0,0,0.15), inset -1px 0 2px rgba(0,0,0,0.1)',
-        transition: 'transform 0.15s, box-shadow 0.15s',
+        boxShadow: highlighted
+          ? '0 0 0 3px var(--sh-border-focus), 2px 4px 10px rgba(0,0,0,0.2)'
+          : '1px 1px 3px rgba(0,0,0,0.12), inset -1px 0 2px rgba(0,0,0,0.08)',
         flexShrink: 0,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)'
-        e.currentTarget.style.boxShadow = '2px 6px 12px rgba(0,0,0,0.2), inset -1px 0 2px rgba(0,0,0,0.1)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.boxShadow = highlighted ? '0 0 0 3px var(--sh-border-focus), 2px 6px 12px rgba(0,0,0,0.22)' : '2px 2px 4px rgba(0,0,0,0.15), inset -1px 0 2px rgba(0,0,0,0.1)'
       }}
     >
       {hasCover ? (
@@ -273,14 +277,15 @@ function BookSpine({ book, onClick, highlighted = false, focusRef }: { book: Boo
           writingMode: 'vertical-rl',
           textOrientation: 'mixed',
           color: 'white',
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: 600,
-          lineHeight: 1.2,
+          lineHeight: 1.15,
           textAlign: 'center',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           maxHeight: '100%',
-          letterSpacing: '0.02em',
+          letterSpacing: '0.01em',
+          textShadow: '0 1px 2px rgba(0,0,0,0.3)',
         }}>
           {displayTitle}
         </span>

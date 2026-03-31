@@ -188,16 +188,17 @@ export function LocationsPage() {
         </div>
       )}
 
+      {/* ── Desktop table (≥768px) ──────────────────────────────── */}
       {sortedLocations.length > 0 && (
-        <div style={{ borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)', overflow: 'hidden', background: 'var(--sh-surface)' }}>
-          <table width="100%" cellPadding={16} style={{ borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-            <thead style={{ background: 'var(--sh-surface-elevated)', borderBottom: '1px solid var(--sh-border)' }}>
+        <div className="sh-locations-desktop" style={{ borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)', overflow: 'hidden', background: 'var(--sh-surface)' }}>
+          <table className="sh-locations-table">
+            <thead>
               <tr>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.room')}</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.furniture')}</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.shelf')}</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', whiteSpace: 'nowrap' }}>{t('locations.display_order', 'Pořadí')}</th>
-                <th style={{ fontWeight: 600, color: 'var(--sh-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>{t('locations.actions')}</th>
+                <th>{t('locations.room')}</th>
+                <th>{t('locations.furniture')}</th>
+                <th>{t('locations.shelf')}</th>
+                <th>{t('locations.display_order', 'Pořadí')}</th>
+                <th style={{ textAlign: 'right' }}>{t('locations.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -205,7 +206,7 @@ export function LocationsPage() {
                 const isEditing = editingLocationId === location.id
 
                 return (
-                  <tr key={location.id} style={{ borderBottom: '1px solid var(--sh-border)', transition: 'background 0.2s', background: isEditing ? 'var(--sh-surface-elevated)' : 'transparent' }}>
+                  <tr key={location.id} style={{ background: isEditing ? 'var(--sh-surface-elevated)' : 'transparent' }}>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_room')} value={editForm.room} onChange={(event) => setEditForm((prev) => ({ ...prev, room: event.target.value }))} /> : <span style={{ fontWeight: 500 }}>{location.room}</span>}</td>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_furniture')} value={editForm.furniture} onChange={(event) => setEditForm((prev) => ({ ...prev, furniture: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.furniture}</span>}</td>
                     <td>{isEditing ? <input className="sh-input" aria-label={t('locations.edit_shelf')} value={editForm.shelf} onChange={(event) => setEditForm((prev) => ({ ...prev, shelf: event.target.value }))} /> : <span style={{ color: 'var(--sh-text-muted)' }}>{location.shelf}</span>}</td>
@@ -213,58 +214,19 @@ export function LocationsPage() {
                     <td style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', minHeight: 48 }}>
                       {isEditing ? (
                         <>
-                          <button
-                            type="button"
-                            className="sh-btn-primary hover-scale"
-                            style={{ padding: '6px 12px', fontSize: 13 }}
-                            disabled={updateMutation.isPending}
-                            onClick={() => {
-                              updateMutation.mutate(
-                                { id: location.id, payload: { ...editForm, display_order: editForm.display_order.trim() ? Number(editForm.display_order) : 0 } },
-                                { onSuccess: () => setEditingLocationId(null) },
-                              )
-                            }}
-                          >
+                          <button type="button" className="sh-btn-primary" style={{ padding: '6px 12px', fontSize: 13 }} disabled={updateMutation.isPending} onClick={() => { updateMutation.mutate({ id: location.id, payload: { ...editForm, display_order: editForm.display_order.trim() ? Number(editForm.display_order) : 0 } }, { onSuccess: () => setEditingLocationId(null) }) }}>
                             {updateMutation.isPending ? t('locations.saving') : t('locations.save')}
                           </button>
-                          <button
-                            type="button"
-                            className="sh-btn-secondary"
-                            style={{ padding: '6px 12px', fontSize: 13 }}
-                            disabled={updateMutation.isPending}
-                            onClick={() => {
-                              setEditingLocationId(null)
-                              setEditForm(EMPTY_FORM)
-                            }}
-                          >
+                          <button type="button" className="sh-btn-secondary" style={{ padding: '6px 12px', fontSize: 13 }} disabled={updateMutation.isPending} onClick={() => { setEditingLocationId(null); setEditForm(EMPTY_FORM) }}>
                             {t('locations.cancel')}
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            type="button"
-                            className="hover-scale"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--sh-teal)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: '6px 8px' }}
-                            disabled={updateMutation.isPending}
-                            onClick={() => {
-                              setEditingLocationId(location.id)
-                              setEditForm({
-                                room: location.room,
-                                furniture: location.furniture,
-                                shelf: location.shelf,
-                                display_order: String(location.display_order ?? 0),
-                              })
-                            }}
-                          >
+                          <button type="button" style={{ background: 'transparent', border: 'none', color: 'var(--sh-teal)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: '6px 8px' }} disabled={updateMutation.isPending} onClick={() => { setEditingLocationId(location.id); setEditForm({ room: location.room, furniture: location.furniture, shelf: location.shelf, display_order: String(location.display_order ?? 0) }) }}>
                             {t('locations.edit')}
                           </button>
-                          <button
-                            type="button"
-                            className="hover-scale"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--sh-red)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: '6px 8px' }}
-                            onClick={() => setDeleteTarget(location)}
-                          >
+                          <button type="button" style={{ background: 'transparent', border: 'none', color: 'var(--sh-red)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: '6px 8px' }} onClick={() => setDeleteTarget(location)}>
                             {t('locations.delete')}
                           </button>
                         </>
@@ -275,6 +237,81 @@ export function LocationsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Mobile card layout (<768px) ────────────────────────── */}
+      {sortedLocations.length > 0 && (
+        <div className="sh-locations-mobile" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sortedLocations.map((location) => {
+            const isEditing = editingLocationId === location.id
+
+            return (
+              <div
+                key={location.id}
+                style={{
+                  background: isEditing ? 'var(--sh-surface-elevated)' : 'var(--sh-surface)',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  padding: 14,
+                  transition: 'background 0.2s',
+                }}
+              >
+                {isEditing ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('locations.room')}</label>
+                        <input className="sh-input" value={editForm.room} onChange={(e) => setEditForm((prev) => ({ ...prev, room: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('locations.furniture')}</label>
+                        <input className="sh-input" value={editForm.furniture} onChange={(e) => setEditForm((prev) => ({ ...prev, furniture: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('locations.shelf')}</label>
+                        <input className="sh-input" value={editForm.shelf} onChange={(e) => setEditForm((prev) => ({ ...prev, shelf: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('locations.display_order', 'Pořadí')}</label>
+                        <input className="sh-input" value={editForm.display_order} onChange={(e) => setEditForm((prev) => ({ ...prev, display_order: e.target.value.replace(/[^0-9]/g, '') }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" className="sh-btn-primary" style={{ flex: 1, padding: '8px 12px', fontSize: 13 }} disabled={updateMutation.isPending} onClick={() => { updateMutation.mutate({ id: location.id, payload: { ...editForm, display_order: editForm.display_order.trim() ? Number(editForm.display_order) : 0 } }, { onSuccess: () => setEditingLocationId(null) }) }}>
+                        {updateMutation.isPending ? t('locations.saving') : t('locations.save')}
+                      </button>
+                      <button type="button" className="sh-btn-ghost" style={{ padding: '8px 12px', fontSize: 13 }} disabled={updateMutation.isPending} onClick={() => { setEditingLocationId(null); setEditForm(EMPTY_FORM) }}>
+                        {t('locations.cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, color: 'var(--sh-text-main)' }}>{location.room}</div>
+                      <div style={{ fontSize: 13, color: 'var(--sh-text-muted)' }}>
+                        {location.furniture} › <span style={{ color: 'var(--sh-teal-text)', background: 'var(--sh-teal-bg)', padding: '1px 6px', borderRadius: 'var(--sh-radius-xs)', fontSize: 12 }}>{location.shelf}</span>
+                      </div>
+                      {(location.display_order != null && location.display_order > 0) && (
+                        <div style={{ fontSize: 11, color: 'var(--sh-text-muted)', marginTop: 2 }}>#{location.display_order}</div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button type="button" className="sh-touch-target" style={{ background: 'transparent', border: 'none', color: 'var(--sh-teal)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }} onClick={() => { setEditingLocationId(location.id); setEditForm({ room: location.room, furniture: location.furniture, shelf: location.shelf, display_order: String(location.display_order ?? 0) }) }}>
+                        {t('locations.edit')}
+                      </button>
+                      <button type="button" className="sh-touch-target" style={{ background: 'transparent', border: 'none', color: 'var(--sh-red)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }} onClick={() => setDeleteTarget(location)}>
+                        {t('locations.delete')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

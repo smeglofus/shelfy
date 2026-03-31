@@ -384,19 +384,54 @@ export function ScanShelfPage() {
         <span style={{ marginLeft: 'auto', color: 'var(--sh-text-muted)' }}>→</span>
       </button>
 
-      {/* Progress steps */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
-        {(['location', 'scan', 'review'] as const).map((s, i) => (
-          <div key={s} style={{
-            flex: 1,
-            height: 4,
-            borderRadius: 2,
-            background: step === s
-              ? 'var(--sh-teal)'
-              : (['location', 'scan', 'review'].indexOf(step) > i ? 'var(--sh-teal)' : 'var(--sh-border)'),
-            transition: 'background 0.3s',
-          }} />
-        ))}
+      {/* Labeled stepper */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
+        {(['location', 'scan', 'review'] as const).map((s, i) => {
+          const stepIndex = ['location', 'scan', 'review'].indexOf(step)
+          const isDone = stepIndex > i
+          const isActive = step === s
+          const labels = [t('scan.stepper_location'), t('scan.stepper_scan'), t('scan.stepper_review')]
+
+          return (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 56 }}>
+                <div style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: isDone || isActive ? 'var(--sh-teal)' : 'var(--sh-border-2)',
+                  color: isDone || isActive ? 'white' : 'var(--sh-text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  transition: 'all 0.3s',
+                }}>
+                  {isDone ? '✓' : i + 1}
+                </div>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: isActive ? 600 : 500,
+                  color: isDone || isActive ? 'var(--sh-teal-text)' : 'var(--sh-text-muted)',
+                  transition: 'color 0.3s',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {labels[i]}
+                </span>
+              </div>
+              {i < 2 && (
+                <div style={{
+                  flex: 1,
+                  height: 2,
+                  background: stepIndex > i ? 'var(--sh-teal)' : 'var(--sh-border)',
+                  marginBottom: 18,
+                  transition: 'background 0.3s',
+                }} />
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {pendingDraft && (
@@ -534,7 +569,7 @@ export function ScanShelfPage() {
           <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('scan.step_scan_multi_desc')}</p>
 
           <div style={{ background: 'var(--sh-surface)', border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-md)', padding: 12, marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
               <button
                 type="button"
                 className="sh-btn-secondary"
@@ -559,6 +594,9 @@ export function ScanShelfPage() {
               >
                 {t('scan.mode_append_right')}
               </button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--sh-text-muted)', marginBottom: 10 }}>
+              {scanMode === 'replace' ? t('scan.mode_replace_desc') : t('scan.mode_append_desc')}
             </div>
 
             {scanMode === 'append-right' && (

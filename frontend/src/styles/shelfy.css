@@ -553,6 +553,22 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   .sh-locations-mobile { display: none !important; }
 }
 
+/* ── Book Spine (bookshelf digital twin) ──────────────────────── */
+.sh-book-spine {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sh-book-spine:hover {
+  transform: translateY(-5px);
+  box-shadow: 2px 6px 14px rgba(0,0,0,0.2), inset -1px 0 2px rgba(0,0,0,0.08) !important;
+}
+.sh-book-spine[data-highlighted] {
+  animation: sh-spine-pulse 2s ease-in-out 3;
+}
+@keyframes sh-spine-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--sh-border-focus), 2px 4px 10px rgba(0,0,0,0.2); }
+  50%      { box-shadow: 0 0 0 5px var(--sh-border-focus), 2px 4px 14px rgba(0,0,0,0.25); }
+}
+
 /* ── BookDetail desktop side-by-side ───────────────────────────── */
 @media (min-width: 1024px) {
   .sh-book-detail-article {
