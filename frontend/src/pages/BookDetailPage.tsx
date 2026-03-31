@@ -36,12 +36,23 @@ function metadataRow(label: string, value: string | number | null | undefined) {
   )
 }
 
+function sectionHeading(text: string) {
+  return (
+    <h3 style={{
+      fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)',
+      textTransform: 'uppercase' as const, letterSpacing: '0.04em',
+      margin: '0 0 12px 0', padding: 0,
+    }}>{text}</h3>
+  )
+}
+
 export function BookDetailPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { bookId = '' } = useParams()
   const [expandedDescription, setExpandedDescription] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [metadataOpen, setMetadataOpen] = useState(false)
 
   const bookQuery = useBook(bookId)
   const locationsQuery = useLocations()
@@ -129,7 +140,7 @@ export function BookDetailPage() {
             className="sh-btn-secondary"
             onClick={() => navigate(`${ROUTES.bookshelfView}?location_id=${book.location_id ?? ''}&highlight_book_id=${book.id}`)}
           >
-            {t('book_detail.show_in_twin', 'Ukázat v digitálním dvojčeti')}
+            {t('book_detail.show_in_twin')}
           </button>
         </div>
       </div>
@@ -165,71 +176,9 @@ export function BookDetailPage() {
 
         <div style={{ padding: 24 }}>
           <h2 className="text-h1" style={{ marginBottom: 4, lineHeight: 1.2 }}>{book.title}</h2>
-          <p className="text-p" style={{ fontSize: 18, color: 'var(--sh-text-muted)', marginBottom: 24, fontWeight: 500 }}>{book.author ?? t('book_detail.unknown_author')}</p>
+          <p className="text-p" style={{ fontSize: 18, color: 'var(--sh-text-muted)', marginBottom: 20, fontWeight: 500 }}>{book.author ?? t('book_detail.unknown_author')}</p>
 
-          <AccordionSection title={t('book_detail.metadata_section', 'Metadata')}>
-            <div style={{ background: 'var(--sh-surface-elevated)', padding: '0 16px', borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)' }}>
-              {metadataRow(t('book_detail.isbn'), book.isbn)}
-              {metadataRow(t('book_detail.publisher'), book.publisher)}
-              {metadataRow(t('book_detail.year'), book.publication_year)}
-              {metadataRow(t('book_detail.language'), book.language)}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '12px 0', alignItems: 'center' }}>
-                <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{t('book_detail.scan_status')}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{t(`processing_status.${book.processing_status}`)}</span>
-                  <button
-                    type="button"
-                    onClick={() => enrichMutation.mutate({ bookId: book.id, force: book.processing_status === 'done' })}
-                    disabled={enrichMutation.isPending}
-                    style={{
-                      background: 'none', border: '1px solid var(--sh-border)',
-                      borderRadius: 'var(--sh-radius-sm)', padding: '2px 10px',
-                      fontSize: 12, fontWeight: 500, cursor: enrichMutation.isPending ? 'wait' : 'pointer',
-                      color: 'var(--sh-teal)',
-                    }}
-                  >
-                    {enrichMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_book')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </AccordionSection>
-
-          <AccordionSection title={t('book_detail.description_title')}>
-            {book.description ? (
-              <>
-                <p
-                  className="text-p"
-                  style={{
-                    lineHeight: 1.6,
-                    color: 'var(--sh-text-main)',
-                    display: '-webkit-box',
-                    WebkitLineClamp: !expandedDescription ? 4 : 'unset',
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {book.description}
-                </p>
-                {longDesc && (
-                  <button
-                    type="button"
-                    onClick={() => setExpandedDescription((v) => !v)}
-                    style={{ marginTop: 4, border: 'none', background: 'transparent', color: 'var(--sh-teal)', cursor: 'pointer', padding: '8px 0', fontWeight: 600, fontSize: 14, minHeight: 44 }}
-                  >
-                    {expandedDescription ? t('book_detail.collapse') : t('book_detail.expand')}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="text-p" style={{ fontStyle: 'italic', color: 'var(--sh-text-muted)' }}>{t('book_detail.no_description')}</p>
-            )}
-          </AccordionSection>
-
-          <AccordionSection
-            title={t('book_detail.management_title')}
-            badge={isDirty ? <span className="sh-dirty-dot" title={t('book_detail.unsaved_changes', 'Neuložené změny')} /> : undefined}
-          >
+          {/* ── Quick settings: reading status + location (always visible, 0 clicks) ── */}
           <form
             aria-label="assign-location-form"
             onSubmit={(event) => {
@@ -263,78 +212,9 @@ export function BookDetailPage() {
                 },
               })
             }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
           >
-            <div style={{ display: 'grid', gap: 12 }}>
-              <h4 className="text-h3" style={{ margin: '0 0 4px 0' }}>{t('book_detail.metadata_edit_title', 'Upravit metadata')}</h4>
-              <input
-                aria-label="edit-title"
-                className="sh-input"
-                placeholder={t('book_detail.title_label', 'Název')}
-                value={selectedTitle}
-                onChange={(e) => setTitleEdit(e.target.value)}
-              />
-              <input
-                aria-label="edit-author"
-                className="sh-input"
-                placeholder={t('book_detail.author_label', 'Autor')}
-                value={selectedAuthor}
-                onChange={(e) => setAuthorEdit(e.target.value)}
-              />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input
-                  aria-label="edit-isbn"
-                  className="sh-input"
-                  placeholder={t('book_detail.isbn')}
-                  value={selectedIsbn}
-                  onChange={(e) => setIsbnEdit(e.target.value)}
-                />
-                <input
-                  aria-label="edit-language"
-                  className="sh-input"
-                  placeholder={t('book_detail.language')}
-                  value={selectedLanguage}
-                  onChange={(e) => setLanguageEdit(e.target.value)}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input
-                  aria-label="edit-publisher"
-                  className="sh-input"
-                  placeholder={t('book_detail.publisher')}
-                  value={selectedPublisher}
-                  onChange={(e) => setPublisherEdit(e.target.value)}
-                />
-                <input
-                  aria-label="edit-year"
-                  className="sh-input"
-                  inputMode="numeric"
-                  placeholder={t('book_detail.year')}
-                  value={selectedYear}
-                  onChange={(e) => setYearEdit(e.target.value.replace(/[^0-9]/g, ''))}
-                />
-              </div>
-              <textarea
-                aria-label="edit-description"
-                className="sh-input"
-                rows={4}
-                placeholder={t('book_detail.description_title')}
-                value={selectedDescription}
-                onChange={(e) => setDescriptionEdit(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.shelf_position', 'Pozice v polici')}</label>
-                <input
-                  aria-label={t('book_detail.shelf_position', 'Pozice v polici')}
-                  className="sh-input"
-                  inputMode="numeric"
-                  value={selectedPosition}
-                  onChange={(e) => setPositionEdit(e.target.value.replace(/[^0-9]/g, ''))}
-                />
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.reading_status_label')}</label>
                 <select
@@ -345,7 +225,6 @@ export function BookDetailPage() {
                     const raw = event.target.value as ReadingStatus | ''
                     setReadingSelection(raw ? raw : null)
                   }}
-                  style={{ padding: '12px 14px' }}
                 >
                   <option value="">{t('reading_status.unassigned')}</option>
                   <option value="unread">{t('reading_status.unread')}</option>
@@ -353,50 +232,184 @@ export function BookDetailPage() {
                   <option value="read">{t('reading_status.read')}</option>
                 </select>
               </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.location_label')}</label>
+                <select
+                  aria-label={t('book_detail.location_label')}
+                  disabled={locationsQuery.isLoading || locationsQuery.isError}
+                  className="sh-select"
+                  value={selectedLocation}
+                  onChange={(event) => setLocationSelection(event.target.value || null)}
+                >
+                  <option value="">{t('book_detail.location_unassigned')}</option>
+                  {locationsQuery.isLoading && <option disabled>{t('book_detail.location_loading')}</option>}
+                  {locationsQuery.isError && <option disabled>{t('book_detail.location_error')}</option>}
+                  {(locationsQuery.data ?? []).map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.room} / {location.furniture} / {location.shelf}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.location_label')}</label>
-              <select
-                aria-label={t('book_detail.location_label')}
-                disabled={locationsQuery.isLoading || locationsQuery.isError}
-                className="sh-select"
-                value={selectedLocation}
-                onChange={(event) => setLocationSelection(event.target.value || null)}
-                style={{ padding: '12px 14px' }}
+            {/* ── Metadata (always visible, no accordion) ── */}
+            <div style={{ background: 'var(--sh-surface-elevated)', padding: '4px 16px', borderRadius: 'var(--sh-radius-lg)', border: '1px solid var(--sh-border)', marginBottom: 16 }}>
+              {metadataRow(t('book_detail.isbn'), book.isbn)}
+              {metadataRow(t('book_detail.publisher'), book.publisher)}
+              {metadataRow(t('book_detail.year'), book.publication_year)}
+              {metadataRow(t('book_detail.language'), book.language)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '8px 0', alignItems: 'center' }}>
+                <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{t('book_detail.scan_status')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{t(`processing_status.${book.processing_status}`)}</span>
+                  <button
+                    type="button"
+                    onClick={() => enrichMutation.mutate({ bookId: book.id, force: book.processing_status === 'done' })}
+                    disabled={enrichMutation.isPending}
+                    style={{
+                      background: 'none', border: '1px solid var(--sh-border)',
+                      borderRadius: 'var(--sh-radius-sm)', padding: '2px 10px',
+                      fontSize: 12, fontWeight: 500, cursor: enrichMutation.isPending ? 'wait' : 'pointer',
+                      color: 'var(--sh-teal)',
+                    }}
+                  >
+                    {enrichMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_book')}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Description (always visible, expand/collapse for long text) ── */}
+            <div style={{ marginBottom: 16 }}>
+              {sectionHeading(t('book_detail.description_title'))}
+              {book.description ? (
+                <>
+                  <p
+                    className="text-p"
+                    style={{
+                      lineHeight: 1.6,
+                      color: 'var(--sh-text-main)',
+                      margin: 0,
+                      display: '-webkit-box',
+                      WebkitLineClamp: !expandedDescription ? 4 : 'unset',
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {book.description}
+                  </p>
+                  {longDesc && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDescription((v) => !v)}
+                      style={{ marginTop: 4, border: 'none', background: 'transparent', color: 'var(--sh-teal)', cursor: 'pointer', padding: '4px 0', fontWeight: 600, fontSize: 13, minHeight: 44 }}
+                    >
+                      {expandedDescription ? t('book_detail.collapse') : t('book_detail.expand')}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-p" style={{ fontStyle: 'italic', color: 'var(--sh-text-muted)', margin: 0 }}>{t('book_detail.no_description')}</p>
+              )}
+            </div>
+
+            {/* ── Edit metadata (toggle, not accordion — 1 click to expand) ── */}
+            <div style={{ borderTop: '1px solid var(--sh-border)', paddingTop: 16, marginBottom: 16 }}>
+              <button
+                type="button"
+                onClick={() => setMetadataOpen((v) => !v)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: metadataOpen ? 12 : 0,
+                }}
               >
-                <option value="">{t('book_detail.location_unassigned')}</option>
-                {locationsQuery.isLoading && <option disabled>{t('book_detail.location_loading')}</option>}
-                {locationsQuery.isError && <option disabled>{t('book_detail.location_error')}</option>}
-                {(locationsQuery.data ?? []).map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.room} / {location.furniture} / {location.shelf}
-                  </option>
-                ))}
-              </select>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {t('book_detail.metadata_edit_title', 'Edit metadata')}
+                </span>
+                {isDirty && <span className="sh-dirty-dot" title={t('book_detail.unsaved_changes', 'Unsaved changes')} />}
+                <span style={{
+                  fontSize: 12, color: 'var(--sh-text-muted)',
+                  transition: 'transform 0.2s ease',
+                  transform: metadataOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  display: 'inline-flex',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg>
+                </span>
+              </button>
+              <div style={{
+                overflow: 'hidden',
+                maxHeight: metadataOpen ? 600 : 0,
+                opacity: metadataOpen ? 1 : 0,
+                transition: 'max-height 0.3s ease, opacity 0.2s ease',
+              }}>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input aria-label="edit-title" className="sh-input" placeholder={t('book_detail.title_label', 'Title')} value={selectedTitle} onChange={(e) => setTitleEdit(e.target.value)} />
+                    <input aria-label="edit-author" className="sh-input" placeholder={t('book_detail.author_label', 'Author')} value={selectedAuthor} onChange={(e) => setAuthorEdit(e.target.value)} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input aria-label="edit-isbn" className="sh-input" placeholder={t('book_detail.isbn')} value={selectedIsbn} onChange={(e) => setIsbnEdit(e.target.value)} />
+                    <input aria-label="edit-language" className="sh-input" placeholder={t('book_detail.language')} value={selectedLanguage} onChange={(e) => setLanguageEdit(e.target.value)} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input aria-label="edit-publisher" className="sh-input" placeholder={t('book_detail.publisher')} value={selectedPublisher} onChange={(e) => setPublisherEdit(e.target.value)} />
+                    <input aria-label="edit-year" className="sh-input" inputMode="numeric" placeholder={t('book_detail.year')} value={selectedYear} onChange={(e) => setYearEdit(e.target.value.replace(/[^0-9]/g, ''))} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input
+                      aria-label={t('book_detail.shelf_position', 'Shelf position')}
+                      className="sh-input"
+                      inputMode="numeric"
+                      placeholder={t('book_detail.shelf_position', 'Shelf position')}
+                      value={selectedPosition}
+                      onChange={(e) => setPositionEdit(e.target.value.replace(/[^0-9]/g, ''))}
+                    />
+                    <div />
+                  </div>
+                  <textarea aria-label="edit-description" className="sh-input" rows={3} placeholder={t('book_detail.description_title')} value={selectedDescription} onChange={(e) => setDescriptionEdit(e.target.value)} />
+                </div>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              className="sh-btn-primary hover-scale"
-              disabled={updateMutation.isPending || !isDirty}
-              style={{
-                alignSelf: 'flex-start',
-                marginTop: 8,
-                opacity: isDirty ? 1 : 0.5,
-                cursor: isDirty ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {updateMutation.isPending ? t('book_detail.saving') : isDirty ? t('book_detail.save') : t('book_detail.save_no_changes', 'Uloženo ✓')}
-            </button>
+            {/* ── Save button (visible when dirty) ── */}
+            <div style={{
+              overflow: 'hidden',
+              maxHeight: isDirty || updateMutation.isPending ? 60 : 0,
+              opacity: isDirty || updateMutation.isPending ? 1 : 0,
+              transition: 'max-height 0.25s ease, opacity 0.2s ease',
+              marginBottom: 8,
+            }}>
+              <button
+                type="submit"
+                className="sh-btn-primary"
+                disabled={updateMutation.isPending || !isDirty}
+                style={{ width: '100%' }}
+              >
+                {updateMutation.isPending ? t('book_detail.saving') : t('book_detail.save')}
+              </button>
+            </div>
           </form>
-          </AccordionSection>
 
+          {/* ── Loan history (accordion, collapsed by default) ── */}
           <AccordionSection title={t('loans.history_title')} defaultOpen={false}>
             <LoanHistory bookId={book.id} />
           </AccordionSection>
 
-          <div style={{ paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+          {/* ── Danger zone ── */}
+          <div style={{
+            marginTop: 8,
+            padding: '14px 16px',
+            borderLeft: '3px solid var(--sh-red)',
+            background: 'var(--sh-red-bg)',
+            borderRadius: 'var(--sh-radius-sm)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500 }}>
+              {t('book_detail.delete_confirm_body')}
+            </span>
             <button
               type="button"
               disabled={deleteMutation.isPending}
@@ -407,7 +420,10 @@ export function BookDetailPage() {
               className="sh-btn-ghost"
               style={{
                 color: 'var(--sh-red)',
-                borderColor: 'var(--sh-red-bg)',
+                fontSize: 13,
+                padding: '6px 12px',
+                flexShrink: 0,
+                marginLeft: 12,
               }}
             >
               {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete')}

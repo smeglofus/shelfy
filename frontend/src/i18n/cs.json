@@ -90,7 +90,9 @@
     "metadata_edit_title": "Upravit metadata",
     "metadata_section": "Metadata",
     "title_label": "Název",
-    "author_label": "Autor"
+    "author_label": "Autor",
+    "shelf_position": "Pozice na polici",
+    "show_in_twin": "Ukázat v digitálním dvojčeti"
   },
   "reading_status": {
     "unassigned": "Nepřiřazeno",

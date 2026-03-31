@@ -90,7 +90,9 @@
     "metadata_edit_title": "Edit metadata",
     "metadata_section": "Metadata",
     "title_label": "Title",
-    "author_label": "Author"
+    "author_label": "Author",
+    "shelf_position": "Shelf position",
+    "show_in_twin": "Show in digital twin"
   },
   "reading_status": {
     "unassigned": "Unassigned",
