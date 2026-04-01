@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { EmptyShelfIcon } from '../components/EmptyStateIcons'
-import { useBooks } from '../hooks/useBooks'
+import { Modal } from '../components/Modal'
+import { useBooks, useBulkMoveBooks } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
 import { LocationsPage } from './LocationsPage'
@@ -56,9 +57,41 @@ export function BookshelfViewPage() {
   }, [allBooks])
 
   const [selectedRoom, setSelectedRoom] = useState<string>('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
+  const [bulkMoveTarget, setBulkMoveTarget] = useState<string>('')
+  const [bulkInsertPosition, setBulkInsertPosition] = useState('')
+  const bulkMoveMutation = useBulkMoveBooks()
 
   const roomNames = Object.keys(locationTree)
   const filteredTree = selectedRoom ? { [selectedRoom]: locationTree[selectedRoom] } : locationTree
+
+  const visibleBooks = useMemo(() => {
+    const out: Book[] = []
+    for (const furnitureMap of Object.values(filteredTree)) {
+      for (const shelfLocations of Object.values(furnitureMap)) {
+        for (const loc of shelfLocations) out.push(...(booksByLocation[loc.id] ?? []))
+      }
+    }
+    return out
+  }, [filteredTree, booksByLocation])
+
+  const allVisibleSelected = visibleBooks.length > 0 && visibleBooks.every((b) => selectedIds.has(b.id))
+  const visibleInTargetCount = bulkMoveTarget
+    ? (booksByLocation[bulkMoveTarget]?.filter((b) => !selectedIds.has(b.id)).length ?? 0)
+    : visibleBooks.filter((b) => !selectedIds.has(b.id)).length
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const clearSelection = () => { setSelectedIds(new Set()); setSelectMode(false) }
+  const selectAllVisible = () => { setSelectMode(true); setSelectedIds(new Set(visibleBooks.map((b) => b.id))) }
 
   useEffect(() => {
     if (!highlightBookId || activeTab !== 'shelves') return
@@ -79,6 +112,16 @@ export function BookshelfViewPage() {
         </button>
         <h2 className="text-h2" style={{ marginBottom: 0 }}>{t('bookshelf.title')}</h2>
         <div style={{ flex: 1 }} />
+        {activeTab === 'shelves' && visibleBooks.length > 0 && (
+          <button
+            type="button"
+            onClick={selectMode ? clearSelection : () => setSelectMode(true)}
+            className="sh-btn-secondary"
+            style={{ marginRight: 8 }}
+          >
+            {selectMode ? t('bulk.deselect_all') : t('bulk.select_mode', 'Select')}
+          </button>
+        )}
         <button
           onClick={() => navigate(ROUTES.scanShelf)}
           className="sh-btn-primary hover-scale"
@@ -127,6 +170,12 @@ export function BookshelfViewPage() {
                 {room}
               </button>
             ))}
+          </div>
+        )}
+
+        {selectMode && selectedIds.size === 0 && (
+          <div style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--sh-text-muted)' }}>
+            {t('bulk.select_mode_hint', 'Select mode active — click books to select them')}
           </div>
         )}
 
@@ -192,7 +241,9 @@ export function BookshelfViewPage() {
                               book={book}
                               highlighted={highlightBookId === book.id}
                               focusRef={highlightBookId === book.id ? highlightSpineRef : undefined}
-                              onClick={() => navigate(getBookDetailRoute(book.id))}
+                              onClick={() => (selectMode ? toggleSelect(book.id) : navigate(getBookDetailRoute(book.id)))}
+                              selectable={selectMode}
+                              selected={selectedIds.has(book.id)}
                             />
                           ))}
                         </div>
@@ -206,12 +257,74 @@ export function BookshelfViewPage() {
         ))}
 
         <div style={{ height: 80 }} />
+
+        {activeTab === 'shelves' && selectMode && (
+          <div className="sh-bulk-toolbar" role="toolbar" aria-label="Bookshelf bulk actions">
+            <span className="sh-bulk-toolbar__label">{t('bulk.selected', { count: selectedIds.size })}</span>
+            <button type="button" className="sh-bulk-toolbar__btn" onClick={allVisibleSelected ? () => setSelectedIds(new Set()) : selectAllVisible}>
+              {allVisibleSelected ? t('bulk.deselect_all') : t('bulk.select_all')}
+            </button>
+            <button
+              type="button"
+              className="sh-bulk-toolbar__btn"
+              onClick={() => { setBulkMoveTarget(''); setBulkInsertPosition(''); setBulkMoveOpen(true) }}
+              disabled={selectedIds.size === 0}
+            >
+              {t('bulk.move', { count: selectedIds.size })}
+            </button>
+            <button type="button" className="sh-bulk-toolbar__close" onClick={clearSelection} aria-label="Close">×</button>
+          </div>
+        )}
+
+        <Modal open={bulkMoveOpen} onClose={() => setBulkMoveOpen(false)} size="sm" label={t('bulk.move_to')}>
+          <h3 className="text-h3" style={{ marginTop: 0 }}>{t('bulk.move_to')}</h3>
+          <label className="sh-form-label" style={{ marginTop: 12 }}>{t('bulk.move_to')}</label>
+          <select className="sh-select" value={bulkMoveTarget} onChange={(e) => setBulkMoveTarget(e.target.value)} style={{ marginBottom: 12 }}>
+            <option value="">{t('bulk.no_location')}</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>{loc.room} / {loc.furniture} / {loc.shelf}</option>
+            ))}
+          </select>
+
+          <label className="sh-form-label">{t('bulk.insert_position_label', 'Insert at position')}</label>
+          <input
+            className="sh-input"
+            inputMode="numeric"
+            placeholder={t('bulk.insert_position_placeholder', 'leave empty = append to end')}
+            value={bulkInsertPosition}
+            onChange={(e) => setBulkInsertPosition(e.target.value.replace(/\D/g, ''))}
+            style={{ marginBottom: 8 }}
+          />
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
+            {t('bulk.insert_position_max', { max: visibleInTargetCount })}
+          </p>
+
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button onClick={() => setBulkMoveOpen(false)} className="sh-btn-secondary">{t('books.delete_cancel')}</button>
+            <button
+              onClick={() => {
+                bulkMoveMutation.mutate({
+                  ids: [...selectedIds],
+                  location_id: bulkMoveTarget || null,
+                  insert_position: bulkInsertPosition === '' ? null : Number(bulkInsertPosition),
+                }, {
+                  onSuccess: () => { setBulkMoveOpen(false); clearSelection() },
+                })
+              }}
+              className="sh-btn-primary"
+              disabled={bulkMoveMutation.isPending || selectedIds.size === 0}
+            >
+              {bulkMoveMutation.isPending ? '…' : t('bulk.move', { count: selectedIds.size })}
+            </button>
+          </div>
+        </Modal>
+
       </>)}
     </div>
   )
 }
 
-function BookSpine({ book, onClick, highlighted = false, focusRef }: { book: Book; onClick: () => void; highlighted?: boolean; focusRef?: RefObject<HTMLButtonElement | null> }) {
+function BookSpine({ book, onClick, highlighted = false, focusRef, selectable = false, selected = false }: { book: Book; onClick: () => void; highlighted?: boolean; focusRef?: RefObject<HTMLButtonElement | null>; selectable?: boolean; selected?: boolean }) {
   const hasCover = Boolean(book.cover_image_url)
 
   const color = useMemo(() => {
@@ -236,7 +349,7 @@ function BookSpine({ book, onClick, highlighted = false, focusRef }: { book: Boo
         height: 150,
         background: hasCover ? 'var(--sh-surface)' : color,
         borderRadius: '2px 3px 3px 2px',
-        border: highlighted ? '2px solid var(--sh-teal)' : (hasCover ? '1px solid var(--sh-border)' : 'none'),
+        border: selected ? '2px solid var(--sh-primary)' : (highlighted ? '2px solid var(--sh-teal)' : (hasCover ? '1px solid var(--sh-border)' : 'none')),
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -250,6 +363,7 @@ function BookSpine({ book, onClick, highlighted = false, focusRef }: { book: Boo
         flexShrink: 0,
       }}
     >
+      <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 10, fontWeight: 700, color: hasCover ? 'white' : 'rgba(255,255,255,0.9)', textShadow: '0 1px 2px rgba(0,0,0,0.45)', zIndex: 2 }}>#{(book.shelf_position ?? 0) + 1}</span>
       {hasCover ? (
         <img
           src={book.cover_image_url ?? ''}
