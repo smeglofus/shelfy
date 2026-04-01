@@ -9,3 +9,4 @@ frontend/.env
 infra/.env
 .env.local
 infra/.env.local
+.claude/
