@@ -806,6 +806,66 @@ Stejná jako Sprint 1+2:
 
 ---
 
+---
+
+## Sprint 4 — BigBets (B5, B2, B4)
+
+### B5: Bulk operace ✅ DONE (2026-04-01)
+**Cíl:** Smazat/přesunout/změnit status více knih najednou bez 10× otevírání detailu.
+
+**Co bylo provedeno:**
+
+1. **Backend — nové schéma** (`app/schemas/book.py`):
+   - `BulkDeleteRequest` (ids: list[UUID], max 200)
+   - `BulkMoveRequest` (ids + location_id nullable)
+   - `BulkStatusRequest` (ids + reading_status)
+   - `BulkOperationResponse` (affected: int, operation: Literal)
+
+2. **Backend — service funkce** (`app/services/book.py`):
+   - `bulk_delete_books()` — SQL `DELETE ... WHERE id IN (...)`, vrací rowcount
+   - `bulk_move_books()` — SQL `UPDATE ... SET location_id=... WHERE id IN (...)`, validuje location existenci
+   - `bulk_update_status()` — SQL `UPDATE ... SET reading_status=... WHERE id IN (...)`
+   - Vše v jednom SQL statementu (žádný N+1)
+
+3. **Backend — 3 nové endpointy** (`app/api/books.py`):
+   - `POST /api/v1/books/bulk/delete`
+   - `POST /api/v1/books/bulk/move`
+   - `POST /api/v1/books/bulk/status`
+
+4. **Frontend — typy** (`lib/types.ts`): `BulkDeleteRequest`, `BulkMoveRequest`, `BulkStatusRequest`, `BulkOperationResponse`
+
+5. **Frontend — API funkce** (`lib/api.ts`): `bulkDeleteBooks`, `bulkMoveBooks`, `bulkUpdateStatus`
+
+6. **Frontend — hooks** (`hooks/useBooks.ts`): `useBulkDeleteBooks`, `useBulkMoveBooks`, `useBulkUpdateStatus` — invalidují `BOOKS_QUERY_KEY`, zobrazí toast
+
+7. **Frontend — i18n** (`cs.json`, `en.json`): klíče v sekci `"bulk"` (selected, delete, move, change_status, confirm, …)
+
+8. **Frontend — CSS** (`shelfy.css`):
+   - `.sh-book-card-selectable` + `.sh-book-card-selected` — card selected styl s checkmark overlay
+   - `.sh-book-card-check` — absolutně pozicovaný kruh s checkmarkem (SVG polyline)
+   - `.sh-bulk-toolbar` — fixed floating toolbar (bottom center), bounce animace, dark bg
+   - `.sh-bulk-toolbar__label`, `__btn`, `__btn--danger`, `__close`
+
+9. **Frontend — `BookCard.tsx`**:
+   - Nové props: `selectable`, `selected`, `onSelect`
+   - V select módu: klik na kartu → `onSelect(id)`, žádná navigace
+   - Checkmark overlay viditelný v select módu
+   - Delete button skrytý v select módu
+   - CSS classes: `sh-book-card-selectable`, `sh-book-card-selected` podmíněně
+
+10. **Frontend — `BooksPage.tsx`**:
+    - Stavy: `selectedIds` (Set<string>), `bulkMoveOpen`, `bulkStatusOpen`, `bulkDeleteConfirmOpen`, `bulkMoveTarget`, `bulkStatusTarget`
+    - "Select all" / "Deselect all" button v pravém horním rohu (zobrazí se když `total > 0`)
+    - `isSelectMode = selectedIds.size > 0`
+    - BookCard dostává `selectable/selected/onSelect` props
+    - `sh-bulk-toolbar` — zobrazí se nad mobilní navigací, obsahuje: label s počtem, Select All, Change Status, Move, Delete, × zavřít
+    - 3 modaly: Bulk Delete Confirm | Bulk Move (location select) | Bulk Status (reading_status select)
+
+**TS errors:** 13 (beze změny)
+**DoD:** ✅ multi-select; ✅ bulk delete/move/status; ✅ floating toolbar; ✅ toast po operaci; ✅ optimistic invalidation
+
+---
+
 ## Doporučené pořadí commitů (Sprint 3)
 8. `design: migrate to Sage color palette with semantic token aliases`
 9. `design: swap Outfit → Inter font, refine typographic scale`

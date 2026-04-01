@@ -96,10 +96,6 @@ export function BooksPage() {
   const booksQuery = useBooks(queryParams)
   const locationsQuery = useLocations()
 
-  const moveTargetMaxPosition = useMemo(() => {
-    if (!bulkMoveTarget) return books.length
-    return books.filter((b) => b.location_id === bulkMoveTarget && !selectedIds.has(b.id)).length
-  }, [bulkMoveTarget, books, selectedIds])
   const deleteMutation = useDeleteBook()
   const bulkDeleteMutation = useBulkDeleteBooks()
   const bulkMoveMutation = useBulkMoveBooks()
@@ -155,6 +151,11 @@ export function BooksPage() {
 
     return raw
   }, [booksQuery.data?.items, statFilter])
+
+  const moveTargetMaxPosition = useMemo(() => {
+    if (!bulkMoveTarget) return books.length
+    return books.filter((b) => b.location_id === bulkMoveTarget && !selectedIds.has(b.id)).length
+  }, [bulkMoveTarget, books, selectedIds])
 
   const allVisibleSelected = books.length > 0 && selectedIds.size === books.length
 
