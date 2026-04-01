@@ -1228,6 +1228,112 @@ html.light {
   border-color: var(--sh-amber-text);
 }
 
+/* ── Bulk selection ─────────────────────────────────────────────────────────── */
+
+/* Card selected state */
+.sh-book-card-selectable {
+  cursor: pointer;
+  user-select: none;
+}
+.sh-book-card-selectable .sh-book-card-check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: background var(--sh-duration-fast) ease, border-color var(--sh-duration-fast) ease;
+  pointer-events: none;
+}
+.sh-book-card-selectable.sh-book-card-selected .sh-book-card-check {
+  background: var(--sh-primary);
+  border-color: var(--sh-primary);
+}
+.sh-book-card-selectable.sh-book-card-selected > a,
+.sh-book-card-selectable.sh-book-card-selected > div > a {
+  outline: 2px solid var(--sh-primary);
+  outline-offset: 2px;
+}
+
+/* Bulk actions toolbar — fixed bottom bar */
+.sh-bulk-toolbar {
+  position: fixed;
+  bottom: 80px; /* above mobile nav */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--sh-z-sticky);
+  background: var(--sh-text-main);
+  color: var(--sh-surface);
+  border-radius: var(--sh-radius-xl);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.24);
+  white-space: nowrap;
+  animation: sh-bulk-toolbar-in var(--sh-duration-normal) var(--sh-ease-bounce);
+  max-width: calc(100vw - 32px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+@keyframes sh-bulk-toolbar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@media (min-width: 768px) {
+  .sh-bulk-toolbar {
+    bottom: 24px;
+  }
+}
+.sh-bulk-toolbar__label {
+  font-size: 13px;
+  font-weight: 600;
+  padding-right: 8px;
+  border-right: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.85);
+}
+.sh-bulk-toolbar__btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white;
+  border-radius: var(--sh-radius-md);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--sh-duration-fast) ease;
+  white-space: nowrap;
+}
+.sh-bulk-toolbar__btn:hover {
+  background: rgba(255,255,255,0.22);
+}
+.sh-bulk-toolbar__btn--danger {
+  background: rgba(197,48,48,0.7);
+  border-color: rgba(197,48,48,0.5);
+}
+.sh-bulk-toolbar__btn--danger:hover {
+  background: rgba(197,48,48,0.9);
+}
+.sh-bulk-toolbar__close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 4px;
+  line-height: 1;
+  margin-left: 4px;
+}
+.sh-bulk-toolbar__close:hover {
+  color: white;
+}
+
 /* Active filter chip (removable tag) */
 .sh-filter-chip {
   display: inline-flex;

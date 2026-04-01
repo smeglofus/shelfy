@@ -23,6 +23,26 @@
     "scan_confirmed": "Books saved to your library!",
     "enrich_started": "Enrichment started. Data will update shortly."
   },
+  "bulk": {
+    "selected": "{{count}} selected",
+    "select_all": "Select all",
+    "deselect_all": "Deselect all",
+    "delete": "Delete ({{count}})",
+    "move": "Move ({{count}})",
+    "change_status": "Change status ({{count}})",
+    "deleted": "Deleted {{count}} books",
+    "moved": "Moved {{count}} books",
+    "status_updated": "Status updated for {{count}} books",
+    "confirm_delete": "Really delete {{count}} books? This cannot be undone.",
+    "move_to": "Move to…",
+    "no_location": "No location",
+    "status_label": "New status",
+    "select_mode": "Select",
+    "insert_position_label": "Insert at position",
+    "insert_position_placeholder": "leave empty = append to end",
+    "select_mode_hint": "Select mode active — click books to select them",
+    "insert_position_max": "Max index for this shelf right now: {{max}} (higher values append to end)"
+  },
   "books": {
     "title": "My Library",
     "count_one": "{{count}} book",

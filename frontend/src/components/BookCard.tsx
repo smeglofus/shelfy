@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import type { Book } from '../lib/types'
@@ -25,63 +26,26 @@ interface Props {
   /** Index in the grid, used for staggered entrance animation */
   index?: number
   highlighted?: boolean
+  /** Multi-select mode */
+  selectable?: boolean
+  selected?: boolean
+  onSelect?: (bookId: string) => void
 }
 
-export function BookCard({ book, onDelete, index = 0, highlighted = false }: Props) {
+export function BookCard({ book, onDelete, index = 0, highlighted = false, selectable = false, selected = false, onSelect }: Props) {
   const { t } = useTranslation()
   const [from, to] = GRADIENTS[hashTitle(book.title) % GRADIENTS.length]
 
-  return (
-    <div style={{ position: "relative", animationDelay: `${Math.min(index * 40, 400)}ms` }} className="hover-scale sh-card-enter">
-      {onDelete && (
-        <button
-          className="sh-card-delete-btn"
-          aria-label={`delete-${book.id}`}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onDelete(book.id)
-          }}
-          style={{
-            position: "absolute",
-            top: -6,
-            right: -6,
-            zIndex: 2,
-            border: "1px solid var(--sh-border-2)",
-            borderRadius: "var(--sh-radius-pill)",
-            width: 26,
-            height: 26,
-            cursor: "pointer",
-            background: "var(--sh-surface)",
-            color: "var(--sh-text-muted)",
-            fontSize: 14,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            boxShadow: "var(--sh-shadow-xs)",
-            opacity: 0,
-            transition: "opacity 0.15s ease, transform 0.15s ease",
-          }}
-          title={t('books.delete_title')}
-        >
-          ×
-        </button>
-      )}
-      <Link
-        to={getBookDetailRoute(book.id)}
-        style={{
-          background: 'var(--sh-surface)',
-          borderRadius: 'var(--sh-radius-lg)',
-          border: highlighted ? '2px solid var(--sh-teal)' : '1px solid var(--sh-border)',
-          overflow: 'hidden',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: highlighted ? '0 0 0 4px var(--sh-border-focus), var(--sh-shadow-sm)' : 'var(--sh-shadow-sm)',
-        }}
-      >
-        {/* Cover */}
+  const handleClick = (e: React.MouseEvent) => {
+    if (selectable && onSelect) {
+      e.preventDefault()
+      onSelect(book.id)
+    }
+  }
+
+  const cardContent = (
+    <>
+      {/* Cover */}
         <div style={{
           height: 140,
           background: `linear-gradient(135deg, ${from}, ${to})`,
@@ -156,7 +120,93 @@ export function BookCard({ book, onDelete, index = 0, highlighted = false }: Pro
             )}
           </div>
         </div>
-      </Link>
+    </>
+  )
+
+  return (
+    <div
+      style={{ position: "relative", animationDelay: `${Math.min(index * 40, 400)}ms` }}
+      className={`sh-card-enter${selectable ? ' sh-book-card-selectable' : ' hover-scale'}${selected ? ' sh-book-card-selected' : ''}`}
+      onClick={handleClick}
+    >
+      {/* Selection checkmark (visible in select mode) */}
+      {selectable && (
+        <div className="sh-book-card-check" aria-hidden="true">
+          {selected && (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="2,6 5,9 10,3" />
+            </svg>
+          )}
+        </div>
+      )}
+      {/* Delete button (only in normal mode) */}
+      {!selectable && onDelete && (
+        <button
+          className="sh-card-delete-btn"
+          aria-label={`delete-${book.id}`}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onDelete(book.id)
+          }}
+          style={{
+            position: "absolute",
+            top: -6,
+            right: -6,
+            zIndex: 2,
+            border: "1px solid var(--sh-border-2)",
+            borderRadius: "var(--sh-radius-pill)",
+            width: 26,
+            height: 26,
+            cursor: "pointer",
+            background: "var(--sh-surface)",
+            color: "var(--sh-text-muted)",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            boxShadow: "var(--sh-shadow-xs)",
+            opacity: 0,
+            transition: "opacity 0.15s ease, transform 0.15s ease",
+          }}
+          title={t('books.delete_title')}
+        >
+          ×
+        </button>
+      )}
+      {selectable ? (
+        <div
+          style={{
+            background: 'var(--sh-surface)',
+            borderRadius: 'var(--sh-radius-lg)',
+            border: highlighted ? '2px solid var(--sh-teal)' : '1px solid var(--sh-border)',
+            overflow: 'hidden',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: highlighted ? '0 0 0 4px var(--sh-border-focus), var(--sh-shadow-sm)' : 'var(--sh-shadow-sm)',
+          }}
+        >
+          {cardContent}
+        </div>
+      ) : (
+        <Link
+          to={getBookDetailRoute(book.id)}
+          style={{
+            background: 'var(--sh-surface)',
+            borderRadius: 'var(--sh-radius-lg)',
+            border: highlighted ? '2px solid var(--sh-teal)' : '1px solid var(--sh-border)',
+            overflow: 'hidden',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: highlighted ? '0 0 0 4px var(--sh-border-focus), var(--sh-shadow-sm)' : 'var(--sh-shadow-sm)',
+          }}
+        >
+          {cardContent}
+        </Link>
+      )}
     </div>
   )
 }

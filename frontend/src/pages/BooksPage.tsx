@@ -7,7 +7,7 @@ import { Modal } from '../components/Modal'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
-import { useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
+import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useToastStore } from '../lib/toast-store'
@@ -61,6 +61,7 @@ export function BooksPage() {
       search: debouncedSearch || undefined,
       readingStatus: readingFilter ?? undefined,
       locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined,
+      unassignedOnly: locationFilter === 'unassigned' ? true : undefined,
       language: debouncedLanguage || undefined,
       publisher: debouncedPublisher || undefined,
       yearFrom: yearFromInput ? Number(yearFromInput) : undefined,
@@ -69,9 +70,40 @@ export function BooksPage() {
     [page, debouncedSearch, readingFilter, locationFilter, debouncedLanguage, debouncedPublisher, yearFromInput, yearToInput],
   )
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
+  const [bulkMoveTarget, setBulkMoveTarget] = useState<string>('')
+  const [bulkInsertPosition, setBulkInsertPosition] = useState('')
+  const [bulkStatusTarget, setBulkStatusTarget] = useState<ReadingStatus>('read')
+
+  const isSelectMode = selectMode
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const selectAll = () => { setSelectMode(true); setSelectedIds(new Set(books.map((b) => b.id))) }
+  const clearSelection = () => { setSelectedIds(new Set()); setSelectMode(false) }
+
   const booksQuery = useBooks(queryParams)
   const locationsQuery = useLocations()
+
+  const moveTargetMaxPosition = useMemo(() => {
+    if (!bulkMoveTarget) return books.length
+    return books.filter((b) => b.location_id === bulkMoveTarget && !selectedIds.has(b.id)).length
+  }, [bulkMoveTarget, books, selectedIds])
   const deleteMutation = useDeleteBook()
+  const bulkDeleteMutation = useBulkDeleteBooks()
+  const bulkMoveMutation = useBulkMoveBooks()
+  const bulkStatusMutation = useBulkUpdateStatus()
   const uploadJobStatusQuery = useJobStatus(uploadJobId)
   const showError = useToastStore((s) => s.showError)
 
@@ -116,16 +148,15 @@ export function BooksPage() {
 
   const books = useMemo(() => {
     let raw = booksQuery.data?.items ?? []
-    if (locationFilter === 'unassigned') {
-      raw = raw.filter((book) => !book.location_id)
-    }
 
     if (statFilter === 'lent') {
       raw = raw.filter((book) => !!book.is_currently_lent)
     }
 
     return raw
-  }, [booksQuery.data?.items, locationFilter, statFilter])
+  }, [booksQuery.data?.items, statFilter])
+
+  const allVisibleSelected = books.length > 0 && selectedIds.size === books.length
 
   const groups = useMemo(() => {
     const map = new Map<string | null, Book[]>()
@@ -155,6 +186,26 @@ export function BooksPage() {
             <span className="text-h3" style={{ color: 'var(--sh-text-muted)', margin: 0, fontWeight: 400 }}>{booksCountLabel}</span>
           </div>
         </div>
+        {total > 0 && (
+          <button
+            type="button"
+            onClick={isSelectMode ? clearSelection : () => setSelectMode(true)}
+            style={{
+              marginTop: 8,
+              background: isSelectMode ? 'var(--sh-primary-bg)' : 'none',
+              border: '1px solid var(--sh-border)',
+              borderRadius: 'var(--sh-radius-md)',
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              color: isSelectMode ? 'var(--sh-primary)' : 'var(--sh-text-muted)',
+              transition: 'all var(--sh-duration-fast) ease',
+            }}
+          >
+            {isSelectMode ? t('bulk.deselect_all') : t('bulk.select_mode', 'Select')}
+          </button>
+        )}
       </div>
 
       <div style={{ padding: '0 8px' }}>
@@ -212,6 +263,12 @@ export function BooksPage() {
           </button>
         )}
       </div>
+
+      {isSelectMode && selectedIds.size === 0 && (
+        <div style={{ margin: '10px 24px 0', fontSize: 13, color: 'var(--sh-text-muted)' }}>
+          {t('bulk.select_mode_hint', 'Select mode active — click books to select them')}
+        </div>
+      )}
 
       {/* ── Advanced filters toggle ── */}
       <div style={{ margin: '8px 24px 0', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
@@ -384,7 +441,15 @@ export function BooksPage() {
               )}
               <div className="sh-book-grid">
                 {groupBooks.map((b, i) => (
-                  <BookCard key={b.id} book={b} onDelete={setDeleteTargetId} index={i} />
+                  <BookCard
+                    key={b.id}
+                    book={b}
+                    onDelete={isSelectMode ? undefined : setDeleteTargetId}
+                    index={i}
+                    selectable={isSelectMode}
+                    selected={selectedIds.has(b.id)}
+                    onSelect={toggleSelect}
+                  />
                 ))}
               </div>
             </div>
@@ -415,6 +480,118 @@ export function BooksPage() {
           </div>
         )}
       </div>
+
+      {/* ── Bulk actions toolbar ── */}
+      {isSelectMode && (
+        <div className="sh-bulk-toolbar" role="toolbar" aria-label="Bulk actions">
+          <span className="sh-bulk-toolbar__label">{t('bulk.selected', { count: selectedIds.size })}</span>
+          <button type="button" className="sh-bulk-toolbar__btn" onClick={allVisibleSelected ? () => setSelectedIds(new Set()) : selectAll}>{allVisibleSelected ? t('bulk.deselect_all') : t('bulk.select_all')}</button>
+          <button type="button" className="sh-bulk-toolbar__btn" onClick={() => setBulkStatusOpen(true)} disabled={selectedIds.size === 0}>{t('bulk.change_status', { count: selectedIds.size })}</button>
+          <button type="button" className="sh-bulk-toolbar__btn" onClick={() => { setBulkMoveTarget(''); setBulkInsertPosition(''); setBulkMoveOpen(true) }} disabled={selectedIds.size === 0}>{t('bulk.move', { count: selectedIds.size })}</button>
+          <button type="button" className="sh-bulk-toolbar__btn sh-bulk-toolbar__btn--danger" onClick={() => setBulkDeleteConfirmOpen(true)} disabled={selectedIds.size === 0}>{t('bulk.delete', { count: selectedIds.size })}</button>
+          <button type="button" className="sh-bulk-toolbar__close" onClick={clearSelection} aria-label="Close">×</button>
+        </div>
+      )}
+
+      {/* ── Bulk delete confirm ── */}
+      <Modal open={bulkDeleteConfirmOpen} onClose={() => setBulkDeleteConfirmOpen(false)} size="sm" label={t('books.delete_confirm_title')}>
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('books.delete_confirm_title')}</h3>
+        <p className="text-p" style={{ marginBottom: 24 }}>{t('bulk.confirm_delete', { count: selectedIds.size })}</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button onClick={() => setBulkDeleteConfirmOpen(false)} className="sh-btn-secondary">{t('books.delete_cancel')}</button>
+          <button
+            onClick={() => {
+              bulkDeleteMutation.mutate({ ids: [...selectedIds] }, {
+                onSuccess: () => { setBulkDeleteConfirmOpen(false); clearSelection() },
+              })
+            }}
+            className="sh-btn-danger"
+            disabled={bulkDeleteMutation.isPending}
+          >
+            {bulkDeleteMutation.isPending ? t('books.deleting') : t('bulk.delete', { count: selectedIds.size })}
+          </button>
+        </div>
+      </Modal>
+
+      {/* ── Bulk move ── */}
+      <Modal open={bulkMoveOpen} onClose={() => setBulkMoveOpen(false)} size="sm" label={t('bulk.move_to')}>
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('bulk.move_to')}</h3>
+        <label className="sh-form-label" style={{ marginTop: 12 }}>{t('bulk.move_to')}</label>
+        <select className="sh-select" value={bulkMoveTarget} onChange={(e) => setBulkMoveTarget(e.target.value)} style={{ marginBottom: 12 }}>
+          <option value="">{t('bulk.no_location')}</option>
+          {(locationsQuery.data ?? []).map((loc) => (
+            <option key={loc.id} value={loc.id}>{loc.room} / {loc.furniture} / {loc.shelf}</option>
+          ))}
+        </select>
+
+        <label className="sh-form-label">{t('bulk.insert_position_label', 'Insert at position')}</label>
+        <input
+          className="sh-input"
+          inputMode="numeric"
+          placeholder={t('bulk.insert_position_placeholder', 'leave empty = append to end')}
+          value={bulkInsertPosition}
+          onChange={(e) => setBulkInsertPosition(e.target.value.replace(/\D/g, ''))}
+          style={{ marginBottom: 8 }}
+        />
+        <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
+          {t('bulk.insert_position_max', { max: moveTargetMaxPosition })}
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button onClick={() => setBulkMoveOpen(false)} className="sh-btn-secondary">{t('books.delete_cancel')}</button>
+          <button
+            onClick={() => {
+              bulkMoveMutation.mutate({ ids: [...selectedIds], location_id: bulkMoveTarget || null, insert_position: bulkInsertPosition === '' ? null : Number(bulkInsertPosition) }, {
+                onSuccess: () => { setBulkMoveOpen(false); clearSelection() },
+              })
+            }}
+            className="sh-btn-primary"
+            disabled={bulkMoveMutation.isPending}
+          >
+            {bulkMoveMutation.isPending ? '…' : t('bulk.move', { count: selectedIds.size })}
+          </button>
+        </div>
+      </Modal>
+
+      {/* ── Bulk status ── */}
+      <Modal open={bulkStatusOpen} onClose={() => setBulkStatusOpen(false)} size="sm" label={t('bulk.change_status', { count: selectedIds.size })}>
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('bulk.change_status', { count: selectedIds.size })}</h3>
+        <label className="sh-form-label" style={{ marginTop: 12 }}>{t('bulk.status_label')}</label>
+        <select className="sh-select" value={bulkStatusTarget} onChange={(e) => setBulkStatusTarget(e.target.value as ReadingStatus)} style={{ marginBottom: 20 }}>
+          <option value="unread">📖 {t('reading_status.unread')}</option>
+          <option value="reading">🔖 {t('reading_status.reading')}</option>
+          <option value="read">✅ {t('reading_status.read')}</option>
+          <option value="lent">🤝 {t('reading_status.lent')}</option>
+        </select>
+
+        <label className="sh-form-label">{t('bulk.insert_position_label', 'Insert at position')}</label>
+        <input
+          className="sh-input"
+          inputMode="numeric"
+          placeholder={t('bulk.insert_position_placeholder', 'leave empty = append to end')}
+          value={bulkInsertPosition}
+          onChange={(e) => setBulkInsertPosition(e.target.value.replace(/\D/g, ''))}
+          style={{ marginBottom: 8 }}
+        />
+        <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
+          {t('bulk.insert_position_max', { max: moveTargetMaxPosition })}
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button onClick={() => setBulkStatusOpen(false)} className="sh-btn-secondary">{t('books.delete_cancel')}</button>
+          <button
+            onClick={() => {
+              bulkStatusMutation.mutate({ ids: [...selectedIds], reading_status: bulkStatusTarget }, {
+                onSuccess: () => { setBulkStatusOpen(false); clearSelection() },
+              })
+            }}
+            className="sh-btn-primary"
+            disabled={bulkStatusMutation.isPending}
+          >
+            {bulkStatusMutation.isPending ? '…' : t('bulk.change_status', { count: selectedIds.size })}
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={!!deleteTargetId} onClose={() => setDeleteTargetId(null)} label={t('books.delete_confirm_title')} maxWidth={380}>
         <h3 className="text-h3" style={{ marginTop: 0 }}>{t('books.delete_confirm_title')}</h3>

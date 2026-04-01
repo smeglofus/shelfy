@@ -23,6 +23,26 @@
     "scan_confirmed": "Knihy uloženy do knihovny!",
     "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují."
   },
+  "bulk": {
+    "selected": "{{count}} vybráno",
+    "select_all": "Vybrat vše",
+    "deselect_all": "Zrušit výběr",
+    "delete": "Smazat ({{count}})",
+    "move": "Přesunout ({{count}})",
+    "change_status": "Změnit stav ({{count}})",
+    "deleted": "Smazáno {{count}} knih",
+    "moved": "Přesunuto {{count}} knih",
+    "status_updated": "Stav upraven pro {{count}} knih",
+    "confirm_delete": "Opravdu smazat {{count}} knih? Tato akce je nevratná.",
+    "move_to": "Přesunout na…",
+    "no_location": "Bez umístění",
+    "status_label": "Nový stav",
+    "select_mode": "Vybrat",
+    "insert_position_label": "Vložit na pozici",
+    "insert_position_placeholder": "prázdné = přidat na konec",
+    "select_mode_hint": "Režim výběru je aktivní — kliknutím označ knihy",
+    "insert_position_max": "Aktuální max index pro polici: {{max}} (vyšší hodnota přidá na konec)"
+  },
   "books": {
     "title": "Moje Knihovna",
     "count_one": "{{count}} kniha",
