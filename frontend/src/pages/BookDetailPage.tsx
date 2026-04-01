@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { AccordionSection } from '../components/AccordionSection'
+import { ReadingStatusBadge } from '../components/ReadingStatusBadge'
 import { Skeleton, SkeletonBookDetail } from '../components/Skeleton'
 import { useBook, useDeleteBook, useUpdateBook } from '../hooks/useBooks'
 import { useEnrichBook } from '../hooks/useEnrich'
@@ -29,21 +30,15 @@ function hashTitle(title: string): number {
 
 function metadataRow(label: string, value: string | number | null | undefined) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--sh-border)', alignItems: 'center' }}>
-      <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--sh-text-main)' }}>{value ?? '—'}</span>
+    <div className="sh-metadata-row">
+      <span className="sh-metadata-row__label">{label}</span>
+      <span className="sh-metadata-row__value">{value ?? '—'}</span>
     </div>
   )
 }
 
 function sectionHeading(text: string) {
-  return (
-    <h3 style={{
-      fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)',
-      textTransform: 'uppercase' as const, letterSpacing: '0.04em',
-      margin: '0 0 12px 0', padding: 0,
-    }}>{text}</h3>
-  )
+  return <h3 className="sh-section-heading">{text}</h3>
 }
 
 export function BookDetailPage() {
@@ -125,11 +120,10 @@ export function BookDetailPage() {
 
   return (
     <section className="container md-max-w-3xl sh-page-enter" style={{ paddingBottom: 40, margin: '0 auto', width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+      <div className="sh-page-header">
         <button
           onClick={() => navigate(ROUTES.books)}
-          style={{ width: 40, height: 40, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', background: 'var(--sh-surface)', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          className="hover-lift"
+          className="sh-back-btn hover-lift"
         >
           {t('book_detail.back')}
         </button>
@@ -146,37 +140,39 @@ export function BookDetailPage() {
       </div>
 
       <article style={{ border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-xl)', overflow: 'hidden', background: 'var(--sh-surface)', boxShadow: 'var(--sh-shadow-md)' }}>
-        {book.cover_image_url ? (
-          <div style={{ position: 'relative' }}>
-            <img
-              src={book.cover_image_url}
-              alt={book.title}
-              style={{ width: '100%', height: 260, objectFit: 'cover', display: 'block' }}
-            />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)', pointerEvents: 'none' }} />
+        <div className="sh-book-detail-layout">
+          {/* ── Cover column ── */}
+          <div className="sh-book-detail-cover">
+            {book.cover_image_url ? (
+              <div style={{ position: 'relative', height: '100%' }}>
+                <img
+                  src={book.cover_image_url}
+                  alt={book.title}
+                  className="sh-book-detail-cover-img"
+                />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 50%)', pointerEvents: 'none' }} />
+              </div>
+            ) : (
+              <div
+                className="sh-book-detail-cover-placeholder"
+                style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+              >
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)', pointerEvents: 'none' }} />
+                <span className="sh-book-detail-cover-title" style={{ color: 'white', fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', textShadow: '0 2px 6px rgba(0,0,0,0.4)', position: 'relative', zIndex: 1, maxWidth: '90%' }}>
+                  {book.title}
+                </span>
+              </div>
+            )}
           </div>
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: 240,
-              background: `linear-gradient(135deg, ${from}, ${to})`,
-              display: 'flex',
-              alignItems: 'flex-end',
-              padding: 24,
-              position: 'relative',
-            }}
-          >
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)', pointerEvents: 'none' }} />
-            <span style={{ color: 'white', fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', textShadow: '0 2px 6px rgba(0,0,0,0.4)', position: 'relative', zIndex: 1, maxWidth: '90%' }}>
-              {book.title}
-            </span>
-          </div>
-        )}
 
-        <div style={{ padding: 24 }}>
-          <h2 className="text-h1" style={{ marginBottom: 4, lineHeight: 1.2 }}>{book.title}</h2>
-          <p className="text-p" style={{ fontSize: 18, color: 'var(--sh-text-muted)', marginBottom: 20, fontWeight: 500 }}>{book.author ?? t('book_detail.unknown_author')}</p>
+          {/* ── Content column ── */}
+          <div className="sh-book-detail-content">
+            <h2 className="text-h1" style={{ marginBottom: 4, lineHeight: 1.2 }}>{book.title}</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <p className="text-p" style={{ fontSize: 16, color: 'var(--sh-text-muted)', margin: 0, fontWeight: 500 }}>{book.author ?? t('book_detail.unknown_author')}</p>
+              {selectedReading && <ReadingStatusBadge status={selectedReading} />}
+              {book.publication_year && <span className="sh-info-badge">{book.publication_year}</span>}
+            </div>
 
           {/* ── Quick settings: reading status + location (always visible, 0 clicks) ── */}
           <form
@@ -216,7 +212,7 @@ export function BookDetailPage() {
           >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.reading_status_label')}</label>
+                <label className="sh-form-label">{t('book_detail.reading_status_label')}</label>
                 <select
                   aria-label={t('book_detail.reading_status_label')}
                   className="sh-select"
@@ -233,7 +229,7 @@ export function BookDetailPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 6 }}>{t('book_detail.location_label')}</label>
+                <label className="sh-form-label">{t('book_detail.location_label')}</label>
                 <select
                   aria-label={t('book_detail.location_label')}
                   disabled={locationsQuery.isLoading || locationsQuery.isError}
@@ -259,8 +255,8 @@ export function BookDetailPage() {
               {metadataRow(t('book_detail.publisher'), book.publisher)}
               {metadataRow(t('book_detail.year'), book.publication_year)}
               {metadataRow(t('book_detail.language'), book.language)}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) 2fr', gap: 12, padding: '8px 0', alignItems: 'center' }}>
-                <span style={{ color: 'var(--sh-text-muted)', fontSize: 13, fontWeight: 500 }}>{t('book_detail.scan_status')}</span>
+              <div className="sh-metadata-row" style={{ borderBottom: 'none' }}>
+                <span className="sh-metadata-row__label">{t('book_detail.scan_status')}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{t(`processing_status.${book.processing_status}`)}</span>
                   <button
@@ -397,16 +393,7 @@ export function BookDetailPage() {
           </AccordionSection>
 
           {/* ── Danger zone ── */}
-          <div style={{
-            marginTop: 8,
-            padding: '14px 16px',
-            borderLeft: '3px solid var(--sh-red)',
-            background: 'var(--sh-red-bg)',
-            borderRadius: 'var(--sh-radius-sm)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
+          <div className="sh-danger-zone" style={{ marginTop: 8 }}>
             <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500 }}>
               {t('book_detail.delete_confirm_body')}
             </span>
@@ -429,7 +416,8 @@ export function BookDetailPage() {
               {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete')}
             </button>
           </div>
-        </div>
+          </div>{/* end .sh-book-detail-content */}
+        </div>{/* end .sh-book-detail-layout */}
       </article>
 
       <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} label={t('book_detail.delete_confirm_title')} maxWidth={380}>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Book } from '../lib/types'
@@ -33,23 +34,18 @@ export function StatBar({ books, total, active = 'total', onSelect }: Props) {
       {stats.map((s) => {
         const isActive = active === s.key
         return (
-        <button
-          type="button"
-          key={s.label}
-          onClick={() => onSelect?.(s.key)}
-          style={{
-            background: isActive ? 'var(--sh-teal-bg)' : 'var(--sh-surface-elevated)',
-            borderRadius: 10,
-            border: isActive ? '1px solid var(--sh-teal)' : '1px solid var(--sh-border)',
-            padding: '10px 8px',
-            textAlign: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{ fontSize: 20, fontWeight: 500, color: s.accent, lineHeight: 1 }}>{s.value}</div>
-          <div style={{ fontSize: 10, color: 'var(--sh-text-muted)', marginTop: 3 }}>{s.label}</div>
-        </button>
-      )})}
+          <button
+            type="button"
+            key={s.label}
+            onClick={() => onSelect?.(s.key)}
+            className={`sh-stat-card${isActive ? ' sh-stat-card--active' : ''}`}
+            style={{ '--stat-accent': s.accent } as React.CSSProperties}
+          >
+            <div style={{ fontSize: 20, fontWeight: 500, color: s.accent, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 10, color: 'var(--sh-text-muted)', marginTop: 3 }}>{s.label}</div>
+          </button>
+        )
+      })}
     </div>
   )
 }
