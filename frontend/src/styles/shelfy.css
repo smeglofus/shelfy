@@ -1,40 +1,55 @@
 :root {
-  /* ── Colors ──────────────────────────────────────────────────────── */
-  --sh-teal:      #0F9D58;
-  --sh-teal-dark: #007936;
-  --sh-teal-bg:   #eaf5f0;
-  --sh-teal-text: #054c2a;
+  /* ── Semantic Colors (Sage Palette) ──────────────────────────────── */
+  --sh-primary:       #2D7A5F;
+  --sh-primary-dark:  #1E5C46;
+  --sh-primary-bg:    #E8F0EC;
+  --sh-primary-text:  #1A4A38;
 
-  --sh-amber:     #F4B400;
-  --sh-amber-bg:  #fdf6e3;
-  --sh-amber-text:#7a5a00;
+  --sh-warning:       #B8860B;
+  --sh-warning-bg:    #FBF3E0;
+  --sh-warning-text:  #7A5A0B;
 
-  --sh-blue:      #4285F4;
-  --sh-blue-bg:   #edf3ff;
-  --sh-blue-text: #174ea6;
+  --sh-info:          #2B6CB0;
+  --sh-info-bg:       #EBF4FF;
+  --sh-info-text:     #1A4A7A;
 
-  --sh-purple:    #9b51e0;
-  --sh-purple-bg: #f5edfc;
-  --sh-purple-text:#41156d;
+  --sh-purple:        #7C3AED;
+  --sh-purple-bg:     #F3EEFF;
+  --sh-purple-text:   #4C1D95;
 
-  --sh-red:       #DB4437;
-  --sh-red-bg:    #fce8e6;
-  --sh-red-text:  #a50e0e;
+  --sh-danger:        #C53030;
+  --sh-danger-bg:     #FEE2E2;
+  --sh-danger-text:   #9B1C1C;
 
-  /* ── Backgrounds & Text ──────────────────────────────────────────── */
-  --sh-bg:        #F8F9FA;
-  --sh-bg-main:   #F8F9FA;
+  /* ── Legacy aliases (backward compat — components still use these) ── */
+  --sh-teal:       var(--sh-primary);
+  --sh-teal-dark:  var(--sh-primary-dark);
+  --sh-teal-bg:    var(--sh-primary-bg);
+  --sh-teal-text:  var(--sh-primary-text);
+  --sh-amber:      var(--sh-warning);
+  --sh-amber-bg:   var(--sh-warning-bg);
+  --sh-amber-text: var(--sh-warning-text);
+  --sh-blue:       var(--sh-info);
+  --sh-blue-bg:    var(--sh-info-bg);
+  --sh-blue-text:  var(--sh-info-text);
+  --sh-red:        var(--sh-danger);
+  --sh-red-bg:     var(--sh-danger-bg);
+  --sh-red-text:   var(--sh-danger-text);
+
+  /* ── Backgrounds & Text (warm neutrals) ──────────────────────────── */
+  --sh-bg:        #F5F5F3;
+  --sh-bg-main:   #F5F5F3;
   --sh-surface:   #FFFFFF;
-  --sh-surface-elevated: #F7F7F5;
-  --sh-text-main: #202124;
-  --sh-text-muted:#5F6368;
-  --sh-input-bg:  #FAFAFB;
-  --sh-placeholder: #A0AAB5;
+  --sh-surface-elevated: #FAFAF8;
+  --sh-text-main: #1A1A1A;
+  --sh-text-muted:#6B6B6B;
+  --sh-input-bg:  #FAFAF8;
+  --sh-placeholder: #9CA3AF;
 
   /* ── Borders ─────────────────────────────────────────────────────── */
-  --sh-border:    rgba(0,0,0,0.06);
-  --sh-border-2:  rgba(0,0,0,0.12);
-  --sh-border-focus: rgba(15, 157, 88, 0.25);
+  --sh-border:    rgba(0,0,0,0.07);
+  --sh-border-2:  rgba(0,0,0,0.13);
+  --sh-border-focus: rgba(45, 122, 95, 0.25);
 
   /* ── Border Radius (reduced from 8/16/24/32 to tighter scale) ──── */
   --sh-radius-xs: 4px;
@@ -56,6 +71,27 @@
   --sh-space-12:  48px;
   --sh-space-16:  64px;
 
+  /* ── Typography tokens ───────────────────────────────────────────── */
+  --sh-font-family:     'Inter', system-ui, -apple-system, sans-serif;
+  --sh-font-mono:       'JetBrains Mono', ui-monospace, monospace;
+
+  --sh-text-display:    48px;
+  --sh-text-h1:         36px;
+  --sh-text-h2:         24px;
+  --sh-text-h3:         20px;
+  --sh-text-body:       14px;
+  --sh-text-small:      13px;
+  --sh-text-caption:    11px;
+
+  --sh-leading-tight:   1.2;
+  --sh-leading-normal:  1.5;
+  --sh-leading-relaxed: 1.65;
+
+  --sh-tracking-tighter: -0.04em;
+  --sh-tracking-tight:   -0.02em;
+  --sh-tracking-normal:  -0.01em;
+  --sh-tracking-wide:     0.02em;
+
   /* ── Shadows (refined, less aggressive) ──────────────────────────── */
   --sh-shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
   --sh-shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
@@ -65,11 +101,12 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { 
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif; 
-  background: var(--sh-bg-main); 
-  color: var(--sh-text-main); 
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--sh-bg-main);
+  color: var(--sh-text-main);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Inter optical features */
 }
 
 /* Animations & Transitions */
@@ -261,11 +298,43 @@ h1, h2, h3, h4, h5 { font-weight: 600; letter-spacing: -0.02em; color: var(--sh-
 p { line-height: 1.5; color: var(--sh-text-muted); }
 
 /* Typography Utility */
-.text-h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; }
-.text-h2 { font-size: 24px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.02em; }
-.text-h3 { font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 14px; }
-.text-p { font-size: 15px; }
-.text-small { font-size: 13px; font-weight: 500; }
+.text-display {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--sh-text-main);
+}
+.text-h1 {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.text-h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.text-h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+.text-p  { font-size: 14px; line-height: 1.5; }
+.text-small { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.text-caption {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  color: var(--sh-text-muted);
+}
 
 /* ── Interactive Elements ─── buttons, inputs, selects ───────── */
 
@@ -274,7 +343,7 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
 .sh-btn-secondary,
 .sh-btn-danger,
 .sh-btn-ghost {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   border-radius: var(--sh-radius-pill);
   cursor: pointer;
@@ -292,14 +361,14 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   border: none;
   font-size: 15px;
   padding: 10px 20px;
-  box-shadow: 0 2px 8px rgba(15, 157, 88, 0.15);
+  box-shadow: 0 2px 8px rgba(45, 122, 95, 0.15);
 }
 .sh-btn-primary:hover {
   background: var(--sh-teal-dark);
-  box-shadow: 0 4px 12px rgba(15, 157, 88, 0.25);
+  box-shadow: 0 4px 12px rgba(45, 122, 95, 0.25);
   transform: translateY(-1px);
 }
-.sh-btn-primary:active { transform: translateY(1px); box-shadow: 0 1px 4px rgba(15, 157, 88, 0.2); }
+.sh-btn-primary:active { transform: translateY(1px); box-shadow: 0 1px 4px rgba(45, 122, 95, 0.2); }
 
 /* Secondary Button */
 .sh-btn-secondary {
@@ -353,7 +422,7 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   border-radius: var(--sh-radius-md);
   border: 1.5px solid var(--sh-border-2);
   background: var(--sh-input-bg);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--sh-text-main);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
@@ -497,7 +566,7 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   background: transparent;
   color: var(--sh-text-muted);
   font-weight: 500;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', sans-serif;
   position: relative;
 }
 .sh-sidebar-btn:hover {
@@ -518,6 +587,24 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   width: 3px;
   border-radius: 0 4px 4px 0;
   background: var(--sh-teal);
+}
+
+/* Sidebar group divider */
+.sh-sidebar-divider {
+  height: 1px;
+  background: var(--sh-border);
+  margin: 8px 4px;
+}
+
+/* Sidebar group label */
+.sh-sidebar-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--sh-text-muted);
+  padding: 4px 16px 2px;
+  opacity: 0.7;
 }
 
 /* ── LocationsPage responsive table → cards on mobile ──────────── */
@@ -597,7 +684,7 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #0F9D58 0%, #085041 100%);
+    background: linear-gradient(135deg, #2D7A5F 0%, #1A4A38 100%);
     color: white;
     padding: 48px;
     gap: 24px;
@@ -617,41 +704,41 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
 /* ── Dark Mode (system preference fallback) ─────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --sh-bg:            #0d1117;
-    --sh-bg-main:       #0d1117;
-    --sh-surface:       #161b22;
-    --sh-surface-elevated: #1c2129;
+    --sh-bg:            #111111;
+    --sh-bg-main:       #111111;
+    --sh-surface:       #1A1A1A;
+    --sh-surface-elevated: #222222;
 
-    --sh-text-main:     #e6edf3;
-    --sh-text-muted:    #8b949e;
+    --sh-text-main:     #E8E8E8;
+    --sh-text-muted:    #888888;
 
     --sh-border:        rgba(255,255,255,0.08);
-    --sh-border-2:      rgba(255,255,255,0.14);
-    --sh-border-focus:  rgba(15, 157, 88, 0.3);
+    --sh-border-2:      rgba(255,255,255,0.15);
+    --sh-border-focus:  rgba(76, 175, 130, 0.3);
 
-    --sh-input-bg:      #0d1117;
-    --sh-placeholder:   #484f58;
+    --sh-input-bg:      #141414;
+    --sh-placeholder:   #555555;
 
-    --sh-teal:          #3fb950;
-    --sh-teal-dark:     #2ea043;
-    --sh-teal-bg:       rgba(63,185,80,0.12);
-    --sh-teal-text:     #56d364;
+    --sh-primary:       #4CAF82;
+    --sh-primary-dark:  #3D9A6F;
+    --sh-primary-bg:    rgba(76,175,130,0.12);
+    --sh-primary-text:  #6FCF9A;
 
-    --sh-amber:         #E5A100;
-    --sh-amber-bg:      rgba(244,180,0,0.12);
-    --sh-amber-text:    #d29922;
+    --sh-warning:       #D4A017;
+    --sh-warning-bg:    rgba(212,160,23,0.12);
+    --sh-warning-text:  #E8B82E;
 
-    --sh-blue:          #58a6ff;
-    --sh-blue-bg:       rgba(66,133,244,0.12);
-    --sh-blue-text:     #79c0ff;
+    --sh-info:          #63B3ED;
+    --sh-info-bg:       rgba(99,179,237,0.12);
+    --sh-info-text:     #90CDF4;
 
-    --sh-purple:        #bc8cff;
-    --sh-purple-bg:     rgba(155,81,224,0.12);
-    --sh-purple-text:   #c084fc;
+    --sh-purple:        #A78BFA;
+    --sh-purple-bg:     rgba(167,139,250,0.12);
+    --sh-purple-text:   #C4B5FD;
 
-    --sh-red:           #f85149;
-    --sh-red-bg:        rgba(219,68,55,0.12);
-    --sh-red-text:      #f85149;
+    --sh-danger:        #F56565;
+    --sh-danger-bg:     rgba(245,101,101,0.12);
+    --sh-danger-text:   #FEB2B2;
 
     --sh-shadow-xs:     0 1px 2px rgba(0,0,0,0.15);
     --sh-shadow-sm:     0 2px 8px rgba(0,0,0,0.2);
@@ -663,46 +750,46 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   body { color-scheme: dark; }
 
   .sh-app { box-shadow: none; }
-  .sh-btn-secondary:hover { background: rgba(63,185,80,0.2); }
+  .sh-btn-secondary:hover { background: rgba(76,175,130,0.2); }
 }
 
-/* ── Dark Mode (manual toggle) ─── complete set of overrides ── */
+/* ── Dark Mode (manual toggle) ─── Sage Dark palette ── */
 html.dark {
-  --sh-bg:            #0d1117;
-  --sh-bg-main:       #0d1117;
-  --sh-surface:       #161b22;
-  --sh-surface-elevated: #1c2129;
+  --sh-bg:            #111111;
+  --sh-bg-main:       #111111;
+  --sh-surface:       #1A1A1A;
+  --sh-surface-elevated: #222222;
 
-  --sh-text-main:     #e6edf3;
-  --sh-text-muted:    #8b949e;
+  --sh-text-main:     #E8E8E8;
+  --sh-text-muted:    #888888;
 
   --sh-border:        rgba(255,255,255,0.08);
-  --sh-border-2:      rgba(255,255,255,0.14);
-  --sh-border-focus:  rgba(15, 157, 88, 0.3);
+  --sh-border-2:      rgba(255,255,255,0.15);
+  --sh-border-focus:  rgba(76, 175, 130, 0.3);
 
-  --sh-input-bg:      #0d1117;
-  --sh-placeholder:   #484f58;
+  --sh-input-bg:      #141414;
+  --sh-placeholder:   #555555;
 
-  --sh-teal:          #3fb950;
-  --sh-teal-dark:     #2ea043;
-  --sh-teal-bg:       rgba(63,185,80,0.12);
-  --sh-teal-text:     #56d364;
+  --sh-primary:       #4CAF82;
+  --sh-primary-dark:  #3D9A6F;
+  --sh-primary-bg:    rgba(76,175,130,0.12);
+  --sh-primary-text:  #6FCF9A;
 
-  --sh-amber:         #E5A100;
-  --sh-amber-bg:      rgba(244,180,0,0.12);
-  --sh-amber-text:    #d29922;
+  --sh-warning:       #D4A017;
+  --sh-warning-bg:    rgba(212,160,23,0.12);
+  --sh-warning-text:  #E8B82E;
 
-  --sh-blue:          #58a6ff;
-  --sh-blue-bg:       rgba(66,133,244,0.12);
-  --sh-blue-text:     #79c0ff;
+  --sh-info:          #63B3ED;
+  --sh-info-bg:       rgba(99,179,237,0.12);
+  --sh-info-text:     #90CDF4;
 
-  --sh-purple:        #bc8cff;
-  --sh-purple-bg:     rgba(155,81,224,0.12);
-  --sh-purple-text:   #c084fc;
+  --sh-purple:        #A78BFA;
+  --sh-purple-bg:     rgba(167,139,250,0.12);
+  --sh-purple-text:   #C4B5FD;
 
-  --sh-red:           #f85149;
-  --sh-red-bg:        rgba(219,68,55,0.12);
-  --sh-red-text:      #f85149;
+  --sh-danger:        #F56565;
+  --sh-danger-bg:     rgba(245,101,101,0.12);
+  --sh-danger-text:   #FEB2B2;
 
   --sh-shadow-xs:     0 1px 2px rgba(0,0,0,0.15);
   --sh-shadow-sm:     0 2px 8px rgba(0,0,0,0.2);
@@ -713,45 +800,45 @@ html.dark {
   color-scheme: dark;
 }
 html.dark .sh-app { box-shadow: none; }
-html.dark .sh-btn-secondary:hover { background: rgba(63,185,80,0.2); }
+html.dark .sh-btn-secondary:hover { background: rgba(76,175,130,0.2); }
 
-/* ── Light Mode (manual toggle) ─── full reset to light ─────── */
+/* ── Light Mode (manual toggle) ─── Sage Light palette ─────── */
 html.light {
-  --sh-bg:            #F8F9FA;
-  --sh-bg-main:       #F8F9FA;
+  --sh-bg:            #F5F5F3;
+  --sh-bg-main:       #F5F5F3;
   --sh-surface:       #FFFFFF;
-  --sh-surface-elevated: #F7F7F5;
+  --sh-surface-elevated: #FAFAF8;
 
-  --sh-text-main:     #202124;
-  --sh-text-muted:    #5F6368;
+  --sh-text-main:     #1A1A1A;
+  --sh-text-muted:    #6B6B6B;
 
-  --sh-border:        rgba(0,0,0,0.06);
-  --sh-border-2:      rgba(0,0,0,0.12);
-  --sh-border-focus:  rgba(15, 157, 88, 0.25);
+  --sh-border:        rgba(0,0,0,0.07);
+  --sh-border-2:      rgba(0,0,0,0.13);
+  --sh-border-focus:  rgba(45, 122, 95, 0.25);
 
-  --sh-input-bg:      #FAFAFB;
-  --sh-placeholder:   #A0AAB5;
+  --sh-input-bg:      #FAFAF8;
+  --sh-placeholder:   #9CA3AF;
 
-  --sh-teal:          #0F9D58;
-  --sh-teal-dark:     #007936;
-  --sh-teal-bg:       #eaf5f0;
-  --sh-teal-text:     #054c2a;
+  --sh-primary:       #2D7A5F;
+  --sh-primary-dark:  #1E5C46;
+  --sh-primary-bg:    #E8F0EC;
+  --sh-primary-text:  #1A4A38;
 
-  --sh-amber:         #F4B400;
-  --sh-amber-bg:      #fdf6e3;
-  --sh-amber-text:    #7a5a00;
+  --sh-warning:       #B8860B;
+  --sh-warning-bg:    #FBF3E0;
+  --sh-warning-text:  #7A5A0B;
 
-  --sh-blue:          #4285F4;
-  --sh-blue-bg:       #edf3ff;
-  --sh-blue-text:     #174ea6;
+  --sh-info:          #2B6CB0;
+  --sh-info-bg:       #EBF4FF;
+  --sh-info-text:     #1A4A7A;
 
-  --sh-purple:        #9b51e0;
-  --sh-purple-bg:     #f5edfc;
-  --sh-purple-text:   #41156d;
+  --sh-purple:        #7C3AED;
+  --sh-purple-bg:     #F3EEFF;
+  --sh-purple-text:   #4C1D95;
 
-  --sh-red:           #DB4437;
-  --sh-red-bg:        #fce8e6;
-  --sh-red-text:      #a50e0e;
+  --sh-danger:        #C53030;
+  --sh-danger-bg:     #FEE2E2;
+  --sh-danger-text:   #9B1C1C;
 
   --sh-shadow-xs:     0 1px 2px rgba(0,0,0,0.04);
   --sh-shadow-sm:     0 2px 8px rgba(0,0,0,0.04);
@@ -760,4 +847,408 @@ html.light {
   --sh-shadow-hover:  0 12px 28px rgba(0,0,0,0.10);
 
   color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Step 7 — Reusable layout & component classes (inline-style reduction)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Page header: back btn + title row */
+.sh-page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sh-space-4);
+  margin-bottom: 28px;
+}
+
+/* 40×40 back button */
+.sh-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--sh-radius-md);
+  border: 1px solid var(--sh-border);
+  background: var(--sh-surface);
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Pill toggle (reading tabs, room filter) */
+.sh-pill {
+  padding: 8px 18px;
+  border-radius: var(--sh-radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1.5px solid var(--sh-border);
+  cursor: pointer;
+  background: transparent;
+  color: var(--sh-text-muted);
+  transition: all 0.2s ease;
+}
+.sh-pill--active {
+  border-color: transparent;
+  background: var(--sh-teal);
+  color: white;
+  box-shadow: 0 4px 12px rgba(45,122,95,0.2);
+}
+
+/* Tab toggle (shelves / locations) — same as pill but no shadow */
+.sh-tab-toggle {
+  /* Extends sh-btn-secondary; these are the state overrides */
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.sh-tab-toggle--active {
+  background: var(--sh-teal) !important;
+  color: white !important;
+  border-color: var(--sh-teal) !important;
+}
+
+/* Underline tab — text-only tab with 2px bottom-border indicator */
+.sh-underline-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid var(--sh-border);
+  margin-bottom: 0;
+}
+.sh-underline-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sh-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.sh-underline-tab:hover {
+  color: var(--sh-text-main);
+}
+.sh-underline-tab--active {
+  color: var(--sh-primary);
+  font-weight: 600;
+  border-bottom-color: var(--sh-primary);
+}
+
+/* Stat card (StatBar) — hover lift + active underline indicator */
+.sh-stat-card {
+  background: var(--sh-surface-elevated);
+  border: 1px solid var(--sh-border);
+  border-bottom: 2px solid transparent;
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sh-stat-card:hover {
+  background: var(--sh-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.sh-stat-card--active {
+  background: var(--sh-surface-elevated);
+  border-bottom: 2px solid var(--stat-accent, var(--sh-primary));
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* Surface card panel (border + radius + bg) */
+.sh-card-panel {
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+}
+
+/* Form label */
+.sh-form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sh-text-main);
+  display: block;
+  margin-bottom: 6px;
+}
+.sh-form-label--sm {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sh-text-muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Section heading (uppercase muted) */
+.sh-section-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sh-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 12px 0;
+  padding: 0;
+}
+
+/* Empty state */
+.sh-empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--sh-text-muted);
+}
+.sh-empty-state__icon {
+  font-size: 56px; /* kept for any remaining emoji fallbacks */
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  color: var(--sh-border-2);
+}
+
+/* SVG icon in empty state — subtle muted color */
+.sh-empty-state__icon svg {
+  color: var(--sh-border-2);
+}
+
+/* Processing icon pulse animation */
+@keyframes sh-pulse-opacity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.sh-icon-processing {
+  animation: sh-pulse-opacity 1.6s ease-in-out infinite;
+  color: var(--sh-amber-text);
+}
+
+/* Danger zone */
+.sh-danger-zone {
+  padding: 14px 16px;
+  border-left: 3px solid var(--sh-red);
+  background: var(--sh-red-bg);
+  border-radius: var(--sh-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Search bar wrapper */
+.sh-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--sh-surface);
+  border: 1.5px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 4px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.sh-search-bar:focus-within {
+  border-color: var(--sh-teal);
+  box-shadow: 0 0 0 4px var(--sh-border-focus);
+}
+.sh-search-bar__input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  padding: 10px 0;
+  color: var(--sh-text-main);
+}
+.sh-search-bar__clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sh-text-muted);
+  font-size: 18px;
+  padding: 4px 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+/* Upload area */
+.sh-upload-area {
+  border: 2px dashed var(--sh-border-2);
+  border-radius: var(--sh-radius-lg);
+  height: 180px;
+  background: var(--sh-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--sh-text-muted);
+  transition: all 0.2s ease;
+}
+.sh-upload-area:hover {
+  border-color: var(--sh-teal);
+  background: var(--sh-teal-bg);
+}
+.sh-upload-area--processing {
+  background: var(--sh-amber-bg);
+  cursor: wait;
+}
+.sh-upload-area--processing:hover {
+  border-color: var(--sh-border-2);
+  background: var(--sh-amber-bg);
+}
+
+/* Metadata row */
+.sh-metadata-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) 2fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--sh-border);
+  align-items: center;
+}
+.sh-metadata-row__label {
+  color: var(--sh-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.sh-metadata-row__value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--sh-text-main);
+}
+
+/* Pagination */
+.sh-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 24px 0;
+}
+.sh-pagination__info {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sh-text-muted);
+}
+
+/* Book grid */
+.sh-book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+/* Segment list item */
+.sh-segment-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+}
+
+/* Stepper circle */
+.sh-stepper-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.3s;
+}
+.sh-stepper-circle--active,
+.sh-stepper-circle--done {
+  background: var(--sh-teal);
+  color: white;
+}
+.sh-stepper-circle--future {
+  background: var(--sh-border-2);
+  color: var(--sh-text-muted);
+}
+
+/* Review book card */
+.sh-review-card {
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 16px;
+}
+.sh-review-card--warn {
+  border-color: var(--sh-amber-text);
+}
+
+/* Book detail — side-by-side layout (cover left, content right on desktop) */
+.sh-book-detail-layout {
+  display: flex;
+  flex-direction: column;
+}
+.sh-book-detail-cover {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.sh-book-detail-cover-img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  display: block;
+}
+.sh-book-detail-cover-placeholder {
+  width: 100%;
+  height: 240px;
+  display: flex;
+  align-items: flex-end;
+  padding: 24px;
+  box-sizing: border-box;
+  position: relative;
+}
+.sh-book-detail-content {
+  padding: 24px;
+}
+
+/* Inline info badge (year, etc.) */
+.sh-info-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--sh-radius-pill);
+  background: var(--sh-surface-elevated);
+  color: var(--sh-text-muted);
+  border: 1px solid var(--sh-border);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 768px) {
+  .sh-book-detail-layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .sh-book-detail-cover {
+    width: 200px;
+    min-height: 300px;
+  }
+  .sh-book-detail-cover-img {
+    width: 200px;
+    height: 100%;
+    min-height: 300px;
+  }
+  .sh-book-detail-cover-placeholder {
+    width: 200px;
+    height: 100%;
+    min-height: 300px;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .sh-book-detail-cover-title {
+    display: none;
+  }
+  .sh-book-detail-content {
+    flex: 1;
+    min-width: 0;
+  }
 }

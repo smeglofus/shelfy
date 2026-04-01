@@ -103,6 +103,9 @@ const iconComponents = {
   settings: IconSettings,
 }
 
+type NavIcon = keyof typeof iconComponents
+type NavItem = { label: string; icon: NavIcon; path: string }
+
 /* ── Navigation component ─────────────────────────────────────────── */
 
 export function Navigation() {
@@ -114,15 +117,26 @@ export function Navigation() {
   const fabRef = useRef<HTMLDivElement>(null)
   const { logout } = useAuth()
 
-  /* All sidebar items (desktop shows all 7) */
-  const allTabs = useMemo(
+  /* Grouped sidebar items (desktop) — Locations removed, accessible via Bookshelf → tab */
+  const navGroup = useMemo<NavItem[]>(
     () => [
       { label: t('nav.home'), icon: 'home', path: ROUTES.home },
       { label: t('nav.library'), icon: 'library', path: ROUTES.books },
+      { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
+    ],
+    [t],
+  )
+
+  const actionGroup = useMemo<NavItem[]>(
+    () => [
       { label: t('nav.add'), icon: 'add', path: ROUTES.addBook },
       { label: t('nav.scan'), icon: 'scan', path: ROUTES.scanShelf },
-      { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
-      { label: t('nav.locations'), icon: 'locations', path: ROUTES.locations },
+    ],
+    [t],
+  )
+
+  const settingsGroup = useMemo<NavItem[]>(
+    () => [
       { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
     ],
     [t],
@@ -205,14 +219,14 @@ export function Navigation() {
         }}
       >
         <div style={{ padding: '0 16px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ fontSize: 24 }}>📚</div>
+          <div style={{ color: 'var(--sh-primary)' }}><BookshelfInlineIcon size={24} /></div>
           <h2 className="text-h3" style={{ margin: 0 }}>Shelfy</h2>
         </div>
 
-        {allTabs.map((tab) => {
+        {/* Group: Navigate */}
+        {navGroup.map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon]
-
           return (
             <button
               key={tab.path}
@@ -225,10 +239,43 @@ export function Navigation() {
           )
         })}
 
+        {/* Group: Actions */}
+        <div className="sh-sidebar-divider" />
+        <span className="sh-sidebar-group-label">{t('nav.actions', 'Actions')}</span>
+        {actionGroup.map((tab) => {
+          const active = isActive(tab.path)
+          const Icon = iconComponents[tab.icon]
+          return (
+            <button
+              key={tab.path}
+              onClick={() => navigate(tab.path)}
+              className={`sh-sidebar-btn${active ? ' active' : ''}`}
+            >
+              <Icon size={20} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+
+        {/* Group: Settings + Logout */}
+        <div className="sh-sidebar-divider" style={{ marginTop: 'auto' }} />
+        {settingsGroup.map((tab) => {
+          const active = isActive(tab.path)
+          const Icon = iconComponents[tab.icon]
+          return (
+            <button
+              key={tab.path}
+              onClick={() => navigate(tab.path)}
+              className={`sh-sidebar-btn${active ? ' active' : ''}`}
+            >
+              <Icon size={20} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
         <button
           onClick={logout}
           className="sh-sidebar-btn"
-          style={{ marginTop: 'auto' }}
         >
           <IconLogout size={20} />
           <span>{t('nav.logout', 'Logout')}</span>
@@ -392,7 +439,7 @@ export function Navigation() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(15, 157, 88, 0.35)',
+            boxShadow: '0 4px 16px rgba(45, 122, 95, 0.35)',
             transform: `translateY(-14px) rotate(${fabOpen ? '45deg' : '0deg'})`,
             transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             position: 'relative',

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
+import { BookshelfInlineIcon, CameraIcon, ProcessingIcon } from '../components/EmptyStateIcons'
 import { useLocations, useCreateLocation } from '../hooks/useLocations'
 import { useBooksByLocation, useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
 import { useToastStore } from '../lib/toast-store'
@@ -355,11 +356,10 @@ export function ScanShelfPage() {
   return (
     <div className="container md-max-w-3xl" style={{ margin: '0 auto', width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+      <div className="sh-page-header">
         <button
           onClick={() => navigate(ROUTES.books)}
-          style={{ width: 40, height: 40, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', background: 'var(--sh-surface)', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          className="hover-lift"
+          className="sh-back-btn hover-lift"
         >
           ←
         </button>
@@ -369,17 +369,15 @@ export function ScanShelfPage() {
       {/* Link to bookshelf view */}
       <button
         onClick={() => navigate(ROUTES.bookshelfView)}
+        className="sh-card-panel hover-lift"
         style={{
           width: '100%', marginBottom: 24, padding: '12px 16px',
-          background: 'var(--sh-surface)', border: '1px solid var(--sh-border)',
-          borderRadius: 'var(--sh-radius-md)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 12,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
           color: 'var(--sh-text-main)', fontSize: 14, fontWeight: 500,
           transition: 'all 0.2s',
         }}
-        className="hover-lift"
       >
-        <span style={{ fontSize: 20 }}>📚</span>
+        <BookshelfInlineIcon size={20} style={{ color: 'var(--sh-primary)' }} />
         <span>{t('bookshelf.title')}</span>
         <span style={{ marginLeft: 'auto', color: 'var(--sh-text-muted)' }}>→</span>
       </button>
@@ -395,19 +393,7 @@ export function ScanShelfPage() {
           return (
             <div key={s} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 56 }}>
-                <div style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: isDone || isActive ? 'var(--sh-teal)' : 'var(--sh-border-2)',
-                  color: isDone || isActive ? 'white' : 'var(--sh-text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  transition: 'all 0.3s',
-                }}>
+                <div className={`sh-stepper-circle ${isDone || isActive ? 'sh-stepper-circle--active' : 'sh-stepper-circle--future'}`}>
                   {isDone ? '✓' : i + 1}
                 </div>
                 <span style={{
@@ -468,24 +454,24 @@ export function ScanShelfPage() {
           <h3 className="text-h3" style={{ marginBottom: 8 }}>{t('scan.step_location')}</h3>
           <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('scan.step_location_desc')}</p>
 
-          <div style={{ background: 'var(--sh-surface)', padding: 16, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', marginBottom: 16 }}>
+          <div className="sh-card-panel" style={{ padding: 16, marginBottom: 16 }}>
             <div className="sh-location-grid">
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.room')}</label>
+                <label className="sh-form-label--sm">{t('locations.room')}</label>
                 <select className="sh-select" style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }} value={selRoom} onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}>
                   <option value="">—</option>
                   {rooms.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.furniture')}</label>
+                <label className="sh-form-label--sm">{t('locations.furniture')}</label>
                 <select className="sh-select" style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }} value={selFurniture} disabled={!selRoom} onChange={e => { setSelFurniture(e.target.value); setSelShelf('') }}>
                   <option value="">—</option>
                   {furnitures.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.shelf')}</label>
+                <label className="sh-form-label--sm">{t('locations.shelf')}</label>
                 <select className="sh-select" style={{ padding: '10px 12px', background: 'var(--sh-input-bg)', color: 'var(--sh-text-main)' }} value={selShelf} disabled={!selFurniture} onChange={e => setSelShelf(e.target.value)}>
                   <option value="">—</option>
                   {shelves.map(s => <option key={s} value={s}>{s}</option>)}
@@ -568,29 +554,19 @@ export function ScanShelfPage() {
           <h3 className="text-h3" style={{ marginBottom: 8 }}>{t('scan.step_scan')}</h3>
           <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('scan.step_scan_multi_desc')}</p>
 
-          <div style={{ background: 'var(--sh-surface)', border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-md)', padding: 12, marginBottom: 16 }}>
+          <div className="sh-card-panel" style={{ padding: 12, marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
               <button
                 type="button"
-                className="sh-btn-secondary"
+                className={`sh-btn-secondary sh-tab-toggle${scanMode === 'replace' ? ' sh-tab-toggle--active' : ''}`}
                 onClick={() => { setScanMode('replace'); setAppendAfterBookId(null) }}
-                style={{
-                  background: scanMode === 'replace' ? 'var(--sh-teal)' : 'var(--sh-surface)',
-                  color: scanMode === 'replace' ? 'white' : 'var(--sh-text-main)',
-                  borderColor: scanMode === 'replace' ? 'var(--sh-teal)' : 'var(--sh-border)',
-                }}
               >
                 {t('scan.mode_replace')}
               </button>
               <button
                 type="button"
-                className="sh-btn-secondary"
+                className={`sh-btn-secondary sh-tab-toggle${scanMode === 'append-right' ? ' sh-tab-toggle--active' : ''}`}
                 onClick={() => setScanMode('append-right')}
-                style={{
-                  background: scanMode === 'append-right' ? 'var(--sh-teal)' : 'var(--sh-surface)',
-                  color: scanMode === 'append-right' ? 'white' : 'var(--sh-text-main)',
-                  borderColor: scanMode === 'append-right' ? 'var(--sh-teal)' : 'var(--sh-border)',
-                }}
               >
                 {t('scan.mode_append_right')}
               </button>
@@ -601,7 +577,7 @@ export function ScanShelfPage() {
 
             {scanMode === 'append-right' && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>
+                <label className="sh-form-label--sm">
                   {t('scan.start_from_book')}
                 </label>
                 <select
@@ -627,34 +603,18 @@ export function ScanShelfPage() {
           {/* Upload area */}
           <div
             onClick={() => !isProcessing && fileInputRef.current?.click()}
-            style={{
-              border: '2px dashed var(--sh-border-2)',
-              borderRadius: 'var(--sh-radius-lg)',
-              height: 180,
-              background: isProcessing ? 'var(--sh-amber-bg)' : 'var(--sh-surface)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              cursor: isProcessing ? 'wait' : 'pointer',
-              marginBottom: 16,
-              color: 'var(--sh-text-muted)',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => { if (!isProcessing) { e.currentTarget.style.borderColor = 'var(--sh-teal)'; e.currentTarget.style.background = 'var(--sh-teal-bg)' } }}
-            onMouseLeave={(e) => { if (!isProcessing) { e.currentTarget.style.borderColor = 'var(--sh-border-2)'; e.currentTarget.style.background = 'var(--sh-surface)' } }}
-            className="hover-lift"
+            className={`sh-upload-area hover-lift${isProcessing ? ' sh-upload-area--processing' : ''}`}
+            style={{ marginBottom: 16 }}
           >
             {isProcessing ? (
               <>
-                <span style={{ fontSize: 36 }}>⏳</span>
+                <ProcessingIcon size={48} className="sh-icon-processing" />
                 <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-amber-text)' }}>{t('scan.scanning')}</span>
                 <span className="text-small">{t('scan.scanning_desc')}</span>
               </>
             ) : (
               <>
-                <span style={{ fontSize: 48, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>📷</span>
+                <CameraIcon size={48} style={{ color: 'var(--sh-primary)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.08))' }} />
                 <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-text-main)' }}>
                   {segments.length === 0 ? t('scan.take_photo') : t('scan.take_next_photo')}
                 </span>
@@ -683,15 +643,7 @@ export function ScanShelfPage() {
                 {segments.map((seg, idx) => (
                   <div
                     key={seg.jobId}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '10px 14px',
-                      background: 'var(--sh-surface)',
-                      border: '1px solid var(--sh-border)',
-                      borderRadius: 'var(--sh-radius-md)',
-                    }}
+                    className="sh-segment-item"
                   >
                     <span style={{
                       width: 28, height: 28, borderRadius: '50%',
@@ -784,12 +736,7 @@ export function ScanShelfPage() {
               return (
                 <div
                   key={book.localId}
-                  style={{
-                    background: 'var(--sh-surface)',
-                    border: `1px solid ${isLowConfidence ? 'var(--sh-amber-text)' : 'var(--sh-border)'}`,
-                    borderRadius: 'var(--sh-radius-md)',
-                    padding: 16,
-                  }}
+                  className={`sh-review-card${isLowConfidence ? ' sh-review-card--warn' : ''}`}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -829,7 +776,7 @@ export function ScanShelfPage() {
                   </div>
                   <div className="sh-review-fields">
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('scan.book_title')}</label>
+                      <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_title')}</label>
                       <input
                         className="sh-input"
                         value={book.title}
@@ -842,7 +789,7 @@ export function ScanShelfPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 4 }}>{t('scan.book_author')}</label>
+                      <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_author')}</label>
                       <input
                         className="sh-input"
                         value={book.author ?? ''}
@@ -858,7 +805,7 @@ export function ScanShelfPage() {
           </div>
 
           {editableBooks.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--sh-text-muted)' }}>
+            <div className="sh-empty-state" style={{ padding: 40 }}>
               <p>{t('scan.no_books_found')}</p>
             </div>
           )}

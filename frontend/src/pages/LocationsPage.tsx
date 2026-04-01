@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
+import { LocationPinIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
 import { SkeletonLocationTableRow } from '../components/Skeleton'
 import { useCreateLocation, useDeleteLocation, useLocations, useUpdateLocation } from '../hooks/useLocations'
@@ -180,7 +181,7 @@ export function LocationsPage() {
 
       {!locationsQuery.isLoading && !locationsQuery.isError && sortedLocations.length === 0 && (
         <div style={{ textAlign: 'center', padding: '64px 24px', background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-lg)', border: '1px dashed var(--sh-border-2)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.8 }}>🗺️</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, color: 'var(--sh-border-2)' }}><LocationPinIcon size={56} /></div>
           <p className="text-h3" style={{ marginBottom: 8, color: 'var(--sh-text-main)' }}>
             {t('locations.empty_title')}
           </p>

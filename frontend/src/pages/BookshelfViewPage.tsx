@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
+import { EmptyShelfIcon } from '../components/EmptyStateIcons'
 import { useBooks } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
@@ -69,11 +70,10 @@ export function BookshelfViewPage() {
 
   return (
     <div className="container" style={{ margin: '0 auto', width: '100%', maxWidth: 960 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+      <div className="sh-page-header">
         <button
           onClick={() => navigate(ROUTES.books)}
-          style={{ width: 40, height: 40, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)', background: 'var(--sh-surface)', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          className="hover-lift"
+          className="sh-back-btn hover-lift"
         >
           ←
         </button>
@@ -88,28 +88,18 @@ export function BookshelfViewPage() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div className="sh-underline-tabs" style={{ marginBottom: 24 }}>
         <button
           type='button'
-          className='sh-btn-secondary'
+          className={`sh-underline-tab${activeTab === 'shelves' ? ' sh-underline-tab--active' : ''}`}
           onClick={() => navigate(ROUTES.bookshelfView)}
-          style={{
-            background: activeTab === 'shelves' ? 'var(--sh-teal)' : 'var(--sh-surface)',
-            color: activeTab === 'shelves' ? 'white' : 'var(--sh-text-main)',
-            borderColor: activeTab === 'shelves' ? 'var(--sh-teal)' : 'var(--sh-border)',
-          }}
         >
           {t('bookshelf.tab_shelves')}
         </button>
         <button
           type='button'
-          className='sh-btn-secondary'
+          className={`sh-underline-tab${activeTab === 'locations' ? ' sh-underline-tab--active' : ''}`}
           onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}
-          style={{
-            background: activeTab === 'locations' ? 'var(--sh-teal)' : 'var(--sh-surface)',
-            color: activeTab === 'locations' ? 'white' : 'var(--sh-text-main)',
-            borderColor: activeTab === 'locations' ? 'var(--sh-teal)' : 'var(--sh-border)',
-          }}
         >
           {t('bookshelf.tab_locations')}
         </button>
@@ -122,11 +112,8 @@ export function BookshelfViewPage() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
             <button
               onClick={() => setSelectedRoom('')}
-              style={{
-                padding: '8px 16px', borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)',
-                background: !selectedRoom ? 'var(--sh-teal)' : 'var(--sh-surface)', color: !selectedRoom ? 'white' : 'var(--sh-text-main)',
-                cursor: 'pointer', fontSize: 13, fontWeight: 500,
-              }}
+              className={`sh-pill${!selectedRoom ? ' sh-pill--active' : ''}`}
+              style={{ padding: '8px 16px', fontSize: 13 }}
             >
               {t('tabs.all')}
             </button>
@@ -134,11 +121,8 @@ export function BookshelfViewPage() {
               <button
                 key={room}
                 onClick={() => setSelectedRoom(room)}
-                style={{
-                  padding: '8px 16px', borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)',
-                  background: selectedRoom === room ? 'var(--sh-teal)' : 'var(--sh-surface)', color: selectedRoom === room ? 'white' : 'var(--sh-text-main)',
-                  cursor: 'pointer', fontSize: 13, fontWeight: 500,
-                }}
+                className={`sh-pill${selectedRoom === room ? ' sh-pill--active' : ''}`}
+                style={{ padding: '8px 16px', fontSize: 13 }}
               >
                 {room}
               </button>
@@ -147,8 +131,10 @@ export function BookshelfViewPage() {
         )}
 
         {Object.keys(filteredTree).length === 0 && (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--sh-text-muted)' }}>
-            <p style={{ fontSize: 48, marginBottom: 16 }}>📚</p>
+          <div className="sh-empty-state" style={{ padding: 60 }}>
+            <div className="sh-empty-state__icon">
+              <EmptyShelfIcon size={56} />
+            </div>
             <h3 className="text-h3">{t('bookshelf.empty_title')}</h3>
             <p className="text-small">{t('bookshelf.empty_desc')}</p>
           </div>
@@ -161,9 +147,8 @@ export function BookshelfViewPage() {
             {Object.entries(furnitureMap).map(([furniture, shelfLocations]) => (
               <div
                 key={furniture}
-                style={{
-                  marginBottom: 24, background: 'var(--sh-surface)', border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-lg)', overflow: 'hidden',
-                }}
+                className="sh-card-panel"
+                style={{ marginBottom: 24, borderRadius: 'var(--sh-radius-lg)', overflow: 'hidden' }}
               >
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--sh-border)', background: 'var(--sh-bg)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 18 }}>📖</span>

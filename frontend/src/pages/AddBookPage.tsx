@@ -118,7 +118,7 @@ export function AddBookPage() {
       </div>
       {uploadJobId && (
         <p style={{ fontSize: 13, color: 'var(--sh-amber-text)', background: 'var(--sh-amber-bg)', padding: '12px', borderRadius: 'var(--sh-radius-md)', marginBottom: 20, textAlign: 'center', fontWeight: 500 }}>
-          ⏳ Zpracovávám obrázek…
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><ProcessingIcon size={18} className="sh-icon-processing" />{t('add_book.processing_label', 'Zpracovávám obrázek…')}</span>
         </p>
       )}
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BookCard } from '../components/BookCard'
+import { EmptyLibraryIcon, NoResultsIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
@@ -127,8 +128,11 @@ export function BooksPage() {
     <div className="md-max-w-4xl sh-page-enter" style={{ margin: '0 auto', width: '100%' }}>
       <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="text-h1">{t('books.title')}</h1>
-          <p className="text-p">{booksCountLabel}</p>
+          <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('books.title')}</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <span className="text-display">{total}</span>
+            <span className="text-h3" style={{ color: 'var(--sh-text-muted)', margin: 0, fontWeight: 400 }}>{booksCountLabel}</span>
+          </div>
         </div>
       </div>
 
@@ -147,7 +151,7 @@ export function BooksPage() {
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '12px 24px 0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div className="sh-underline-tabs" style={{ overflowX: 'auto', margin: '16px 24px 0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {tabItems.map((tab) => {
           const isActive = readingFilter === tab.value
           return (
@@ -159,19 +163,7 @@ export function BooksPage() {
                 setStatFilter(tab.value === 'read' ? 'read' : tab.value === 'reading' ? 'reading' : 'total')
                 setPage(1)
               }}
-              style={{
-                padding: '8px 18px',
-                borderRadius: 'var(--sh-radius-pill)',
-                fontSize: 14,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                border: isActive ? 'none' : '1.5px solid var(--sh-border)',
-                cursor: 'pointer',
-                background: isActive ? 'var(--sh-teal)' : 'transparent',
-                color: isActive ? 'white' : 'var(--sh-text-muted)',
-                transition: 'all 0.2s ease',
-                boxShadow: isActive ? '0 4px 12px rgba(15,157,88,0.2)' : 'none',
-              }}
+              className={`sh-underline-tab${isActive ? ' sh-underline-tab--active' : ''}`}
             >
               {tab.label}
             </button>
@@ -179,41 +171,21 @@ export function BooksPage() {
         })}
       </div>
 
-      <div
-        style={{
-          margin: '20px 24px 0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          background: 'var(--sh-surface)',
-          border: '1.5px solid var(--sh-border)',
-          borderRadius: 'var(--sh-radius-md)',
-          padding: '4px 16px',
-          transition: 'border-color 0.2s, box-shadow 0.2s',
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = 'var(--sh-teal)'
-          e.currentTarget.style.boxShadow = '0 0 0 4px var(--sh-border-focus)'
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'var(--sh-border)'
-          e.currentTarget.style.boxShadow = 'none'
-        }}
-      >
+      <div className="sh-search-bar" style={{ margin: '20px 24px 0' }}>
         <span style={{ fontSize: 18, color: 'var(--sh-text-muted)' }}>⌕</span>
         <input
           aria-label={t('books.search_label')}
           placeholder={t('books.search_placeholder')}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15, fontFamily: "'Outfit', sans-serif", outline: 'none', padding: '10px 0', color: 'var(--sh-text-main)' }}
+          className="sh-search-bar__input"
         />
         {searchInput && (
           <button
             type="button"
             onClick={() => setSearchInput('')}
             aria-label={t('books.search_clear', 'Vymazat hledání')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 18, padding: '4px 0', lineHeight: 1, transition: 'color 0.15s' }}
+            className="sh-search-bar__clear"
           >
             ✕
           </button>
@@ -263,8 +235,10 @@ export function BooksPage() {
         )}
 
         {!booksQuery.isLoading && !booksQuery.isError && total === 0 && (
-          <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--sh-text-muted)' }}>
-            <div style={{ fontSize: 64, marginBottom: 20 }}>📚</div>
+          <div className="sh-empty-state">
+            <div className="sh-empty-state__icon">
+              <EmptyLibraryIcon size={56} />
+            </div>
             <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>{t('books.empty_title')}</p>
             <p className="text-p">
               {debouncedSearch ? t('books.empty_search', { query: debouncedSearch }) : t('books.empty_library')}
@@ -273,8 +247,10 @@ export function BooksPage() {
         )}
 
         {!booksQuery.isLoading && !booksQuery.isError && total > 0 && readingFilter && books.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--sh-text-muted)' }}>
-            <div style={{ fontSize: 56, marginBottom: 20 }}>🔍</div>
+          <div className="sh-empty-state">
+            <div className="sh-empty-state__icon">
+              <NoResultsIcon size={56} />
+            </div>
             <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>
               {t('books.empty_category')}
             </p>
@@ -290,7 +266,7 @@ export function BooksPage() {
               ) : (
                 <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)', marginBottom: 16, borderBottom: '1px solid var(--sh-border)', paddingBottom: 8 }}>{t('books.no_location')}</p>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
+              <div className="sh-book-grid">
                 {groupBooks.map((b, i) => (
                   <BookCard key={b.id} book={b} onDelete={setDeleteTargetId} index={i} />
                 ))}
@@ -300,7 +276,7 @@ export function BooksPage() {
         })}
 
         {total > PAGE_SIZE && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
+          <div className="sh-pagination">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
@@ -309,7 +285,7 @@ export function BooksPage() {
             >
               {t('books.prev_page')}
             </button>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-muted)' }}>
+            <span className="sh-pagination__info">
               {page} / {Math.ceil(total / PAGE_SIZE)}
             </span>
             <button
