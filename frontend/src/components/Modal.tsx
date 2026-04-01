@@ -1,12 +1,17 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
+type ModalSize = 'sm' | 'md' | 'lg'
+const SIZE_MAX: Record<ModalSize, number> = { sm: 380, md: 520, lg: 680 }
+
 interface ModalProps {
   open: boolean
   onClose: () => void
   children: ReactNode
   /** aria-label for the dialog */
   label: string
-  /** Max width of the modal panel (default: 480) */
+  /** Preset size: sm=380px, md=520px, lg=680px. Overrides maxWidth. */
+  size?: ModalSize
+  /** Max width in px — legacy, prefer `size`. Ignored when `size` is set. */
   maxWidth?: number
 }
 
@@ -20,7 +25,8 @@ interface ModalProps {
  * - aria-modal, role="dialog"
  * - Entry animation
  */
-export function Modal({ open, onClose, children, label, maxWidth = 480 }: ModalProps) {
+export function Modal({ open, onClose, children, label, size, maxWidth = 480 }: ModalProps) {
+  const resolvedMaxWidth = size ? SIZE_MAX[size] : maxWidth
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<Element | null>(null)
@@ -119,33 +125,11 @@ export function Modal({ open, onClose, children, label, maxWidth = 480 }: ModalP
         if (e.target === overlayRef.current) onClose()
       }}
       className="sh-modal-overlay"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.45)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 200,
-        padding: '16px',
-      }}
     >
       <div
         ref={panelRef}
-        className="sh-modal-panel"
-        style={{
-          background: 'var(--sh-surface)',
-          borderRadius: 'var(--sh-radius-xl)',
-          padding: 24,
-          width: '100%',
-          maxWidth,
-          maxHeight: 'calc(100dvh - 32px)',
-          overflowY: 'auto',
-          boxShadow: 'var(--sh-shadow-lg)',
-          border: '1px solid var(--sh-border)',
-        }}
+        className={`sh-modal-panel${size ? ` sh-modal-panel--${size}` : ''}`}
+        style={size ? undefined : { maxWidth: resolvedMaxWidth }}
       >
         {children}
       </div>

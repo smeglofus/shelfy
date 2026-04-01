@@ -24,6 +24,10 @@ async def list_books(
     search: str | None,
     location_id: uuid.UUID | None,
     reading_status: str | None,
+    language: str | None = None,
+    publisher: str | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
     page: int,
     page_size: int,
 ) -> tuple[list[Book], int]:
@@ -33,13 +37,33 @@ async def list_books(
         filters.append(Book.location_id == location_id)
 
     if reading_status:
-        filters.append(Book.processing_status == reading_status)
+        # Fix: was incorrectly filtering on processing_status
+        filters.append(Book.reading_status == reading_status)
+
+    if language:
+        filters.append(Book.language.ilike(f"%{language.strip()}%"))
+
+    if publisher:
+        filters.append(Book.publisher.ilike(f"%{publisher.strip()}%"))
+
+    if year_from is not None:
+        filters.append(Book.publication_year >= year_from)
+
+    if year_to is not None:
+        filters.append(Book.publication_year <= year_to)
 
     normalized_search = search.strip() if search else ""
     if normalized_search:
         if session.bind is not None and session.bind.dialect.name == "postgresql":
+            # Full-text search (fast, GIN FTS index)
             tsvector = func.to_tsvector("simple", func.concat_ws(" ", Book.title, func.coalesce(Book.author, "")))
-            filters.append(tsvector.op("@@")(func.plainto_tsquery("simple", normalized_search)))
+            fts_match = tsvector.op("@@")(func.plainto_tsquery("simple", normalized_search))
+            # Trigram similarity for typo-tolerant fuzzy matching (pg_trgm GIN index)
+            trigram_match = or_(
+                func.similarity(Book.title, normalized_search) > 0.2,
+                func.similarity(func.coalesce(Book.author, ""), normalized_search) > 0.15,
+            )
+            filters.append(or_(fts_match, trigram_match))
         else:
             like_pattern = f"%{normalized_search}%"
             filters.append(or_(Book.title.ilike(like_pattern), Book.author.ilike(like_pattern)))

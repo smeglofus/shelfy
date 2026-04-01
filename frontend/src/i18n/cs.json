@@ -51,7 +51,19 @@
     "processing_failed": "Zpracování obrázku selhalo.",
     "processing_status_check_failed": "Nepodařilo se zkontrolovat stav uploadu.",
     "processing_failed_bulk": "Zpracování selhalo pro {{count}} knih: {{titles}}",
-    "delete_title": "Smazat knihu"
+    "delete_title": "Smazat knihu",
+    "filters_toggle": "Filtry",
+    "filter_language_label": "Jazyk",
+    "filter_language_placeholder": "cs, en, de…",
+    "filter_publisher_label": "Vydavatel",
+    "filter_publisher_placeholder": "O'Reilly, Albatros…",
+    "filter_year_label": "Rok vydání",
+    "filter_year_from": "od",
+    "filter_year_to": "do",
+    "filter_clear_all": "Zrušit filtry",
+    "filter_chip_language": "jazyk: {{value}}",
+    "filter_chip_publisher": "vydavatel: {{value}}",
+    "filter_chip_year": "rok: {{from}} – {{to}}"
   },
   "book_detail": {
     "title": "Detail knihy",

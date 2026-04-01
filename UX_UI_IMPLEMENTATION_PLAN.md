@@ -713,76 +713,96 @@ Stejná jako Sprint 1+2:
 
 ---
 
-### Krok 14: Modal size varianty + transition/z-index tokeny
+### Krok 14: Modal size varianty + transition/z-index tokeny ✅ DONE (2026-04-01)
 **Cíl:** Modal podporuje sm/md/lg velikosti. Přidat chybějící design tokeny pro transitions a z-index.
 
-**Co udělat:**
+**Co bylo provedeno:**
 
-1. **Modal.tsx — size prop:**
-   - Přidat prop `size?: 'sm' | 'md' | 'lg'` (default `'sm'`)
-   - sm = 380px, md = 520px, lg = 680px
-   - Zachovat zpětnou kompatibilitu (stávající `maxWidth` prop stále funguje)
-2. **shelfy.css — transition tokeny:**
-   ```css
-   --sh-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
-   --sh-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-   --sh-ease-out: cubic-bezier(0, 0, 0.2, 1);
-   --sh-duration-fast: 150ms;
-   --sh-duration-normal: 250ms;
-   --sh-duration-slow: 400ms;
-   ```
-3. **shelfy.css — z-index škála:**
-   ```css
-   --sh-z-dropdown: 50;
-   --sh-z-sticky: 60;
-   --sh-z-nav: 100;
-   --sh-z-modal: 200;
-   --sh-z-toast: 300;
-   ```
-4. **Refaktor** — nahradit hardcoded z-indexy a transition hodnoty v shelfy.css za nové tokeny (kde to dává smysl)
+1. **`shelfy.css` — Motion tokeny přidány do `:root`:**
+   - `--sh-ease-default: cubic-bezier(0.4, 0, 0.2, 1)` — Material Design ease
+   - `--sh-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1)` — přirozený overshooting
+   - `--sh-ease-out: cubic-bezier(0, 0, 0.2, 1)` — decelerate
+   - `--sh-duration-fast: 150ms`, `--sh-duration-normal: 250ms`, `--sh-duration-slow: 400ms`
 
-**Soubory:** `Modal.tsx`, `shelfy.css`
-**Riziko:** Nízké
-**DoD:**
-- Modal size prop funguje (sm/md/lg)
-- transition a z-index tokeny definovány a použité v kritických místech
-- žádné vizuální regrese
+2. **`shelfy.css` — Z-index škála přidána do `:root`:**
+   - `--sh-z-dropdown: 50`, `--sh-z-sticky: 60`, `--sh-z-nav: 100`, `--sh-z-modal: 200`, `--sh-z-toast: 300`
+
+3. **`shelfy.css` — Hardcoded hodnoty nahrazeny tokeny (sed globální replace):**
+   - Všechny výskyty `cubic-bezier(0.4, 0, 0.2, 1)` → `var(--sh-ease-default)` (6 míst)
+   - `z-index: 100` (navigace) → `var(--sh-z-nav)`
+
+4. **`shelfy.css` — Modal CSS třídy přepracovány:**
+   - Přidány keyframes `sh-modal-overlay-in` (fade-in) a `sh-modal-panel-in` (scale+translateY)
+   - `.sh-modal-overlay` — kompletní statické styly přesunuty sem (position fixed, backdrop-filter, flex, z-index: `var(--sh-z-modal)`, animace `var(--sh-duration-normal) var(--sh-ease-out)`)
+   - `.sh-modal-panel` — kompletní statické styly přesunuty sem (bg, radius, padding, overflow, shadow, border), animace `var(--sh-duration-normal) var(--sh-ease-bounce)`
+   - `.sh-modal-panel--sm` (380px), `.sh-modal-panel--md` (520px), `.sh-modal-panel--lg` (680px)
+
+5. **`Modal.tsx`** — refaktor + size prop:
+   - Přidán `type ModalSize = 'sm' | 'md' | 'lg'` a `SIZE_MAX` mapa
+   - Nový prop `size?: ModalSize` — sm/md/lg presets
+   - `maxWidth?: number` zachováno pro zpětnou kompatibilitu (ignorováno pokud je `size`)
+   - Inline styly z overlay a panelu odstraněny — vše v CSS třídách
+   - Panel: `className={sh-modal-panel${size ? ` sh-modal-panel--${size}` : ''}}` + `style={{ maxWidth: resolvedMaxWidth }}` jen bez `size`
+
+6. **`AddBookPage.tsx`** — bonus fix (pre-existing errors):
+   - Přidán `import { useTranslation }` a `import { ProcessingIcon }` (soubor je používal bez importů)
+   - Přidán `const { t } = useTranslation()` do komponenty
+
+**Soubory:** `Modal.tsx`, `shelfy.css`, `AddBookPage.tsx`
+**TS errors:** 14 (beze změny — 2 nové v AddBookPage opraveny = net 0)
+**DoD:** ✅ Modal size prop funguje (sm/md/lg + zpětně-kompatibilní maxWidth); ✅ tokeny v `:root`; ✅ hardcoded hodnoty nahrazeny; ✅ modal má plynulou bounce animaci
 
 ---
 
-### Krok 15: Fuzzy search + advanced filtry (B3)
+### Krok 15: Fuzzy search + advanced filtry (B3) ✅ DONE (2026-04-01)
 **Cíl:** Vylepšit search v `/books` — fuzzy matching, filtrování dle roku/jazyka/vydavatele.
 
-**Co udělat:**
+**Co bylo provedeno:**
 
-1. **Backend — fuzzy search:**
-   - Backend už používá PostgreSQL `to_tsvector` full-text search (nalezeno v `book.py`)
-   - Přidat `pg_trgm` extension pro trigram similarity (fuzzy)
-   - Alternativně: přidat `similarity()` funkci nebo `ILIKE` fallback s tolerancí překlepů
-   - Nový query parametr `fuzzy=true` (optional, default false)
-2. **Backend — nové filter parametry:**
-   - `language: str | None` — filtr dle jazyka
-   - `publisher: str | None` — filtr dle vydavatele
-   - `year_from: int | None`, `year_to: int | None` — rozsah let
-3. **Frontend — BooksPage.tsx:**
-   - Přidat „Advanced filters" toggle pod search bar
-   - Filter panel: Language dropdown, Publisher text input, Year range (from–to)
-   - Filtry se posílají jako query params do API
-   - Aktivní filtry zobrazit jako removable chips pod search barem
-   - Počet aktivních filtrů jako badge na toggle buttonu
-4. **Frontend — API hook:**
-   - Rozšířit `useBooks` hook params o nové filtry
+1. **Alembic migrace** `20260401_000009_enable_pg_trgm_fuzzy_search.py`:
+   - `CREATE EXTENSION IF NOT EXISTS pg_trgm` (idempotent)
+   - `CREATE INDEX ix_books_title_trgm ON books USING gin (title gin_trgm_ops)`
+   - `CREATE INDEX ix_books_author_trgm ON books USING gin (author gin_trgm_ops) WHERE author IS NOT NULL`
+   - Migrace spuštěna přes `docker exec infra-backend-1 alembic upgrade head` ✅
 
-**Soubory:**
-- Backend: `app/services/book.py`, `app/api/books.py`, případně migrace pro `pg_trgm`
-- Frontend: `BooksPage.tsx`, `hooks/useBooks.ts`, `lib/types.ts`, `lib/api.ts`
+2. **`app/services/book.py`** — 3 změny:
+   - **Bug fix**: `Book.processing_status == reading_status` → `Book.reading_status == reading_status` (předchozí kód nikdy nefungoval!)
+   - **Nové filtry**: `language`, `publisher` (ILIKE fuzzy match), `year_from`, `year_to` (range na `publication_year`)
+   - **Fuzzy search**: PostgreSQL kombinuje FTS (`plainto_tsquery`) **OR** trigram similarity (`similarity() > 0.2` pro title, `> 0.15` pro author) — typo-tolerantní, oba indexy využity
+   - SQLite fallback: beze změny (ILIKE)
 
-**Riziko:** Střední-vysoké — backend změna, potřeba migrace, testování edge cases
-**DoD:**
-- search najde knihy i s překlepem (fuzzy)
-- uživatel může filtrovat dle jazyka, vydavatele, roku
-- aktivní filtry jsou viditelné a snadno odstranitelné
-- žádná regrese v základním search flow
+3. **`app/api/books.py`** — nové query parametry:
+   - `language: str | None = Query(min_length=1)`
+   - `publisher: str | None = Query(min_length=1)`
+   - `year_from: int | None = Query(ge=1000, le=9999)`
+   - `year_to: int | None = Query(ge=1000, le=9999)`
+   - Všechny předány do `list_books()`
+
+4. **`frontend/src/lib/types.ts`** — `BookListParams` rozšířen:
+   - `readingStatus?: ReadingStatus | null` (chybělo — fixováno!)
+   - `language?: string`, `publisher?: string`, `yearFrom?: number`, `yearTo?: number`
+
+5. **`frontend/src/lib/api.ts`** — `listBooks()` předává nové params + `readingStatus` (dříve chyběl v typech)
+
+6. **`frontend/src/i18n/cs.json` + `en.json`** — přidány klíče pro advanced filtry:
+   - `books.filters_toggle`, `filter_language_label/placeholder`, `filter_publisher_label/placeholder`, `filter_year_label/from/to`, `filter_clear_all`, `filter_chip_*`
+
+7. **`frontend/src/styles/shelfy.css`** — nové třídy:
+   - `.sh-filter-chip` — removable pill tag (primary bg/color/border, hover fade)
+   - `.sh-filter-count` — zelený badge s počtem aktivních filtrů
+
+8. **`frontend/src/pages/BooksPage.tsx`** — advanced filters UI:
+   - Nové stavy: `advancedOpen`, `languageInput`, `publisherInput`, `yearFromInput`, `yearToInput`
+   - Debounce na language/publisher (400ms)
+   - `activeAdvancedCount` — počítá aktivní filtry
+   - Toggle button (s badge počtem) + location select — v jednom řádku
+   - Collapsible filter panel: Language | Publisher | Rok od–do (3 sloupce), animace `max-height + opacity`
+   - "Zrušit filtry" button v panelu (jen když jsou filtry)
+   - Active filter chips pod panelem (kliknutí odstraní chip/filtr)
+
+**Soubory:** `alembic/versions/20260401_000009_*.py`, `app/services/book.py`, `app/api/books.py`, `lib/types.ts`, `lib/api.ts`, `BooksPage.tsx`, `shelfy.css`, `cs.json`, `en.json`
+**TS errors:** 13 (zlepšení -1 — fixován `readingStatus` v `BookListParams`)
+**DoD:** ✅ fuzzy search s pg_trgm; ✅ advanced filtry (jazyk/vydavatel/rok); ✅ chips + badge; ✅ reading_status bug opraven
 
 ---
 

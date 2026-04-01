@@ -26,6 +26,15 @@ export function BooksPage() {
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [statFilter, setStatFilter] = useState<StatFilter>('total')
+
+  // Advanced filters
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [languageInput, setLanguageInput] = useState('')
+  const [publisherInput, setPublisherInput] = useState('')
+  const [yearFromInput, setYearFromInput] = useState('')
+  const [yearToInput, setYearToInput] = useState('')
+  const debouncedLanguage = useDebounce(languageInput.trim(), 400)
+  const debouncedPublisher = useDebounce(publisherInput.trim(), 400)
   const toastedFailedIdsRef = useRef<Set<string>>(new Set())
 
   const tabItems: { label: string; value: ReadingStatus | null }[] = useMemo(
@@ -43,9 +52,21 @@ export function BooksPage() {
     setPage(1)
   }, [debouncedSearch])
 
+  const activeAdvancedCount = (debouncedLanguage ? 1 : 0) + (debouncedPublisher ? 1 : 0) + (yearFromInput || yearToInput ? 1 : 0)
+
   const queryParams = useMemo(
-    () => ({ page, pageSize: PAGE_SIZE, search: debouncedSearch || undefined, readingStatus: readingFilter ?? undefined, locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined }),
-    [page, debouncedSearch, readingFilter, locationFilter],
+    () => ({
+      page,
+      pageSize: PAGE_SIZE,
+      search: debouncedSearch || undefined,
+      readingStatus: readingFilter ?? undefined,
+      locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined,
+      language: debouncedLanguage || undefined,
+      publisher: debouncedPublisher || undefined,
+      yearFrom: yearFromInput ? Number(yearFromInput) : undefined,
+      yearTo: yearToInput ? Number(yearToInput) : undefined,
+    }),
+    [page, debouncedSearch, readingFilter, locationFilter, debouncedLanguage, debouncedPublisher, yearFromInput, yearToInput],
   )
 
   const booksQuery = useBooks(queryParams)
@@ -192,15 +213,32 @@ export function BooksPage() {
         )}
       </div>
 
-      <div style={{ margin: '12px 24px 0', display: 'flex', justifyContent: 'flex-end' }}>
+      {/* ── Advanced filters toggle ── */}
+      <div style={{ margin: '8px 24px 0', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((v) => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'none', border: '1px solid var(--sh-border)',
+            borderRadius: 'var(--sh-radius-md)', padding: '5px 12px',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            color: activeAdvancedCount > 0 ? 'var(--sh-primary)' : 'var(--sh-text-muted)',
+            transition: 'border-color var(--sh-duration-fast) ease',
+          }}
+        >
+          <span>{t('books.filters_toggle')}</span>
+          {activeAdvancedCount > 0 && <span className="sh-filter-count">{activeAdvancedCount}</span>}
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transition: `transform var(--sh-duration-fast) ease`, transform: advancedOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+
         <select
           className="sh-select"
           value={locationFilter}
-          onChange={(event) => {
-            setLocationFilter(event.target.value)
-            setPage(1)
-          }}
-          style={{ minWidth: 220 }}
+          onChange={(event) => { setLocationFilter(event.target.value); setPage(1) }}
+          style={{ minWidth: 200 }}
         >
           <option value="all">All locations</option>
           <option value="unassigned">Unassigned</option>
@@ -211,6 +249,84 @@ export function BooksPage() {
           ))}
         </select>
       </div>
+
+      {/* ── Advanced filter panel (collapsible) ── */}
+      <div style={{ overflow: 'hidden', maxHeight: advancedOpen ? 180 : 0, transition: `max-height var(--sh-duration-normal) var(--sh-ease-default), opacity var(--sh-duration-normal) ease`, opacity: advancedOpen ? 1 : 0 }}>
+        <div style={{ margin: '8px 24px 0', padding: '14px 16px', background: 'var(--sh-surface-elevated)', border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, alignItems: 'end' }}>
+            <div>
+              <label className="sh-form-label sh-form-label--sm">{t('books.filter_language_label')}</label>
+              <input
+                className="sh-input"
+                placeholder={t('books.filter_language_placeholder')}
+                value={languageInput}
+                onChange={(e) => { setLanguageInput(e.target.value); setPage(1) }}
+              />
+            </div>
+            <div>
+              <label className="sh-form-label sh-form-label--sm">{t('books.filter_publisher_label')}</label>
+              <input
+                className="sh-input"
+                placeholder={t('books.filter_publisher_placeholder')}
+                value={publisherInput}
+                onChange={(e) => { setPublisherInput(e.target.value); setPage(1) }}
+              />
+            </div>
+            <div>
+              <label className="sh-form-label sh-form-label--sm">{t('books.filter_year_label')}</label>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input
+                  className="sh-input"
+                  inputMode="numeric"
+                  placeholder={t('books.filter_year_from')}
+                  value={yearFromInput}
+                  onChange={(e) => { setYearFromInput(e.target.value.replace(/\D/g, '')); setPage(1) }}
+                  style={{ width: 72 }}
+                />
+                <span style={{ color: 'var(--sh-text-muted)', fontSize: 14 }}>–</span>
+                <input
+                  className="sh-input"
+                  inputMode="numeric"
+                  placeholder={t('books.filter_year_to')}
+                  value={yearToInput}
+                  onChange={(e) => { setYearToInput(e.target.value.replace(/\D/g, '')); setPage(1) }}
+                  style={{ width: 72 }}
+                />
+              </div>
+            </div>
+          </div>
+          {activeAdvancedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => { setLanguageInput(''); setPublisherInput(''); setYearFromInput(''); setYearToInput(''); setPage(1) }}
+              style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--sh-danger)', padding: '2px 0', fontWeight: 500 }}
+            >
+              {t('books.filter_clear_all')}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Active filter chips ── */}
+      {activeAdvancedCount > 0 && (
+        <div style={{ margin: '8px 24px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {debouncedLanguage && (
+            <button type="button" className="sh-filter-chip" onClick={() => { setLanguageInput(''); setPage(1) }}>
+              {t('books.filter_chip_language', { value: debouncedLanguage })} ×
+            </button>
+          )}
+          {debouncedPublisher && (
+            <button type="button" className="sh-filter-chip" onClick={() => { setPublisherInput(''); setPage(1) }}>
+              {t('books.filter_chip_publisher', { value: debouncedPublisher })} ×
+            </button>
+          )}
+          {(yearFromInput || yearToInput) && (
+            <button type="button" className="sh-filter-chip" onClick={() => { setYearFromInput(''); setYearToInput(''); setPage(1) }}>
+              {t('books.filter_chip_year', { from: yearFromInput || '?', to: yearToInput || '?' })} ×
+            </button>
+          )}
+        </div>
+      )}
 
       {uploadJobId && (
         <p style={{ margin: '16px 24px', fontSize: 14, color: 'var(--sh-amber)', fontWeight: 500, background: 'var(--sh-amber-bg)', padding: '12px 16px', borderRadius: 'var(--sh-radius-md)' }}>

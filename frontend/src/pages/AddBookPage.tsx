@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { ProcessingIcon } from '../components/EmptyStateIcons'
 import { useCreateBook, useUploadBookImage, useJobStatus } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
 import { useToastStore } from '../lib/toast-store'
@@ -7,6 +9,7 @@ import { ROUTES } from '../lib/routes'
 import type { BookCreateRequest, ReadingStatus } from '../lib/types'
 
 export function AddBookPage() {
+  const { t } = useTranslation()
   const navigate      = useNavigate()
   const showError     = useToastStore(s => s.showError)
   const { data: locations = [] } = useLocations()

@@ -165,9 +165,13 @@ export async function deleteLocation(id: string): Promise<void> {
 export async function listBooks(params: BookListParams = {}): Promise<BookListResponse> {
   const response = await apiClient.get<BookListResponse>('/api/v1/books', {
     params: {
-      search: params.search,
-      location_id: params.locationId,
-      reading_status: params.readingStatus,
+      search: params.search || undefined,
+      location_id: params.locationId || undefined,
+      reading_status: params.readingStatus ?? undefined,
+      language: params.language || undefined,
+      publisher: params.publisher || undefined,
+      year_from: params.yearFrom,
+      year_to: params.yearTo,
       page: params.page ?? 1,
       page_size: params.pageSize ?? 20,
     },

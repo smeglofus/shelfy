@@ -24,13 +24,26 @@ async def read_books(
     search: str | None = Query(default=None, min_length=1),
     location_id: uuid.UUID | None = None,
     reading_status: str | None = None,
+    language: str | None = Query(default=None, min_length=1),
+    publisher: str | None = Query(default=None, min_length=1),
+    year_from: int | None = Query(default=None, ge=1000, le=9999),
+    year_to: int | None = Query(default=None, ge=1000, le=9999),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_session),
     _current_user: User = Depends(get_current_user),
 ) -> BookListResponse:
     books, total = await list_books(
-        session, search=search, location_id=location_id, reading_status=reading_status, page=page, page_size=page_size
+        session,
+        search=search,
+        location_id=location_id,
+        reading_status=reading_status,
+        language=language,
+        publisher=publisher,
+        year_from=year_from,
+        year_to=year_to,
+        page=page,
+        page_size=page_size,
     )
     return BookListResponse(
         total=total,

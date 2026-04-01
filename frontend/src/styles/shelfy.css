@@ -98,6 +98,21 @@
   --sh-shadow-md: 0 4px 16px rgba(0,0,0,0.06);
   --sh-shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
   --sh-shadow-hover: 0 12px 28px rgba(0,0,0,0.10);
+
+  /* ── Motion Tokens ────────────────────────────────────────────────── */
+  --sh-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --sh-ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sh-ease-out:     cubic-bezier(0, 0, 0.2, 1);
+  --sh-duration-fast:   150ms;
+  --sh-duration-normal: 250ms;
+  --sh-duration-slow:   400ms;
+
+  /* ── Z-index Scale ────────────────────────────────────────────────── */
+  --sh-z-dropdown: 50;
+  --sh-z-sticky:   60;
+  --sh-z-nav:      100;
+  --sh-z-modal:    200;
+  --sh-z-toast:    300;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -161,7 +176,7 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .sh-page-enter {
-  animation: sh-content-enter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sh-content-enter 0.3s var(--sh-ease-default);
 }
 
 /* Staggered card entrance for grids */
@@ -170,7 +185,7 @@ body {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .sh-card-enter {
-  animation: sh-card-enter 0.35s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation: sh-card-enter 0.35s var(--sh-ease-default) backwards;
 }
 
 /* Button press feedback */
@@ -194,23 +209,55 @@ body {
 }
 
 .sh-toast-item {
-  animation: sh-slide-in-top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sh-slide-in-top 0.25s var(--sh-ease-default);
 }
 /* sh-toast-progress animation duration is set inline per variant */
 .sh-fab-menu {
-  animation: sh-fab-pop 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sh-fab-pop 0.2s var(--sh-ease-default);
 }
 .sh-fab-menu-item:active {
   transform: scale(0.97);
 }
 
-/* Modal animations */
+/* Modal overlay + panel */
+@keyframes sh-modal-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sh-modal-panel-in {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .sh-modal-overlay {
-  animation: sh-fade-in 0.2s ease;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--sh-z-modal);
+  padding: 16px;
+  animation: sh-modal-overlay-in var(--sh-duration-normal) var(--sh-ease-out);
 }
 .sh-modal-panel {
-  animation: sh-slide-in-top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--sh-surface);
+  border-radius: var(--sh-radius-xl);
+  padding: 24px;
+  width: 100%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  box-shadow: var(--sh-shadow-lg);
+  border: 1px solid var(--sh-border);
+  animation: sh-modal-panel-in var(--sh-duration-normal) var(--sh-ease-bounce);
 }
+
+/* Modal size presets */
+.sh-modal-panel--sm { max-width: 380px; }
+.sh-modal-panel--md { max-width: 520px; }
+.sh-modal-panel--lg { max-width: 680px; }
 
 /* Focus-visible ring for all interactive elements */
 button:focus-visible,
@@ -224,8 +271,8 @@ a:focus-visible,
 }
 
 .transition-fast { transition: all 0.15s ease; }
-.transition-normal { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.hover-scale { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.transition-normal { transition: all 0.3s var(--sh-ease-default); }
+.hover-scale { transition: transform 0.3s var(--sh-ease-default), box-shadow 0.3s var(--sh-ease-default); }
 .hover-scale:hover { transform: translateY(-3px); box-shadow: var(--sh-shadow-hover); }
 .hover-scale:hover .sh-card-delete-btn { opacity: 1; }
 .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
@@ -265,7 +312,7 @@ a:focus-visible,
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--sh-border);
   padding-bottom: env(safe-area-inset-bottom, 8px);
-  z-index: 100;
+  z-index: var(--sh-z-nav);
   box-shadow: 0 -4px 20px rgba(0,0,0,0.03);
 }
 
@@ -351,7 +398,7 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
   align-items: center;
   justify-content: center;
   gap: var(--sh-space-2);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s var(--sh-ease-default);
 }
 
 /* Primary Button */
@@ -1179,6 +1226,42 @@ html.light {
 }
 .sh-review-card--warn {
   border-color: var(--sh-amber-text);
+}
+
+/* Active filter chip (removable tag) */
+.sh-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--sh-radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--sh-primary-bg);
+  color: var(--sh-primary-text);
+  border: 1px solid var(--sh-primary);
+  cursor: pointer;
+  transition: background var(--sh-duration-fast) ease, opacity var(--sh-duration-fast) ease;
+  white-space: nowrap;
+}
+.sh-filter-chip:hover {
+  opacity: 0.8;
+}
+
+/* Filter count badge (number of active advanced filters) */
+.sh-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--sh-radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--sh-primary);
+  color: white;
+  line-height: 1;
 }
 
 /* Book detail — side-by-side layout (cover left, content right on desktop) */

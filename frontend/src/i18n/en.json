@@ -51,7 +51,19 @@
     "processing_failed": "Image processing failed.",
     "processing_status_check_failed": "Could not check upload status.",
     "processing_failed_bulk": "Processing failed for {{count}} books: {{titles}}",
-    "delete_title": "Delete book"
+    "delete_title": "Delete book",
+    "filters_toggle": "Filters",
+    "filter_language_label": "Language",
+    "filter_language_placeholder": "cs, en, de…",
+    "filter_publisher_label": "Publisher",
+    "filter_publisher_placeholder": "O'Reilly, Penguin…",
+    "filter_year_label": "Publication year",
+    "filter_year_from": "from",
+    "filter_year_to": "to",
+    "filter_clear_all": "Clear filters",
+    "filter_chip_language": "language: {{value}}",
+    "filter_chip_publisher": "publisher: {{value}}",
+    "filter_chip_year": "year: {{from}} – {{to}}"
   },
   "book_detail": {
     "title": "Book details",

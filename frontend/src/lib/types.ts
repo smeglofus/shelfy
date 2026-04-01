@@ -90,6 +90,11 @@ export interface BookListResponse {
 export interface BookListParams {
   search?: string
   locationId?: string
+  readingStatus?: ReadingStatus | null
+  language?: string
+  publisher?: string
+  yearFrom?: number
+  yearTo?: number
   page?: number
   pageSize?: number
 }
