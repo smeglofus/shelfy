@@ -9,9 +9,16 @@ from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.models.user import User
-from app.schemas.book import BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest, RetryEnrichmentResponse
+from app.schemas.book import (
+    BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest,
+    BulkDeleteRequest, BulkMoveRequest, BulkOperationResponse, BulkStatusRequest,
+    RetryEnrichmentResponse,
+)
 from app.schemas.job import UploadResponse
-from app.services.book import build_books_export_csv, create_book, delete_book, get_book_or_404, list_books, update_book
+from app.services.book import (
+    build_books_export_csv, bulk_delete_books, bulk_move_books, bulk_update_status,
+    create_book, delete_book, get_book_or_404, list_books, update_book,
+)
 from app.services.job import create_upload_job
 from app.services.job_queue import get_celery_client
 from app.services.storage import delete_image_bytes
@@ -23,6 +30,7 @@ router = APIRouter(prefix="/api/v1/books", tags=["books"])
 async def read_books(
     search: str | None = Query(default=None, min_length=1),
     location_id: uuid.UUID | None = None,
+    unassigned_only: bool = Query(default=False),
     reading_status: str | None = None,
     language: str | None = Query(default=None, min_length=1),
     publisher: str | None = Query(default=None, min_length=1),
@@ -37,6 +45,7 @@ async def read_books(
         session,
         search=search,
         location_id=location_id,
+        unassigned_only=unassigned_only,
         reading_status=reading_status,
         language=language,
         publisher=publisher,
@@ -105,6 +114,36 @@ async def delete_book_endpoint(
     await delete_book(session, book_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+
+
+@router.post("/bulk/delete", response_model=BulkOperationResponse)
+async def bulk_delete(
+    payload: BulkDeleteRequest,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> BulkOperationResponse:
+    affected = await bulk_delete_books(session, payload.ids)
+    return BulkOperationResponse(affected=affected, operation="delete")
+
+
+@router.post("/bulk/move", response_model=BulkOperationResponse)
+async def bulk_move(
+    payload: BulkMoveRequest,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> BulkOperationResponse:
+    affected = await bulk_move_books(session, payload.ids, payload.location_id, payload.insert_position)
+    return BulkOperationResponse(affected=affected, operation="move")
+
+
+@router.post("/bulk/status", response_model=BulkOperationResponse)
+async def bulk_status(
+    payload: BulkStatusRequest,
+    session: AsyncSession = Depends(get_db_session),
+    _current_user: User = Depends(get_current_user),
+) -> BulkOperationResponse:
+    affected = await bulk_update_status(session, payload.ids, payload.reading_status)
+    return BulkOperationResponse(affected=affected, operation="status")
 
 
 @router.patch("/{book_id}/retry-enrichment", response_model=RetryEnrichmentResponse, status_code=status.HTTP_202_ACCEPTED)

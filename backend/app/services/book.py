@@ -3,14 +3,14 @@ from io import StringIO
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy import ColumnElement
+from sqlalchemy import ColumnElement, case, delete, update
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app.models.book import Book
+from app.models.book import Book, ReadingStatus
 from app.models.loan import Loan
 from app.models.location import Location
 from app.schemas.book import BookCreateRequest, BookUpdateRequest
@@ -23,6 +23,7 @@ async def list_books(
     *,
     search: str | None,
     location_id: uuid.UUID | None,
+    unassigned_only: bool,
     reading_status: str | None,
     language: str | None = None,
     publisher: str | None = None,
@@ -33,7 +34,9 @@ async def list_books(
 ) -> tuple[list[Book], int]:
     filters: list[ColumnElement[bool]] = []
 
-    if location_id is not None:
+    if unassigned_only:
+        filters.append(Book.location_id.is_(None))
+    elif location_id is not None:
         filters.append(Book.location_id == location_id)
 
     if reading_status:
@@ -121,11 +124,20 @@ async def update_book(session: AsyncSession, book_id: uuid.UUID, payload: BookUp
     if "location_id" in update_data:
         await _validate_location_exists(session, update_data["location_id"])
 
+    # Apply non-position fields first
     for field_name, value in update_data.items():
+        if field_name in {"location_id", "shelf_position"}:
+            continue
         setattr(book, field_name, value)
 
     try:
-        await session.commit()
+        # If location/position changes, use reorder-aware move logic
+        if "location_id" in update_data or "shelf_position" in update_data:
+            target_location = update_data.get("location_id", book.location_id)
+            target_position = update_data.get("shelf_position", book.shelf_position)
+            await bulk_move_books(session, [book.id], target_location, target_position)
+        else:
+            await session.commit()
     except IntegrityError as exc:
         await session.rollback()
         orig = str(exc.orig).lower() if exc.orig else ""
@@ -209,3 +221,116 @@ async def build_books_export_csv(session: AsyncSession) -> bytes:
         ])
 
     return buffer.getvalue().encode("utf-8")
+
+
+# ── Bulk operations ────────────────────────────────────────────────────────────
+
+async def bulk_delete_books(
+    session: AsyncSession,
+    ids: list[uuid.UUID],
+) -> int:
+    """Delete multiple books by ID. Returns count of deleted rows."""
+    if not ids:
+        return 0
+    stmt = delete(Book).where(Book.id.in_(ids))
+    result = await session.execute(stmt)
+    await session.commit()
+    return result.rowcount  # type: ignore[return-value]
+
+
+async def bulk_move_books(
+    session: AsyncSession,
+    ids: list[uuid.UUID],
+    location_id: uuid.UUID | None,
+    insert_position: int | None = None,
+) -> int:
+    """Move books to location and optionally insert at position with right-shift."""
+    if not ids:
+        return 0
+
+    moving_books = list((await session.execute(
+        select(Book).where(Book.id.in_(ids))
+    )).scalars().all())
+    if not moving_books:
+        return 0
+
+    affected = len(moving_books)
+    source_location_ids = {b.location_id for b in moving_books if b.location_id is not None}
+
+    # Unassign flow
+    if location_id is None:
+        stmt = update(Book).where(Book.id.in_(ids)).values(location_id=None, shelf_position=None)
+        await session.execute(stmt)
+        # normalize former shelves
+        for src_id in source_location_ids:
+            await _normalize_location_positions(session, src_id)
+        await session.commit()
+        return affected
+
+    loc = await session.get(Location, location_id)
+    if loc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+
+    # preserve selected order by current shelf position then title
+    moving_books.sort(key=lambda b: ((b.shelf_position if b.shelf_position is not None else 999999), b.title.lower()))
+
+    selected_ids = {b.id for b in moving_books}
+    target_books = list((await session.execute(
+        select(Book)
+        .where(Book.location_id == location_id, Book.id.not_in(selected_ids))
+        .order_by(Book.shelf_position.asc().nulls_last(), Book.id.asc())
+    )).scalars().all())
+
+    insert_at = len(target_books) if insert_position is None else max(0, min(insert_position, len(target_books)))
+    ordered = target_books[:insert_at] + moving_books + target_books[insert_at:]
+
+    # one UPDATE statement for full target shelf reorder
+    whens = [(Book.id == b.id, idx) for idx, b in enumerate(ordered)]
+    reorder_stmt = (
+        update(Book)
+        .where(Book.id.in_([b.id for b in ordered]))
+        .values(
+            location_id=location_id,
+            shelf_position=case(*whens, else_=Book.shelf_position),
+        )
+    )
+    await session.execute(reorder_stmt)
+
+    # normalize all affected source shelves (except target, already normalized by explicit reorder)
+    for src_id in source_location_ids:
+        if src_id != location_id:
+            await _normalize_location_positions(session, src_id)
+
+    await session.commit()
+    return affected
+
+
+async def bulk_update_status(
+    session: AsyncSession,
+    ids: list[uuid.UUID],
+    reading_status: ReadingStatus,
+) -> int:
+    """Update reading status for multiple books. Returns count of updated rows."""
+    if not ids:
+        return 0
+    stmt = update(Book).where(Book.id.in_(ids)).values(reading_status=reading_status)
+    result = await session.execute(stmt)
+    await session.commit()
+    return result.rowcount  # type: ignore[return-value]
+
+
+async def _normalize_location_positions(session: AsyncSession, location_id: uuid.UUID) -> None:
+    books = list((await session.execute(
+        select(Book)
+        .where(Book.location_id == location_id)
+        .order_by(Book.shelf_position.asc().nulls_last(), Book.id.asc())
+    )).scalars().all())
+    if not books:
+        return
+    whens = [(Book.id == b.id, idx) for idx, b in enumerate(books)]
+    stmt = (
+        update(Book)
+        .where(Book.id.in_([b.id for b in books]))
+        .values(shelf_position=case(*whens, else_=Book.shelf_position))
+    )
+    await session.execute(stmt)

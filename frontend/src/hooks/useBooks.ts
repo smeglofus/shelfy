@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  bulkDeleteBooks,
+  bulkMoveBooks,
+  bulkUpdateStatus,
   createBook,
   deleteBook,
   formatApiError,
@@ -11,7 +14,7 @@ import {
   uploadBookImage,
 } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
-import type { BookCreateRequest, BookListParams, BookUpdateRequest } from '../lib/types'
+import type { BookCreateRequest, BookListParams, BookUpdateRequest, BulkDeleteRequest, BulkMoveRequest, BulkStatusRequest } from '../lib/types'
 import { useTranslation } from 'react-i18next'
 
 export const BOOKS_QUERY_KEY = ['books']
@@ -91,6 +94,51 @@ export function useUploadBookImage() {
     onError: (error: unknown) => {
       showError(formatApiError(error))
     },
+  })
+}
+
+export function useBulkDeleteBooks() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const { t } = useTranslation()
+  return useMutation({
+    mutationFn: (payload: BulkDeleteRequest) => bulkDeleteBooks(payload),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('bulk.deleted', { count: data.affected }))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
+  })
+}
+
+export function useBulkMoveBooks() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const { t } = useTranslation()
+  return useMutation({
+    mutationFn: (payload: BulkMoveRequest) => bulkMoveBooks(payload),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('bulk.moved', { count: data.affected }))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
+  })
+}
+
+export function useBulkUpdateStatus() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const { t } = useTranslation()
+  return useMutation({
+    mutationFn: (payload: BulkStatusRequest) => bulkUpdateStatus(payload),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('bulk.status_updated', { count: data.affected }))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
   })
 }
 

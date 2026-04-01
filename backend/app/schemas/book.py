@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -92,3 +93,25 @@ class BookListResponse(BaseModel):
 class RetryEnrichmentResponse(BaseModel):
     book_id: uuid.UUID
     status: str
+
+
+# ── Bulk operations ────────────────────────────────────────────────────────────
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+
+
+class BulkMoveRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+    location_id: uuid.UUID | None = None  # None = unassign
+    insert_position: int | None = Field(default=None, ge=0)
+
+
+class BulkStatusRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+    reading_status: ReadingStatus
+
+
+class BulkOperationResponse(BaseModel):
+    affected: int
+    operation: Literal["delete", "move", "status"]

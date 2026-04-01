@@ -8,6 +8,10 @@ import type {
   BookListParams,
   BookListResponse,
   BookUpdateRequest,
+  BulkDeleteRequest,
+  BulkMoveRequest,
+  BulkOperationResponse,
+  BulkStatusRequest,
   EnrichBookResponse,
   EnrichResponse,
   JobStatusResponse,
@@ -167,6 +171,7 @@ export async function listBooks(params: BookListParams = {}): Promise<BookListRe
     params: {
       search: params.search || undefined,
       location_id: params.locationId || undefined,
+      unassigned_only: params.unassignedOnly || undefined,
       reading_status: params.readingStatus ?? undefined,
       language: params.language || undefined,
       publisher: params.publisher || undefined,
@@ -197,6 +202,21 @@ export async function updateBook(id: string, payload: BookUpdateRequest): Promis
 
 export async function deleteBook(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/books/${id}`)
+}
+
+export async function bulkDeleteBooks(payload: BulkDeleteRequest): Promise<BulkOperationResponse> {
+  const response = await apiClient.post<BulkOperationResponse>('/api/v1/books/bulk/delete', payload)
+  return response.data
+}
+
+export async function bulkMoveBooks(payload: BulkMoveRequest): Promise<BulkOperationResponse> {
+  const response = await apiClient.post<BulkOperationResponse>('/api/v1/books/bulk/move', payload)
+  return response.data
+}
+
+export async function bulkUpdateStatus(payload: BulkStatusRequest): Promise<BulkOperationResponse> {
+  const response = await apiClient.post<BulkOperationResponse>('/api/v1/books/bulk/status', payload)
+  return response.data
 }
 
 export async function listLoans(bookId: string): Promise<Loan[]> {
