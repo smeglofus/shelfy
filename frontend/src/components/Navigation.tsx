@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
+import { BookshelfInlineIcon } from './EmptyStateIcons'
 
 /* ── SVG Icons (Lucide-inspired, 24×24 viewBox) ──────────────────── */
 
