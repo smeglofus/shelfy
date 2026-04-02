@@ -46,3 +46,8 @@ Actions:
 1. Run normalization SQL operation in controlled window.
 2. Verify duplicates query returns zero rows.
 3. Re-test move/reorder flows from detail, bulk, and bookshelf DnD.
+
+
+## 5) Frontend runtime telemetry
+- Backend logs now include `frontend_runtime_error` events from browser runtime failures.
+- Metrics include `frontend_runtime_errors_total{kind=...}` for trend monitoring.

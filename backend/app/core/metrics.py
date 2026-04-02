@@ -20,6 +20,12 @@ EXTERNAL_API_CALLS_TOTAL = Counter(
     "External metadata API calls by provider",
     labelnames=("provider",),
 )
+FRONTEND_RUNTIME_ERRORS_TOTAL = Counter(
+    "frontend_runtime_errors_total",
+    "Frontend runtime errors reported by client",
+    labelnames=("kind",),
+)
+
 EXTERNAL_API_LATENCY_SECONDS = Histogram(
     "external_api_latency_seconds",
     "External metadata API latency",
@@ -48,3 +54,7 @@ def observe_external_api_latency(provider: str, start_time: float) -> None:
 
 def render_metrics() -> tuple[bytes, str]:
     return generate_latest(), CONTENT_TYPE_LATEST
+
+
+def record_frontend_runtime_error(kind: str) -> None:
+    FRONTEND_RUNTIME_ERRORS_TOTAL.labels(kind=kind).inc()

@@ -21,6 +21,7 @@ from app.api.enrich import router as enrich_router
 from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
 from app.api.settings import router as settings_router
+from app.api.telemetry import router as telemetry_router
 from app.core.config import get_settings
 from app.core.logging import configure_structlog
 from app.core.metrics import record_http_request
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(enrich_router)
     app.include_router(scan_router)
     app.include_router(settings_router)
+    app.include_router(telemetry_router)
     app.include_router(jobs_router)
     return app
 
