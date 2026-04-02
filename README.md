@@ -191,3 +191,22 @@ Shelfy is intentionally developed with AI guardrails:
 - Implementation roadmap: `docs/implementation-phases.md`
 - Coding standards: `docs/coding-standards.md`
 - Deployment guide: `docs/deployment.md`
+---
+
+## Release readiness checklist
+
+Before each production release:
+
+- [ ] CI passes (backend + frontend + e2e smoke/regression)
+- [ ] Frontend build succeeds and bundle budget check passes
+- [ ] DB migrations applied (`alembic upgrade head`)
+- [ ] Shelf ordering integrity check passes
+- [ ] Critical routes smoke-tested (`/books`, `/bookshelf`, `/scan`)
+- [ ] No unresolved `frontend_runtime_error` bursts in monitoring
+
+Useful references:
+- Incident runbook: `docs/runbooks/incidents.md`
+- Monitoring and alerts: `docs/monitoring/README.md`
+- Prometheus rules: `docs/monitoring/alerts.prometheus.yml`
+- Production audit: `docs/production-readiness-audit-2026-04-02.md`
+
