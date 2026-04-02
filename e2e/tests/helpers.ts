@@ -12,3 +12,13 @@ export async function login(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/books$/)
   await expect(page.getByRole('heading', { name: 'Moje Knihovna' })).toBeVisible()
 }
+
+
+export async function createManualBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
+  await page.goto('/books/new')
+  await page.getByPlaceholder('např. Duna').fill(title)
+  await page.getByPlaceholder('např. Frank Herbert').fill(author)
+  await page.getByRole('button', { name: 'Přidat do knihovny' }).click()
+  await expect(page).toHaveURL(/\/books$/)
+  await expect(page.getByText(title).first()).toBeVisible()
+}

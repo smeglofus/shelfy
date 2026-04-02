@@ -51,3 +51,8 @@ Actions:
 ## 5) Frontend runtime telemetry
 - Backend logs now include `frontend_runtime_error` events from browser runtime failures.
 - Metrics include `frontend_runtime_errors_total{kind=...}` for trend monitoring.
+
+
+## 6) Alerting references
+- Prometheus alert rules: `docs/monitoring/alerts.prometheus.yml`
+- Monitoring overview: `docs/monitoring/README.md`

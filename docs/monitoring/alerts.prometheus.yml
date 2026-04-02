@@ -1,0 +1,34 @@
+groups:
+  - name: shelfy-runtime
+    rules:
+      - alert: ShelfyBackendHigh5xxRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(http_requests_total[5m])), 1)
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Shelfy backend 5xx ratio above 5%"
+          description: "HTTP 5xx ratio has been above 5% for 10m."
+
+      - alert: ShelfyFrontendRuntimeErrorsBurst
+        expr: increase(frontend_runtime_errors_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Frontend runtime errors burst"
+          description: "More than 5 frontend runtime errors in 10 minutes."
+
+      - alert: ShelfyBookProcessingFailures
+        expr: book_processing_jobs_total{status="failed"} > 0
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Book processing failed jobs present"
+          description: "There are failed book processing jobs pending attention."
