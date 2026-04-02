@@ -1,10 +1,35 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import {
+  DndContext,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  useDroppable,
+  DragOverlay,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 import { EmptyShelfIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
 import { useBooks, useBulkMoveBooks } from '../hooks/useBooks'
+import { updateBook } from '../lib/api'
+import { useToastStore } from '../lib/toast-store'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
 import { LocationsPage } from './LocationsPage'
@@ -14,6 +39,7 @@ export function BookshelfViewPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const showError = useToastStore((s) => s.showError)
 
   const { data: locations = [] } = useLocations()
   const { data: booksData } = useBooks({ pageSize: 100 })
@@ -23,6 +49,24 @@ export function BookshelfViewPage() {
   const highlightBookId = searchParams.get('highlight_book_id')
   const activeTab = searchParams.get('tab') === 'locations' ? 'locations' : 'shelves'
   const highlightSpineRef = useRef<HTMLButtonElement | null>(null)
+
+  const [selectedRoom, setSelectedRoom] = useState<string>('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [reorderMode, setReorderMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
+  const [bulkMoveTarget, setBulkMoveTarget] = useState<string>('')
+  const [bulkInsertPosition, setBulkInsertPosition] = useState('')
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [activeDragBook, setActiveDragBook] = useState<Book | null>(null)
+  const [dragSnapshot, setDragSnapshot] = useState<Record<string, Book[]> | null>(null)
+  const bulkMoveMutation = useBulkMoveBooks()
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const locationTree = useMemo(() => {
     const tree: Record<string, Record<string, Location[]>> = {}
@@ -56,13 +100,8 @@ export function BookshelfViewPage() {
     return map
   }, [allBooks])
 
-  const [selectedRoom, setSelectedRoom] = useState<string>('')
-  const [selectMode, setSelectMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
-  const [bulkMoveTarget, setBulkMoveTarget] = useState<string>('')
-  const [bulkInsertPosition, setBulkInsertPosition] = useState('')
-  const bulkMoveMutation = useBulkMoveBooks()
+  const [localByLocation, setLocalByLocation] = useState<Record<string, Book[]>>({})
+  useEffect(() => setLocalByLocation(booksByLocation), [booksByLocation])
 
   const roomNames = Object.keys(locationTree)
   const filteredTree = selectedRoom ? { [selectedRoom]: locationTree[selectedRoom] } : locationTree
@@ -71,15 +110,15 @@ export function BookshelfViewPage() {
     const out: Book[] = []
     for (const furnitureMap of Object.values(filteredTree)) {
       for (const shelfLocations of Object.values(furnitureMap)) {
-        for (const loc of shelfLocations) out.push(...(booksByLocation[loc.id] ?? []))
+        for (const loc of shelfLocations) out.push(...(localByLocation[loc.id] ?? []))
       }
     }
     return out
-  }, [filteredTree, booksByLocation])
+  }, [filteredTree, localByLocation])
 
   const allVisibleSelected = visibleBooks.length > 0 && visibleBooks.every((b) => selectedIds.has(b.id))
   const visibleInTargetCount = bulkMoveTarget
-    ? (booksByLocation[bulkMoveTarget]?.filter((b) => !selectedIds.has(b.id)).length ?? 0)
+    ? (localByLocation[bulkMoveTarget]?.filter((b) => !selectedIds.has(b.id)).length ?? 0)
     : visibleBooks.filter((b) => !selectedIds.has(b.id)).length
 
   const toggleSelect = (id: string) => {
@@ -101,51 +140,179 @@ export function BookshelfViewPage() {
     return () => clearTimeout(timer)
   }, [highlightBookId, activeTab, filteredTree])
 
+  function findBookObject(id: string): Book | null {
+    for (const books of Object.values(localByLocation)) {
+      const found = books.find((b) => b.id === id)
+      if (found) return found
+    }
+    return null
+  }
+
+  function findBook(id: string): { locationId: string; index: number } | null {
+    for (const [locId, books] of Object.entries(localByLocation)) {
+      const idx = books.findIndex((b) => b.id === id)
+      if (idx >= 0) return { locationId: locId, index: idx }
+    }
+    return null
+  }
+
+  function onDragStart(event: DragStartEvent) {
+    const id = String(event.active.id)
+    setActiveDragId(id)
+    setActiveDragBook(findBookObject(id) ?? allBooks.find((b) => b.id === id) ?? null)
+    setDragSnapshot(localByLocation)
+  }
+
+
+  function onDragOver(event: DragOverEvent) {
+    if (!reorderMode || selectMode) return
+    const activeId = String(event.active.id)
+    const overId = event.over?.id ? String(event.over.id) : null
+    if (!overId || activeId === overId) return
+
+    const from = findBook(activeId)
+    if (!from) return
+
+    let targetLocationId: string | null = null
+    let targetIndex = 0
+
+    if (overId.startsWith('shelf:')) {
+      targetLocationId = overId.slice('shelf:'.length)
+      targetIndex = (localByLocation[targetLocationId] ?? []).length
+    } else {
+      const to = findBook(overId)
+      if (!to) return
+      targetLocationId = to.locationId
+      targetIndex = to.index
+    }
+
+    if (!targetLocationId) return
+
+    const next = { ...localByLocation }
+
+    if (from.locationId === targetLocationId) {
+      const arr = [...next[from.locationId]]
+      const fromIndex = arr.findIndex((b) => b.id === activeId)
+      const toIndex = overId.startsWith('shelf:') ? arr.length - 1 : targetIndex
+      if (fromIndex === toIndex) return
+      next[from.locationId] = arrayMove(arr, fromIndex, Math.max(0, toIndex)).map((b, i) => ({ ...b, shelf_position: i }))
+    } else {
+      const fromArr = [...(next[from.locationId] ?? [])]
+      const idx = fromArr.findIndex((b) => b.id === activeId)
+      if (idx < 0) return
+      const [moving] = fromArr.splice(idx, 1)
+      const toArr = [...(next[targetLocationId] ?? [])]
+      const insertAt = overId.startsWith('shelf:') ? toArr.length : Math.max(0, targetIndex)
+      toArr.splice(insertAt, 0, { ...moving, location_id: targetLocationId })
+      next[from.locationId] = fromArr.map((b, i) => ({ ...b, shelf_position: i }))
+      next[targetLocationId] = toArr.map((b, i) => ({ ...b, shelf_position: i }))
+    }
+
+    setLocalByLocation(next)
+  }
+
+  async function onDragEnd(event: DragEndEvent) {
+    if (!reorderMode || selectMode) { setActiveDragId(null); return }
+    const activeId = String(event.active.id)
+    const overId = event.over?.id ? String(event.over.id) : null
+    if (!overId || activeId === overId) { setActiveDragId(null); return }
+
+    const from = findBook(activeId)
+    if (!from) { setActiveDragId(null); return }
+
+    let targetLocationId: string | null = null
+    let targetIndex = 0
+
+    if (overId.startsWith('shelf:')) {
+      targetLocationId = overId.slice('shelf:'.length)
+      targetIndex = (localByLocation[targetLocationId] ?? []).length
+    } else {
+      const to = findBook(overId)
+      if (!to) { setActiveDragId(null); return }
+      targetLocationId = to.locationId
+      targetIndex = to.index
+    }
+
+    if (!targetLocationId) { setActiveDragId(null); return }
+
+    const snapshot = dragSnapshot ?? localByLocation
+    const next = { ...localByLocation }
+
+    if (from.locationId === targetLocationId) {
+      const arr = [...next[from.locationId]]
+      const fromIndex = arr.findIndex((b) => b.id === activeId)
+      const toIndex = overId.startsWith('shelf:') ? arr.length - 1 : targetIndex
+      next[from.locationId] = arrayMove(arr, fromIndex, Math.max(0, toIndex)).map((b, i) => ({ ...b, shelf_position: i }))
+    } else {
+      const fromArr = [...(next[from.locationId] ?? [])]
+      const idx = fromArr.findIndex((b) => b.id === activeId)
+      if (idx < 0) return
+      const [moving] = fromArr.splice(idx, 1)
+      const toArr = [...(next[targetLocationId] ?? [])]
+      const insertAt = overId.startsWith('shelf:') ? toArr.length : Math.max(0, targetIndex)
+      toArr.splice(insertAt, 0, { ...moving, location_id: targetLocationId })
+      next[from.locationId] = fromArr.map((b, i) => ({ ...b, shelf_position: i }))
+      next[targetLocationId] = toArr.map((b, i) => ({ ...b, shelf_position: i }))
+    }
+
+    setLocalByLocation(next)
+
+    try {
+      await updateBook(activeId, {
+        location_id: targetLocationId,
+        shelf_position: overId.startsWith('shelf:') ? ((next[targetLocationId]?.length ?? 1) - 1) : targetIndex,
+      })
+    } catch (e) {
+      setLocalByLocation(snapshot)
+      showError(t('books.error'))
+    } finally {
+      setActiveDragId(null)
+    }
+  }
+
   return (
     <div className="container" style={{ margin: '0 auto', width: '100%', maxWidth: 960 }}>
       <div className="sh-page-header">
-        <button
-          onClick={() => navigate(ROUTES.books)}
-          className="sh-back-btn hover-lift"
-        >
-          ←
-        </button>
+        <button onClick={() => navigate(ROUTES.books)} className="sh-back-btn hover-lift">←</button>
         <h2 className="text-h2" style={{ marginBottom: 0 }}>{t('bookshelf.title')}</h2>
         <div style={{ flex: 1 }} />
         {activeTab === 'shelves' && visibleBooks.length > 0 && (
-          <button
-            type="button"
-            onClick={selectMode ? clearSelection : () => setSelectMode(true)}
-            className="sh-btn-secondary"
-            style={{ marginRight: 8 }}
-          >
-            {selectMode ? t('bulk.deselect_all') : t('bulk.select_mode', 'Select')}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !selectMode
+                setSelectMode(next)
+                if (next) setReorderMode(false)
+                if (!next) setSelectedIds(new Set())
+              }}
+              className="sh-btn-secondary"
+              style={{ marginRight: 8 }}
+            >
+              {selectMode ? t('bulk.deselect_all') : t('bulk.select_mode', 'Select')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !reorderMode
+                setReorderMode(next)
+                if (next) clearSelection()
+              }}
+              className="sh-btn-secondary"
+              style={{ marginRight: 8, borderColor: reorderMode ? 'var(--sh-primary)' : undefined }}
+            >
+              {reorderMode ? t('books.reorder_done', 'Done reordering') : t('books.reorder_mode', 'Reorder')}
+            </button>
+          </>
         )}
-        <button
-          onClick={() => navigate(ROUTES.scanShelf)}
-          className="sh-btn-primary hover-scale"
-          style={{ padding: '10px 20px', fontSize: 14 }}
-        >
+        <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: '10px 20px', fontSize: 14 }}>
           + {t('bookshelf.scan_shelf')}
         </button>
       </div>
 
       <div className="sh-underline-tabs" style={{ marginBottom: 24 }}>
-        <button
-          type='button'
-          className={`sh-underline-tab${activeTab === 'shelves' ? ' sh-underline-tab--active' : ''}`}
-          onClick={() => navigate(ROUTES.bookshelfView)}
-        >
-          {t('bookshelf.tab_shelves')}
-        </button>
-        <button
-          type='button'
-          className={`sh-underline-tab${activeTab === 'locations' ? ' sh-underline-tab--active' : ''}`}
-          onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}
-        >
-          {t('bookshelf.tab_locations')}
-        </button>
+        <button type='button' className={`sh-underline-tab${activeTab === 'shelves' ? ' sh-underline-tab--active' : ''}`} onClick={() => navigate(ROUTES.bookshelfView)}>{t('bookshelf.tab_shelves')}</button>
+        <button type='button' className={`sh-underline-tab${activeTab === 'locations' ? ' sh-underline-tab--active' : ''}`} onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}>{t('bookshelf.tab_locations')}</button>
       </div>
 
       {activeTab === 'locations' ? (
@@ -153,22 +320,9 @@ export function BookshelfViewPage() {
       ) : (<>
         {roomNames.length > 1 && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setSelectedRoom('')}
-              className={`sh-pill${!selectedRoom ? ' sh-pill--active' : ''}`}
-              style={{ padding: '8px 16px', fontSize: 13 }}
-            >
-              {t('tabs.all')}
-            </button>
+            <button onClick={() => setSelectedRoom('')} className={`sh-pill${!selectedRoom ? ' sh-pill--active' : ''}`} style={{ padding: '8px 16px', fontSize: 13 }}>{t('tabs.all')}</button>
             {roomNames.map(room => (
-              <button
-                key={room}
-                onClick={() => setSelectedRoom(room)}
-                className={`sh-pill${selectedRoom === room ? ' sh-pill--active' : ''}`}
-                style={{ padding: '8px 16px', fontSize: 13 }}
-              >
-                {room}
-              </button>
+              <button key={room} onClick={() => setSelectedRoom(room)} className={`sh-pill${selectedRoom === room ? ' sh-pill--active' : ''}`} style={{ padding: '8px 16px', fontSize: 13 }}>{room}</button>
             ))}
           </div>
         )}
@@ -178,83 +332,84 @@ export function BookshelfViewPage() {
             {t('bulk.select_mode_hint', 'Select mode active — click books to select them')}
           </div>
         )}
+        {reorderMode && (
+          <div style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--sh-text-muted)' }}>
+            {t('books.reorder_hint', 'Drag books to reorder. On touch devices, long-press to start drag.')}
+          </div>
+        )}
 
         {Object.keys(filteredTree).length === 0 && (
           <div className="sh-empty-state" style={{ padding: 60 }}>
-            <div className="sh-empty-state__icon">
-              <EmptyShelfIcon size={56} />
-            </div>
+            <div className="sh-empty-state__icon"><EmptyShelfIcon size={56} /></div>
             <h3 className="text-h3">{t('bookshelf.empty_title')}</h3>
             <p className="text-small">{t('bookshelf.empty_desc')}</p>
           </div>
         )}
 
-        {Object.entries(filteredTree).map(([room, furnitureMap]) => (
-          <div key={room} style={{ marginBottom: 40 }}>
-            <h3 className="text-h3" style={{ marginBottom: 16, color: 'var(--sh-text-main)' }}>{room}</h3>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { if (dragSnapshot) setLocalByLocation(dragSnapshot); setActiveDragId(null); setActiveDragBook(null); setDragSnapshot(null) }}>
+          {Object.entries(filteredTree).map(([room, furnitureMap]) => (
+            <div key={room} style={{ marginBottom: 40 }}>
+              <h3 className="text-h3" style={{ marginBottom: 16, color: 'var(--sh-text-main)' }}>{room}</h3>
 
-            {Object.entries(furnitureMap).map(([furniture, shelfLocations]) => (
-              <div
-                key={furniture}
-                className="sh-card-panel"
-                style={{ marginBottom: 24, borderRadius: 'var(--sh-radius-lg)', overflow: 'hidden' }}
-              >
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--sh-border)', background: 'var(--sh-bg)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>📖</span>
-                  <span style={{ fontWeight: 600, fontSize: 15 }}>{furniture}</span>
-                  <span style={{ fontSize: 12, color: 'var(--sh-text-muted)', marginLeft: 4 }}>
-                    ({shelfLocations.reduce((sum, loc) => sum + (booksByLocation[loc.id]?.length ?? 0), 0)} {t('bookshelf.books_count')})
-                  </span>
-                </div>
+              {Object.entries(furnitureMap).map(([furniture, shelfLocations]) => (
+                <div key={furniture} className="sh-card-panel" style={{ marginBottom: 24, borderRadius: 'var(--sh-radius-lg)', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--sh-border)', background: 'var(--sh-bg)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>📖</span>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{furniture}</span>
+                  </div>
 
-                {shelfLocations.map((loc) => {
-                  const shelfBooks = booksByLocation[loc.id] ?? []
-                  const isHighlighted = preselectedLocationId === loc.id
+                  {shelfLocations.map((loc) => {
+                    const shelfBooks = localByLocation[loc.id] ?? []
+                    const isHighlighted = preselectedLocationId === loc.id
 
-                  return (
-                    <div
-                      key={loc.id}
-                      style={{ borderBottom: '1px solid var(--sh-border)', padding: '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s' }}
-                    >
-                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', marginBottom: 8 }}>
-                        {loc.shelf}
+                    return (
+                      <div key={loc.id} style={{ borderBottom: '1px solid var(--sh-border)', padding: '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s' }}>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', marginBottom: 8 }}>{loc.shelf}</div>
+
+                        {shelfBooks.length === 0 ? (
+                          <div style={{ fontSize: 12, color: 'var(--sh-text-muted)', fontStyle: 'italic', padding: '8px 0' }}>{t('bookshelf.empty_shelf')}</div>
+                        ) : (
+                          <SortableContext items={shelfBooks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
+                            <DroppableShelfRow shelfId={loc.id}>
+                              {shelfBooks.map((book) => (
+                                <SortableBookSpine
+                                  key={book.id}
+                                  id={book.id}
+                                  reorderMode={reorderMode && !selectMode}
+                                  book={book}
+                                  highlighted={highlightBookId === book.id}
+                                  selected={selectedIds.has(book.id)}
+                                  focusRef={highlightBookId === book.id ? highlightSpineRef : undefined}
+                                  onClick={() => (selectMode ? toggleSelect(book.id) : (reorderMode ? undefined : navigate(getBookDetailRoute(book.id))))}
+                                />
+                              ))}
+                            </DroppableShelfRow>
+                          </SortableContext>
+                        )}
                       </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          ))}
 
-                      {shelfBooks.length === 0 ? (
-                        <div style={{ fontSize: 12, color: 'var(--sh-text-muted)', fontStyle: 'italic', padding: '8px 0' }}>
-                          {t('bookshelf.empty_shelf')}
-                        </div>
-                      ) : (
-                        <div style={{
-                          display: 'flex',
-                          gap: 5,
-                          overflowX: 'auto',
-                          paddingBottom: 0,
-                          paddingTop: 4,
-                          alignItems: 'flex-end',
-                          borderBottom: '3px solid var(--sh-border-2)',
-                          backgroundImage: 'linear-gradient(to top, var(--sh-surface-elevated) 3px, transparent 3px)',
-                        }}>
-                          {shelfBooks.map((book) => (
-                            <BookSpine
-                              key={book.id}
-                              book={book}
-                              highlighted={highlightBookId === book.id}
-                              focusRef={highlightBookId === book.id ? highlightSpineRef : undefined}
-                              onClick={() => (selectMode ? toggleSelect(book.id) : navigate(getBookDetailRoute(book.id)))}
-                              selectable={selectMode}
-                              selected={selectedIds.has(book.id)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        ))}
+          {createPortal(
+            <DragOverlay adjustScale={false} zIndex={12000}>
+              {activeDragBook ? (
+                <div style={{ pointerEvents: 'none', transform: 'rotate(1deg)', opacity: 0.98 }}>
+                  <BookSpine
+                    book={activeDragBook}
+                    onClick={() => {}}
+                    highlighted={false}
+                    selected={false}
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>,
+            document.body,
+          )}
+        </DndContext>
 
         <div style={{ height: 80 }} />
 
@@ -264,12 +419,7 @@ export function BookshelfViewPage() {
             <button type="button" className="sh-bulk-toolbar__btn" onClick={allVisibleSelected ? () => setSelectedIds(new Set()) : selectAllVisible}>
               {allVisibleSelected ? t('bulk.deselect_all') : t('bulk.select_all')}
             </button>
-            <button
-              type="button"
-              className="sh-bulk-toolbar__btn"
-              onClick={() => { setBulkMoveTarget(''); setBulkInsertPosition(''); setBulkMoveOpen(true) }}
-              disabled={selectedIds.size === 0}
-            >
+            <button type="button" className="sh-bulk-toolbar__btn" onClick={() => { setBulkMoveTarget(''); setBulkInsertPosition(''); setBulkMoveOpen(true) }} disabled={selectedIds.size === 0}>
               {t('bulk.move', { count: selectedIds.size })}
             </button>
             <button type="button" className="sh-bulk-toolbar__close" onClick={clearSelection} aria-label="Close">×</button>
@@ -281,20 +431,11 @@ export function BookshelfViewPage() {
           <label className="sh-form-label" style={{ marginTop: 12 }}>{t('bulk.move_to')}</label>
           <select className="sh-select" value={bulkMoveTarget} onChange={(e) => setBulkMoveTarget(e.target.value)} style={{ marginBottom: 12 }}>
             <option value="">{t('bulk.no_location')}</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>{loc.room} / {loc.furniture} / {loc.shelf}</option>
-            ))}
+            {locations.map((loc) => (<option key={loc.id} value={loc.id}>{loc.room} / {loc.furniture} / {loc.shelf}</option>))}
           </select>
 
           <label className="sh-form-label">{t('bulk.insert_position_label', 'Insert at position')}</label>
-          <input
-            className="sh-input"
-            inputMode="numeric"
-            placeholder={t('bulk.insert_position_placeholder', 'leave empty = append to end')}
-            value={bulkInsertPosition}
-            onChange={(e) => setBulkInsertPosition(e.target.value.replace(/\D/g, ''))}
-            style={{ marginBottom: 8 }}
-          />
+          <input className="sh-input" inputMode="numeric" placeholder={t('bulk.insert_position_placeholder', 'leave empty = append to end')} value={bulkInsertPosition} onChange={(e) => setBulkInsertPosition(e.target.value.replace(/\D/g, ''))} style={{ marginBottom: 8 }} />
           <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
             {t('bulk.insert_position_max', { max: visibleInTargetCount })}
           </p>
@@ -307,9 +448,7 @@ export function BookshelfViewPage() {
                   ids: [...selectedIds],
                   location_id: bulkMoveTarget || null,
                   insert_position: bulkInsertPosition === '' ? null : Number(bulkInsertPosition),
-                }, {
-                  onSuccess: () => { setBulkMoveOpen(false); clearSelection() },
-                })
+                }, { onSuccess: () => { setBulkMoveOpen(false); clearSelection() } })
               }}
               className="sh-btn-primary"
               disabled={bulkMoveMutation.isPending || selectedIds.size === 0}
@@ -318,13 +457,79 @@ export function BookshelfViewPage() {
             </button>
           </div>
         </Modal>
-
       </>)}
     </div>
   )
 }
 
-function BookSpine({ book, onClick, highlighted = false, focusRef, selectable = false, selected = false }: { book: Book; onClick: () => void; highlighted?: boolean; focusRef?: RefObject<HTMLButtonElement | null>; selectable?: boolean; selected?: boolean }) {
+
+function DroppableShelfRow({ shelfId, children }: { shelfId: string; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `shelf:${shelfId}` })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        display: 'flex',
+        gap: 5,
+        overflowX: 'auto',
+        paddingBottom: 0,
+        paddingTop: 4,
+        alignItems: 'flex-end',
+        borderBottom: '3px solid var(--sh-border-2)',
+        backgroundImage: 'linear-gradient(to top, var(--sh-surface-elevated) 3px, transparent 3px)',
+        boxShadow: isOver ? 'inset 0 0 0 2px var(--sh-border-focus)' : undefined,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function SortableBookSpine({
+  id,
+  reorderMode,
+  ...props
+}: {
+  id: string
+  reorderMode: boolean
+  book: Book
+  onClick: () => void
+  highlighted?: boolean
+  selected?: boolean
+  focusRef?: RefObject<HTMLButtonElement | null>
+}) {
+  const sortable = useSortable({ id, disabled: !reorderMode })
+  const style = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.72 : 1,
+  }
+
+  return (
+    <div ref={sortable.setNodeRef} style={style}>
+      <BookSpine
+        {...props}
+        draggableProps={reorderMode ? { ...sortable.attributes, ...sortable.listeners } : undefined}
+      />
+    </div>
+  )
+}
+
+function BookSpine({
+  book,
+  onClick,
+  highlighted = false,
+  focusRef,
+  selected = false,
+  draggableProps,
+}: {
+  book: Book
+  onClick: () => void
+  highlighted?: boolean
+  focusRef?: RefObject<HTMLButtonElement | null>
+  selected?: boolean
+  draggableProps?: Record<string, unknown>
+}) {
   const hasCover = Boolean(book.cover_image_url)
 
   const color = useMemo(() => {
@@ -362,30 +567,13 @@ function BookSpine({ book, onClick, highlighted = false, focusRef, selectable = 
           : '1px 1px 3px rgba(0,0,0,0.12), inset -1px 0 2px rgba(0,0,0,0.08)',
         flexShrink: 0,
       }}
+      {...(draggableProps ?? {})}
     >
       <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 10, fontWeight: 700, color: hasCover ? 'white' : 'rgba(255,255,255,0.9)', textShadow: '0 1px 2px rgba(0,0,0,0.45)', zIndex: 2 }}>#{(book.shelf_position ?? 0) + 1}</span>
       {hasCover ? (
-        <img
-          src={book.cover_image_url ?? ''}
-          alt={book.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          loading='lazy'
-        />
+        <img src={book.cover_image_url ?? ''} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading='lazy' />
       ) : (
-        <span style={{
-          writingMode: 'vertical-rl',
-          textOrientation: 'mixed',
-          color: 'white',
-          fontSize: 10,
-          fontWeight: 600,
-          lineHeight: 1.15,
-          textAlign: 'center',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          maxHeight: '100%',
-          letterSpacing: '0.01em',
-          textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-        }}>
+        <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', color: 'white', fontSize: 10, fontWeight: 600, lineHeight: 1.15, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', maxHeight: '100%', letterSpacing: '0.01em', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
           {displayTitle}
         </span>
       )}
