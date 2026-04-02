@@ -891,3 +891,11 @@ Stejná jako Sprint 1+2:
 + build frontend + deploy + smoke flow:
 `Books → search s překlepem → advanced filtry → Book detail (desktop side-by-side) → Show in digital twin`
 
+
+
+## Production hardening addendum (2026-04-02)
+- Added CI frontend build + smoke regression suite gate.
+- Added incident runbook (`docs/runbooks/incidents.md`).
+- Added ordering integrity checker script (`scripts/check_shelf_ordering_integrity.py`).
+- Added bundle budget checker (`scripts/check_bundle_budget.mjs`).
+- Added migration for partial unique index on `(location_id, shelf_position)` when both are not null.

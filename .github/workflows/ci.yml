@@ -52,6 +52,12 @@ jobs:
           TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
         run: pytest --cov=app --cov-fail-under=80 tests
 
+      - name: Check shelf ordering integrity
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
+        run: python ../scripts/check_shelf_ordering_integrity.py
+
 
       - name: Generate OpenAPI artifact
         run: python scripts/generate_openapi.py
@@ -84,6 +90,14 @@ jobs:
       - name: Test
         working-directory: frontend
         run: npm test -- --run
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Bundle size budget check
+        working-directory: frontend
+        run: node ../scripts/check_bundle_budget.mjs
 
   security-scan:
     runs-on: ubuntu-latest
@@ -160,6 +174,14 @@ jobs:
       - name: Install Playwright browser
         working-directory: e2e
         run: npx playwright install --with-deps chromium
+
+      - name: Run E2E smoke regressions
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_ADMIN_EMAIL: admin@example.com
+          E2E_ADMIN_PASSWORD: change-me
+        run: npx playwright test tests/smoke-regressions.spec.ts
 
       - name: Run E2E tests
         working-directory: e2e
