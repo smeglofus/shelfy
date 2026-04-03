@@ -15,6 +15,7 @@ from app.api.auth import router as auth_router
 from app.api.books import router as books_router
 from app.api.health import router as health_router
 from app.api.jobs import router as jobs_router
+from app.api.libraries import router as libraries_router
 from app.api.locations import router as locations_router
 from app.routers.loans import router as loans_router
 from app.api.enrich import router as enrich_router
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_router)
     app.include_router(telemetry_router)
     app.include_router(jobs_router)
+    app.include_router(libraries_router)
     return app
 
 

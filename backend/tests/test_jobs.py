@@ -17,6 +17,7 @@ from app.main import app
 from app.models.book_image import BookImage
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.models.user import User
+from app.services.library import create_personal_library
 
 
 def _require_test_database_url() -> str:
@@ -81,7 +82,10 @@ def override_dependencies(
 
 
 async def _seed_user(session: AsyncSession) -> None:
-    session.add(User(email="admin@example.com", hashed_password=get_password_hash("secret")))
+    user = User(email="admin@example.com", hashed_password=get_password_hash("secret"))
+    session.add(user)
+    await session.flush()
+    await create_personal_library(session, user)
     await session.commit()
 
 
