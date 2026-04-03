@@ -15,4 +15,5 @@ vi.mock('react-i18next', () => ({
     i18n: { language: 'cs', changeLanguage: vi.fn() },
   }),
   Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
+  initReactI18next: { type: '3rdParty', init: vi.fn() },
 }))

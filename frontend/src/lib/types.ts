@@ -231,3 +231,34 @@ export interface EnrichBookResponse {
   book_id: string
   status: string
 }
+
+// Onboarding
+export interface OnboardingStatus {
+  should_show: boolean
+  completed_at: string | null
+  skipped_at: string | null
+}
+
+// Shared library
+export type LibraryRole = 'owner' | 'editor' | 'viewer'
+
+export interface Library {
+  id: string
+  name: string
+  role: LibraryRole
+}
+
+export interface LibraryMember {
+  user_id: string
+  email: string
+  role: LibraryRole
+}
+
+export interface AddMemberRequest {
+  email: string
+  role: LibraryRole
+}
+
+export interface UpdateMemberRoleRequest {
+  role: LibraryRole
+}

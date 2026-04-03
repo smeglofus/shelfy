@@ -3,6 +3,7 @@ import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 import { clearTokens, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from './auth'
 import type {
   AccessTokenResponse,
+  AddMemberRequest,
   Book,
   BookCreateRequest,
   BookListParams,
@@ -15,6 +16,8 @@ import type {
   EnrichBookResponse,
   EnrichResponse,
   JobStatusResponse,
+  Library,
+  LibraryMember,
   Loan,
   LoanCreateRequest,
   LoanReturnRequest,
@@ -22,16 +25,28 @@ import type {
   LocationCreateRequest,
   LocationUpdateRequest,
   LoginRequest,
+  OnboardingStatus,
+  PurgeLibraryResponse,
   RegisterRequest,
   ShelfScanConfirmRequest,
   ShelfScanConfirmResponse,
   ShelfScanResponse,
   ShelfScanResultResponse,
   TokenResponse,
+  UpdateMemberRoleRequest,
   UploadJobResponse,
   User,
-  PurgeLibraryResponse,
 } from './types'
+
+export const ACTIVE_LIBRARY_ID_KEY = 'shelfy.activeLibraryId'
+
+export function getActiveLibraryId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_LIBRARY_ID_KEY)
+  } catch {
+    return null
+  }
+}
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
 
@@ -94,6 +109,11 @@ apiClient.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+
+  const libraryId = getActiveLibraryId()
+  if (libraryId) {
+    config.headers['X-Library-Id'] = libraryId
   }
 
   return config
@@ -306,4 +326,54 @@ export async function listBooksByLocation(locationId: string): Promise<Book[]> {
     params: { location_id: locationId, page: 1, page_size: 100 },
   })
   return response.data.items
+}
+
+// Onboarding
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  const response = await apiClient.get<OnboardingStatus>('/api/v1/settings/onboarding')
+  return response.data
+}
+
+export async function completeOnboarding(): Promise<OnboardingStatus> {
+  const response = await apiClient.post<OnboardingStatus>('/api/v1/settings/onboarding/complete')
+  return response.data
+}
+
+export async function skipOnboarding(): Promise<OnboardingStatus> {
+  const response = await apiClient.post<OnboardingStatus>('/api/v1/settings/onboarding/skip')
+  return response.data
+}
+
+export async function resetOnboarding(): Promise<OnboardingStatus> {
+  const response = await apiClient.post<OnboardingStatus>('/api/v1/settings/onboarding/reset')
+  return response.data
+}
+
+// Libraries
+export async function listLibraries(): Promise<Library[]> {
+  const response = await apiClient.get<Library[]>('/api/v1/libraries')
+  return response.data
+}
+
+export async function listLibraryMembers(libraryId: string): Promise<LibraryMember[]> {
+  const response = await apiClient.get<LibraryMember[]>(`/api/v1/libraries/${libraryId}/members`)
+  return response.data
+}
+
+export async function addLibraryMember(libraryId: string, payload: AddMemberRequest): Promise<LibraryMember> {
+  const response = await apiClient.post<LibraryMember>(`/api/v1/libraries/${libraryId}/members`, payload)
+  return response.data
+}
+
+export async function updateLibraryMember(
+  libraryId: string,
+  userId: string,
+  payload: UpdateMemberRoleRequest,
+): Promise<LibraryMember> {
+  const response = await apiClient.patch<LibraryMember>(`/api/v1/libraries/${libraryId}/members/${userId}`, payload)
+  return response.data
+}
+
+export async function removeLibraryMember(libraryId: string, userId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/libraries/${libraryId}/members/${userId}`)
 }
