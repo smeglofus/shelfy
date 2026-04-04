@@ -21,6 +21,28 @@ def _get_s3_client() -> BaseClient:
     )
 
 
+def _ensure_lifecycle_ttl(client: BaseClient, bucket: str, days: int = 7) -> None:
+    """Ensure bucket has lifecycle rule to expire objects after `days`."""
+    config = {
+        "Rules": [
+            {
+                "ID": "expire-all-objects-7d",
+                "Filter": {"Prefix": ""},
+                "Status": "Enabled",
+                "Expiration": {"Days": days},
+            }
+        ]
+    }
+    try:
+        client.put_bucket_lifecycle_configuration(
+            Bucket=bucket,
+            LifecycleConfiguration=config,
+        )
+        logger.info("minio_bucket_lifecycle_set", bucket=bucket, expire_days=days)
+    except ClientError:
+        logger.exception("minio_bucket_lifecycle_set_failed", bucket=bucket, expire_days=days)
+
+
 def ensure_bucket_exists() -> None:
     settings = get_settings()
     client = _get_s3_client()
@@ -38,6 +60,8 @@ def ensure_bucket_exists() -> None:
             create_code = create_exc.response.get("Error", {}).get("Code")
             if create_code not in {"BucketAlreadyOwnedByYou", "BucketAlreadyExists"}:
                 raise
+
+    _ensure_lifecycle_ttl(client, settings.minio_bucket, days=7)
 
 
 def upload_image_bytes(*, object_name: str, payload: bytes, content_type: str) -> str:
