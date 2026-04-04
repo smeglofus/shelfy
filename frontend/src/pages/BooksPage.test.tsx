@@ -17,10 +17,14 @@ vi.mock('../lib/api', () => ({
   listLocations: vi.fn(),
   uploadBookImage: vi.fn(),
   getJobStatus: vi.fn(),
+  getOnboardingStatus: vi.fn(),
+  completeOnboarding: vi.fn(),
+  skipOnboarding: vi.fn(),
+  resetOnboarding: vi.fn(),
   formatApiError: vi.fn(() => 'API error'),
 }))
 
-import { deleteBook, listBooks, listLocations } from '../lib/api'
+import { deleteBook, getOnboardingStatus, listBooks, listLocations } from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -78,6 +82,7 @@ describe('BooksPage', () => {
     vi.mocked(listBooks).mockResolvedValue(booksResponse)
     vi.mocked(listLocations).mockResolvedValue(locations)
     vi.mocked(deleteBook).mockResolvedValue()
+    vi.mocked(getOnboardingStatus).mockResolvedValue({ should_show: false, completed_at: '2024-01-01T00:00:00Z', skipped_at: null })
   })
 
   afterEach(() => {

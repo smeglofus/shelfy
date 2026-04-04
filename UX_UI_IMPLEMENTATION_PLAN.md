@@ -864,6 +864,60 @@ Stejná jako Sprint 1+2:
 **TS errors:** 13 (beze změny)
 **DoD:** ✅ multi-select; ✅ bulk delete/move/status; ✅ floating toolbar; ✅ toast po operaci; ✅ optimistic invalidation
 
+### B4: Onboarding Wizard ✅ DONE (2026-04-03)
+**Cíl:** Zlepšit first-time experience — 3-krokový wizard pro nové uživatele s prázdnou knihovnou.
+
+**Co bylo provedeno:**
+
+1. **Backend — model** (`app/models/user.py`):
+   - `onboarding_completed_at` (nullable DateTime TZ)
+   - `onboarding_skipped_at` (nullable DateTime TZ)
+
+2. **Backend — migrace** (`alembic/versions/20260403_000011_add_onboarding_fields.py`):
+   - ALTER TABLE users ADD COLUMN onboarding_completed_at, onboarding_skipped_at
+
+3. **Backend — schéma** (`app/schemas/settings.py`):
+   - `OnboardingStatusResponse` (should_show, completed_at, skipped_at)
+
+4. **Backend — 4 endpointy** (`app/api/settings.py`):
+   - `GET /api/v1/settings/onboarding` — vrací should_show + timestampy
+   - `POST /api/v1/settings/onboarding/complete`
+   - `POST /api/v1/settings/onboarding/skip`
+   - `POST /api/v1/settings/onboarding/reset`
+   - Vše za `Depends(get_current_user)`
+
+5. **Frontend — typy** (`lib/types.ts`): `OnboardingStatus` interface
+
+6. **Frontend — API** (`lib/api.ts`): `getOnboardingStatus`, `completeOnboarding`, `skipOnboarding`, `resetOnboarding`
+
+7. **Frontend — hook** (`hooks/useOnboarding.ts`): `useOnboardingStatus`, `useCompleteOnboarding`, `useSkipOnboarding`, `useResetOnboarding`
+
+8. **Frontend — komponenta** (`components/OnboardingWizard.tsx`):
+   - 3-step wizard v modalu (size="md")
+   - Ikony: EmptyLibraryIcon, LocationPinIcon, CameraIcon (reuse)
+   - Stepper dots, fade animace, success screen
+   - Skip All / Next / Back / CTA navigace na příslušné stránky
+   - localStorage anti-annoyance flag
+
+9. **Frontend — integrace do BooksPage.tsx**:
+   - Zobrazí se pouze když: `total === 0 && onboardingStatus.should_show === true && !localStorage dismissed`
+   - Neblokuje existující flow
+
+10. **Frontend — SettingsPage.tsx**:
+    - Nový article blok „Spustit onboarding znovu" s reset tlačítkem
+
+11. **Frontend — i18n** (`cs.json`, `en.json`): klíče v sekci `"onboarding"` (title, subtitle, step1-3, skip, success, settings_reset, …)
+
+12. **Frontend — CSS** (`shelfy.css`): `.sh-onboarding-*` třídy (header, stepper, dot, connector, step, icon, actions, success, checkmark) + dark mode varianty
+
+13. **Testy:**
+    - Backend: 7 testů (auth, initial state, complete, skip, reset, full cycle) — vše prošlo
+    - Frontend: 6 testů OnboardingWizard (render, navigace, skip, complete) — vše prošlo
+    - E2E: `e2e/tests/onboarding.spec.ts` (settings reset, toast, wizard trigger)
+
+**TS errors:** 13 (beze změny)
+**DoD:** ✅ wizard trigger na prázdné knihovně; ✅ 3-step stepper; ✅ skip/complete/reset; ✅ settings reset; ✅ localStorage anti-annoyance; ✅ dark mode; ✅ testy
+
 ---
 
 ## Doporučené pořadí commitů (Sprint 3)

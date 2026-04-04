@@ -4,7 +4,7 @@ from datetime import date, datetime
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -17,6 +17,12 @@ class Loan(Base):
     __tablename__ = "loans"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    library_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("libraries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     book_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("books.id", ondelete="CASCADE"),

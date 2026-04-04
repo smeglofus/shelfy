@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -31,11 +31,21 @@ class BookProcessingStatus(str, Enum):
 
 class Book(Base):
     __tablename__ = "books"
+    __table_args__ = (
+        UniqueConstraint("library_id", "isbn", name="uq_books_isbn_per_library"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    library_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("libraries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     author: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True, index=True)
+    # Unique constraint is now per-library: (library_id, isbn) — enforced by DB index
+    isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     publisher: Mapped[str | None] = mapped_column(String(300), nullable=True)
     language: Mapped[str | None] = mapped_column(String(10), nullable=True)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)

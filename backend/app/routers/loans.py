@@ -3,9 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.library import require_editor_library
 from app.db.session import get_db_session
-from app.models.user import User
 from app.schemas.loan import LoanCreate, LoanResponse, LoanReturn
 from app.services.loan_service import create_loan, delete_loan, list_loans, return_loan
 
@@ -17,9 +16,9 @@ async def create_loan_endpoint(
     book_id: uuid.UUID,
     payload: LoanCreate,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> LoanResponse:
-    loan = await create_loan(session, book_id, payload)
+    loan = await create_loan(session, book_id, payload, library_id)
     return LoanResponse.model_validate(loan)
 
 
@@ -27,9 +26,9 @@ async def create_loan_endpoint(
 async def list_loans_endpoint(
     book_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> list[LoanResponse]:
-    loans = await list_loans(session, book_id)
+    loans = await list_loans(session, book_id, library_id)
     return [LoanResponse.model_validate(loan) for loan in loans]
 
 
@@ -39,9 +38,9 @@ async def return_loan_endpoint(
     loan_id: uuid.UUID,
     payload: LoanReturn,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> LoanResponse:
-    loan = await return_loan(session, book_id, loan_id, payload)
+    loan = await return_loan(session, book_id, loan_id, payload, library_id)
     return LoanResponse.model_validate(loan)
 
 
@@ -50,7 +49,7 @@ async def delete_loan_endpoint(
     book_id: uuid.UUID,
     loan_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> Response:
-    await delete_loan(session, book_id, loan_id)
+    await delete_loan(session, book_id, loan_id, library_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

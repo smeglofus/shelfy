@@ -28,7 +28,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { EmptyShelfIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
 import { useBooks, useBulkMoveBooks } from '../hooks/useBooks'
-import { updateBook } from '../lib/api'
+import { bulkReorderBooks, updateBook } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
@@ -40,6 +40,7 @@ export function BookshelfViewPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
 
   const { data: locations = [] } = useLocations()
   const { data: booksData } = useBooks({ pageSize: 100 })
@@ -53,6 +54,7 @@ export function BookshelfViewPage() {
   const [selectedRoom, setSelectedRoom] = useState<string>('')
   const [selectMode, setSelectMode] = useState(false)
   const [reorderMode, setReorderMode] = useState(false)
+  const [savingReorder, setSavingReorder] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
   const [bulkMoveTarget, setBulkMoveTarget] = useState<string>('')
@@ -102,6 +104,12 @@ export function BookshelfViewPage() {
 
   const [localByLocation, setLocalByLocation] = useState<Record<string, Book[]>>({})
   useEffect(() => setLocalByLocation(booksByLocation), [booksByLocation])
+
+  const originalBookById = useMemo(() => {
+    const map = new Map<string, { location_id: string | null; shelf_position: number | null }>()
+    for (const book of allBooks) map.set(book.id, { location_id: book.location_id, shelf_position: book.shelf_position })
+    return map
+  }, [allBooks])
 
   const roomNames = Object.keys(locationTree)
   const filteredTree = selectedRoom ? { [selectedRoom]: locationTree[selectedRoom] } : locationTree
@@ -211,6 +219,32 @@ export function BookshelfViewPage() {
     setLocalByLocation(next)
   }
 
+  async function persistCurrentReorder() {
+    const changed: Array<{ id: string; location_id: string; shelf_position: number }> = []
+
+    for (const [locationId, books] of Object.entries(localByLocation)) {
+      books.forEach((book, index) => {
+        const prev = originalBookById.get(book.id)
+        if (!prev || prev.location_id !== locationId || (prev.shelf_position ?? null) !== index) {
+          changed.push({ id: book.id, location_id: locationId, shelf_position: index })
+        }
+      })
+    }
+
+    if (changed.length === 0) return
+
+    setSavingReorder(true)
+    try {
+      await bulkReorderBooks({ items: changed })
+      showSuccess(t('books.reorder_saved', 'Reordering saved'))
+    } catch {
+      setLocalByLocation(booksByLocation)
+      showError(t('books.error'))
+    } finally {
+      setSavingReorder(false)
+    }
+  }
+
   async function onDragEnd(event: DragEndEvent) {
     if (!reorderMode || selectMode) { setActiveDragId(null); return }
     const activeId = String(event.active.id)
@@ -293,15 +327,20 @@ export function BookshelfViewPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                const next = !reorderMode
-                setReorderMode(next)
-                if (next) clearSelection()
+              onClick={async () => {
+                if (reorderMode) {
+                  await persistCurrentReorder()
+                  setReorderMode(false)
+                  return
+                }
+                setReorderMode(true)
+                clearSelection()
               }}
               className="sh-btn-secondary"
-              style={{ marginRight: 8, borderColor: reorderMode ? 'var(--sh-primary)' : undefined }}
+              disabled={savingReorder}
+              style={{ marginRight: 8, borderColor: reorderMode ? 'var(--sh-primary)' : undefined, opacity: savingReorder ? 0.7 : 1 }}
             >
-              {reorderMode ? t('books.reorder_done', 'Done reordering') : t('books.reorder_mode', 'Reorder')}
+              {savingReorder ? t('books.saving', 'Saving...') : (reorderMode ? t('books.reorder_done', 'Done reordering') : t('books.reorder_mode', 'Reorder'))}
             </button>
           </>
         )}

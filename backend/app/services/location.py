@@ -11,14 +11,22 @@ from app.schemas.location import LocationCreateRequest, LocationUpdateRequest
 logger = structlog.get_logger()
 
 
-async def list_locations(session: AsyncSession) -> list[Location]:
-    result = await session.execute(select(Location).order_by(Location.room, Location.furniture, Location.display_order, Location.shelf))
+async def list_locations(session: AsyncSession, library_id: uuid.UUID) -> list[Location]:
+    result = await session.execute(
+        select(Location)
+        .where(Location.library_id == library_id)
+        .order_by(Location.room, Location.furniture, Location.display_order, Location.shelf)
+    )
     return list(result.scalars().all())
 
 
-async def create_location(session: AsyncSession, payload: LocationCreateRequest) -> Location:
+async def create_location(
+    session: AsyncSession, payload: LocationCreateRequest, library_id: uuid.UUID
+) -> Location:
+    # Scope max_order to this library's locations in the same room/furniture
     max_order = (await session.execute(
         select(func.max(Location.display_order)).where(
+            Location.library_id == library_id,
             Location.room == payload.room,
             Location.furniture == payload.furniture,
         )
@@ -26,6 +34,7 @@ async def create_location(session: AsyncSession, payload: LocationCreateRequest)
     next_order = (int(max_order) + 1) if max_order is not None else 0
 
     location = Location(
+        library_id=library_id,
         room=payload.room,
         furniture=payload.furniture,
         shelf=payload.shelf,
@@ -34,12 +43,16 @@ async def create_location(session: AsyncSession, payload: LocationCreateRequest)
     session.add(location)
     await session.commit()
     await session.refresh(location)
-    logger.info("location_created", location_id=str(location.id))
+    logger.info("location_created", location_id=str(location.id), library_id=str(library_id))
     return location
 
 
-async def get_location_or_404(session: AsyncSession, location_id: uuid.UUID) -> Location:
-    result = await session.execute(select(Location).where(Location.id == location_id))
+async def get_location_or_404(
+    session: AsyncSession, location_id: uuid.UUID, library_id: uuid.UUID
+) -> Location:
+    result = await session.execute(
+        select(Location).where(Location.id == location_id, Location.library_id == library_id)
+    )
     location = result.scalar_one_or_none()
     if location is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
@@ -47,9 +60,12 @@ async def get_location_or_404(session: AsyncSession, location_id: uuid.UUID) -> 
 
 
 async def update_location(
-    session: AsyncSession, location_id: uuid.UUID, payload: LocationUpdateRequest
+    session: AsyncSession,
+    location_id: uuid.UUID,
+    payload: LocationUpdateRequest,
+    library_id: uuid.UUID,
 ) -> Location:
-    location = await get_location_or_404(session, location_id)
+    location = await get_location_or_404(session, location_id, library_id)
     update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
     for field_name, value in update_data.items():
         setattr(location, field_name, value)
@@ -60,8 +76,10 @@ async def update_location(
     return location
 
 
-async def delete_location(session: AsyncSession, location_id: uuid.UUID) -> None:
-    location = await get_location_or_404(session, location_id)
+async def delete_location(
+    session: AsyncSession, location_id: uuid.UUID, library_id: uuid.UUID
+) -> None:
+    location = await get_location_or_404(session, location_id, library_id)
 
     if await _location_has_books(session, location_id):
         raise HTTPException(
@@ -71,7 +89,7 @@ async def delete_location(session: AsyncSession, location_id: uuid.UUID) -> None
 
     await session.delete(location)
     await session.commit()
-    logger.info("location_deleted", location_id=str(location_id))
+    logger.info("location_deleted", location_id=str(location_id), library_id=str(library_id))
 
 
 async def _location_has_books(session: AsyncSession, location_id: uuid.UUID) -> bool:

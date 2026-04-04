@@ -3,6 +3,7 @@ import uuid
 
 from httpx import ASGITransport, AsyncClient
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -11,6 +12,7 @@ from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models.book import Book
+from app.models.library import Library, LibraryMember, LibraryRole
 from app.models.user import User
 
 
@@ -49,13 +51,38 @@ def override_dependencies(test_session: AsyncSession, test_settings: Settings) -
     app.dependency_overrides.clear()
 
 
-async def _seed_user(session: AsyncSession) -> None:
-    session.add(User(email="admin@example.com", hashed_password=get_password_hash("secret")))
+async def _seed_user(session: AsyncSession) -> User:
+    existing = (await session.execute(select(User).where(User.email == "admin@example.com"))).scalar_one_or_none()
+    if existing is not None:
+        return existing
+    user = User(email="admin@example.com", hashed_password=get_password_hash("secret"))
+    session.add(user)
     await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def _seed_user_with_library(session: AsyncSession) -> tuple[User, Library]:
+    user = await _seed_user(session)
+    existing_lib = (await session.execute(
+        select(Library)
+        .join(LibraryMember, LibraryMember.library_id == Library.id)
+        .where(LibraryMember.user_id == user.id)
+        .limit(1)
+    )).scalar_one_or_none()
+    if existing_lib is not None:
+        return user, existing_lib
+    lib = Library(name="Test Library", created_by_user_id=user.id)
+    session.add(lib)
+    await session.flush()
+    session.add(LibraryMember(library_id=lib.id, user_id=user.id, role=LibraryRole.OWNER))
+    await session.commit()
+    await session.refresh(lib)
+    return user, lib
 
 
 async def _auth_headers(client: AsyncClient, session: AsyncSession) -> dict[str, str]:
-    await _seed_user(session)
+    await _seed_user_with_library(session)
     login_response = await client.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": "secret"})
     token = login_response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -111,7 +138,8 @@ async def test_delete_location_blocked_when_books_assigned(test_session: AsyncSe
         )
         location_id = uuid.UUID(created.json()["id"])
 
-        test_session.add(Book(title="Domain-Driven Design", location_id=location_id))
+        _, library = await _seed_user_with_library(test_session)
+        test_session.add(Book(library_id=library.id, title="Domain-Driven Design", location_id=location_id))
         await test_session.commit()
 
         blocked = await client.delete(f"/api/v1/locations/{location_id}", headers=headers)

@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DateTime, Integer, String, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -11,6 +11,12 @@ class Location(Base):
     __tablename__ = "locations"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    library_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("libraries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     room: Mapped[str] = mapped_column(String(100), nullable=False)
     furniture: Mapped[str] = mapped_column(String(100), nullable=False)
     shelf: Mapped[str] = mapped_column(String(100), nullable=False)

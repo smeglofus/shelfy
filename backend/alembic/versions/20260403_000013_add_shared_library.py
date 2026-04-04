@@ -26,6 +26,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "20260403_000013"
@@ -40,7 +41,14 @@ def upgrade() -> None:
     conn = op.get_bind()
 
     # ── Phase 1: Create library_role ENUM ────────────────────────────────────
-    op.execute("CREATE TYPE library_role AS ENUM ('owner', 'editor', 'viewer')")
+    op.execute("""
+    DO $$
+    BEGIN
+        CREATE TYPE library_role AS ENUM ('owner', 'editor', 'viewer');
+    EXCEPTION
+        WHEN duplicate_object THEN NULL;
+    END$$;
+    """)
 
     # ── Phase 2: Create libraries table ──────────────────────────────────────
     op.create_table(
@@ -87,7 +95,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "role",
-            sa.Enum("owner", "editor", "viewer", name="library_role", create_type=False),
+            postgresql.ENUM("owner", "editor", "viewer", name="library_role", create_type=False),
             nullable=False,
             server_default="viewer",
         ),

@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
@@ -13,7 +14,11 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png"}
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 
 
-async def create_upload_job(session: AsyncSession, upload_file: UploadFile) -> tuple[ProcessingJob, str]:
+async def create_upload_job(
+    session: AsyncSession,
+    upload_file: UploadFile,
+    library_id: Optional[uuid.UUID] = None,
+) -> tuple[ProcessingJob, str]:
     content_type = upload_file.content_type
     if content_type is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing content type")
@@ -50,7 +55,11 @@ async def create_upload_job(session: AsyncSession, upload_file: UploadFile) -> t
         session.add(book_image)
         await session.flush()
 
-        job = ProcessingJob(book_image_id=book_image.id, status=ProcessingJobStatus.PENDING)
+        job = ProcessingJob(
+            book_image_id=book_image.id,
+            status=ProcessingJobStatus.PENDING,
+            library_id=library_id,
+        )
         session.add(job)
         await session.flush()
 
@@ -63,11 +72,21 @@ async def create_upload_job(session: AsyncSession, upload_file: UploadFile) -> t
         raise
 
 
-async def get_job_or_404(session: AsyncSession, job_id: uuid.UUID) -> ProcessingJob:
+async def get_job_or_404(
+    session: AsyncSession, job_id: uuid.UUID, library_id: Optional[uuid.UUID] = None
+) -> ProcessingJob:
+    """Fetch job by ID. If library_id is provided, job must belong to that library (404 otherwise).
+    If job.library_id is None (legacy/backfill gap), allow any authenticated user."""
     result = await session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     job = result.scalar_one_or_none()
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    # Enforce library scope: if job has library_id set, it must match.
+    # If job.library_id is None (legacy), allow access for any authenticated user.
+    if library_id is not None and job.library_id is not None and job.library_id != library_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
     return job
 
 

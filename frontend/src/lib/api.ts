@@ -12,6 +12,7 @@ import type {
   BulkDeleteRequest,
   BulkMoveRequest,
   BulkOperationResponse,
+  BulkReorderRequest,
   BulkStatusRequest,
   EnrichBookResponse,
   EnrichResponse,
@@ -236,6 +237,11 @@ export async function bulkMoveBooks(payload: BulkMoveRequest): Promise<BulkOpera
 
 export async function bulkUpdateStatus(payload: BulkStatusRequest): Promise<BulkOperationResponse> {
   const response = await apiClient.post<BulkOperationResponse>('/api/v1/books/bulk/status', payload)
+  return response.data
+}
+
+export async function bulkReorderBooks(payload: BulkReorderRequest): Promise<BulkOperationResponse> {
+  const response = await apiClient.post<BulkOperationResponse>('/api/v1/books/bulk/reorder', payload)
   return response.data
 }
 

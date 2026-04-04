@@ -90,7 +90,9 @@ export interface BookListResponse {
 export interface BulkDeleteRequest { ids: string[] }
 export interface BulkMoveRequest { ids: string[]; location_id: string | null; insert_position?: number | null }
 export interface BulkStatusRequest { ids: string[]; reading_status: ReadingStatus }
-export interface BulkOperationResponse { affected: number; operation: 'delete' | 'move' | 'status' }
+export interface BulkReorderItem { id: string; location_id: string; shelf_position: number }
+export interface BulkReorderRequest { items: BulkReorderItem[] }
+export interface BulkOperationResponse { affected: number; operation: 'delete' | 'move' | 'status' | 'reorder' }
 
 export interface BookListParams {
   search?: string

@@ -6,10 +6,9 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
-from app.models.user import User
 from app.schemas.scan import (
     ScannedBookItem,
     ShelfScanConfirmRequest,
@@ -30,10 +29,10 @@ async def scan_shelf(
     image: UploadFile = File(...),
     location_id: str | None = Form(default=None),
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> ShelfScanResponse:
     """Upload a photo of a shelf. Starts async processing to extract all book spines."""
-    job, minio_path = await create_upload_job(session, image)
+    job, minio_path = await create_upload_job(session, image, library_id=library_id)
     job_id = job.id
     job_status = job.status.value
 
@@ -82,12 +81,12 @@ async def scan_shelf(
 async def get_shelf_scan_result(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(get_library_id),
 ) -> ShelfScanResultResponse:
     """Poll for shelf scan results. Returns extracted books once processing is done."""
     from app.services.job import get_job_or_404
 
-    job = await get_job_or_404(session, job_id)
+    job = await get_job_or_404(session, job_id, library_id=library_id)
     books: list[ScannedBookItem] = []
 
     if job.status == ProcessingJobStatus.DONE and job.result_json:
@@ -141,11 +140,11 @@ async def get_shelf_scan_result(
 async def confirm_shelf_books(
     payload: ShelfScanConfirmRequest,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> ShelfScanConfirmResponse:
     """Confirm scanned books and save them to the library with positions.
     Automatically queues background enrichment for all confirmed books."""
-    book_ids = await confirm_shelf_scan(session, payload)
+    book_ids = await confirm_shelf_scan(session, payload, library_id)
 
     # Auto-trigger background enrichment
     if book_ids:

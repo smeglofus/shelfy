@@ -3,9 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.library import get_library_id
 from app.db.session import get_db_session
-from app.models.user import User
 from app.schemas.job import JobStatusResponse
 from app.services.job import get_job_book_id, get_job_or_404
 
@@ -16,9 +15,9 @@ router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 async def read_job_status(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(get_library_id),
 ) -> JobStatusResponse:
-    job = await get_job_or_404(session, job_id)
+    job = await get_job_or_404(session, job_id, library_id=library_id)
     return JobStatusResponse(
         id=job.id,
         status=job.status,

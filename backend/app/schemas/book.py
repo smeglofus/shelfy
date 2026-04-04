@@ -112,6 +112,16 @@ class BulkStatusRequest(BaseModel):
     reading_status: ReadingStatus
 
 
+class BulkReorderItem(BaseModel):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    shelf_position: int = Field(ge=0)
+
+
+class BulkReorderRequest(BaseModel):
+    items: list[BulkReorderItem] = Field(min_length=1, max_length=500)
+
+
 class BulkOperationResponse(BaseModel):
     affected: int
-    operation: Literal["delete", "move", "status"]
+    operation: Literal["delete", "move", "status", "reorder"]

@@ -5,6 +5,7 @@ import uuid
 from httpx import ASGITransport, AsyncClient
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -13,6 +14,7 @@ from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models.book import Book
+from app.models.library import Library, LibraryMember, LibraryRole
 from app.models.location import Location
 from app.models.user import User
 
@@ -27,12 +29,20 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     async with engine.begin() as connection:
         await connection.run_sync(
             lambda sync_conn: sa.Enum(
-                "manual",
-                "pending",
-                "done",
-                "failed",
-                "partial",
+                "manual", "pending", "done", "failed", "partial",
                 name="book_processing_status",
+            ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
+        )
+        await connection.run_sync(
+            lambda sync_conn: sa.Enum(
+                "unread", "reading", "read", "lent",
+                name="reading_status",
+            ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
+        )
+        await connection.run_sync(
+            lambda sync_conn: sa.Enum(
+                "owner", "editor", "viewer",
+                name="library_role",
             ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
         )
         await connection.run_sync(Base.metadata.drop_all)
@@ -69,21 +79,47 @@ def override_dependencies(
     app.dependency_overrides.clear()
 
 
-async def _seed_user(session: AsyncSession) -> None:
-    session.add(User(email="admin@example.com", hashed_password=get_password_hash("secret")))
+async def _seed_user(session: AsyncSession) -> User:
+    existing = (await session.execute(select(User).where(User.email == "admin@example.com"))).scalar_one_or_none()
+    if existing is not None:
+        return existing
+    user = User(email="admin@example.com", hashed_password=get_password_hash("secret"))
+    session.add(user)
     await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def _seed_user_with_library(session: AsyncSession) -> tuple[User, Library]:
+    """Idempotent: creates or returns existing user + their default library."""
+    user = await _seed_user(session)
+    existing_lib = (await session.execute(
+        select(Library)
+        .join(LibraryMember, LibraryMember.library_id == Library.id)
+        .where(LibraryMember.user_id == user.id)
+        .limit(1)
+    )).scalar_one_or_none()
+    if existing_lib is not None:
+        return user, existing_lib
+    lib = Library(name="Test Library", created_by_user_id=user.id)
+    session.add(lib)
+    await session.flush()
+    session.add(LibraryMember(library_id=lib.id, user_id=user.id, role=LibraryRole.OWNER))
+    await session.commit()
+    await session.refresh(lib)
+    return user, lib
 
 
 async def _auth_headers(client: AsyncClient, session: AsyncSession) -> dict[str, str]:
-    await _seed_user(session)
+    await _seed_user_with_library(session)
     login_response = await client.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": "secret"})
     assert login_response.status_code == 200
     token = login_response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _create_location(session: AsyncSession) -> uuid.UUID:
-    location = Location(room="office", furniture="bookshelf", shelf="shelf-1")
+async def _create_location(session: AsyncSession, library_id: uuid.UUID) -> uuid.UUID:
+    location = Location(library_id=library_id, room="office", furniture="bookshelf", shelf="shelf-1")
     session.add(location)
     await session.commit()
     await session.refresh(location)
@@ -95,7 +131,8 @@ async def test_books_full_crud_cycle(test_session: async_sessionmaker[AsyncSessi
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         async with test_session() as session:
             headers = await _auth_headers(client, session)
-            location_id = await _create_location(session)
+            _, library = await _seed_user_with_library(session)
+            location_id = await _create_location(session, library.id)
 
         created = await client.post(
             "/api/v1/books",
@@ -141,11 +178,12 @@ async def test_books_full_crud_cycle(test_session: async_sessionmaker[AsyncSessi
 @pytest.mark.asyncio
 async def test_books_search_returns_expected_results(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with test_session() as session:
+        _, library = await _seed_user_with_library(session)
         session.add_all(
             [
-                Book(title="The Pragmatic Programmer", author="Andrew Hunt"),
-                Book(title="Domain-Driven Design", author="Eric Evans"),
-                Book(title="Refactoring", author="Martin Fowler"),
+                Book(library_id=library.id, title="The Pragmatic Programmer", author="Andrew Hunt"),
+                Book(library_id=library.id, title="Domain-Driven Design", author="Eric Evans"),
+                Book(library_id=library.id, title="Refactoring", author="Martin Fowler"),
             ]
         )
         await session.commit()
@@ -165,12 +203,13 @@ async def test_books_search_returns_expected_results(test_session: async_session
 @pytest.mark.asyncio
 async def test_books_filter_by_location(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with test_session() as session:
-        location_id = await _create_location(session)
+        _, library = await _seed_user_with_library(session)
+        location_id = await _create_location(session, library.id)
         session.add_all(
             [
-                Book(title="Book A", location_id=location_id),
-                Book(title="Book B", location_id=location_id),
-                Book(title="Book C"),
+                Book(library_id=library.id, title="Book A", location_id=location_id),
+                Book(library_id=library.id, title="Book B", location_id=location_id),
+                Book(library_id=library.id, title="Book C"),
             ]
         )
         await session.commit()
@@ -194,7 +233,8 @@ async def test_books_pagination_returns_total_and_page_size(
     test_session: async_sessionmaker[AsyncSession],
 ) -> None:
     async with test_session() as session:
-        session.add_all([Book(title=f"Book {index}") for index in range(1, 6)])
+        _, library = await _seed_user_with_library(session)
+        session.add_all([Book(library_id=library.id, title=f"Book {index}") for index in range(1, 6)])
         await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -261,7 +301,8 @@ async def test_invalid_location_id_returns_404_on_post_and_patch(
         assert invalid_create.status_code == 404
 
         async with test_session() as session:
-            valid_location_id = await _create_location(session)
+            _, library = await _seed_user_with_library(session)
+            valid_location_id = await _create_location(session, library.id)
         created = await client.post(
             "/api/v1/books",
             json={"title": "Valid Book", "location_id": str(valid_location_id)},
@@ -315,7 +356,8 @@ async def test_update_book_with_duplicate_isbn_returns_409(
 @pytest.mark.asyncio
 async def test_retry_enrichment_enqueues_worker_task(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with test_session() as session:
-        book = Book(title="Book pending", isbn="9780134494166")
+        _, library = await _seed_user_with_library(session)
+        book = Book(library_id=library.id, title="Book pending", isbn="9780134494166")
         session.add(book)
         await session.commit()
         await session.refresh(book)
@@ -350,12 +392,12 @@ async def test_retry_enrichment_missing_book_returns_404(test_session: async_ses
     assert response.status_code == 404
 
 
-
 @pytest.mark.asyncio
 async def test_books_export_returns_csv(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with test_session() as session:
-        location_id = await _create_location(session)
-        session.add(Book(title="Export Me", author="Tester", location_id=location_id, isbn="1234567890"))
+        _, library = await _seed_user_with_library(session)
+        location_id = await _create_location(session, library.id)
+        session.add(Book(library_id=library.id, title="Export Me", author="Tester", location_id=location_id, isbn="1234567890"))
         await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -371,13 +413,11 @@ async def test_books_export_returns_csv(test_session: async_sessionmaker[AsyncSe
     assert 'Export Me,Tester,1234567890' in response.text
 
 
-
 @pytest.mark.asyncio
 async def test_books_export_requires_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get('/api/v1/books/export')
     assert response.status_code == 401
-
 
 
 @pytest.mark.asyncio
@@ -394,7 +434,6 @@ async def test_create_book_with_reading_status(test_session: async_sessionmaker[
 
     assert response.status_code == 201
     assert response.json()["reading_status"] == "reading"
-
 
 
 @pytest.mark.asyncio

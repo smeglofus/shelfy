@@ -6,6 +6,7 @@ import uuid
 from httpx import ASGITransport, AsyncClient
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -13,6 +14,7 @@ from app.core.security import get_password_hash
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
+from app.models.library import Library, LibraryMember, LibraryRole
 from app.models.loan import Loan
 from app.models.user import User
 
@@ -27,20 +29,20 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     async with engine.begin() as connection:
         await connection.run_sync(
             lambda sync_conn: sa.Enum(
-                "manual",
-                "pending",
-                "done",
-                "failed",
-                "partial",
+                "manual", "pending", "done", "failed", "partial",
                 name="book_processing_status",
             ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
         )
         await connection.run_sync(
             lambda sync_conn: sa.Enum(
-                "unread",
-                "reading",
-                "read",
+                "unread", "reading", "read", "lent",
                 name="reading_status",
+            ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
+        )
+        await connection.run_sync(
+            lambda sync_conn: sa.Enum(
+                "owner", "editor", "viewer",
+                name="library_role",
             ).create(sync_conn, checkfirst=True)  # type: ignore[no-untyped-call]
         )
         await connection.run_sync(Base.metadata.drop_all)
@@ -77,13 +79,38 @@ def override_dependencies(
     app.dependency_overrides.clear()
 
 
-async def _seed_user(session: AsyncSession) -> None:
+async def _seed_user(session: AsyncSession) -> User:
     session.add(User(email="admin@example.com", hashed_password=get_password_hash("secret")))
     await session.commit()
+    return (await session.execute(select(User).where(User.email == "admin@example.com"))).scalar_one()
+
+
+async def _seed_user_with_library(session: AsyncSession) -> tuple[User, Library]:
+    existing = (await session.execute(select(User).where(User.email == "admin@example.com"))).scalar_one_or_none()
+    if existing is not None:
+        lib = (await session.execute(
+            select(Library).join(LibraryMember, LibraryMember.library_id == Library.id)
+            .where(LibraryMember.user_id == existing.id).limit(1)
+        )).scalar_one_or_none()
+        if lib is not None:
+            return existing, lib
+        user = existing
+    else:
+        user = User(email="admin@example.com", hashed_password=get_password_hash("secret"))
+        session.add(user)
+        await session.flush()
+    lib = Library(name="Test Library", created_by_user_id=user.id)
+    session.add(lib)
+    await session.flush()
+    session.add(LibraryMember(library_id=lib.id, user_id=user.id, role=LibraryRole.OWNER))
+    await session.commit()
+    await session.refresh(user)
+    await session.refresh(lib)
+    return user, lib
 
 
 async def _auth_headers(client: AsyncClient, session: AsyncSession) -> dict[str, str]:
-    await _seed_user(session)
+    await _seed_user_with_library(session)
     login_response = await client.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": "secret"})
     assert login_response.status_code == 200
     token = login_response.json()["access_token"]
@@ -328,6 +355,7 @@ async def test_cascade_delete_book_deletes_loans(test_session: async_sessionmake
             loan = await session.get(Loan, uuid.UUID(loan_id))
 
     assert loan is None
+
 
 @pytest.mark.asyncio
 async def test_list_loans_book_not_found(test_session: async_sessionmaker[AsyncSession]) -> None:

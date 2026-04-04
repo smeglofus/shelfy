@@ -3,6 +3,7 @@ from enum import Enum
 import uuid
 
 from sqlalchemy import JSON, DateTime, Enum as SAEnum, ForeignKey, Integer, String, Uuid, func
+from typing import Optional
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +21,12 @@ class ProcessingJob(Base):
     __tablename__ = "processing_jobs"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    library_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("libraries.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     status: Mapped[ProcessingJobStatus] = mapped_column(
         SAEnum(
             ProcessingJobStatus,

@@ -1441,3 +1441,112 @@ html.light {
     min-width: 0;
   }
 }
+
+/* ── Onboarding Wizard ──────────────────────────────────────── */
+
+.sh-onboarding-header {
+  text-align: center;
+  margin-bottom: var(--sh-space-6);
+}
+
+.sh-onboarding-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sh-space-2);
+  margin-bottom: var(--sh-space-6);
+}
+
+.sh-onboarding-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sh-border);
+  transition: background var(--sh-duration-fast) var(--sh-ease-default),
+              transform var(--sh-duration-fast) var(--sh-ease-default);
+}
+.sh-onboarding-dot--active {
+  background: var(--sh-primary);
+  transform: scale(1.3);
+}
+.sh-onboarding-dot--done {
+  background: var(--sh-primary);
+  opacity: 0.5;
+}
+
+.sh-onboarding-connector {
+  width: 24px;
+  height: 2px;
+  background: var(--sh-border);
+  border-radius: 1px;
+}
+.sh-onboarding-connector--done {
+  background: var(--sh-primary);
+  opacity: 0.5;
+}
+
+.sh-onboarding-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sh-space-3);
+  animation: sh-onboarding-fade-in var(--sh-duration-normal) var(--sh-ease-default);
+}
+
+@keyframes sh-onboarding-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sh-onboarding-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--sh-primary-bg);
+  color: var(--sh-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sh-onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sh-space-3);
+  margin-top: var(--sh-space-6);
+}
+
+.sh-onboarding-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sh-space-4);
+  animation: sh-onboarding-fade-in var(--sh-duration-normal) var(--sh-ease-default);
+}
+
+.sh-onboarding-checkmark {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--sh-primary-bg);
+  color: var(--sh-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  line-height: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) .sh-onboarding-icon,
+  html:not(.light) .sh-onboarding-checkmark {
+    background: rgba(45, 122, 95, 0.15);
+  }
+}
+html.dark .sh-onboarding-icon,
+html.dark .sh-onboarding-checkmark {
+  background: rgba(45, 122, 95, 0.15);
+}

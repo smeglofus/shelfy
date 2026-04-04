@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { BookCard } from '../components/BookCard'
 import { EmptyLibraryIcon, NoResultsIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
+import { OnboardingWizard } from '../components/OnboardingWizard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
 import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
+import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
 import type { Book, Location, ReadingStatus } from '../lib/types'
 
@@ -26,6 +28,12 @@ export function BooksPage() {
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [statFilter, setStatFilter] = useState<StatFilter>('total')
+
+  // Onboarding
+  const onboardingQuery = useOnboardingStatus()
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => localStorage.getItem('shelfy_onboarding_dismissed') === '1',
+  )
 
   // Advanced filters
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -612,6 +620,17 @@ export function BooksPage() {
           </button>
         </div>
       </Modal>
+
+      {/* Onboarding wizard — show when library is empty + server says should_show */}
+      <OnboardingWizard
+        open={
+          !onboardingDismissed
+          && !booksQuery.isLoading
+          && total === 0
+          && onboardingQuery.data?.should_show === true
+        }
+        onDone={() => setOnboardingDismissed(true)}
+      />
     </div>
   )
 }

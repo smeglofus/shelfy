@@ -18,11 +18,17 @@ logger = structlog.get_logger()
 async def confirm_shelf_scan(
     session: AsyncSession,
     payload: ShelfScanConfirmRequest,
+    library_id: uuid.UUID,
 ) -> list[uuid.UUID]:
-    """Create books from confirmed shelf scan results, assigning positions."""
-    # Validate location exists
+    """Create books from confirmed shelf scan results, assigning positions.
+    Location must belong to the current library.
+    """
+    # Validate location exists AND belongs to library
     loc = (await session.execute(
-        select(Location).where(Location.id == payload.location_id)
+        select(Location).where(
+            Location.id == payload.location_id,
+            Location.library_id == library_id,
+        )
     )).scalar_one_or_none()
     if loc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
@@ -31,8 +37,12 @@ async def confirm_shelf_scan(
 
     position_offset = 0
     if payload.append_after_book_id is not None:
+        # Anchor book must also belong to this library
         anchor = (await session.execute(
-            select(Book).where(Book.id == payload.append_after_book_id)
+            select(Book).where(
+                Book.id == payload.append_after_book_id,
+                Book.library_id == library_id,
+            )
         )).scalar_one_or_none()
         if anchor is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anchor book not found")
@@ -44,6 +54,7 @@ async def confirm_shelf_scan(
         await session.execute(
             update(Book)
             .where(
+                Book.library_id == library_id,
                 Book.location_id == payload.location_id,
                 Book.shelf_position.is_not(None),
                 Book.shelf_position >= position_offset,
@@ -54,21 +65,24 @@ async def confirm_shelf_scan(
 
     for item in payload.books:
         target_position = item.position + position_offset
-        # Check if book with same ISBN already exists
+        # Check if book with same ISBN already exists in this library
         existing: Book | None = None
         if item.isbn:
             existing = (await session.execute(
-                select(Book).where(Book.isbn == item.isbn)
+                select(Book).where(
+                    Book.isbn == item.isbn,
+                    Book.library_id == library_id,
+                )
             )).scalar_one_or_none()
 
         if existing is not None:
-            # Update location and position of existing book
             existing.location_id = payload.location_id
             existing.shelf_position = target_position
             book_ids.append(existing.id)
             logger.info("shelf_scan_book_updated", book_id=str(existing.id), position=target_position)
         else:
             book = Book(
+                library_id=library_id,
                 title=item.title,
                 author=item.author,
                 isbn=item.isbn if item.isbn else None,
@@ -90,5 +104,5 @@ async def confirm_shelf_scan(
             logger.info("shelf_scan_book_created", book_id=str(book.id), title=item.title, position=target_position)
 
     await session.commit()
-    logger.info("shelf_scan_confirmed", location_id=str(payload.location_id), books_count=len(book_ids))
+    logger.info("shelf_scan_confirmed", location_id=str(payload.location_id), books_count=len(book_ids), library_id=str(library_id))
     return book_ids

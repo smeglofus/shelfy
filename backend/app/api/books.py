@@ -5,18 +5,17 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
-from app.models.user import User
 from app.schemas.book import (
     BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest,
-    BulkDeleteRequest, BulkMoveRequest, BulkOperationResponse, BulkStatusRequest,
+    BulkDeleteRequest, BulkMoveRequest, BulkOperationResponse, BulkReorderRequest, BulkStatusRequest,
     RetryEnrichmentResponse,
 )
 from app.schemas.job import UploadResponse
 from app.services.book import (
-    build_books_export_csv, bulk_delete_books, bulk_move_books, bulk_update_status,
+    build_books_export_csv, bulk_delete_books, bulk_move_books, bulk_reorder_books, bulk_update_status,
     create_book, delete_book, get_book_or_404, list_books, update_book,
 )
 from app.services.job import create_upload_job
@@ -39,10 +38,11 @@ async def read_books(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(get_library_id),
 ) -> BookListResponse:
     books, total = await list_books(
         session,
+        library_id=library_id,
         search=search,
         location_id=location_id,
         unassigned_only=unassigned_only,
@@ -62,25 +62,24 @@ async def read_books(
     )
 
 
-
-
 @router.get("/export")
 async def export_books_csv(
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(get_library_id),
 ) -> StreamingResponse:
-    content = await build_books_export_csv(session)
+    content = await build_books_export_csv(session, library_id)
     response = StreamingResponse(iter([content]), media_type="text/csv")
     response.headers["Content-Disposition"] = 'attachment; filename="shelfy-export.csv"'
     return response
+
 
 @router.post("", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 async def create_book_endpoint(
     payload: BookCreateRequest,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BookResponse:
-    book = await create_book(session, payload)
+    book = await create_book(session, payload, library_id)
     return BookResponse.model_validate(book)
 
 
@@ -88,9 +87,9 @@ async def create_book_endpoint(
 async def read_book(
     book_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(get_library_id),
 ) -> BookResponse:
-    book = await get_book_or_404(session, book_id)
+    book = await get_book_or_404(session, book_id, library_id)
     return BookResponse.model_validate(book)
 
 
@@ -99,9 +98,9 @@ async def update_book_endpoint(
     book_id: uuid.UUID,
     payload: BookUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BookResponse:
-    book = await update_book(session, book_id, payload)
+    book = await update_book(session, book_id, payload, library_id)
     return BookResponse.model_validate(book)
 
 
@@ -109,20 +108,19 @@ async def update_book_endpoint(
 async def delete_book_endpoint(
     book_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> Response:
-    await delete_book(session, book_id)
+    await delete_book(session, book_id, library_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
 
 
 @router.post("/bulk/delete", response_model=BulkOperationResponse)
 async def bulk_delete(
     payload: BulkDeleteRequest,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BulkOperationResponse:
-    affected = await bulk_delete_books(session, payload.ids)
+    affected = await bulk_delete_books(session, payload.ids, library_id)
     return BulkOperationResponse(affected=affected, operation="delete")
 
 
@@ -130,19 +128,37 @@ async def bulk_delete(
 async def bulk_move(
     payload: BulkMoveRequest,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BulkOperationResponse:
-    affected = await bulk_move_books(session, payload.ids, payload.location_id, payload.insert_position)
+    affected = await bulk_move_books(
+        session, payload.ids, payload.location_id, payload.insert_position, library_id
+    )
     return BulkOperationResponse(affected=affected, operation="move")
+
+
+
+
+@router.post("/bulk/reorder", response_model=BulkOperationResponse)
+async def bulk_reorder(
+    payload: BulkReorderRequest,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BulkOperationResponse:
+    affected = await bulk_reorder_books(
+        session,
+        items=[(item.id, item.location_id, item.shelf_position) for item in payload.items],
+        library_id=library_id,
+    )
+    return BulkOperationResponse(affected=affected, operation="reorder")
 
 
 @router.post("/bulk/status", response_model=BulkOperationResponse)
 async def bulk_status(
     payload: BulkStatusRequest,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BulkOperationResponse:
-    affected = await bulk_update_status(session, payload.ids, payload.reading_status)
+    affected = await bulk_update_status(session, payload.ids, payload.reading_status, library_id)
     return BulkOperationResponse(affected=affected, operation="status")
 
 
@@ -150,9 +166,10 @@ async def bulk_status(
 async def retry_book_enrichment(
     book_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> RetryEnrichmentResponse:
-    await get_book_or_404(session, book_id)
+    # Verify membership before queuing
+    await get_book_or_404(session, book_id, library_id)
 
     try:
         celery_client = get_celery_client()
@@ -172,13 +189,14 @@ async def retry_book_enrichment(
 
     return RetryEnrichmentResponse(book_id=book_id, status="queued")
 
+
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_book_image(
     image: UploadFile = File(...),
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> UploadResponse:
-    job, minio_path = await create_upload_job(session, image)
+    job, minio_path = await create_upload_job(session, image, library_id=library_id)
     job_id = job.id
     job_status = job.status
 

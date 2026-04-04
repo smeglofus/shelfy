@@ -7,11 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.library import require_editor_library
 from app.db.session import get_db_session
 from app.models.book import Book
 from app.models.location import Location
-from app.models.user import User
 from app.schemas.enrich import EnrichBookResponse, EnrichResponse
 from app.services.job_queue import get_celery_client
 
@@ -36,10 +35,12 @@ async def enrich_single_book(
     book_id: uuid.UUID,
     force: bool = Query(default=False, description="Re-enrich even if already enriched"),
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> EnrichBookResponse:
     """Queue metadata enrichment for a single book."""
-    book = (await session.execute(select(Book).where(Book.id == book_id))).scalar_one_or_none()
+    book = (await session.execute(
+        select(Book).where(Book.id == book_id, Book.library_id == library_id)
+    )).scalar_one_or_none()
     if book is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
 
@@ -59,14 +60,18 @@ async def enrich_by_location(
     location_id: uuid.UUID,
     force: bool = Query(default=False, description="Re-enrich even if already enriched"),
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> EnrichResponse:
     """Queue metadata enrichment for all books in a location."""
-    loc = (await session.execute(select(Location).where(Location.id == location_id))).scalar_one_or_none()
+    loc = (await session.execute(
+        select(Location).where(Location.id == location_id, Location.library_id == library_id)
+    )).scalar_one_or_none()
     if loc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
-    result = await session.execute(select(Book.id).where(Book.location_id == location_id))
+    result = await session.execute(
+        select(Book.id).where(Book.location_id == location_id, Book.library_id == library_id)
+    )
     book_ids = [str(row[0]) for row in result.all()]
 
     if not book_ids:
@@ -91,10 +96,12 @@ async def enrich_by_location(
 async def enrich_all_books(
     force: bool = Query(default=False, description="Re-enrich even if already enriched"),
     session: AsyncSession = Depends(get_db_session),
-    _current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(require_editor_library),
 ) -> EnrichResponse:
-    """Queue metadata enrichment for all books in the library."""
-    result = await session.execute(select(Book.id))
+    """Queue metadata enrichment for all books in the active library."""
+    result = await session.execute(
+        select(Book.id).where(Book.library_id == library_id)
+    )
     book_ids = [str(row[0]) for row in result.all()]
 
     if not book_ids:
