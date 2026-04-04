@@ -121,7 +121,6 @@ export function Navigation() {
   /* Grouped sidebar items (desktop) — Locations removed, accessible via Bookshelf → tab */
   const navGroup = useMemo<NavItem[]>(
     () => [
-      { label: t('nav.home'), icon: 'home', path: ROUTES.home },
       { label: t('nav.library'), icon: 'library', path: ROUTES.books },
       { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
     ],
@@ -146,7 +145,6 @@ export function Navigation() {
   /* Mobile bottom nav: 4 items + center FAB */
   const mobileTabs = useMemo(
     () => [
-      { label: t('nav.home'), icon: 'home', path: ROUTES.home },
       { label: t('nav.library'), icon: 'library', path: ROUTES.books },
       // FAB placeholder (handled separately)
       { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
@@ -192,7 +190,7 @@ export function Navigation() {
     return (
       location.pathname === path
       || (path === ROUTES.books
-        && location.pathname.startsWith('/books')
+        && (location.pathname === ROUTES.books || location.pathname.startsWith('/books/'))
         && location.pathname !== ROUTES.addBook)
       || (path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
       || (path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
@@ -308,8 +306,8 @@ export function Navigation() {
         boxShadow: '0 -4px 20px rgba(0,0,0,0.03)',
       }}
     >
-      {/* First two tabs */}
-      {mobileTabs.slice(0, 2).map((tab) => {
+      {/* First tab */}
+      {mobileTabs.slice(0, 1).map((tab) => {
         const active = isActive(tab.path)
         const Icon = iconComponents[tab.icon]
         return (
@@ -467,7 +465,7 @@ export function Navigation() {
       </div>
 
       {/* Last two tabs */}
-      {mobileTabs.slice(2).map((tab) => {
+      {mobileTabs.slice(1).map((tab) => {
         const active = isActive(tab.path)
         const Icon = iconComponents[tab.icon]
         return (

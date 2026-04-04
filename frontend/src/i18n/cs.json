@@ -1,12 +1,11 @@
 {
   "nav": {
-    "library": "Knihovna",
+    "library": "Knihy",
     "add": "Přidat",
     "scan": "Sken",
-    "home": "Domů",
     "locations": "Lokace",
     "settings": "Nastavení",
-    "bookshelf": "Knihovny",
+    "bookshelf": "Police",
     "add_book": "Přidat knihu",
     "scan_shelf": "Skenovat polici",
     "actions": "Akce",
@@ -83,7 +82,8 @@
     "filter_clear_all": "Zrušit filtry",
     "filter_chip_language": "jazyk: {{value}}",
     "filter_chip_publisher": "vydavatel: {{value}}",
-    "filter_chip_year": "rok: {{from}} – {{to}}"
+    "filter_chip_year": "rok: {{from}} – {{to}}",
+    "books_count": "knih"
   },
   "book_detail": {
     "title": "Detail knihy",
@@ -140,16 +140,6 @@
     "done": "Zpracováno",
     "failed": "Zpracování selhalo",
     "partial": "Zpracováno částečně"
-  },
-  "home": {
-    "loading": "Načítám přehled…",
-    "error": "Nepodařilo se načíst přehled.",
-    "retry": "Zkusit znovu",
-    "overview": "Přehled",
-    "total_books": "Celkem máte <strong>{{count}}</strong> knih.",
-    "by_location": "Knihy podle umístění",
-    "recently_added": "Naposledy přidáno",
-    "added_on": "Přidáno {{date}}"
   },
   "locations": {
     "title": "Správa umístění",

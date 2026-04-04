@@ -1,5 +1,4 @@
 export const ROUTES = {
-  home: '/',
   login: '/login',
   books: '/books',
   bookDetail: '/books/:bookId',

@@ -4,7 +4,6 @@ import { Toast } from './components/Toast'
 import { Navigation } from './components/Navigation'
 
 import { LoginPage, ProtectedRoute } from './features/auth'
-import { HomePage } from './pages/HomePage'
 import { BooksPage, AddBookPage, BookDetailPage } from './features/books'
 import { ScanShelfPage } from './pages/ScanShelfPage'
 import { BookshelfViewPage } from './pages/BookshelfViewPage'
@@ -24,7 +23,7 @@ function AppShell() {
         <Routes>
           <Route path={ROUTES.login} element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route path={ROUTES.home} element={<HomePage />} />
+            <Route path="/" element={<Navigate to={ROUTES.books} replace />} />
             <Route path={ROUTES.books} element={<BooksPage />} />
             <Route path={ROUTES.addBook} element={<AddBookPage />} />
             <Route path={ROUTES.scanShelf} element={<ScanShelfPage />} />

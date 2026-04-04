@@ -179,11 +179,7 @@ export function BooksPage() {
 
   const total = booksQuery.data?.total ?? 0
 
-  const booksCountLabel = useMemo(() => {
-    if (total === 1) return t('books.count_one', { count: total })
-    if (total > 1 && total < 5) return t('books.count_few', { count: total })
-    return t('books.count_many', { count: total })
-  }, [t, total])
+  const booksCountLabel = t('books.books_count')
 
   return (
     <div className="md-max-w-4xl sh-page-enter" style={{ margin: '0 auto', width: '100%' }}>

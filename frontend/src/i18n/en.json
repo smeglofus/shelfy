@@ -1,9 +1,8 @@
 {
   "nav": {
-    "library": "Library",
+    "library": "Books",
     "add": "Add",
     "scan": "Scan",
-    "home": "Home",
     "locations": "Locations",
     "settings": "Settings",
     "bookshelf": "Shelves",
@@ -83,7 +82,8 @@
     "filter_clear_all": "Clear filters",
     "filter_chip_language": "language: {{value}}",
     "filter_chip_publisher": "publisher: {{value}}",
-    "filter_chip_year": "year: {{from}} – {{to}}"
+    "filter_chip_year": "year: {{from}} – {{to}}",
+    "books_count": "books"
   },
   "book_detail": {
     "title": "Book details",
@@ -140,16 +140,6 @@
     "done": "Processed",
     "failed": "Processing failed",
     "partial": "Partially processed"
-  },
-  "home": {
-    "loading": "Loading overview…",
-    "error": "Failed to load overview.",
-    "retry": "Try again",
-    "overview": "Overview",
-    "total_books": "You have a total of <strong>{{count}}</strong> books.",
-    "by_location": "Books by location",
-    "recently_added": "Recently added",
-    "added_on": "Added on {{date}}"
   },
   "locations": {
     "title": "Location management",
