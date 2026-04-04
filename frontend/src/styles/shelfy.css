@@ -690,6 +690,11 @@ p { line-height: 1.5; color: var(--sh-text-muted); }
 /* ── Book Spine (bookshelf digital twin) ──────────────────────── */
 .sh-book-spine {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  touch-action: manipulation;
 }
 .sh-book-spine:hover {
   transform: translateY(-5px);

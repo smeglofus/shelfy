@@ -28,7 +28,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { EmptyShelfIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
 import { useBooks, useBulkMoveBooks } from '../hooks/useBooks'
-import { bulkReorderBooks, updateBook } from '../lib/api'
+import { bulkReorderBooks } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { useLocations } from '../hooks/useLocations'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
@@ -62,7 +62,14 @@ export function BookshelfViewPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [activeDragBook, setActiveDragBook] = useState<Book | null>(null)
   const [dragSnapshot, setDragSnapshot] = useState<Record<string, Book[]> | null>(null)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const bulkMoveMutation = useBulkMoveBooks()
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -291,22 +298,14 @@ export function BookshelfViewPage() {
 
     setLocalByLocation(next)
 
-    try {
-      await updateBook(activeId, {
-        location_id: targetLocationId,
-        shelf_position: overId.startsWith('shelf:') ? ((next[targetLocationId]?.length ?? 1) - 1) : targetIndex,
-      })
-    } catch (e) {
-      setLocalByLocation(snapshot)
-      showError(t('books.error'))
-    } finally {
-      setActiveDragId(null)
-    }
+    // Persist is intentionally deferred until user clicks Done reordering.
+    // This avoids partial-save failures from sequential per-book PATCH calls.
+    setActiveDragId(null)
   }
 
   return (
     <div className="container" style={{ margin: '0 auto', width: '100%', maxWidth: 960 }}>
-      <div className="sh-page-header">
+      <div className="sh-page-header" style={{ flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 0 }}>
         <button onClick={() => navigate(ROUTES.books)} className="sh-back-btn hover-lift">←</button>
         <h2 className="text-h2" style={{ marginBottom: 0 }}>{t('bookshelf.title')}</h2>
         <div style={{ flex: 1 }} />
@@ -344,7 +343,7 @@ export function BookshelfViewPage() {
             </button>
           </>
         )}
-        <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: '10px 20px', fontSize: 14 }}>
+        <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? 13 : 14, marginLeft: isMobile ? 'auto' : 0 }}>
           + {t('bookshelf.scan_shelf')}
         </button>
       </div>
@@ -358,7 +357,7 @@ export function BookshelfViewPage() {
         <LocationsPage />
       ) : (<>
         {roomNames.length > 1 && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             <button onClick={() => setSelectedRoom('')} className={`sh-pill${!selectedRoom ? ' sh-pill--active' : ''}`} style={{ padding: '8px 16px', fontSize: 13 }}>{t('tabs.all')}</button>
             {roomNames.map(room => (
               <button key={room} onClick={() => setSelectedRoom(room)} className={`sh-pill${selectedRoom === room ? ' sh-pill--active' : ''}`} style={{ padding: '8px 16px', fontSize: 13 }}>{room}</button>
@@ -387,12 +386,12 @@ export function BookshelfViewPage() {
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { if (dragSnapshot) setLocalByLocation(dragSnapshot); setActiveDragId(null); setActiveDragBook(null); setDragSnapshot(null) }}>
           {Object.entries(filteredTree).map(([room, furnitureMap]) => (
-            <div key={room} style={{ marginBottom: 40 }}>
-              <h3 className="text-h3" style={{ marginBottom: 16, color: 'var(--sh-text-main)' }}>{room}</h3>
+            <div key={room} style={{ marginBottom: isMobile ? 24 : 40 }}>
+              <h3 className="text-h3" style={{ marginBottom: isMobile ? 10 : 16, color: 'var(--sh-text-main)' }}>{room}</h3>
 
               {Object.entries(furnitureMap).map(([furniture, shelfLocations]) => (
-                <div key={furniture} className="sh-card-panel" style={{ marginBottom: 24, borderRadius: 'var(--sh-radius-lg)', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--sh-border)', background: 'var(--sh-bg)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div key={furniture} className="sh-card-panel" style={{ marginBottom: isMobile ? 14 : 24, borderRadius: 'var(--sh-radius-lg)', overflow: 'hidden' }}>
+                  <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderBottom: '1px solid var(--sh-border)', background: 'var(--sh-bg)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 18 }}>📖</span>
                     <span style={{ fontWeight: 600, fontSize: 15 }}>{furniture}</span>
                   </div>
@@ -402,14 +401,14 @@ export function BookshelfViewPage() {
                     const isHighlighted = preselectedLocationId === loc.id
 
                     return (
-                      <div key={loc.id} style={{ borderBottom: '1px solid var(--sh-border)', padding: '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s' }}>
+                      <div key={loc.id} style={{ borderBottom: '1px solid var(--sh-border)', padding: isMobile ? '10px 12px' : '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s' }}>
                         <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', marginBottom: 8 }}>{loc.shelf}</div>
 
                         {shelfBooks.length === 0 ? (
                           <div style={{ fontSize: 12, color: 'var(--sh-text-muted)', fontStyle: 'italic', padding: '8px 0' }}>{t('bookshelf.empty_shelf')}</div>
                         ) : (
                           <SortableContext items={shelfBooks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
-                            <DroppableShelfRow shelfId={loc.id}>
+                            <DroppableShelfRow shelfId={loc.id} compact={isMobile}>
                               {shelfBooks.map((book) => (
                                 <SortableBookSpine
                                   key={book.id}
@@ -420,6 +419,7 @@ export function BookshelfViewPage() {
                                   selected={selectedIds.has(book.id)}
                                   focusRef={highlightBookId === book.id ? highlightSpineRef : undefined}
                                   onClick={() => (selectMode ? toggleSelect(book.id) : (reorderMode ? undefined : navigate(getBookDetailRoute(book.id))))}
+                                  compact={isMobile}
                                 />
                               ))}
                             </DroppableShelfRow>
@@ -502,14 +502,14 @@ export function BookshelfViewPage() {
 }
 
 
-function DroppableShelfRow({ shelfId, children }: { shelfId: string; children: ReactNode }) {
+function DroppableShelfRow({ shelfId, children, compact = false }: { shelfId: string; children: ReactNode; compact?: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: `shelf:${shelfId}` })
   return (
     <div
       ref={setNodeRef}
       style={{
         display: 'flex',
-        gap: 5,
+        gap: compact ? 4 : 5,
         overflowX: 'auto',
         paddingBottom: 0,
         paddingTop: 4,
@@ -536,6 +536,7 @@ function SortableBookSpine({
   highlighted?: boolean
   selected?: boolean
   focusRef?: RefObject<HTMLButtonElement | null>
+  compact?: boolean
 }) {
   const sortable = useSortable({ id, disabled: !reorderMode })
   const style = {
@@ -561,6 +562,7 @@ function BookSpine({
   focusRef,
   selected = false,
   draggableProps,
+  compact = false,
 }: {
   book: Book
   onClick: () => void
@@ -568,6 +570,7 @@ function BookSpine({
   focusRef?: RefObject<HTMLButtonElement | null>
   selected?: boolean
   draggableProps?: Record<string, unknown>
+  compact?: boolean
 }) {
   const hasCover = Boolean(book.cover_image_url)
 
@@ -579,18 +582,21 @@ function BookSpine({
   }, [book.title])
 
   const displayTitle = book.title.length > 40 ? `${book.title.slice(0, 38)}…` : book.title
+  const isDraggable = Boolean(draggableProps)
 
   return (
     <button
       ref={focusRef}
       onClick={onClick}
+      onPointerDown={(e) => { if (isDraggable) e.preventDefault() }}
+      onTouchStart={(e) => { if (isDraggable) e.preventDefault() }}
       className="sh-book-spine"
       title={`${book.title}${book.author ? ` — ${book.author}` : ''}`}
       data-highlighted={highlighted ? '' : undefined}
       style={{
-        minWidth: 44,
-        maxWidth: 56,
-        height: 150,
+        minWidth: compact ? 36 : 44,
+        maxWidth: compact ? 48 : 56,
+        height: compact ? 124 : 150,
         background: hasCover ? 'var(--sh-surface)' : color,
         borderRadius: '2px 3px 3px 2px',
         border: selected ? '2px solid var(--sh-primary)' : (highlighted ? '2px solid var(--sh-teal)' : (hasCover ? '1px solid var(--sh-border)' : 'none')),
@@ -601,6 +607,10 @@ function BookSpine({
         padding: hasCover ? 0 : '6px 3px',
         position: 'relative',
         overflow: 'hidden',
+        WebkitTouchCallout: 'none',
+        WebkitUserDrag: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
         boxShadow: highlighted
           ? '0 0 0 3px var(--sh-border-focus), 2px 4px 10px rgba(0,0,0,0.2)'
           : '1px 1px 3px rgba(0,0,0,0.12), inset -1px 0 2px rgba(0,0,0,0.08)',
@@ -610,7 +620,7 @@ function BookSpine({
     >
       <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 10, fontWeight: 700, color: hasCover ? 'white' : 'rgba(255,255,255,0.9)', textShadow: '0 1px 2px rgba(0,0,0,0.45)', zIndex: 2 }}>#{(book.shelf_position ?? 0) + 1}</span>
       {hasCover ? (
-        <img src={book.cover_image_url ?? ''} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading='lazy' />
+        <img src={book.cover_image_url ?? ''} alt={book.title} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none', WebkitUserDrag: 'none' }} loading='lazy' />
       ) : (
         <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', color: 'white', fontSize: 10, fontWeight: 600, lineHeight: 1.15, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', maxHeight: '100%', letterSpacing: '0.01em', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
           {displayTitle}
