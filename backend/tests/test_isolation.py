@@ -28,6 +28,7 @@ from app.db.session import get_db_session
 from app.main import app
 from app.models.book import Book
 from app.models.library import Library, LibraryMember, LibraryRole
+from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
 from app.models.user import User
 
 
@@ -125,6 +126,30 @@ async def _login(client: AsyncClient, email: str, password: str = "secret") -> d
 
 def _lib_header(library_id: uuid.UUID) -> dict[str, str]:
     return {"X-Library-Id": str(library_id)}
+
+
+async def _give_plan(
+    session: AsyncSession, user: User, plan: SubscriptionPlan
+) -> None:
+    """Upsert a subscription plan for a test user.
+
+    Tests that exercise operations beyond free-plan limits must call this
+    helper to avoid spurious 402/403 from quota enforcement.
+    """
+    result = await session.execute(
+        select(Subscription).where(Subscription.user_id == user.id)
+    )
+    sub = result.scalar_one_or_none()
+    if sub is None:
+        session.add(Subscription(
+            user_id=user.id,
+            plan=plan,
+            status=SubscriptionStatus.active,
+        ))
+    else:
+        sub.plan = plan
+        sub.status = SubscriptionStatus.active
+    await session.flush()
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -241,6 +266,9 @@ async def test_owner_can_manage_members_editor_cannot(
         newcomer = await _create_user(session, "newcomer@example.com")
         lib = await _create_library(session, owner, "Managed Library")
         await _add_member(session, lib, editor, LibraryRole.EDITOR)
+        # Library already has 2 members (owner + editor); adding newcomer makes 3.
+        # Pro plan allows up to 3 members per library.
+        await _give_plan(session, owner, SubscriptionPlan.pro)
         await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -486,6 +514,8 @@ async def test_create_library_and_become_owner(
         user = await _create_user(session, "newowner@example.com")
         # Give them at least one library so login works
         await _create_library(session, user, "Default Library")
+        # User already has 1 library; creating a 2nd requires pro (allows 3).
+        await _give_plan(session, user, SubscriptionPlan.pro)
         await session.commit()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

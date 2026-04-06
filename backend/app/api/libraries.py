@@ -16,6 +16,7 @@ from app.schemas.library import (
     LibraryResponse,
     UpdateLibraryMemberRequest,
 )
+from app.services import entitlements
 from app.services.library import (
     add_member,
     list_members,
@@ -42,6 +43,9 @@ async def create_library(
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> LibraryResponse:
+    # Gate: raises HTTP 403 if the user has reached their plan's library limit
+    await entitlements.assert_can_create_library(session, current_user.id)
+
     lib = Library(name=payload.name, created_by_user_id=current_user.id)
     session.add(lib)
     await session.flush()
@@ -70,6 +74,8 @@ async def create_member(
     current_user: User = Depends(get_current_user),
 ) -> LibraryMemberResponse:
     await require_library_role(session, current_user.id, library_id, LibraryRole.OWNER)
+    # Gate: raises HTTP 403 if the library has reached its plan's member limit
+    await entitlements.assert_can_add_member(session, current_user.id, library_id)
     member = await add_member(session, library_id, str(payload.email), payload.role)
     user = await session.get(User, member.user_id)
     assert user is not None

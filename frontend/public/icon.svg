@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#2D7A5F"/>
+  <!-- Book 1 — tall, leftmost -->
+  <rect x="88" y="144" width="76" height="224" rx="8" fill="white" opacity="0.95"/>
+  <!-- Book 2 — medium -->
+  <rect x="184" y="180" width="64" height="188" rx="8" fill="white" opacity="0.80"/>
+  <!-- Book 3 — tall, right -->
+  <rect x="268" y="148" width="80" height="220" rx="8" fill="white" opacity="0.92"/>
+  <!-- Book 4 — short, far right -->
+  <rect x="368" y="208" width="56" height="160" rx="8" fill="white" opacity="0.72"/>
+  <!-- Shelf -->
+  <rect x="72" y="368" width="368" height="18" rx="6" fill="white"/>
+</svg>

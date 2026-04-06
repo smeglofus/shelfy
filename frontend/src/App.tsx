@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import { Toast } from './components/Toast'
 import { Navigation } from './components/Navigation'
+import { useToastStore } from './lib/toast-store'
 
 import { LoginPage, ProtectedRoute } from './features/auth'
 import { BooksPage, AddBookPage, BookDetailPage } from './features/books'
@@ -14,6 +17,17 @@ import { ROUTES } from './lib/routes'
 export { ROUTES }
 
 function AppShell() {
+  const showInfo = useToastStore((s) => s.showInfo)
+  const [showReload, setShowReload] = useState(false)
+  const { updateServiceWorker } = useRegisterSW({
+    onNeedRefresh() {
+      setShowReload(true)
+      showInfo('Je dostupná nová verze Shelfy — klikni pro aktualizaci.')
+    },
+    onOfflineReady() {
+      showInfo('Shelfy je připravené i offline.')
+    },
+  })
   const location = useLocation()
   const hideNav = location.pathname === ROUTES.login
 
@@ -35,6 +49,29 @@ function AppShell() {
         </Routes>
       </div>
       {!hideNav && <Navigation />}
+      {showReload && (
+        <button
+          type='button'
+          onClick={() => updateServiceWorker(true)}
+          style={{
+            position: 'fixed',
+            bottom: 88,
+            right: 16,
+            zIndex: 10000,
+            background: 'var(--sh-primary)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--sh-radius-pill)',
+            padding: '10px 14px',
+            boxShadow: 'var(--sh-shadow-lg)',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          Aktualizovat aplikaci
+        </button>
+      )}
       <Toast />
     </div>
   )

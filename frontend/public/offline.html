@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang='cs'>
+<head>
+  <meta charset='UTF-8' />
+  <meta name='viewport' content='width=device-width,initial-scale=1' />
+  <title>Shelfy — Offline</title>
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; margin:0; background:#f5f5f3; color:#1a1a1a; display:grid; place-items:center; min-height:100vh; }
+    .card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:24px; max-width:420px; box-shadow:0 8px 24px rgba(0,0,0,.08); }
+    h1 { margin:0 0 8px; font-size:22px; }
+    p { margin:0 0 14px; color:#555; }
+    button { background:#2D7A5F; color:#fff; border:0; border-radius:999px; padding:10px 14px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class='card'>
+    <h1>Jsi offline</h1>
+    <p>Shelfy se nepodařilo načíst ze sítě. Zkus to prosím za chvíli znovu.</p>
+    <button onclick='location.reload()'>Zkusit znovu</button>
+  </div>
+</body>
+</html>

@@ -8,6 +8,9 @@ from typing import cast
 from anyio import to_thread
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import Response
 import structlog
 
@@ -24,6 +27,7 @@ from app.api.scan import router as scan_router
 from app.api.settings import router as settings_router
 from app.api.telemetry import router as telemetry_router
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.core.logging import configure_structlog
 from app.core.metrics import record_http_request
 from app.db.session import SessionLocal
@@ -32,7 +36,6 @@ from app.services.user_seed import seed_admin_user
 
 configure_structlog(service="backend")
 logger = structlog.get_logger()
-
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -57,6 +60,12 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+    # ── Rate limiting ──────────────────────────────────────────────────────────
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    app.add_middleware(SlowAPIMiddleware)
+
+    # ── Observability middleware ───────────────────────────────────────────────
     @app.middleware("http")
     async def observability_middleware(request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
@@ -85,6 +94,20 @@ def create_app() -> FastAPI:
             )
             structlog.contextvars.clear_contextvars()
 
+    # ── Security headers middleware ────────────────────────────────────────────
+    @app.middleware("http")
+    async def security_headers_middleware(request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
+        response = cast(Response, await call_next(request))
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # HSTS only in production (Traefik handles TLS termination)
+        if get_settings().environment == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+    # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allowed_origins,
@@ -92,6 +115,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
     app.include_router(health_router)
     app.include_router(metrics_router)
     app.include_router(auth_router)

@@ -32,6 +32,16 @@ class Settings(BaseSettings):
 
     google_books_api_key: str | None = None
 
+    # Rate limiting
+    rate_limit_default: str = "200/minute"
+    rate_limit_register: str = "10/minute"
+    rate_limit_login: str = "20/minute"
+    rate_limit_refresh: str = "30/minute"
+
+    # Trust proxy headers (X-Forwarded-For / CF-Connecting-IP) for real client IP
+    # Keep False for local deployments without a trusted reverse proxy.
+    trust_proxy_headers: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("jwt_secret_key")

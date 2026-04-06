@@ -7,11 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.library import require_editor_library
 from app.db.session import get_db_session
 from app.models.book import Book
 from app.models.location import Location
+from app.models.subscription import UsageMetric
+from app.models.user import User
 from app.schemas.enrich import EnrichBookResponse, EnrichResponse
+from app.services import entitlements
 from app.services.job_queue import get_celery_client
 
 router = APIRouter(prefix="/api/v1/enrich", tags=["enrich"])
@@ -36,6 +40,7 @@ async def enrich_single_book(
     force: bool = Query(default=False, description="Re-enrich even if already enriched"),
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> EnrichBookResponse:
     """Queue metadata enrichment for a single book."""
     book = (await session.execute(
@@ -44,6 +49,9 @@ async def enrich_single_book(
     if book is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
 
+    # Gate: raises HTTP 402 if monthly enrichment quota is exhausted
+    await entitlements.assert_can_use(session, current_user.id, UsageMetric.enrichments)
+
     try:
         await _queue_enrichment([str(book_id)], force=force)
     except Exception as exc:
@@ -51,6 +59,10 @@ async def enrich_single_book(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Enrichment queue is unavailable",
         ) from exc
+
+    # Consume 1 enrichment credit after successful enqueue
+    await entitlements.consume(session, current_user.id, UsageMetric.enrichments)
+    await session.commit()
 
     return EnrichBookResponse(book_id=book_id, status="queued")
 
@@ -61,6 +73,7 @@ async def enrich_by_location(
     force: bool = Query(default=False, description="Re-enrich even if already enriched"),
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> EnrichResponse:
     """Queue metadata enrichment for all books in a location."""
     loc = (await session.execute(
@@ -77,6 +90,11 @@ async def enrich_by_location(
     if not book_ids:
         return EnrichResponse(status="queued", book_count=0, message="No books in this location")
 
+    # Gate: raises HTTP 402 if remaining quota < number of books to enrich
+    await entitlements.assert_can_use_n(
+        session, current_user.id, UsageMetric.enrichments, len(book_ids)
+    )
+
     try:
         await _queue_enrichment(book_ids, force=force)
     except Exception as exc:
@@ -84,6 +102,10 @@ async def enrich_by_location(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Enrichment queue is unavailable",
         ) from exc
+
+    # Consume N enrichment credits after successful enqueue
+    await entitlements.consume_n(session, current_user.id, UsageMetric.enrichments, len(book_ids))
+    await session.commit()
 
     return EnrichResponse(
         status="queued",
@@ -97,6 +119,7 @@ async def enrich_all_books(
     force: bool = Query(default=False, description="Re-enrich even if already enriched"),
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> EnrichResponse:
     """Queue metadata enrichment for all books in the active library."""
     result = await session.execute(
@@ -106,6 +129,11 @@ async def enrich_all_books(
 
     if not book_ids:
         return EnrichResponse(status="queued", book_count=0, message="No books in library")
+
+    # Gate: raises HTTP 402 if remaining quota < total number of books
+    await entitlements.assert_can_use_n(
+        session, current_user.id, UsageMetric.enrichments, len(book_ids)
+    )
 
     # Split into batches of 50 to avoid very long tasks
     batch_size = 50
@@ -118,6 +146,10 @@ async def enrich_all_books(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Enrichment queue is unavailable",
         ) from exc
+
+    # Consume N enrichment credits after all batches are successfully enqueued
+    await entitlements.consume_n(session, current_user.id, UsageMetric.enrichments, len(book_ids))
+    await session.commit()
 
     return EnrichResponse(
         status="queued",
