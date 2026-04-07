@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { getCurrentUser, login as apiLogin, refreshToken, register as apiRegister, registerAuthHandlers } from '../lib/api'
 import { clearTokens, getRefreshToken, setAccessToken, setRefreshToken } from '../lib/auth'
+import { identifyUser, resetUser, trackEvent } from '../lib/analytics'
 import type { User } from '../lib/types'
 
 interface AuthContextValue {
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearTokens()
     setUser(null)
     setAccessTokenState(null)
+    resetUser()
     navigate('/login', { replace: true })
   }, [navigate])
 
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUser = useCallback(async () => {
     const currentUser = await getCurrentUser()
     setUser(currentUser)
+    identifyUser(currentUser.id)
   }, [])
 
   const login = useCallback(
@@ -52,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (email: string, password: string) => {
-      // Backend currently may not implement registration in all environments.
       await apiRegister({ email, password })
+      trackEvent('signup')
       await login(email, password)
     },
     [login],

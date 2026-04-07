@@ -7,6 +7,7 @@ import { useLocations, useCreateLocation } from '../hooks/useLocations'
 import { useBooksByLocation, useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
+import { trackEvent } from '../lib/analytics'
 import type { Book, ConfirmBookItem, ScannedBookItem } from '../lib/types'
 
 type WizardStep = 'location' | 'scan' | 'review'
@@ -346,6 +347,7 @@ export function ScanShelfPage() {
       },
       {
         onSuccess: () => {
+          trackEvent('shelf_scanned', { book_count: validBooks.length })
           clearDraft()
           navigate(ROUTES.bookshelfView + '?location_id=' + locationId)
         },

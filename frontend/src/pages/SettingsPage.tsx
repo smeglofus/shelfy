@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { exportBooksCsv, formatApiError, purgeLibrary } from '../lib/api'
+import { useQueryClient } from '@tanstack/react-query'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+
+import { deleteAccount, exportBooksCsv, exportUserData, formatApiError, purgeLibrary } from '../lib/api'
 import { useEnrichAll } from '../hooks/useEnrich'
+import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
 import { useAddMember, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
 import { useResetOnboarding } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
+import { trackEvent } from '../lib/analytics'
 import type { LibraryRole } from '../lib/types'
+import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
 import { setLanguage } from '../i18n'
 import { useSettingsStore } from '../store/useSettingsStore'
@@ -314,6 +320,135 @@ function LibraryManagement() {
   )
 }
 
+// ── BillingSection ────────────────────────────────────────────────────────
+
+const PLAN_LABELS: Record<string, string> = { free: 'Free', pro: 'Pro', library: 'Library' }
+
+function UsageMeter({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const pct = limit <= 0 ? 0 : Math.min(100, Math.round((used / limit) * 100))
+  const isWarning = limit > 0 && pct >= 80
+  const isOver = limit > 0 && used >= limit
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 13 }}>{label}</span>
+        <span style={{ fontSize: 13, color: isOver ? 'var(--sh-red)' : 'var(--sh-text-secondary)', fontWeight: isOver ? 600 : 400 }}>
+          {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
+        </span>
+      </div>
+      {limit !== -1 && (
+        <div style={{ height: 6, borderRadius: 3, background: 'var(--sh-border)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, borderRadius: 3, background: isOver ? 'var(--sh-red)' : isWarning ? '#f59e0b' : 'var(--sh-primary)', transition: 'width 0.3s' }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BillingSection() {
+  const { t } = useTranslation()
+  const { data: billing, isLoading } = useBillingStatus()
+  const checkoutMutation = useCreateCheckout()
+  const portalMutation = useCreatePortal()
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Handle return from Stripe Checkout success URL
+  useEffect(() => {
+    if (searchParams.get('billing_success')) {
+      showSuccess(t('billing.checkout_success'))
+      void queryClient.invalidateQueries({ queryKey: ['billing-status'] })
+      trackEvent('billing_success')
+      setSearchParams({})
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (isLoading || !billing) {
+    return (
+      <article style={ARTICLE_STYLE}>
+        <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('billing.section_title')}</h3>
+        <p className='text-small' style={{ color: 'var(--sh-text-secondary)' }}>{t('billing.loading')}</p>
+      </article>
+    )
+  }
+
+  const planLabel = PLAN_LABELS[billing.plan] ?? billing.plan
+  const isFree = billing.plan === 'free'
+
+  return (
+    <article style={ARTICLE_STYLE}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3 className='text-h3' style={{ margin: 0 }}>{t('billing.section_title')}</h3>
+        <span style={{
+          fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
+          padding: '3px 10px', borderRadius: 'var(--sh-radius-pill)',
+          background: isFree ? 'var(--sh-border)' : 'var(--sh-primary)',
+          color: isFree ? 'var(--sh-text-secondary)' : 'white',
+        }}>
+          {planLabel}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        <UsageMeter
+          label={t('billing.usage_scans')}
+          used={billing.usage.scans_used}
+          limit={billing.usage.scans_limit}
+        />
+        <UsageMeter
+          label={t('billing.usage_enrichments')}
+          used={billing.usage.enrichments_used}
+          limit={billing.usage.enrichments_limit}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {isFree ? (
+          <>
+            <button
+              type='button'
+              className='sh-btn-primary'
+              onClick={() => {
+                trackEvent('upgrade_clicked', { plan: 'pro', source: 'settings' })
+                checkoutMutation.mutate('pro')
+              }}
+              disabled={checkoutMutation.isPending}
+              style={{ fontSize: 13 }}
+            >
+              {checkoutMutation.isPending ? t('billing.redirecting') : t('billing.upgrade_to_pro')}
+            </button>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              onClick={() => navigate(ROUTES.pricing)}
+              style={{ fontSize: 13 }}
+            >
+              {t('billing.see_all_plans')}
+            </button>
+          </>
+        ) : (
+          <button
+            type='button'
+            className='sh-btn-secondary'
+            onClick={() => portalMutation.mutate()}
+            disabled={portalMutation.isPending}
+            style={{ fontSize: 13 }}
+          >
+            {portalMutation.isPending ? '…' : t('billing.manage_subscription')}
+          </button>
+        )}
+      </div>
+
+      {billing.current_period_end && !isFree && (
+        <p className='text-small' style={{ marginTop: 10, marginBottom: 0, color: 'var(--sh-text-secondary)' }}>
+          {t('billing.renews_on', { date: new Date(billing.current_period_end).toLocaleDateString() })}
+        </p>
+      )}
+    </article>
+  )
+}
+
 // ── SettingsPage ───────────────────────────────────────────────────────────
 
 export function SettingsPage() {
@@ -327,6 +462,10 @@ export function SettingsPage() {
   const showSuccess = useToastStore((s) => s.showSuccess)
   const [purgePassword, setPurgePassword] = useState('')
   const [purging, setPurging] = useState(false)
+  const [exportingData, setExportingData] = useState(false)
+  const [deleteAccountExpanded, setDeleteAccountExpanded] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
   const currentLang = i18n.language === 'en' ? 'en' : 'cs'
 
   return (
@@ -400,6 +539,9 @@ export function SettingsPage() {
 
       {/* ── Library management ── */}
       <LibraryManagement />
+
+      {/* ── Billing & plan ── */}
+      <BillingSection />
 
       <article
         style={{
@@ -500,6 +642,70 @@ export function SettingsPage() {
         </button>
       </article>
 
+      {/* ── GDPR: export my data ── */}
+      <article
+        style={{
+          ...ARTICLE_STYLE,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 16,
+        }}
+      >
+        <div>
+          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.export_data_title')}</h3>
+          <p className='text-small' style={{ marginTop: 0 }}>{t('settings.export_data_description')}</p>
+        </div>
+        <button
+          type='button'
+          className='sh-btn-secondary'
+          disabled={exportingData}
+          onClick={async () => {
+            try {
+              setExportingData(true)
+              const blob = await exportUserData()
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.href = url
+              link.download = 'shelfy-export.json'
+              link.click()
+              URL.revokeObjectURL(url)
+            } catch {
+              showError(t('settings.export_error'))
+            } finally {
+              setExportingData(false)
+            }
+          }}
+        >
+          {exportingData ? t('settings.export_data_exporting') : t('settings.export_data_button')}
+        </button>
+      </article>
+
+      {/* ── Legal links ── */}
+      <article
+        style={{
+          ...ARTICLE_STYLE,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 16,
+        }}
+      >
+        <div>
+          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>Právní informace</h3>
+          <p className='text-small' style={{ marginTop: 0 }}>Zásady ochrany osobních údajů a podmínky použití.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a className='sh-btn-secondary' href={ROUTES.privacy} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            Privacy Policy
+          </a>
+          <a className='sh-btn-secondary' href={ROUTES.terms} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            Terms of Service
+          </a>
+        </div>
+      </article>
+
+      {/* ── Danger zone ── */}
       <article
         style={{
           ...ARTICLE_STYLE,
@@ -535,6 +741,62 @@ export function SettingsPage() {
           >
             {purging ? t('settings.purging') : t('settings.purge_button')}
           </button>
+        </div>
+
+        {/* Delete account */}
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(220,38,38,0.2)' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 14, color: 'var(--sh-red)' }}>
+            {t('settings.delete_account_title')}
+          </p>
+          <p className='text-small' style={{ marginTop: 0 }}>{t('settings.delete_account_description')}</p>
+          {!deleteAccountExpanded ? (
+            <button
+              type='button'
+              className='sh-btn-danger'
+              style={{ marginTop: 4 }}
+              onClick={() => setDeleteAccountExpanded(true)}
+            >
+              {t('settings.delete_account_button')}
+            </button>
+          ) : (
+            <div style={{ display: 'grid', gap: 8, maxWidth: 360, marginTop: 8 }}>
+              <input
+                className='sh-input'
+                type='password'
+                placeholder={t('settings.confirm_password')}
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type='button'
+                  className='sh-btn-danger'
+                  disabled={deletingAccount || !deletePassword.trim()}
+                  onClick={async () => {
+                    try {
+                      setDeletingAccount(true)
+                      await deleteAccount(deletePassword.trim())
+                      logout()
+                    } catch {
+                      showError(t('settings.delete_account_error'))
+                      setDeletingAccount(false)
+                    }
+                  }}
+                >
+                  {deletingAccount ? t('settings.delete_account_deleting') : t('settings.delete_account_confirm')}
+                </button>
+                <button
+                  type='button'
+                  className='sh-btn-secondary'
+                  disabled={deletingAccount}
+                  onClick={() => { setDeleteAccountExpanded(false); setDeletePassword('') }}
+                >
+                  {t('settings.delete_account_cancel')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </article>
     </section>

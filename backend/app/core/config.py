@@ -32,6 +32,24 @@ class Settings(BaseSettings):
 
     google_books_api_key: str | None = None
 
+    # Observability / error tracking
+    # Set SENTRY_DSN in .env to enable Sentry error reporting.
+    sentry_dsn: str | None = None
+
+    # Transactional email (Resend)
+    # Set RESEND_API_KEY in .env to enable email notifications.
+    resend_api_key: str | None = None
+    email_from_address: str = "Shelfy <noreply@shelfy.app>"
+
+    # Billing / Stripe
+    # Set these in .env once you create products in the Stripe dashboard.
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_id_pro: str | None = None
+    stripe_price_id_library: str | None = None
+    # Public URL of the frontend — used as base for Stripe success/cancel redirect URLs.
+    app_url: str = "http://localhost:5173"
+
     # Rate limiting
     rate_limit_default: str = "200/minute"
     rate_limit_register: str = "10/minute"

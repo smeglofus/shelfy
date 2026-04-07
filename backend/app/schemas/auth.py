@@ -33,3 +33,9 @@ class UserResponse(BaseModel):
 
     id: uuid.UUID
     email: EmailStr
+
+
+class DeleteAccountRequest(BaseModel):
+    """Password confirmation required to permanently delete an account (GDPR Art. 17)."""
+
+    password: str

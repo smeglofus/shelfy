@@ -33,7 +33,7 @@ from app.models.subscription import (
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-def _current_period_start() -> date:
+def current_period_start() -> date:
     """Return the first day of the current month (UTC)."""
     today = datetime.now(timezone.utc).date()
     return today.replace(day=1)
@@ -83,7 +83,7 @@ async def get_current_usage(
 ) -> int:
     """Return the current month's usage count for a given metric."""
     if period_start is None:
-        period_start = _current_period_start()
+        period_start = current_period_start()
     result = await session.execute(
         select(UsageCounter.count).where(
             UsageCounter.user_id == user_id,
@@ -273,7 +273,7 @@ async def consume(
 
     Returns True if incremented, False if duplicate (idempotency_key already seen).
     """
-    period_start = _current_period_start()
+    period_start = current_period_start()
     now = datetime.now(timezone.utc)
 
     if idempotency_key is not None:
@@ -321,14 +321,40 @@ async def consume_n(
     user_id: uuid.UUID,
     metric: UsageMetric,
     count: int,
-) -> None:
+    idempotency_key: Optional[str] = None,
+) -> bool:
     """Atomically increment the usage counter by *count* (for batch operations).
 
-    No idempotency key support — batch callers must ensure they don't call twice
-    for the same set of work (e.g. gate with assert_can_use_n first).
+    When *idempotency_key* is provided (recommended for all batch callers) the
+    operation is fully idempotent: a second call with the same key is a no-op
+    and returns False.  Without a key the counter is always incremented.
+
+    Suggested key convention:
+      enrich_location: f"enrich_loc_{location_id}_{period_start}"
+      enrich_all:      f"enrich_all_{user_id}_{period_start}"
+
+    Returns True if incremented, False if duplicate.
     """
-    period_start = _current_period_start()
+    period_start = current_period_start()
     now = datetime.now(timezone.utc)
+
+    if idempotency_key is not None:
+        event_stmt = (
+            pg_insert(UsageEvent)
+            .values(
+                id=uuid.uuid4(),
+                user_id=user_id,
+                metric=metric,
+                idempotency_key=idempotency_key,
+                period_start=period_start,
+                created_at=now,
+            )
+            .on_conflict_do_nothing(constraint="uq_usage_event_idempotency_key")
+        )
+        result = await session.execute(event_stmt)
+        if result.rowcount == 0:
+            return False  # Duplicate batch — do not increment
+
     counter_stmt = (
         pg_insert(UsageCounter)
         .values(
@@ -347,3 +373,4 @@ async def consume_n(
     )
     await session.execute(counter_stmt)
     await session.flush()
+    return True

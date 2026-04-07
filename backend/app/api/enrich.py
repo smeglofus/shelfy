@@ -103,8 +103,16 @@ async def enrich_by_location(
             detail="Enrichment queue is unavailable",
         ) from exc
 
-    # Consume N enrichment credits after successful enqueue
-    await entitlements.consume_n(session, current_user.id, UsageMetric.enrichments, len(book_ids))
+    # Consume N enrichment credits after successful enqueue (idempotent: same location
+    # in the same billing period can only be charged once, even on retries / double-clicks)
+    period_start = entitlements.current_period_start()
+    await entitlements.consume_n(
+        session,
+        current_user.id,
+        UsageMetric.enrichments,
+        len(book_ids),
+        idempotency_key=f"enrich_loc_{location_id}_{period_start}",
+    )
     await session.commit()
 
     return EnrichResponse(
@@ -148,7 +156,15 @@ async def enrich_all_books(
         ) from exc
 
     # Consume N enrichment credits after all batches are successfully enqueued
-    await entitlements.consume_n(session, current_user.id, UsageMetric.enrichments, len(book_ids))
+    # (idempotent: a second "enrich all" in the same billing period is a no-op on the counter)
+    period_start = entitlements.current_period_start()
+    await entitlements.consume_n(
+        session,
+        current_user.id,
+        UsageMetric.enrichments,
+        len(book_ids),
+        idempotency_key=f"enrich_all_{library_id}_{period_start}",
+    )
     await session.commit()
 
     return EnrichResponse(

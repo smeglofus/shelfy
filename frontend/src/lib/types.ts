@@ -241,6 +241,45 @@ export interface OnboardingStatus {
   skipped_at: string | null
 }
 
+// Billing / Subscriptions
+export type SubscriptionPlan = 'free' | 'pro' | 'library'
+export type SubscriptionStatus = 'active' | 'trialing' | 'canceled' | 'past_due'
+
+export interface UsageSummary {
+  scans_used: number
+  scans_limit: number         // -1 = unlimited
+  enrichments_used: number
+  enrichments_limit: number   // -1 = unlimited
+}
+
+export interface BillingStatus {
+  plan: SubscriptionPlan
+  status: SubscriptionStatus
+  has_payment_method: boolean
+  trial_ends_at: string | null
+  current_period_end: string | null
+  usage: UsageSummary
+}
+
+export interface CheckoutResponse {
+  url: string
+}
+
+export interface PortalResponse {
+  url: string
+}
+
+/** Structured detail returned by 402 / 403 quota-exceeded responses. */
+export interface QuotaErrorDetail {
+  code: 'quota_exceeded' | 'library_limit_reached' | 'member_limit_reached'
+  metric?: string
+  plan: SubscriptionPlan
+  limit: number
+  used?: number
+  requested?: number
+  upgrade_url: string
+}
+
 // Shared library
 export type LibraryRole = 'owner' | 'editor' | 'viewer'
 

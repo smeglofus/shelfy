@@ -4,6 +4,10 @@ import { clearTokens, getAccessToken, getRefreshToken, setAccessToken, setRefres
 import type {
   AccessTokenResponse,
   AddMemberRequest,
+  BillingStatus,
+  CheckoutResponse,
+  PortalResponse,
+  QuotaErrorDetail,
   Book,
   BookCreateRequest,
   BookListParams,
@@ -141,8 +145,21 @@ apiClient.interceptors.response.use(
 )
 
 export function formatApiError(error: unknown): string {
-  if (axios.isAxiosError<{ detail?: string }>(error)) {
-    return error.response?.data?.detail ?? error.message
+  if (axios.isAxiosError<{ detail?: unknown }>(error)) {
+    const detail = error.response?.data?.detail
+
+    if (typeof detail === 'string') {
+      return detail
+    }
+
+    if (detail && typeof detail === 'object' && 'code' in detail) {
+      const code = (detail as { code?: unknown }).code
+      if (typeof code === 'string' && code.includes('limit')) {
+        return 'Usage limit reached. Please upgrade your plan.'
+      }
+    }
+
+    return error.message || 'Request failed.'
   }
 
   return 'Something went wrong. Please try again.'
@@ -383,3 +400,60 @@ export async function updateLibraryMember(
 export async function removeLibraryMember(libraryId: string, userId: string): Promise<void> {
   await apiClient.delete(`/api/v1/libraries/${libraryId}/members/${userId}`)
 }
+
+// ── Billing ────────────────────────────────────────────────────────────────
+
+export async function getBillingStatus(): Promise<BillingStatus> {
+  const response = await apiClient.get<BillingStatus>('/api/v1/billing/status')
+  return response.data
+}
+
+export async function createCheckoutSession(plan: 'pro' | 'library'): Promise<CheckoutResponse> {
+  const response = await apiClient.post<CheckoutResponse>('/api/v1/billing/checkout', { plan })
+  return response.data
+}
+
+export async function createPortalSession(): Promise<PortalResponse> {
+  const response = await apiClient.post<PortalResponse>('/api/v1/billing/portal')
+  return response.data
+}
+
+// ── GDPR ───────────────────────────────────────────────────────────────────
+
+export async function deleteAccount(password: string): Promise<void> {
+  await apiClient.delete('/api/v1/auth/me', { data: { password } })
+}
+
+export async function exportUserData(): Promise<Blob> {
+  const response = await apiClient.get('/api/v1/auth/me/export', { responseType: 'blob' })
+  return response.data as Blob
+}
+
+// ── Global quota-error handler ────────────────────────────────────────────
+// Intercepts 402 (quota_exceeded) and 403 with an upgrade_url so the
+// UpgradePrompt can be shown from any mutation without per-call handling.
+
+function _isQuotaDetail(detail: unknown): detail is QuotaErrorDetail {
+  return (
+    typeof detail === 'object' &&
+    detail !== null &&
+    'code' in detail &&
+    'upgrade_url' in detail
+  )
+}
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError<{ detail?: unknown }>) => {
+    const httpStatus = error.response?.status
+    const detail = error.response?.data?.detail
+
+    if ((httpStatus === 402 || httpStatus === 403) && _isQuotaDetail(detail)) {
+      // Lazy import to break circular dep — store is loaded after api.ts
+      const { useUpgradeStore } = await import('../store/useUpgradeStore')
+      useUpgradeStore.getState().show(detail)
+    }
+
+    return Promise.reject(error)
+  },
+)

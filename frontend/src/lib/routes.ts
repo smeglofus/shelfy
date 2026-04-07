@@ -7,6 +7,9 @@ export const ROUTES = {
   bookshelfView: '/bookshelf',
   locations: '/locations',
   settings: '/settings',
+  pricing: '/pricing',
+  privacy: '/privacy',
+  terms: '/terms',
 } as const
 
 export function getBookDetailRoute(bookId: string): string {

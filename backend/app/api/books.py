@@ -5,8 +5,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
+from app.models.subscription import UsageMetric
+from app.models.user import User
+from app.services import entitlements
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.schemas.book import (
     BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest,
@@ -167,9 +171,13 @@ async def retry_book_enrichment(
     book_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> RetryEnrichmentResponse:
     # Verify membership before queuing
     await get_book_or_404(session, book_id, library_id)
+
+    # Gate: raises HTTP 402 if monthly enrichment quota is exhausted
+    await entitlements.assert_can_use(session, current_user.id, UsageMetric.enrichments)
 
     try:
         celery_client = get_celery_client()
@@ -186,6 +194,16 @@ async def retry_book_enrichment(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Enrichment queue is unavailable",
         ) from publish_exc
+
+    # Consume 1 enrichment credit; idempotency key prevents double-charging if the
+    # client retries the same failed book within the same billing period.
+    await entitlements.consume(
+        session,
+        current_user.id,
+        UsageMetric.enrichments,
+        idempotency_key=f"retry_{book_id}",
+    )
+    await session.commit()
 
     return RetryEnrichmentResponse(book_id=book_id, status="queued")
 

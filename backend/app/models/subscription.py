@@ -94,6 +94,23 @@ class UsageCounter(Base):
     )
 
 
+class StripeEvent(Base):
+    """Idempotency log for Stripe webhooks — one row per event.id.
+
+    Stripe delivers webhooks at-least-once and occasionally out-of-order.
+    Before processing any event we INSERT here; if the INSERT conflicts the
+    event has already been handled and we skip it.
+    """
+
+    __tablename__ = "stripe_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    processed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
 class UsageEvent(Base):
     """Idempotency log — one row per (user, idempotency_key).
 

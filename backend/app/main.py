@@ -15,6 +15,7 @@ from starlette.responses import Response
 import structlog
 
 from app.api.auth import router as auth_router
+from app.api.billing import router as billing_router
 from app.api.books import router as books_router
 from app.api.health import router as health_router
 from app.api.jobs import router as jobs_router
@@ -36,6 +37,31 @@ from app.services.user_seed import seed_admin_user
 
 configure_structlog(service="backend")
 logger = structlog.get_logger()
+
+
+def _init_sentry() -> None:
+    """Initialize Sentry SDK when SENTRY_DSN is configured.
+
+    Imports are lazy so the overhead is zero when Sentry is disabled.
+    """
+    settings = get_settings()
+    if not settings.sentry_dsn:
+        return
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
+    logger.info("sentry_initialized", environment=settings.environment)
+
+
+_init_sentry()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -128,6 +154,7 @@ def create_app() -> FastAPI:
     app.include_router(telemetry_router)
     app.include_router(jobs_router)
     app.include_router(libraries_router)
+    app.include_router(billing_router)
     return app
 
 

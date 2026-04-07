@@ -38,4 +38,17 @@ async def get_current_user(
         raise credentials_exception
 
     request.state.user_id = str(user.id)
+
+    # Set Sentry user context so every error is tagged with the authenticated user.
+    # Lazy import — zero cost when Sentry is not configured.
+    try:
+        import sentry_sdk  # type: ignore[import-not-found]
+        sentry_sdk.set_user({"id": str(user.id), "email": user.email})
+        # Propagate X-Library-Id header as a tag for easier per-library filtering.
+        library_id = request.headers.get("x-library-id")
+        if library_id:
+            sentry_sdk.set_tag("library_id", library_id)
+    except ImportError:
+        pass
+
     return user

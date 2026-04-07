@@ -254,13 +254,13 @@ Rationale:
 
 ### Week 4: Launch Prep + Soft Launch
 
-| Day | Task | Priority |
-|-----|------|----------|
-| Mon | E2E tests: register → scan → hit limit → upgrade → pay → scan works | must-have |
-| Tue | 14-day Pro trial on registration (Stripe trial_period_days) | nice-to-have |
-| Wed | Email notifications: welcome, trial ending (day 10, 13), limit approaching (Resend or Postmark) | nice-to-have |
-| Thu | Analytics: PostHog or Plausible (self-hosted) — funnel: signup → first scan → upgrade | nice-to-have |
-| Fri | Soft launch: Product Hunt, Reddit r/books, r/selfhosted, české knižní komunity | must-have |
+| Day | Task | Priority | Status |
+|-----|------|----------|--------|
+| Mon | Fix tech debt: `consume_n` idempotency + quota gate on `retry-enrichment` | must-have | ✅ done |
+| Tue | 14-day Pro trial on first Stripe checkout (`trial_period_days: 14`) | nice-to-have | ✅ done |
+| Wed | Email notifications: welcome (on register), trial ending (day 10 & 13), limit approaching — via Resend | nice-to-have | ✅ done |
+| Thu | Analytics: PostHog or Plausible (self-hosted) — funnel: signup → first scan → upgrade | nice-to-have | pending |
+| Fri | Soft launch: Product Hunt, Reddit r/books, r/selfhosted, české knižní komunity | must-have | pending |
 
 **Week 4 exit criteria:** App is monetizable, GDPR-compliant, monitored, and publicly accessible with a landing page.
 
@@ -337,12 +337,12 @@ Reference snapshot as of 2026-04-05. Use this to understand what exists before i
 
 Intentional shortcuts taken during initial implementation. Address before scale.
 
-| Item | Location | Notes |
-|------|----------|-------|
-| `consume_n` has no idempotency | `app/services/entitlements.py` | Batch enrich endpoints (`/enrich/location`, `/enrich/all`) use `consume_n` without an idempotency key. A client retry or double-submit can increment usage twice. Fix: accept an `idempotency_key` param in `consume_n` and extend the `usage_events` unique constraint to cover batch keys. |
-| `test_entitlements.py` requires PostgreSQL | `tests/test_entitlements.py` | `pg_insert` (ON CONFLICT DO UPDATE) is PostgreSQL-specific. SQLite cannot run entitlement integration tests. Test DB URL is configurable via `TEST_DATABASE_URL` env var. |
-| `except Exception: pass` patterns in workers | `app/api/scan.py`, `app/api/enrich.py` | Some Celery queue failures are swallowed silently. Now logged via `structlog.warning`, but no alerting. Wire to Sentry (Week 3) for production visibility. |
-| Quota not enforced on `PATCH /books/{id}/retry-enrichment` | `app/api/books.py` | Manual retry enrichment endpoint does not check enrichment quota. Low priority (rare user action), but should be wired in before billing goes live. |
+| Item | Location | Status | Notes |
+|------|----------|--------|-------|
+| ~~`consume_n` has no idempotency~~ | `app/services/entitlements.py` | ✅ **Fixed (Week 4)** | `consume_n` now accepts an optional `idempotency_key` using the same `UsageEvent` ON CONFLICT DO NOTHING pattern as `consume`. Both `/enrich/location` and `/enrich/all` pass a period-scoped key. |
+| ~~Quota not enforced on `PATCH /books/{id}/retry-enrichment`~~ | `app/api/books.py` | ✅ **Fixed (Week 4)** | `retry_book_enrichment` now calls `assert_can_use` before queuing and `consume(..., idempotency_key=f"retry_{book_id}")` after. |
+| `test_entitlements.py` requires PostgreSQL | `tests/test_entitlements.py` | open | `pg_insert` (ON CONFLICT DO UPDATE) is PostgreSQL-specific. SQLite cannot run entitlement integration tests. Test DB URL is configurable via `TEST_DATABASE_URL` env var. |
+| `except Exception: pass` patterns in workers | `app/api/scan.py`, `app/api/enrich.py` | open | Some Celery queue failures are swallowed silently. Now logged via `structlog.warning`, but no alerting. Wire to Sentry for production visibility. |
 
 ---
 
