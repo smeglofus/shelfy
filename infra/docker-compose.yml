@@ -57,6 +57,11 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-shelfy-images}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # Local-dev / E2E overrides — production deploy should use its own env file.
+      # Defaults raised so repeated E2E runs don't exhaust slowapi in-memory
+      # counters (they reset when the process restarts).
+      RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-100/minute}
+      RATE_LIMIT_REFRESH: ${RATE_LIMIT_REFRESH:-200/minute}
     depends_on:
       postgres:
         condition: service_healthy

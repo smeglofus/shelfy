@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:p0": "playwright test --grep @p0"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"

@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -183,6 +184,14 @@ jobs:
           E2E_ADMIN_PASSWORD: change-me
         run: npx playwright test tests/smoke-regressions.spec.ts
 
+      - name: Run E2E P0 gate (chromium)
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_ADMIN_EMAIL: admin@example.com
+          E2E_ADMIN_PASSWORD: change-me
+        run: npx playwright test --project=chromium --grep @p0
+
       - name: Run E2E tests
         working-directory: e2e
         env:
@@ -196,4 +205,62 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          path: e2e/playwright-report
+
+
+  e2e-p0-mobile:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start app stack
+        working-directory: infra
+        run: docker compose up -d --build
+
+      - name: Wait for backend health
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8000/health >/dev/null; then
+              echo "Backend healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become healthy in time"
+          exit 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run E2E P0 gate (chromium + mobile-safari)
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_ADMIN_EMAIL: admin@example.com
+          E2E_ADMIN_PASSWORD: change-me
+        run: |
+          npx playwright test --project=chromium --grep @p0
+          npx playwright test --project=mobile-safari --grep @p0
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-p0-mobile
           path: e2e/playwright-report
