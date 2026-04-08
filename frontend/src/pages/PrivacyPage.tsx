@@ -1,9 +1,18 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const SECTION_STYLE: CSSProperties = { marginBottom: 28 }
-const H2_STYLE: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
-const P_STYLE: CSSProperties = { margin: '0 0 10px', lineHeight: 1.6, color: 'var(--sh-text-secondary)' }
+const SECTION: CSSProperties = { marginBottom: 32 }
+const H2: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
+const H3: CSSProperties = { fontSize: 15, fontWeight: 600, margin: '16px 0 6px' }
+const P: CSSProperties = { margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh-text-secondary)' }
+const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }
+const TABLE: CSSProperties = { width: '100%', borderCollapse: 'collapse', margin: '10px 0 16px', fontSize: 14 }
+const TH: CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid var(--sh-border)', fontWeight: 600, fontSize: 13 }
+const TD: CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--sh-border)', verticalAlign: 'top', color: 'var(--sh-text-secondary)' }
+
+const EFFECTIVE_DATE = '8. dubna 2026'
+const VERSION = '2.0'
+const CONTACT_EMAIL = 'privacy@shelfy.cz'
 
 export function PrivacyPage() {
   const navigate = useNavigate()
@@ -30,93 +39,240 @@ export function PrivacyPage() {
       </header>
 
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Privacy Policy</h1>
-        <p style={{ ...P_STYLE, marginBottom: 32 }}>
-          Last updated: April 6, 2026. If you have questions, contact us at{' '}
-          <a href='mailto:privacy@shelfy.app' style={{ color: 'var(--sh-primary)' }}>privacy@shelfy.app</a>.
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Zásady ochrany osobních údajů</h1>
+        <p style={{ ...P, fontSize: 13, marginBottom: 8 }}>
+          Verze {VERSION} · Účinnost od {EFFECTIVE_DATE}
         </p>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>1. What data we collect</h2>
-          <p style={P_STYLE}>
-            We collect the minimum data required to provide the Shelfy service:
-          </p>
-          <ul style={{ paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }}>
-            <li><strong>Account data:</strong> your email address and a bcrypt-hashed password.</li>
-            <li><strong>Library data:</strong> books, loans, locations, and shelf scan results you create.</li>
-            <li><strong>Billing data:</strong> subscription plan and Stripe customer ID (we never store your card details — Stripe handles payment data).</li>
-            <li><strong>Usage data:</strong> monthly counters for scans and enrichment requests (used for quota enforcement).</li>
-            <li><strong>Technical logs:</strong> server access logs and structured application logs (retained for 30 days).</li>
+        {/* ── Human-friendly summary ── */}
+        <div style={{
+          background: 'var(--sh-surface-elevated)',
+          border: '1px solid var(--sh-border)',
+          borderRadius: 'var(--sh-radius-md)',
+          padding: '16px 20px',
+          marginBottom: 36,
+        }}>
+          <p style={{ ...P, fontWeight: 600, color: 'var(--sh-text-main)', marginBottom: 8 }}>Shrnutí pro lidi</p>
+          <ul style={{ ...UL, margin: 0 }}>
+            <li>Ukládáme jen to, co potřebujeme k provozu služby (e-mail, heslo, vaše knihy).</li>
+            <li>Neprodáváme a nesdílíme vaše data s třetími stranami za účelem reklamy.</li>
+            <li>Svá data si můžete kdykoliv stáhnout (JSON export) nebo smazat celý účet — obojí v Nastavení.</li>
+            <li>Nepoužíváme sledovací cookies. Analytika (PostHog) běží bez cookies.</li>
+            <li>Data jsou uložena na serveru v Česku, za Cloudflare ochranou.</li>
           </ul>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>2. How we use your data</h2>
-          <p style={P_STYLE}>
-            We use your data exclusively to provide and improve the Shelfy service. We do not sell or share
-            personal data with third parties for marketing purposes. Third-party sub-processors we use:
+        {/* ── 1. Správce ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>1. Správce osobních údajů</h2>
+          <table style={TABLE}>
+            <tbody>
+              <tr><td style={{ ...TD, fontWeight: 600, width: 160 }}>Správce</td><td style={TD}>Patrik Šušlík</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>IČO</td><td style={TD}>24561401</td></tr>
+              {/* TODO: doplnit sídlo po ověření s právníkem */}
+              <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>—</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a></td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>Web</td><td style={TD}>https://shelfy.cz</td></tr>
+            </tbody>
+          </table>
+          <p style={P}>
+            Správce neurčil pověřence pro ochranu osobních údajů (DPO), protože zpracování
+            nevyžaduje jeho jmenování podle čl. 37 GDPR. Pro veškeré dotazy ohledně ochrany
+            osobních údajů kontaktujte e-mail výše.
           </p>
-          <ul style={{ paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }}>
-            <li><strong>Stripe</strong> — payment processing (EU data residency available)</li>
-            <li><strong>Google Gemini API</strong> — AI image analysis for shelf scanning (images are not retained by Google)</li>
-            <li><strong>Sentry</strong> — optional error tracking (only enabled in production)</li>
+        </div>
+
+        {/* ── 2. Jaké údaje zpracováváme ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>2. Jaké osobní údaje zpracováváme</h2>
+          <table style={TABLE}>
+            <thead>
+              <tr>
+                <th style={TH}>Kategorie</th>
+                <th style={TH}>Co konkrétně</th>
+                <th style={TH}>Účel</th>
+                <th style={TH}>Právní základ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={TD}>Účetní údaje</td>
+                <td style={TD}>E-mail, bcrypt hash hesla</td>
+                <td style={TD}>Registrace a přihlášení</td>
+                <td style={TD}>Plnění smlouvy (čl. 6/1b)</td>
+              </tr>
+              <tr>
+                <td style={TD}>Data knihovny</td>
+                <td style={TD}>Knihy, výpůjčky, lokace, výsledky skenování</td>
+                <td style={TD}>Provoz služby</td>
+                <td style={TD}>Plnění smlouvy (čl. 6/1b)</td>
+              </tr>
+              <tr>
+                <td style={TD}>Fakturační údaje</td>
+                <td style={TD}>Plán předplatného, Stripe customer ID</td>
+                <td style={TD}>Správa předplatného a fakturace</td>
+                <td style={TD}>Plnění smlouvy (čl. 6/1b)</td>
+              </tr>
+              <tr>
+                <td style={TD}>Měřiče využití</td>
+                <td style={TD}>Počet skenování a obohacení za měsíc</td>
+                <td style={TD}>Kontrola kvót</td>
+                <td style={TD}>Plnění smlouvy (čl. 6/1b)</td>
+              </tr>
+              <tr>
+                <td style={TD}>Analytická data</td>
+                <td style={TD}>Anonymizované události používání (PostHog)</td>
+                <td style={TD}>Vylepšování služby</td>
+                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+              </tr>
+              <tr>
+                <td style={TD}>Technické logy</td>
+                <td style={TD}>IP adresa, user-agent, chybové záznamy (Sentry)</td>
+                <td style={TD}>Bezpečnost, diagnostika</td>
+                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style={P}>
+            <strong>Nikdy neukládáme</strong> čísla platebních karet — platby zpracovává výhradně Stripe.
+            Fotografie polic odesílané k AI rozpoznání jsou zpracovány a ihned po zpracování zahozeny.
+          </p>
+        </div>
+
+        {/* ── 3. Zpracovatelé ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>3. Příjemci a zpracovatelé</h2>
+          <p style={P}>Vaše data sdílíme pouze se zpracovateli nezbytnými pro provoz služby:</p>
+          <table style={TABLE}>
+            <thead>
+              <tr>
+                <th style={TH}>Zpracovatel</th>
+                <th style={TH}>Účel</th>
+                <th style={TH}>Sídlo / data residency</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style={TD}>Stripe, Inc.</td><td style={TD}>Platby a fakturace</td><td style={TD}>USA (EU data residency, SCC)</td></tr>
+              <tr><td style={TD}>Google LLC (Gemini API)</td><td style={TD}>AI rozpoznání knih ze snímků polic</td><td style={TD}>USA (SCC); snímky nejsou uchovávány</td></tr>
+              <tr><td style={TD}>Functional Software (Sentry)</td><td style={TD}>Monitoring chyb</td><td style={TD}>USA (SCC)</td></tr>
+              <tr><td style={TD}>PostHog, Inc.</td><td style={TD}>Produktová analytika</td><td style={TD}>EU (eu.posthog.com)</td></tr>
+              <tr><td style={TD}>Resend, Inc.</td><td style={TD}>Transakční e-maily</td><td style={TD}>USA (SCC)</td></tr>
+              <tr><td style={TD}>Cloudflare, Inc.</td><td style={TD}>CDN, DDoS ochrana, TLS terminace</td><td style={TD}>Globální (SCC)</td></tr>
+            </tbody>
+          </table>
+          <p style={P}>
+            U zpracovatelů mimo EU/EHP se opíráme o standardní smluvní doložky (SCC) podle
+            rozhodnutí Evropské komise. Data knihovny a databáze jsou uložena na vlastním serveru v České republice.
+          </p>
+        </div>
+
+        {/* ── 4. Přenos mimo EU ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>4. Přenos údajů mimo EU</h2>
+          <p style={P}>
+            Některé služby třetích stran (Stripe, Google, Sentry, Resend, Cloudflare) mohou
+            zpracovávat data v USA. Ve všech případech jsou využity standardní smluvní doložky (SCC)
+            a/nebo rozhodnutí o přiměřenosti jako záruky dle kapitoly V GDPR.
+          </p>
+        </div>
+
+        {/* ── 5. Doba uchovávání ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>5. Doba uchovávání údajů</h2>
+          <table style={TABLE}>
+            <thead>
+              <tr>
+                <th style={TH}>Údaje</th>
+                <th style={TH}>Doba uchovávání</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style={TD}>Účet a data knihovny</td><td style={TD}>Po dobu existence účtu</td></tr>
+              <tr><td style={TD}>Po smazání účtu</td><td style={TD}>Nevratně odstraněno do 30 dnů (zálohy rotovány po 30 dnech)</td></tr>
+              <tr><td style={TD}>Technické logy</td><td style={TD}>30 dnů</td></tr>
+              <tr><td style={TD}>Chybové záznamy (Sentry)</td><td style={TD}>90 dnů</td></tr>
+              <tr><td style={TD}>Fakturační záznamy Stripe</td><td style={TD}>Dle zákonných povinností Stripe (daňová legislativa)</td></tr>
+              <tr><td style={TD}>Analytická data (PostHog)</td><td style={TD}>12 měsíců</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── 6. Vaše práva ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>6. Vaše práva podle GDPR</h2>
+          <p style={P}>Podle nařízení (EU) 2016/679 (GDPR) máte následující práva:</p>
+          <ul style={UL}>
+            <li><strong>Právo na přístup (čl. 15)</strong> — můžete požádat o kopii svých osobních údajů.</li>
+            <li><strong>Právo na opravu (čl. 16)</strong> — můžete opravit nepřesné údaje.</li>
+            <li>
+              <strong>Právo na výmaz (čl. 17)</strong> — můžete smazat účet a všechna data.
+              V aplikaci: <em>Nastavení → Nebezpečná zóna → Smazat účet</em>.
+            </li>
+            <li>
+              <strong>Právo na přenositelnost (čl. 20)</strong> — můžete si stáhnout kompletní JSON export dat.
+              V aplikaci: <em>Nastavení → Export mých dat</em>.
+            </li>
+            <li><strong>Právo na omezení zpracování (čl. 18)</strong> — za podmínek stanovených GDPR.</li>
+            <li><strong>Právo vznést námitku (čl. 21)</strong> — proti zpracování na základě oprávněného zájmu.</li>
+            <li><strong>Právo podat stížnost</strong> — u dozorového úřadu: Úřad pro ochranu osobních údajů (ÚOOÚ), Pplk. Sochora 27, 170 00 Praha 7, <a href='https://www.uoou.gov.cz' style={{ color: 'var(--sh-primary)' }}>www.uoou.gov.cz</a>.</li>
+          </ul>
+          <p style={P}>
+            Práva, která nelze uplatnit přímo v aplikaci, vyřídíme na základě žádosti zaslané na{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+            Na žádost odpovíme nejpozději do 30 dnů.
+          </p>
+        </div>
+
+        {/* ── 7. Analytika ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>7. Produktová analytika (PostHog)</h2>
+          <p style={P}>
+            Pro porozumění způsobu používání služby využíváme PostHog (EU instance).
+            Sledujeme agregované události (registrace, skenování, přechod na placený plán),
+            nikoliv obsah knihovny, snímky nebo platební údaje.
+          </p>
+          <p style={P}>
+            PostHog pracuje <strong>bez sledovacích cookies</strong>. Pro persistenci analytického
+            identifikátoru je využíván localStorage prohlížeče. Právním základem je oprávněný
+            zájem správce na vylepšování služby (čl. 6/1f GDPR). Proti tomuto zpracování
+            můžete vznést námitku na výše uvedeném kontaktním e-mailu.
+          </p>
+        </div>
+
+        {/* ── 8. Cookies a localStorage ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>8. Cookies a místní úložiště</h2>
+          <p style={P}>
+            Shelfy <strong>nepoužívá sledovací cookies</strong>. Využíváme výhradně:
+          </p>
+          <ul style={UL}>
+            <li><strong>localStorage</strong> — autentizační tokeny, preference jazyka a tmavého režimu. Tato data neopouštějí váš prohlížeč.</li>
+            <li><strong>Nezbytné cookies Cloudflare</strong> — technické cookies pro DDoS ochranu (cf_clearance apod.). Ty jsou nezbytné pro fungování služby a nevyžadují souhlas.</li>
           </ul>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>3. Your rights (GDPR)</h2>
-          <p style={P_STYLE}>
-            Under the General Data Protection Regulation (EU 2016/679), you have the following rights:
+        {/* ── 9. Zabezpečení ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>9. Zabezpečení</h2>
+          <p style={P}>
+            Přijímáme technická a organizační opatření k ochraně vašich údajů:
           </p>
-          <ul style={{ paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }}>
-            <li><strong>Right of access (Art. 15):</strong> request a copy of your personal data.</li>
-            <li><strong>Right to rectification (Art. 16):</strong> correct inaccurate data.</li>
-            <li><strong>Right to erasure (Art. 17):</strong> delete your account and all associated data from Settings → Danger Zone → Delete account.</li>
-            <li><strong>Right to data portability (Art. 20):</strong> download a full JSON export of your data from Settings → Export my data.</li>
-            <li><strong>Right to object (Art. 21):</strong> object to processing in certain circumstances.</li>
+          <ul style={UL}>
+            <li>Šifrovaná komunikace (TLS/HTTPS) pro veškerý provoz.</li>
+            <li>Hesla ukládána výhradně jako bcrypt hash.</li>
+            <li>Přístupové tokeny v paměti prohlížeče (ne v localStorage).</li>
+            <li>Infrastruktura za Cloudflare WAF s rate limitingem.</li>
+            <li>Pravidelné automatizované zálohy s 30denní rotací.</li>
           </ul>
-          <p style={P_STYLE}>
-            To exercise rights that are not covered by the in-app tools, contact{' '}
-            <a href='mailto:privacy@shelfy.app' style={{ color: 'var(--sh-primary)' }}>privacy@shelfy.app</a>.
-          </p>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>4. Data retention</h2>
-          <p style={P_STYLE}>
-            Your data is retained for as long as your account exists. When you delete your account, all
-            personal data is permanently removed within 30 days (backups are rotated on a 30-day cycle).
-            Stripe may retain transaction records for legal compliance purposes.
-          </p>
-        </div>
-
-
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>5. Product analytics (PostHog)</h2>
-          <p style={P_STYLE}>
-            We use privacy-first product analytics via PostHog to understand feature usage
-            (e.g. signup, shelf scan completion, upgrade click). We do not send book contents,
-            images, or payment card data to analytics.
-          </p>
-          <p style={P_STYLE}>
-            Analytics runs without tracking cookies (localStorage persistence) and can be
-            disabled by configuration on self-hosted deployments.
-          </p>
-        </div>
-
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>6. Cookies</h2>
-          <p style={P_STYLE}>
-            Shelfy does not use tracking cookies. We use localStorage to store your authentication tokens
-            and UI preferences (dark mode, language). This data never leaves your device.
-          </p>
-        </div>
-
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>7. Data controller</h2>
-          <p style={P_STYLE}>
-            The data controller is the operator of shelfy.app. For enquiries, write to{' '}
-            <a href='mailto:privacy@shelfy.app' style={{ color: 'var(--sh-primary)' }}>privacy@shelfy.app</a>.
+        {/* ── 10. Změny ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>10. Změny těchto zásad</h2>
+          <p style={P}>
+            O podstatných změnách vás budeme informovat e-mailem minimálně 14 dní předem.
+            Aktuální verzi vždy najdete na této stránce. Drobné formulační úpravy (bez dopadu
+            na vaše práva) provádíme bez upozornění.
           </p>
         </div>
 
@@ -126,7 +282,7 @@ export function PrivacyPage() {
           style={{ marginTop: 8 }}
           onClick={() => navigate(-1)}
         >
-          ← Back
+          ← Zpět
         </button>
       </main>
     </div>

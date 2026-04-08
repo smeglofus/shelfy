@@ -2,9 +2,18 @@ import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../lib/routes'
 
-const SECTION_STYLE: CSSProperties = { marginBottom: 28 }
-const H2_STYLE: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
-const P_STYLE: CSSProperties = { margin: '0 0 10px', lineHeight: 1.6, color: 'var(--sh-text-secondary)' }
+const SECTION: CSSProperties = { marginBottom: 32 }
+const H2: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
+const P: CSSProperties = { margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh-text-secondary)' }
+const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }
+const TABLE: CSSProperties = { width: '100%', borderCollapse: 'collapse', margin: '10px 0 16px', fontSize: 14 }
+const TH: CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid var(--sh-border)', fontWeight: 600, fontSize: 13 }
+const TD: CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--sh-border)', verticalAlign: 'top', color: 'var(--sh-text-secondary)' }
+
+const EFFECTIVE_DATE = '8. dubna 2026'
+const VERSION = '2.0'
+const CONTACT_EMAIL = 'info@shelfy.cz'
+const PRIVACY_EMAIL = 'privacy@shelfy.cz'
 
 export function TermsPage() {
   const navigate = useNavigate()
@@ -31,92 +40,248 @@ export function TermsPage() {
       </header>
 
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Terms of Service</h1>
-        <p style={{ ...P_STYLE, marginBottom: 32 }}>
-          Last updated: April 6, 2026. By using Shelfy you agree to these terms. Questions?{' '}
-          <a href='mailto:hello@shelfy.app' style={{ color: 'var(--sh-primary)' }}>hello@shelfy.app</a>
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Obchodní podmínky</h1>
+        <p style={{ ...P, fontSize: 13, marginBottom: 8 }}>
+          Verze {VERSION} · Účinnost od {EFFECTIVE_DATE}
         </p>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>1. Service description</h2>
-          <p style={P_STYLE}>
-            Shelfy is a personal library management application that uses AI to catalog physical books.
-            We provide a Free tier and paid plans (Pro, Library). Features and limits are described on
-            the Pricing page and may change with reasonable notice.
-          </p>
-        </div>
-
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>2. Accounts</h2>
-          <p style={P_STYLE}>
-            You must be 16 or older to create an account. You are responsible for keeping your credentials
-            secure. One person may hold one account; sharing credentials is not permitted.
-          </p>
-        </div>
-
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>3. Acceptable use</h2>
-          <p style={P_STYLE}>You agree not to:</p>
-          <ul style={{ paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }}>
-            <li>Attempt to reverse-engineer, scrape, or overload the service.</li>
-            <li>Upload content that infringes third-party intellectual property rights.</li>
-            <li>Use the service for any unlawful purpose.</li>
+        {/* ── Human-friendly summary ── */}
+        <div style={{
+          background: 'var(--sh-surface-elevated)',
+          border: '1px solid var(--sh-border)',
+          borderRadius: 'var(--sh-radius-md)',
+          padding: '16px 20px',
+          marginBottom: 36,
+        }}>
+          <p style={{ ...P, fontWeight: 600, color: 'var(--sh-text-main)', marginBottom: 8 }}>Shrnutí pro lidi</p>
+          <ul style={{ ...UL, margin: 0 }}>
+            <li>Shelfy je aplikace na správu osobní knihovny. Základní verze je zdarma.</li>
+            <li>Placené plány se platí měsíčně přes Stripe. Zrušit můžete kdykoliv v Nastavení.</li>
+            <li>Vaše knihy a data patří vám. Můžete si je kdykoliv exportovat nebo smazat účet.</li>
+            <li>Nesnažíme se nic skrývat — jestli máte otázku, napište na {CONTACT_EMAIL}.</li>
           </ul>
-          <p style={P_STYLE}>
-            We reserve the right to suspend or terminate accounts that violate these rules.
+        </div>
+
+        {/* ── 1. Úvodní ustanovení ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>1. Úvodní ustanovení</h2>
+          <table style={TABLE}>
+            <tbody>
+              <tr><td style={{ ...TD, fontWeight: 600, width: 160 }}>Poskytovatel</td><td style={TD}>Patrik Šušlík, IČO: 24561401</td></tr>
+              {/* TODO: doplnit sídlo */}
+              <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>—</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a></td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>Web</td><td style={TD}>https://shelfy.cz</td></tr>
+            </tbody>
+          </table>
+          <p style={P}>
+            Tyto obchodní podmínky (dále jen „Podmínky") upravují práva a povinnosti
+            mezi Poskytovatelem a uživatelem (dále jen „Uživatel") při používání webové
+            aplikace Shelfy dostupné na adrese https://shelfy.cz (dále jen „Služba").
+          </p>
+          <p style={P}>
+            Vytvořením účtu Uživatel potvrzuje, že se s těmito Podmínkami seznámil
+            a souhlasí s nimi. Podmínky se řídí právním řádem České republiky,
+            zejména zákonem č. 89/2012 Sb. (občanský zákoník) a zákonem č. 634/1992 Sb.
+            (o ochraně spotřebitele).
           </p>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>4. Billing</h2>
-          <p style={P_STYLE}>
-            Paid plans are billed monthly in advance via Stripe. You may cancel at any time from
-            Settings → Manage subscription; your plan remains active until the end of the current
-            billing period. Refunds are handled on a case-by-case basis — contact us within 7 days
-            of a charge.
+        {/* ── 2. Popis služby ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>2. Popis služby</h2>
+          <p style={P}>
+            Shelfy je webová aplikace pro správu osobní knihovny. Umožňuje evidenci knih,
+            AI rozpoznání knih ze snímků polic, správu výpůjček, sdílení knihovny
+            a automatické obohacení metadat z online databází.
+          </p>
+          <p style={P}>
+            Služba je dostupná ve variantě zdarma (s funkčními a kapacitními omezeními)
+            a v placených plánech. Aktuální přehled plánů, funkcí a cen je uveden na
+            stránce Plány &amp; Ceny v aplikaci.
           </p>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>5. Data and privacy</h2>
-          <p style={P_STYLE}>
-            We process your personal data as described in our{' '}
+        {/* ── 3. Registrace a účet ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>3. Registrace a uživatelský účet</h2>
+          <ul style={UL}>
+            <li>Pro používání Služby je nutná registrace e-mailem a heslem.</li>
+            <li>Uživatel musí být starší 16 let.</li>
+            <li>Každá osoba smí mít jeden účet. Sdílení přihlašovacích údajů není povoleno.</li>
+            <li>Uživatel odpovídá za bezpečnost svých přihlašovacích údajů.</li>
+            <li>Poskytovatel si vyhrazuje právo zrušit účet, který porušuje tyto Podmínky.</li>
+          </ul>
+        </div>
+
+        {/* ── 4. Ceny a platby ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>4. Ceny, platby a fakturace</h2>
+          <p style={P}>
+            Placené plány jsou účtovány měsíčně předem. Platby zpracovává Stripe.
+            Poskytovatel nikdy neukládá čísla platebních karet.
+          </p>
+          <p style={P}>
+            Aktuální ceny jsou vždy uvedeny na stránce Plány &amp; Ceny a jsou
+            konečné (Poskytovatel není plátcem DPH, případně ceny zahrnují DPH).
+          </p>
+          <p style={P}>
+            Za každou platbu Uživatel obdrží daňový doklad (fakturu) na e-mail spojený s účtem.
+          </p>
+        </div>
+
+        {/* ── 5. Zrušení a refundace ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>5. Zrušení předplatného a vrácení peněz</h2>
+          <p style={P}>
+            Předplatné můžete kdykoliv zrušit v <em>Nastavení → Spravovat předplatné</em>.
+            Po zrušení zůstává plán aktivní do konce aktuálního zaplaceného období.
+            Po jeho uplynutí se účet automaticky převede na bezplatnou variantu — data
+            zůstanou zachována.
+          </p>
+          <p style={P}>
+            <strong>Vrácení peněz:</strong> Požádejte e-mailem na{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>{' '}
+            do 14 dnů od platby. Žádost posoudíme individuálně.
+          </p>
+        </div>
+
+        {/* ── 6. Odstoupení od smlouvy (spotřebitel) ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>6. Právo spotřebitele na odstoupení od smlouvy</h2>
+          <p style={P}>
+            Pokud jste spotřebitel ve smyslu § 419 občanského zákoníku, máte právo
+            odstoupit od smlouvy bez udání důvodu do 14 dnů od jejího uzavření
+            (§ 1829 občanského zákoníku).
+          </p>
+          <p style={P}>
+            Pokud při objednávce výslovně požádáte o okamžité zpřístupnění placené
+            Služby a potvrdíte, že berete na vědomí, že tím ztrácíte právo na
+            odstoupení, právo na odstoupení zaniká okamžikem zpřístupnění Služby
+            (§ 1837 písm. l občanského zákoníku).
+          </p>
+          <p style={P}>
+            Pro odstoupení od smlouvy zašlete jednoznačné prohlášení na{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+          </p>
+        </div>
+
+        {/* ── 7. Přijatelné použití ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>7. Pravidla používání</h2>
+          <p style={P}>Uživatel se zavazuje, že nebude:</p>
+          <ul style={UL}>
+            <li>Pokoušet se o zpětnou analýzu, automatické stahování dat (scraping) nebo přetěžování Služby.</li>
+            <li>Nahrávat obsah porušující práva duševního vlastnictví třetích osob.</li>
+            <li>Používat Službu k jakémukoliv nezákonnému účelu.</li>
+            <li>Obcházet technická omezení bezplatného plánu.</li>
+          </ul>
+          <p style={P}>
+            Poskytovatel si vyhrazuje právo pozastavit nebo zrušit účet, který tato
+            pravidla porušuje — po předchozím upozornění, kromě závažných porušení.
+          </p>
+        </div>
+
+        {/* ── 8. Data a soukromí ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>8. Osobní údaje a soukromí</h2>
+          <p style={P}>
+            Zpracování osobních údajů se řídí samostatnými{' '}
             <button
               type='button'
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-primary)', padding: 0, fontSize: 'inherit' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-primary)', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}
               onClick={() => navigate(ROUTES.privacy)}
             >
-              Privacy Policy
-            </button>
-            . You own all content you create. We do not sell your data.
+              Zásadami ochrany osobních údajů
+            </button>.
+          </p>
+          <ul style={UL}>
+            <li>Veškerý obsah, který Uživatel vytvoří (knihy, výpůjčky, lokace), zůstává jeho vlastnictvím.</li>
+            <li>Poskytovatel neprodává a nesdílí data Uživatele za účelem reklamy.</li>
+            <li>Uživatel může kdykoli exportovat svá data (JSON) nebo smazat celý účet v Nastavení.</li>
+          </ul>
+        </div>
+
+        {/* ── 9. Dostupnost a zálohy ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>9. Dostupnost služby</h2>
+          <p style={P}>
+            Poskytovatel usiluje o nepřetržitou dostupnost Služby, ale negarantuje
+            konkrétní míru dostupnosti (uptime). Služba může být dočasně nedostupná
+            z důvodu údržby, aktualizací nebo okolností mimo kontrolu Poskytovatele (vyšší moc).
+          </p>
+          <p style={P}>
+            Poskytovatel provádí pravidelné automatizované zálohy dat s 30denní retencí.
+            V případě potřeby obnovy dat kontaktujte podporu.
           </p>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>6. Service availability</h2>
-          <p style={P_STYLE}>
-            We aim for high availability but do not guarantee uptime. The service is provided "as is".
-            We are not liable for data loss caused by user error, force majeure, or infrastructure failures.
-            We perform regular automated backups; contact support if you need data recovery assistance.
+        {/* ── 10. Odpovědnost ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>10. Omezení odpovědnosti</h2>
+          <p style={P}>
+            Služba je poskytována „tak jak je" (as-is). V maximálním rozsahu povoleném
+            právními předpisy odpovídá Poskytovatel za škodu vzniklou Uživateli
+            maximálně do výše částky, kterou Uživatel zaplatil Poskytovateli
+            za posledních 12 měsíců, minimálně však 50 EUR.
+          </p>
+          <p style={P}>
+            Toto omezení se nevztahuje na škodu způsobenou úmyslně nebo z hrubé
+            nedbalosti a neomezuje práva spotřebitele vyplývající z kogentních
+            ustanovení českého práva.
           </p>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>7. Limitation of liability</h2>
-          <p style={P_STYLE}>
-            To the maximum extent permitted by applicable law, our total liability to you for any claim
-            arising from your use of Shelfy shall not exceed the amount you paid us in the 12 months
-            preceding the claim, or €50, whichever is greater.
+        {/* ── 11. Reklamace ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>11. Reklamace a řešení sporů</h2>
+          <p style={P}>
+            Reklamace a stížnosti zasílejte na{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+            Reklamaci vyřídíme nejpozději do 30 dnů od jejího obdržení.
+          </p>
+          <p style={P}>
+            Mimosoudní řešení spotřebitelských sporů je v kompetenci České obchodní
+            inspekce (ČOI):{' '}
+            <a href='https://www.coi.cz/informace-o-adr/' style={{ color: 'var(--sh-primary)' }}>
+              www.coi.cz/informace-o-adr
+            </a>
+          </p>
+          <p style={P}>
+            Pro online řešení sporů můžete rovněž využít platformu ODR Evropské komise:{' '}
+            <a href='https://ec.europa.eu/consumers/odr' style={{ color: 'var(--sh-primary)' }}>
+              ec.europa.eu/consumers/odr
+            </a>
           </p>
         </div>
 
-        <div style={SECTION_STYLE}>
-          <h2 style={H2_STYLE}>8. Changes to these terms</h2>
-          <p style={P_STYLE}>
-            We will notify you of material changes by email at least 14 days in advance. Continued use
-            after the effective date constitutes acceptance of the updated terms.
+        {/* ── 12. Rozhodné právo ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>12. Rozhodné právo a příslušnost</h2>
+          <p style={P}>
+            Tyto Podmínky se řídí právním řádem České republiky. Případné spory
+            budou rozhodovány příslušnými soudy České republiky.
+          </p>
+          <p style={P}>
+            Tím nejsou dotčena práva spotřebitele na ochranu dle právních předpisů
+            státu jeho bydliště, pokud poskytují vyšší míru ochrany.
           </p>
         </div>
+
+        {/* ── 13. Změny podmínek ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>13. Změny těchto podmínek</h2>
+          <p style={P}>
+            O podstatných změnách Podmínek informujeme e-mailem minimálně 14 dní předem.
+            Pokračování v užívání Služby po datu účinnosti změn znamená souhlas s novým
+            zněním. Pokud se změnami nesouhlasíte, můžete účet kdykoli zrušit.
+          </p>
+        </div>
+
+        <p style={{ ...P, fontSize: 13, fontStyle: 'italic', marginTop: 24 }}>
+          Otázky? Napište nám na{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+        </p>
 
         <button
           type='button'
@@ -124,7 +289,7 @@ export function TermsPage() {
           style={{ marginTop: 8 }}
           onClick={() => navigate(-1)}
         >
-          ← Back
+          ← Zpět
         </button>
       </main>
     </div>
