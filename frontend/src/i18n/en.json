@@ -1,4 +1,7 @@
 {
+  "common": {
+    "close": "Close"
+  },
   "nav": {
     "library": "Books",
     "add": "Add",
@@ -83,7 +86,9 @@
     "filter_chip_language": "language: {{value}}",
     "filter_chip_publisher": "publisher: {{value}}",
     "filter_chip_year": "year: {{from}} – {{to}}",
-    "books_count": "books"
+    "books_count": "books",
+    "filter_all_locations": "All locations",
+    "filter_unassigned": "Unassigned"
   },
   "book_detail": {
     "title": "Book details",
@@ -208,7 +213,16 @@
     "delete_account_confirm": "Confirm — delete permanently",
     "delete_account_deleting": "Deleting…",
     "delete_account_error": "Account deletion failed. Please check your password and try again.",
-    "delete_account_cancel": "Cancel"
+    "delete_account_cancel": "Cancel",
+    "legal_title": "Legal information",
+    "legal_description": "Privacy policy and terms of use.",
+    "privacy_link": "Privacy Policy",
+    "terms_link": "Terms of Service"
+  },
+  "app": {
+    "update_available": "A new version of Shelfy is available — click to update.",
+    "offline_ready": "Shelfy is ready offline.",
+    "update_button": "Update app"
   },
   "landing": {
     "hero_title": "Your personal library, digitized",
@@ -334,6 +348,27 @@
     "move_right": "Move right",
     "positions_saved": "Positions saved",
     "start_scan_here": "Scan from here"
+  },
+  "add_book": {
+    "page_title": "Add book",
+    "uploading": "Uploading…",
+    "scan_spine": "Scan spine",
+    "ai_hint": "AI will recognize title and author",
+    "or_manual": "or enter manually",
+    "title_label": "Title",
+    "title_required": "Book title is required.",
+    "author_label": "Author",
+    "location_label": "Location",
+    "room_label": "Room",
+    "furniture_label": "Bookshelf",
+    "shelf_label": "Shelf",
+    "status_label": "Status",
+    "isbn_label": "ISBN",
+    "isbn_optional": "(optional)",
+    "submitting": "Adding…",
+    "submit": "Add to library",
+    "error": "Failed to add book.",
+    "processing_label": "Processing image…"
   },
   "enrich": {
     "enriching": "Enriching…",

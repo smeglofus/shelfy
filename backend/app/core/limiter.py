@@ -32,8 +32,23 @@ def _client_ip_from_headers(request) -> str:  # type: ignore[no-untyped-def]
 _testing = os.environ.get("TESTING", "false").lower() == "true"
 _settings = get_settings()
 
+
+def _rate_limit_storage_uri(redis_url: str) -> str:
+    """Use dedicated Redis DB (/2) for rate limits to isolate keys from Celery/cache.
+
+    Safely handles any password content by only modifying the last path segment.
+    """
+    # Split on the last '/' — the right part is the DB number (or empty)
+    base, _, last = redis_url.rpartition("/")
+    if last.isdigit():
+        return f"{base}/2"
+    # No DB number in URL — append /2
+    return f"{redis_url.rstrip('/')}/2"
+
+
 limiter = Limiter(
     key_func=_client_ip_from_headers,
     default_limits=[_settings.rate_limit_default],
     enabled=not _testing,
+    storage_uri=_rate_limit_storage_uri(_settings.redis_url),
 )

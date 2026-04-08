@@ -40,7 +40,7 @@ export function AddBookPage() {
     const status = uploadJobStatusQuery.data?.status
     if (status === 'done' || status === 'failed') {
       if (status === 'failed') {
-        showError(uploadJobStatusQuery.data?.error_message ?? 'Zpracování obrázku selhalo.')
+        showError(uploadJobStatusQuery.data?.error_message ?? t('books.processing_failed'))
       }
       setUploadJobId(null)
     }
@@ -56,7 +56,7 @@ export function AddBookPage() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!title.trim()) { showError('Název knihy je povinný.'); return }
+    if (!title.trim()) { showError(t('add_book.title_required')); return }
     const payload: BookCreateRequest = {
       title: title.trim(),
       author:         author.trim() || null,
@@ -66,7 +66,7 @@ export function AddBookPage() {
     }
     createMutation.mutate(payload, {
       onSuccess: () => navigate(ROUTES.books),
-      onError:   ()  => showError('Nepodařilo se přidat knihu.'),
+      onError:   ()  => showError(t('add_book.error')),
     })
   }
 
@@ -81,7 +81,7 @@ export function AddBookPage() {
         >
           ←
         </button>
-        <h2 className="text-h2" style={{ marginBottom: 0 }}>Přidat knihu</h2>
+        <h2 className="text-h2" style={{ marginBottom: 0 }}>{t('add_book.page_title')}</h2>
       </div>
 
       {/* Scan area */}
@@ -114,9 +114,9 @@ export function AddBookPage() {
       >
         <span style={{ fontSize: 36, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>📸</span>
         <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-text-main)' }}>
-          {uploadMutation.isPending ? 'Nahrávám…' : 'Naskenovat hřbet'}
+          {uploadMutation.isPending ? t('add_book.uploading') : t('add_book.scan_spine')}
         </span>
-        <span className="text-small">AI rozpozná název a autora</span>
+        <span className="text-small">{t('add_book.ai_hint')}</span>
         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" style={{ display: 'none' }} onChange={handleFileChange} />
       </div>
       {uploadJobId && (
@@ -128,7 +128,7 @@ export function AddBookPage() {
       {/* Divider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
         <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--sh-border)' }} />
-        <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>nebo zadat ručně</span>
+        <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('add_book.or_manual')}</span>
         <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--sh-border)' }} />
       </div>
 
@@ -136,22 +136,22 @@ export function AddBookPage() {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="md-grid-2">
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Název <span style={{ color: 'var(--sh-red)' }}>*</span></label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.title_label')} <span style={{ color: 'var(--sh-red)' }}>*</span></label>
             <input className="sh-input" placeholder="např. Duna" value={title} onChange={e => setTitle(e.target.value)} required />
           </div>
 
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Autor</label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.author_label')}</label>
             <input className="sh-input" placeholder="např. Frank Herbert" value={author} onChange={e => setAuthor(e.target.value)} />
           </div>
         </div>
 
         {/* 3-level location */}
         <div style={{ background: 'var(--sh-surface)', padding: 16, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)' }}>
-          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 12 }}>Umístění</label>
+          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 12 }}>{t('add_book.location_label')}</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Místnost</label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('add_book.room_label')}</label>
               <select
                 className="sh-select"
                 style={{ padding: '10px 12px' }}
@@ -163,7 +163,7 @@ export function AddBookPage() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Knihovna</label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('add_book.furniture_label')}</label>
               <select
                 className="sh-select"
                 style={{ padding: '10px 12px' }}
@@ -176,7 +176,7 @@ export function AddBookPage() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>Police</label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('add_book.shelf_label')}</label>
               <select
                 className="sh-select"
                 style={{ padding: '10px 12px' }}
@@ -195,21 +195,21 @@ export function AddBookPage() {
           {/* Reading status */}
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>Stav</label>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.status_label')}</label>
               <select
                 className="sh-select"
                 value={reading}
                 onChange={e => setReading(e.target.value as ReadingStatus)}
               >
-                <option value="unread">Nepřečteno</option>
-                <option value="reading">Čtu</option>
-                <option value="read">Přečteno</option>
+                <option value="unread">{t('reading_status.unread')}</option>
+                <option value="reading">{t('reading_status.reading')}</option>
+                <option value="read">{t('reading_status.read')}</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>ISBN <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>(volitelné)</span></label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.isbn_label')} <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>{t('add_book.isbn_optional')}</span></label>
             <input className="sh-input" placeholder="978-80-…" value={isbn} onChange={e => setIsbn(e.target.value)} />
           </div>
         </div>
@@ -228,7 +228,7 @@ export function AddBookPage() {
             fontSize: 18,
           }}
         >
-          {createMutation.isPending ? 'Přidávám…' : 'Přidat do knihovny'}
+          {createMutation.isPending ? t('add_book.submitting') : t('add_book.submit')}
         </button>
       </form>
     </div>

@@ -1,4 +1,7 @@
 {
+  "common": {
+    "close": "Zavřít"
+  },
   "nav": {
     "library": "Knihy",
     "add": "Přidat",
@@ -83,7 +86,9 @@
     "filter_chip_language": "jazyk: {{value}}",
     "filter_chip_publisher": "vydavatel: {{value}}",
     "filter_chip_year": "rok: {{from}} – {{to}}",
-    "books_count": "knih"
+    "books_count": "knih",
+    "filter_all_locations": "Všechna umístění",
+    "filter_unassigned": "Bez umístění"
   },
   "book_detail": {
     "title": "Detail knihy",
@@ -208,7 +213,16 @@
     "delete_account_confirm": "Potvrdit — smazat trvale",
     "delete_account_deleting": "Mažu…",
     "delete_account_error": "Smazání účtu selhalo. Zkontroluj heslo a zkus to znovu.",
-    "delete_account_cancel": "Zrušit"
+    "delete_account_cancel": "Zrušit",
+    "legal_title": "Právní informace",
+    "legal_description": "Zásady ochrany osobních údajů a podmínky použití.",
+    "privacy_link": "Zásady ochrany soukromí",
+    "terms_link": "Podmínky použití"
+  },
+  "app": {
+    "update_available": "Je dostupná nová verze Shelfy — klikni pro aktualizaci.",
+    "offline_ready": "Shelfy je připravené i offline.",
+    "update_button": "Aktualizovat aplikaci"
   },
   "tabs": {
     "all": "Vše",
@@ -319,6 +333,27 @@
     "move_right": "Posun doprava",
     "positions_saved": "Pozice uloženy",
     "start_scan_here": "Skenovat odtud"
+  },
+  "add_book": {
+    "page_title": "Přidat knihu",
+    "uploading": "Nahrávám…",
+    "scan_spine": "Naskenovat hřbet",
+    "ai_hint": "AI rozpozná název a autora",
+    "or_manual": "nebo zadat ručně",
+    "title_label": "Název",
+    "title_required": "Název knihy je povinný.",
+    "author_label": "Autor",
+    "location_label": "Umístění",
+    "room_label": "Místnost",
+    "furniture_label": "Knihovna",
+    "shelf_label": "Police",
+    "status_label": "Stav",
+    "isbn_label": "ISBN",
+    "isbn_optional": "(volitelné)",
+    "submitting": "Přidávám…",
+    "submit": "Přidat do knihovny",
+    "error": "Nepodařilo se přidat knihu.",
+    "processing_label": "Zpracovávám obrázek…"
   },
   "enrich": {
     "enriching": "Obohacuji…",

@@ -10,3 +10,7 @@ infra/.env
 .env.local
 infra/.env.local
 .claude/
+infra/docker-compose.prod.yml
+infra/.env.prod.local
+infra/GO_LIVE.local.md
+infra/deploy-prod.local.sh

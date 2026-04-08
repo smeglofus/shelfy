@@ -302,8 +302,8 @@ export function BooksPage() {
           onChange={(event) => { setLocationFilter(event.target.value); setPage(1) }}
           style={{ minWidth: 200 }}
         >
-          <option value="all">All locations</option>
-          <option value="unassigned">Unassigned</option>
+          <option value="all">{t('books.filter_all_locations')}</option>
+          <option value="unassigned">{t('books.filter_unassigned')}</option>
           {(locationsQuery.data ?? []).map((location) => (
             <option key={location.id} value={location.id}>
               {location.room} / {location.furniture} / {location.shelf}

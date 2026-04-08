@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import { Toast } from './components/Toast'
@@ -37,15 +38,16 @@ function HomeRoute() {
 const PUBLIC_PATHS = new Set(['/', ROUTES.login, ROUTES.privacy, ROUTES.terms])
 
 function AppShell() {
+  const { t } = useTranslation()
   const showInfo = useToastStore((s) => s.showInfo)
   const [showReload, setShowReload] = useState(false)
   const { updateServiceWorker } = useRegisterSW({
     onNeedRefresh() {
       setShowReload(true)
-      showInfo('Je dostupná nová verze Shelfy — klikni pro aktualizaci.')
+      showInfo(t('app.update_available'))
     },
     onOfflineReady() {
-      showInfo('Shelfy je připravené i offline.')
+      showInfo(t('app.offline_ready'))
     },
   })
   const location = useLocation()
@@ -96,7 +98,7 @@ function AppShell() {
             fontWeight: 600,
           }}
         >
-          Aktualizovat aplikaci
+          {t('app.update_button')}
         </button>
       )}
       <Toast />

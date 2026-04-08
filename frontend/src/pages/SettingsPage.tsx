@@ -692,15 +692,15 @@ export function SettingsPage() {
         }}
       >
         <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>Právní informace</h3>
-          <p className='text-small' style={{ marginTop: 0 }}>Zásady ochrany osobních údajů a podmínky použití.</p>
+          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.legal_title')}</h3>
+          <p className='text-small' style={{ marginTop: 0 }}>{t('settings.legal_description')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a className='sh-btn-secondary' href={ROUTES.privacy} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            Privacy Policy
+            {t('settings.privacy_link')}
           </a>
           <a className='sh-btn-secondary' href={ROUTES.terms} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            Terms of Service
+            {t('settings.terms_link')}
           </a>
         </div>
       </article>
