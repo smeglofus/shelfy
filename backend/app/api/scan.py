@@ -40,8 +40,11 @@ async def scan_shelf(
     current_user: User = Depends(get_current_user),
 ) -> ShelfScanResponse:
     """Upload a photo of a shelf. Starts async processing to extract all book spines."""
+    # Snapshot scalar id before commits to avoid async lazy-load on expired ORM object.
+    user_id = current_user.id
+
     # Gate: raises HTTP 402 if monthly scan quota is exhausted
-    await entitlements.assert_can_use(session, current_user.id, UsageMetric.scans)
+    await entitlements.assert_can_use(session, user_id, UsageMetric.scans)
 
     job, minio_path = await create_upload_job(session, image, library_id=library_id)
     job_id = job.id
@@ -88,7 +91,7 @@ async def scan_shelf(
     # Consume 1 scan credit after the job has been successfully enqueued.
     # Using job_id as idempotency key so retried requests don't double-count.
     await entitlements.consume(
-        session, current_user.id, UsageMetric.scans, idempotency_key=str(job_id)
+        session, user_id, UsageMetric.scans, idempotency_key=str(job_id)
     )
     await session.commit()
 
