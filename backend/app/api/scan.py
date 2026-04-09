@@ -170,10 +170,12 @@ async def confirm_shelf_books(
 
     # Auto-trigger background enrichment — only if the user has enough enrichment quota.
     # Books are always saved; enrichment is best-effort and skipped on quota exhaustion.
+    confirm_user_id = current_user.id
+
     if book_ids:
         n = len(book_ids)
         has_quota = await entitlements.can_use_metric_n(
-            session, current_user.id, UsageMetric.enrichments, n
+            session, confirm_user_id, UsageMetric.enrichments, n
         )
         if has_quota:
             try:
@@ -187,7 +189,7 @@ async def confirm_shelf_books(
                     ),
                 )
                 await entitlements.consume_n(
-                    session, current_user.id, UsageMetric.enrichments, n
+                    session, confirm_user_id, UsageMetric.enrichments, n
                 )
                 await session.commit()
             except Exception:
@@ -195,14 +197,14 @@ async def confirm_shelf_books(
                 # roll back the already-saved books. Log so we can diagnose issues.
                 logger.warning(
                     "confirm_auto_enrichment_failed",
-                    user_id=str(current_user.id),
+                    user_id=str(confirm_user_id),
                     book_count=n,
                     exc_info=True,
                 )
         else:
             logger.info(
                 "confirm_auto_enrichment_skipped_quota",
-                user_id=str(current_user.id),
+                user_id=str(confirm_user_id),
                 book_count=n,
             )
 

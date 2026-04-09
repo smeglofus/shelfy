@@ -15,6 +15,18 @@ from app.schemas.scan import ShelfScanConfirmRequest
 logger = structlog.get_logger()
 
 
+def _normalize_isbn(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    lowered = value.lower()
+    if lowered in {'none', 'null', 'n/a', 'na', 'unknown', '-'}:
+        return None
+    return value
+
+
 async def confirm_shelf_scan(
     session: AsyncSession,
     payload: ShelfScanConfirmRequest,
@@ -65,12 +77,13 @@ async def confirm_shelf_scan(
 
     for item in payload.books:
         target_position = item.position + position_offset
+        normalized_isbn = _normalize_isbn(item.isbn)
         # Check if book with same ISBN already exists in this library
         existing: Book | None = None
-        if item.isbn:
+        if normalized_isbn:
             existing = (await session.execute(
                 select(Book).where(
-                    Book.isbn == item.isbn,
+                    Book.isbn == normalized_isbn,
                     Book.library_id == library_id,
                 )
             )).scalar_one_or_none()
@@ -78,6 +91,10 @@ async def confirm_shelf_scan(
         if existing is not None:
             existing.location_id = payload.location_id
             existing.shelf_position = target_position
+            if not existing.title and item.title:
+                existing.title = item.title
+            if not existing.author and item.author:
+                existing.author = item.author
             book_ids.append(existing.id)
             logger.info("shelf_scan_book_updated", book_id=str(existing.id), position=target_position)
         else:
@@ -85,7 +102,7 @@ async def confirm_shelf_scan(
                 library_id=library_id,
                 title=item.title,
                 author=item.author,
-                isbn=item.isbn if item.isbn else None,
+                isbn=normalized_isbn,
                 location_id=payload.location_id,
                 shelf_position=target_position,
                 reading_status=ReadingStatus.UNREAD,
@@ -98,7 +115,7 @@ async def confirm_shelf_scan(
                 await session.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Duplicate ISBN: {item.isbn}",
+                    detail=f"Duplicate ISBN: {normalized_isbn or 'unknown'}",
                 )
             book_ids.append(book.id)
             logger.info("shelf_scan_book_created", book_id=str(book.id), title=item.title, position=target_position)
