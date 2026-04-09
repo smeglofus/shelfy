@@ -96,6 +96,9 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Frontend secret-pattern guard
+        run: node scripts/check_bundle_secrets.mjs
+
       - name: Bundle size budget check
         working-directory: frontend
         run: node ../scripts/check_bundle_budget.mjs
