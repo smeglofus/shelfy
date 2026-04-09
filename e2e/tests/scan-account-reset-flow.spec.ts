@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 
 type LoginResponse = { access_token: string; refresh_token: string }
@@ -14,6 +15,7 @@ type ScanResult = {
 const TEST_EMAIL = process.env.E2E_SCAN_TEST_EMAIL ?? 'e2e.scan.reset@shelfy.local'
 const TEST_PASSWORD = process.env.E2E_SCAN_TEST_PASSWORD ?? 'E2e-Scan-Reset-2026!'
 const API_BASE = process.env.E2E_API_BASE_URL ?? process.env.E2E_BASE_URL ?? 'http://localhost:8000'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FIXTURE_IMAGE = path.resolve(__dirname, '../fixtures/spine.png')
 
 function apiUrl(p: string): string {
