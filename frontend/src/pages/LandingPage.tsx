@@ -1,8 +1,17 @@
 import type { CSSProperties } from 'react'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AccordionSection } from '../components/AccordionSection'
+import {
+  resolveLandingVariantId,
+  trackFaqExpand,
+  trackHeroCtaClick,
+  trackLandingView,
+  trackPricingTeaserClick,
+  trackSignupStart,
+  trackSupportingCtaClick,
+} from '../lib/landingAnalytics'
 import { ROUTES } from '../lib/routes'
 
 const FEATURE_ICON_STYLE: CSSProperties = {
@@ -20,9 +29,25 @@ const FEATURE_CARD_STYLE: CSSProperties = {
 }
 
 export function LandingPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const howItWorksRef = useRef<HTMLElement | null>(null)
+  const variantId = useMemo(() => resolveLandingVariantId(searchParams), [searchParams])
+
+  useEffect(() => {
+    trackLandingView(variantId, i18n.language)
+  }, [i18n.language, variantId])
+
+  function handleSignupCtaClick(sourceSection: string, ctaLabel: string, isHero: boolean): void {
+    trackSignupStart(sourceSection, ctaLabel, variantId)
+    if (isHero) {
+      trackHeroCtaClick(ctaLabel, variantId)
+    } else {
+      trackSupportingCtaClick(ctaLabel, sourceSection)
+    }
+    navigate(ROUTES.login)
+  }
 
   const howItWorksSteps = useMemo(
     () => [
@@ -108,7 +133,10 @@ export function LandingPage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--sh-bg)', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{ minHeight: '100vh', background: 'var(--sh-bg)', display: 'flex', flexDirection: 'column' }}
+      data-landing-variant={variantId}
+    >
       {/* ── Top bar ── */}
       <header
         style={{
@@ -125,7 +153,10 @@ export function LandingPage() {
           type='button'
           className='sh-btn-secondary'
           style={{ fontSize: 14 }}
-          onClick={() => navigate(ROUTES.login)}
+          onClick={() => {
+            trackSupportingCtaClick(t('landing.hero_cta_login'), 'header')
+            navigate(ROUTES.login)
+          }}
         >
           {t('landing.hero_cta_login')}
         </button>
@@ -172,7 +203,7 @@ export function LandingPage() {
                 type='button'
                 className='sh-btn-primary'
                 style={{ fontSize: 16, padding: '12px 28px' }}
-                onClick={() => navigate(ROUTES.login)}
+                onClick={() => handleSignupCtaClick('hero', t('landing.hero_cta_signup'), true)}
               >
                 {t('landing.hero_cta_signup')}
               </button>
@@ -180,7 +211,10 @@ export function LandingPage() {
                 type='button'
                 className='sh-btn-secondary'
                 style={{ fontSize: 16, padding: '12px 28px' }}
-                onClick={() => howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                onClick={() => {
+                  trackSupportingCtaClick(t('landing.hero_cta_watch_demo'), 'hero')
+                  howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
               >
                 {t('landing.hero_cta_watch_demo')}
               </button>
@@ -451,7 +485,10 @@ export function LandingPage() {
               type='button'
               className='sh-btn-primary'
               style={{ fontSize: 15 }}
-              onClick={() => navigate(ROUTES.pricing)}
+              onClick={() => {
+                trackPricingTeaserClick(t('landing.see_pricing'), variantId)
+                navigate(ROUTES.pricing)
+              }}
             >
               {t('landing.see_pricing')}
             </button>
@@ -459,7 +496,10 @@ export function LandingPage() {
               type='button'
               className='sh-btn-secondary'
               style={{ fontSize: 15 }}
-              onClick={() => navigate(ROUTES.pricing)}
+              onClick={() => {
+                trackPricingTeaserClick(t('landing.pricing_compare'), variantId)
+                navigate(ROUTES.pricing)
+              }}
             >
               {t('landing.pricing_compare')}
             </button>
@@ -486,7 +526,15 @@ export function LandingPage() {
             }}
           >
             {faqItems.map((item, index) => (
-              <AccordionSection key={item.question} title={item.question} defaultOpen={index === 0}>
+              <AccordionSection
+                key={item.question}
+                title={item.question}
+                defaultOpen={index === 0}
+                onToggle={(isOpen) => {
+                  if (!isOpen) return
+                  trackFaqExpand(`faq_${index + 1}`, item.question)
+                }}
+              >
                 <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--sh-text-secondary)' }}>{item.answer}</p>
               </AccordionSection>
             ))}
@@ -496,7 +544,7 @@ export function LandingPage() {
               type='button'
               className='sh-btn-primary'
               style={{ fontSize: 15 }}
-              onClick={() => navigate(ROUTES.login)}
+              onClick={() => handleSignupCtaClick('faq', t('landing.hero_cta_signup'), false)}
             >
               {t('landing.hero_cta_signup')}
             </button>
@@ -504,7 +552,10 @@ export function LandingPage() {
               type='button'
               className='sh-btn-secondary'
               style={{ fontSize: 15 }}
-              onClick={() => navigate(ROUTES.login)}
+              onClick={() => {
+                trackSupportingCtaClick(t('landing.faq_cta_support'), 'faq')
+                navigate(ROUTES.login)
+              }}
             >
               {t('landing.faq_cta_support')}
             </button>
@@ -539,7 +590,7 @@ export function LandingPage() {
                 type='button'
                 className='sh-btn-primary'
                 style={{ fontSize: 15 }}
-                onClick={() => navigate(ROUTES.login)}
+                onClick={() => handleSignupCtaClick('final_cta', t('landing.hero_cta_signup'), false)}
               >
                 {t('landing.hero_cta_signup')}
               </button>
@@ -547,7 +598,10 @@ export function LandingPage() {
                 type='button'
                 className='sh-btn-secondary'
                 style={{ fontSize: 15 }}
-                onClick={() => navigate(ROUTES.login)}
+                onClick={() => {
+                  trackSupportingCtaClick(t('landing.hero_cta_login'), 'final_cta')
+                  navigate(ROUTES.login)
+                }}
               >
                 {t('landing.hero_cta_login')}
               </button>
