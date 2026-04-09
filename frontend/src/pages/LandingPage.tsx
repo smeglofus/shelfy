@@ -1,11 +1,8 @@
-import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AccordionSection } from '../components/AccordionSection'
 import {
   resolveLandingVariantId,
-  trackFaqExpand,
   trackHeroCtaClick,
   trackLandingView,
   trackPricingTeaserClick,
@@ -14,18 +11,10 @@ import {
 } from '../lib/landingAnalytics'
 import { ROUTES } from '../lib/routes'
 
-const FEATURE_ICON_STYLE: CSSProperties = {
-  fontSize: 36,
-  marginBottom: 12,
-}
-
-const FEATURE_CARD_STYLE: CSSProperties = {
-  flex: '1 1 240px',
-  padding: '24px 20px',
-  borderRadius: 'var(--sh-radius-lg)',
-  border: '1px solid var(--sh-border)',
-  background: 'var(--sh-surface)',
-  boxShadow: 'var(--sh-shadow-sm)',
+const SECTION_CONTAINER_STYLE = {
+  maxWidth: 960,
+  margin: '0 auto',
+  padding: '0 20px 48px',
 }
 
 export function LandingPage() {
@@ -54,80 +43,15 @@ export function LandingPage() {
       {
         title: t('landing.how_step_1_title'),
         description: t('landing.how_step_1_desc'),
-        emoji: '📸',
       },
       {
         title: t('landing.how_step_2_title'),
         description: t('landing.how_step_2_desc'),
-        emoji: '🤖',
       },
       {
         title: t('landing.how_step_3_title'),
         description: t('landing.how_step_3_desc'),
-        emoji: '📚',
       },
-    ],
-    [t],
-  )
-
-  const proofItems = useMemo(
-    () => [
-      {
-        title: t('landing.proof_card_1_title'),
-        description: t('landing.proof_card_1_desc'),
-        metric: t('landing.proof_card_1_metric'),
-      },
-      {
-        title: t('landing.proof_card_2_title'),
-        description: t('landing.proof_card_2_desc'),
-        metric: t('landing.proof_card_2_metric'),
-      },
-      {
-        title: t('landing.proof_card_3_title'),
-        description: t('landing.proof_card_3_desc'),
-        metric: t('landing.proof_card_3_metric'),
-      },
-    ],
-    [t],
-  )
-
-  const trustSignals = useMemo(
-    () => [
-      { title: t('landing.trust_signal_1_title'), description: t('landing.trust_signal_1_desc') },
-      { title: t('landing.trust_signal_2_title'), description: t('landing.trust_signal_2_desc') },
-      { title: t('landing.trust_signal_3_title'), description: t('landing.trust_signal_3_desc') },
-    ],
-    [t],
-  )
-
-  const pricingPlans = useMemo(
-    () => [
-      {
-        title: t('landing.pricing_plan_1_title'),
-        price: t('landing.pricing_plan_1_price'),
-        limit: t('landing.pricing_plan_1_limit'),
-      },
-      {
-        title: t('landing.pricing_plan_2_title'),
-        price: t('landing.pricing_plan_2_price'),
-        limit: t('landing.pricing_plan_2_limit'),
-      },
-      {
-        title: t('landing.pricing_plan_3_title'),
-        price: t('landing.pricing_plan_3_price'),
-        limit: t('landing.pricing_plan_3_limit'),
-      },
-    ],
-    [t],
-  )
-
-  const faqItems = useMemo(
-    () => [
-      { question: t('landing.faq_q_1'), answer: t('landing.faq_a_1') },
-      { question: t('landing.faq_q_2'), answer: t('landing.faq_a_2') },
-      { question: t('landing.faq_q_3'), answer: t('landing.faq_a_3') },
-      { question: t('landing.faq_q_4'), answer: t('landing.faq_a_4') },
-      { question: t('landing.faq_q_5'), answer: t('landing.faq_a_5') },
     ],
     [t],
   )
@@ -137,13 +61,12 @@ export function LandingPage() {
       style={{ minHeight: '100vh', background: 'var(--sh-bg)', display: 'flex', flexDirection: 'column' }}
       data-landing-variant={variantId}
     >
-      {/* ── Top bar ── */}
       <header
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '14px 24px',
+          padding: '14px 20px',
           borderBottom: '1px solid var(--sh-border)',
           background: 'var(--sh-surface)',
         }}
@@ -162,47 +85,34 @@ export function LandingPage() {
         </button>
       </header>
 
-      {/* ── Hero ── */}
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, paddingTop: 36 }}>
         <section
           style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '72px 24px 64px',
-            display: 'flex',
-            gap: 24,
-            flexWrap: 'wrap',
+            ...SECTION_CONTAINER_STYLE,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 16,
             alignItems: 'stretch',
           }}
         >
-          <div style={{ flex: '1 1 460px' }}>
+          <div>
             <h1
               style={{
-                fontSize: 'clamp(28px, 5vw, 48px)',
+                fontSize: 'clamp(30px, 5vw, 44px)',
                 fontWeight: 800,
                 lineHeight: 1.15,
-                letterSpacing: '-0.03em',
-                margin: '0 0 20px',
+                margin: '0 0 12px',
               }}
             >
               {t('landing.hero_title')}
             </h1>
-            <p
-              style={{
-                fontSize: 'clamp(15px, 2vw, 18px)',
-                color: 'var(--sh-text-secondary)',
-                maxWidth: 560,
-                margin: '0 0 32px',
-                lineHeight: 1.6,
-              }}
-            >
+            <p style={{ color: 'var(--sh-text-secondary)', margin: '0 0 20px', lineHeight: 1.55 }}>
               {t('landing.hero_subtitle')}
             </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button
                 type='button'
                 className='sh-btn-primary'
-                style={{ fontSize: 16, padding: '12px 28px' }}
                 onClick={() => handleSignupCtaClick('hero', t('landing.hero_cta_signup'), true)}
               >
                 {t('landing.hero_cta_signup')}
@@ -210,7 +120,6 @@ export function LandingPage() {
               <button
                 type='button'
                 className='sh-btn-secondary'
-                style={{ fontSize: 16, padding: '12px 28px' }}
                 onClick={() => {
                   trackSupportingCtaClick(t('landing.hero_cta_watch_demo'), 'hero')
                   howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -221,403 +130,164 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div
-            style={{
-              flex: '1 1 420px',
-              padding: 20,
-              borderRadius: 'var(--sh-radius-xl)',
-              border: '1px solid var(--sh-border)',
-              background:
-                'linear-gradient(160deg, color-mix(in srgb, var(--sh-primary) 14%, white), var(--sh-surface) 42%)',
-              boxShadow: 'var(--sh-shadow-md)',
-            }}
-          >
-            <div
-              style={{
-                borderRadius: 'var(--sh-radius-lg)',
-                border: '1px solid color-mix(in srgb, var(--sh-primary) 16%, var(--sh-border))',
-                background: 'var(--sh-surface)',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  background: 'color-mix(in srgb, var(--sh-primary) 16%, white)',
-                  padding: '10px 14px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
-              >
-                {t('landing.hero_visual_header')}
-              </div>
-              <div style={{ padding: 16, display: 'grid', gap: 10 }}>
-                <div style={{ fontSize: 13, color: 'var(--sh-text-secondary)' }}>{t('landing.hero_visual_line_1')}</div>
-                <div style={{ fontSize: 13, color: 'var(--sh-text-secondary)' }}>{t('landing.hero_visual_line_2')}</div>
-                <div
-                  style={{
-                    marginTop: 2,
-                    background: 'var(--sh-primary-bg)',
-                    color: 'var(--sh-primary-text)',
-                    borderRadius: 'var(--sh-radius-md)',
-                    padding: '10px 12px',
-                    fontSize: 13,
-                    border: '1px solid color-mix(in srgb, var(--sh-primary) 20%, var(--sh-border))',
-                  }}
-                >
-                  {t('landing.hero_visual_result')}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Jak to funguje ── */}
-        <section
-          ref={howItWorksRef}
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 56px',
-          }}
-        >
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.how_title')}</h2>
-          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.how_subtitle')}</p>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            {howItWorksSteps.map((step, index) => (
-              <article key={step.title} style={{ ...FEATURE_CARD_STYLE, minHeight: 200 }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>{step.emoji}</div>
-                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)', marginBottom: 6 }}>
-                  {t('landing.how_step_label', { count: index + 1 })}
-                </p>
-                <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>{step.title}</h3>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)', lineHeight: 1.55 }}>
-                  {step.description}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Product proof ── */}
-        <section
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 44px',
-          }}
-        >
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.proof_title')}</h2>
-          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.proof_subtitle')}</p>
-          <div style={{ display: 'grid', gap: 14 }}>
-            {proofItems.map((item) => (
-              <article
-                key={item.title}
-                style={{
-                  border: '1px solid var(--sh-border)',
-                  borderRadius: 'var(--sh-radius-lg)',
-                  background: 'var(--sh-surface)',
-                  boxShadow: 'var(--sh-shadow-sm)',
-                  padding: 16,
-                }}
-              >
-                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
-                  {item.metric}
-                </p>
-                <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>{item.title}</h3>
-                <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
-                  {item.description}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Before / After ── */}
-        <section
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 44px',
-          }}
-        >
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.before_after_title')}</h2>
-          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.before_after_subtitle')}</p>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <article
-              style={{
-                ...FEATURE_CARD_STYLE,
-                borderColor: 'color-mix(in srgb, var(--sh-danger) 30%, var(--sh-border))',
-              }}
-            >
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--sh-text-secondary)' }}>
-                {t('landing.before_label')}
-              </p>
-              <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>{t('landing.before_title')}</h3>
-              <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
-                {t('landing.before_desc')}
-              </p>
-            </article>
-            <article
-              style={{
-                ...FEATURE_CARD_STYLE,
-                borderColor: 'color-mix(in srgb, var(--sh-primary) 30%, var(--sh-border))',
-                background: 'color-mix(in srgb, var(--sh-primary-bg) 35%, var(--sh-surface))',
-              }}
-            >
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
-                {t('landing.after_label')}
-              </p>
-              <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>{t('landing.after_title')}</h3>
-              <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
-                {t('landing.after_desc')}
-              </p>
-            </article>
-          </div>
-        </section>
-
-        {/* ── Trust signals ── */}
-        <section
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 44px',
-          }}
-        >
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.trust_title')}</h2>
-          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.trust_subtitle')}</p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {trustSignals.map((signal) => (
-              <article
-                key={signal.title}
-                style={{
-                  flex: '1 1 250px',
-                  border: '1px solid var(--sh-border)',
-                  borderRadius: 'var(--sh-radius-md)',
-                  padding: '14px 16px',
-                  background: 'var(--sh-surface)',
-                }}
-              >
-                <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>{signal.title}</h3>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--sh-text-secondary)' }}>
-                  {signal.description}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Features ── */}
-        <section
-          style={{
-            maxWidth: 960,
-            margin: '0 auto',
-            padding: '0 24px 44px',
-            display: 'flex',
-            gap: 20,
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-          }}
-        >
-          <div style={FEATURE_CARD_STYLE}>
-            <div style={FEATURE_ICON_STYLE}>📷</div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700 }}>
-              {t('landing.feature_scan_title')}
-            </h3>
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)', lineHeight: 1.55 }}>
-              {t('landing.feature_scan_desc')}
-            </p>
-          </div>
-
-          <div style={FEATURE_CARD_STYLE}>
-            <div style={FEATURE_ICON_STYLE}>✨</div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700 }}>
-              {t('landing.feature_enrich_title')}
-            </h3>
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)', lineHeight: 1.55 }}>
-              {t('landing.feature_enrich_desc')}
-            </p>
-          </div>
-
-          <div style={FEATURE_CARD_STYLE}>
-            <div style={FEATURE_ICON_STYLE}>👥</div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700 }}>
-              {t('landing.feature_share_title')}
-            </h3>
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)', lineHeight: 1.55 }}>
-              {t('landing.feature_share_desc')}
-            </p>
-          </div>
-        </section>
-
-        {/* ── Pricing teaser ── */}
-        <section
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 44px',
-          }}
-        >
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.pricing_title')}</h2>
-          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.pricing_subtitle')}</p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-            {pricingPlans.map((plan) => (
-              <article
-                key={plan.title}
-                style={{
-                  flex: '1 1 220px',
-                  border: '1px solid var(--sh-border)',
-                  borderRadius: 'var(--sh-radius-md)',
-                  padding: '14px 16px',
-                  background: 'var(--sh-surface)',
-                  boxShadow: 'var(--sh-shadow-sm)',
-                }}
-              >
-                <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>{plan.title}</h3>
-                <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
-                  {plan.price}
-                </p>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--sh-text-secondary)' }}>{plan.limit}</p>
-              </article>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button
-              type='button'
-              className='sh-btn-primary'
-              style={{ fontSize: 15 }}
-              onClick={() => {
-                trackPricingTeaserClick(t('landing.see_pricing'), variantId)
-                navigate(ROUTES.pricing)
-              }}
-            >
-              {t('landing.see_pricing')}
-            </button>
-            <button
-              type='button'
-              className='sh-btn-secondary'
-              style={{ fontSize: 15 }}
-              onClick={() => {
-                trackPricingTeaserClick(t('landing.pricing_compare'), variantId)
-                navigate(ROUTES.pricing)
-              }}
-            >
-              {t('landing.pricing_compare')}
-            </button>
-          </div>
-        </section>
-
-        {/* ── FAQ ── */}
-        <section
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 44px',
-          }}
-        >
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.faq_title')}</h2>
-          <p style={{ margin: '0 0 20px', color: 'var(--sh-text-secondary)' }}>{t('landing.faq_subtitle')}</p>
-          <div
+          <aside
             style={{
               border: '1px solid var(--sh-border)',
               borderRadius: 'var(--sh-radius-lg)',
               background: 'var(--sh-surface)',
-              padding: '0 16px',
+              padding: 16,
               boxShadow: 'var(--sh-shadow-sm)',
+              alignSelf: 'start',
             }}
           >
-            {faqItems.map((item, index) => (
-              <AccordionSection
-                key={item.question}
-                title={item.question}
-                defaultOpen={index === 0}
-                onToggle={(isOpen) => {
-                  if (!isOpen) return
-                  trackFaqExpand(`faq_${index + 1}`, item.question)
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--sh-text-secondary)' }}>{item.answer}</p>
-              </AccordionSection>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
-            <button
-              type='button'
-              className='sh-btn-primary'
-              style={{ fontSize: 15 }}
-              onClick={() => handleSignupCtaClick('faq', t('landing.hero_cta_signup'), false)}
-            >
-              {t('landing.hero_cta_signup')}
-            </button>
-            <button
-              type='button'
-              className='sh-btn-secondary'
-              style={{ fontSize: 15 }}
-              onClick={() => {
-                trackSupportingCtaClick(t('landing.faq_cta_support'), 'faq')
-                navigate(ROUTES.login)
+            <h2 style={{ margin: '0 0 10px', fontSize: 16 }}>{t('landing.hero_visual_header')}</h2>
+            <ul style={{ margin: 0, paddingInlineStart: 18, display: 'grid', gap: 8, color: 'var(--sh-text-secondary)' }}>
+              <li>{t('landing.hero_visual_line_1')}</li>
+              <li>{t('landing.hero_visual_line_2')}</li>
+            </ul>
+            <p
+              style={{
+                margin: '12px 0 0',
+                padding: '8px 10px',
+                borderRadius: 'var(--sh-radius-md)',
+                background: 'var(--sh-primary-bg)',
+                color: 'var(--sh-primary-text)',
+                fontSize: 14,
               }}
             >
-              {t('landing.faq_cta_support')}
-            </button>
+              {t('landing.hero_visual_result')}
+            </p>
+          </aside>
+        </section>
+
+        <section ref={howItWorksRef} style={SECTION_CONTAINER_STYLE}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 8px' }}>{t('landing.how_title')}</h2>
+          <p style={{ margin: '0 0 16px', color: 'var(--sh-text-secondary)' }}>{t('landing.how_subtitle')}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+            {howItWorksSteps.map((step, index) => (
+              <article
+                key={step.title}
+                style={{
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  background: 'var(--sh-surface)',
+                  padding: '12px 14px',
+                }}
+              >
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
+                  {t('landing.how_step_label', { count: index + 1 })}
+                </p>
+                <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>{step.title}</h3>
+                <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14 }}>{step.description}</p>
+              </article>
+            ))}
           </div>
         </section>
 
-        {/* ── Final CTA ── */}
-        <section
-          style={{
-            maxWidth: 1120,
-            margin: '0 auto',
-            padding: '0 24px 80px',
-          }}
-        >
+        <section style={SECTION_CONTAINER_STYLE}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 8px' }}>{t('landing.proof_title')}</h2>
+          <p style={{ margin: '0 0 16px', color: 'var(--sh-text-secondary)' }}>{t('landing.proof_subtitle')}</p>
+          <article
+            style={{
+              border: '1px solid color-mix(in srgb, var(--sh-primary) 20%, var(--sh-border))',
+              borderRadius: 'var(--sh-radius-lg)',
+              background: 'color-mix(in srgb, var(--sh-primary-bg) 28%, var(--sh-surface))',
+              padding: 16,
+            }}
+          >
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
+              {t('landing.proof_highlight')}
+            </p>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>{t('landing.proof_block_title')}</h3>
+            <p style={{ margin: '0 0 8px', color: 'var(--sh-text-secondary)' }}>{t('landing.proof_block_desc')}</p>
+            <ul style={{ margin: 0, paddingInlineStart: 18, display: 'grid', gap: 6, color: 'var(--sh-text-secondary)' }}>
+              <li>{t('landing.proof_bullet_1')}</li>
+              <li>{t('landing.proof_bullet_2')}</li>
+              <li>{t('landing.proof_bullet_3')}</li>
+            </ul>
+          </article>
+        </section>
+
+        <section style={SECTION_CONTAINER_STYLE}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 8px' }}>{t('landing.summary_title')}</h2>
+          <p style={{ margin: '0 0 16px', color: 'var(--sh-text-secondary)' }}>{t('landing.summary_subtitle')}</p>
+          <div
+            style={{
+              display: 'grid',
+              gap: 10,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              marginBottom: 12,
+            }}
+          >
+            <article
+              style={{
+                border: '1px solid var(--sh-border)',
+                borderRadius: 'var(--sh-radius-md)',
+                background: 'var(--sh-surface)',
+                padding: '12px 14px',
+              }}
+            >
+              <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>{t('landing.summary_trust_title')}</h3>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)' }}>{t('landing.summary_trust_desc')}</p>
+            </article>
+            <article
+              style={{
+                border: '1px solid var(--sh-border)',
+                borderRadius: 'var(--sh-radius-md)',
+                background: 'var(--sh-surface)',
+                padding: '12px 14px',
+              }}
+            >
+              <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>{t('landing.summary_pricing_title')}</h3>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)' }}>
+                {t('landing.summary_pricing_desc')}
+              </p>
+            </article>
+          </div>
+          <button
+            type='button'
+            className='sh-btn-secondary'
+            onClick={() => {
+              trackPricingTeaserClick(t('landing.summary_pricing_cta'), variantId)
+              navigate(ROUTES.pricing)
+            }}
+          >
+            {t('landing.summary_pricing_cta')}
+          </button>
+        </section>
+
+        <section style={{ ...SECTION_CONTAINER_STYLE, paddingBottom: 72 }}>
           <div
             style={{
               border: '1px solid color-mix(in srgb, var(--sh-primary) 30%, var(--sh-border))',
               borderRadius: 'var(--sh-radius-xl)',
-              padding: '28px 24px',
+              padding: '24px 20px',
               background:
                 'linear-gradient(160deg, color-mix(in srgb, var(--sh-primary-bg) 70%, white), var(--sh-surface) 55%)',
-              boxShadow: 'var(--sh-shadow-md)',
               textAlign: 'center',
             }}
           >
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.final_cta_title')}</h2>
-            <p style={{ margin: '0 auto 20px', color: 'var(--sh-text-secondary)', maxWidth: 640 }}>
-              {t('landing.final_cta_subtitle')}
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                type='button'
-                className='sh-btn-primary'
-                style={{ fontSize: 15 }}
-                onClick={() => handleSignupCtaClick('final_cta', t('landing.hero_cta_signup'), false)}
-              >
-                {t('landing.hero_cta_signup')}
-              </button>
-              <button
-                type='button'
-                className='sh-btn-secondary'
-                style={{ fontSize: 15 }}
-                onClick={() => {
-                  trackSupportingCtaClick(t('landing.hero_cta_login'), 'final_cta')
-                  navigate(ROUTES.login)
-                }}
-              >
-                {t('landing.hero_cta_login')}
-              </button>
-            </div>
+            <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 8px' }}>{t('landing.final_cta_title')}</h2>
+            <p style={{ margin: '0 0 16px', color: 'var(--sh-text-secondary)' }}>{t('landing.final_cta_subtitle')}</p>
+            <button
+              type='button'
+              className='sh-btn-primary'
+              onClick={() => handleSignupCtaClick('final_cta', t('landing.final_cta_button'), false)}
+            >
+              {t('landing.final_cta_button')}
+            </button>
           </div>
         </section>
       </main>
 
-      {/* ── Footer ── */}
       <footer
         style={{
           borderTop: '1px solid var(--sh-border)',
-          padding: '16px 24px',
+          padding: '14px 20px',
           display: 'flex',
           justifyContent: 'center',
-          gap: 24,
+          gap: 18,
+          flexWrap: 'wrap',
           fontSize: 13,
           color: 'var(--sh-text-secondary)',
         }}
@@ -636,7 +306,6 @@ export function LandingPage() {
         >
           {t('landing.footer_terms')}
         </button>
-        <span>© {new Date().getFullYear()} Shelfy</span>
       </footer>
     </div>
   )
