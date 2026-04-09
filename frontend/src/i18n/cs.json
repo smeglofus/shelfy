@@ -460,8 +460,8 @@
     "pricing_footer": "Ceny v EUR. Zrušení kdykoli. Máš otázky? Kontaktuj nás."
   },
   "landing": {
-    "hero_title": "Tvoje osobní knihovna, digitalizovaná",
-    "hero_subtitle": "Shelfy využívá AI ke skenování knih z regálů a vytváří prohledatelný digitální katalog. Vždy víš, co vlastníš, kde to je a komu jsi to půjčil.",
+    "hero_title": "Vyfoť polici. Shelfy z ní během minut vytvoří digitální knihovnu.",
+    "hero_subtitle": "AI rozpoznání knih, rychlé vyhledávání a snadné sdílení bez ručního přepisování. Od první fotky k přehlednému katalogu v jednom flow.",
     "hero_cta_signup": "Začít zdarma",
     "hero_cta_login": "Přihlásit se",
     "feature_scan_title": "Skenování regálů pomocí AI",
@@ -472,6 +472,28 @@
     "feature_share_desc": "Pozvi rodinu nebo kolegy k procházení a správě knihovny s jemnými rolemi přístupu.",
     "see_pricing": "Zobrazit všechny plány",
     "footer_privacy": "Zásady ochrany soukromí",
-    "footer_terms": "Podmínky použití"
+    "footer_terms": "Podmínky použití",
+    "hero_cta_watch_demo": "Podívat se, jak to funguje",
+    "hero_visual_header": "Ukázka produktu",
+    "hero_visual_line_1": "Nahraná fotka police • detekováno 42 knih",
+    "hero_visual_line_2": "Metadata doplněna automaticky (název, autor, ISBN)",
+    "hero_visual_result": "Výsledek: prohledatelná knihovna s místností a policí za méně než 3 minuty.",
+    "how_title": "Jak to funguje",
+    "how_subtitle": "Od první fotky police k přehledné digitální knihovně ve třech jednoduchých krocích.",
+    "how_step_label": "Krok {{count}}",
+    "how_step_1_title": "Nahraj fotku police",
+    "how_step_1_desc": "Vyfoť polici mobilem nebo nahraj existující fotku. Shelfy začne zpracování během sekund.",
+    "how_step_2_title": "Zkontroluj AI rozpoznání",
+    "how_step_2_desc": "Shelfy rozpozná hřbety knih a připraví metadata. Méně jisté položky snadno opravíš před uložením.",
+    "how_step_3_title": "Vyhledávej a sdílej knihovnu",
+    "how_step_3_desc": "Knihy jsou uložené podle umístění a okamžitě dohledatelné podle názvu, autora nebo ISBN. Knihovnu můžeš sdílet s rodinou či týmem.",
+    "proof_title": "První produktový důkaz",
+    "proof_subtitle": "Konkrétní ukázka toho, co návštěvník získá už po prvním skenu.",
+    "proof_card_1_title": "Důkaz #1 — Reálný výstup skenu",
+    "proof_card_1_desc": "Výsledky skenu obsahují rozpoznané tituly, signály jistoty a krátký seznam položek pro kontrolu.",
+    "proof_card_2_title": "Důkaz #2 — Strukturovaná knihovna",
+    "proof_card_2_desc": "Rozpoznané knihy se uloží s umístěním místnost / nábytek / police, takže je později snadno najdeš.",
+    "proof_card_3_title": "Důkaz #3 — Hodnota hned od prvního dne",
+    "proof_card_3_desc": "Uživatel okamžitě vidí, co vlastní, a snáz se vyhne duplicitním nákupům nebo ztraceným výpůjčkám."
   }
 }
