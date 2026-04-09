@@ -16,7 +16,7 @@ const TEST_EMAIL = process.env.E2E_SCAN_TEST_EMAIL ?? 'e2e.scan.reset@shelfy.cz'
 const TEST_PASSWORD = process.env.E2E_SCAN_TEST_PASSWORD ?? 'E2e-Scan-Reset-2026!'
 const API_BASE = process.env.E2E_API_BASE_URL ?? process.env.E2E_BASE_URL ?? 'http://localhost:8000'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const FIXTURE_IMAGE = process.env.E2E_SCAN_IMAGE_PATH ?? path.resolve(__dirname, '../fixtures/spine.png')
+const FIXTURE_IMAGE = process.env.E2E_SCAN_IMAGE_PATH ?? path.resolve(__dirname, '../fixtures/scan-flow-shelf.jpg')
 
 function apiUrl(p: string): string {
   return `${API_BASE.replace(/\/$/, '')}${p}`
