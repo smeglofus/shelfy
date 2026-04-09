@@ -19,12 +19,19 @@ async def get_library_id(
 ) -> uuid.UUID:
     if x_library_id:
         try:
-            library_id = uuid.UUID(x_library_id)
+            candidate_library_id = uuid.UUID(x_library_id)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-Library-Id") from exc
-    else:
-        library_id = await get_default_user_library_id(session, current_user.id)
 
+        try:
+            await require_library_role(session, current_user.id, candidate_library_id, LibraryRole.VIEWER)
+            return candidate_library_id
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_403_FORBIDDEN:
+                raise
+            # Stale/inaccessible header: safely fall back to the user's default library.
+
+    library_id = await get_default_user_library_id(session, current_user.id)
     await require_library_role(session, current_user.id, library_id, LibraryRole.VIEWER)
     return library_id
 
