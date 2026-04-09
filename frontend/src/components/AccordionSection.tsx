@@ -4,17 +4,24 @@ interface AccordionSectionProps {
   title: string
   defaultOpen?: boolean
   badge?: ReactNode
+  onToggle?: (isOpen: boolean) => void
   children: ReactNode
 }
 
-export function AccordionSection({ title, defaultOpen = true, badge, children }: AccordionSectionProps) {
+export function AccordionSection({ title, defaultOpen = true, badge, onToggle, children }: AccordionSectionProps) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
     <div style={{ borderBottom: '1px solid var(--sh-border)' }}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() =>
+          setOpen((v) => {
+            const next = !v
+            onToggle?.(next)
+            return next
+          })
+        }
         aria-expanded={open}
         style={{
           width: '100%',
