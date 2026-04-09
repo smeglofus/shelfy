@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { AccordionSection } from '../components/AccordionSection'
 import { ROUTES } from '../lib/routes'
 
 const FEATURE_ICON_STYLE: CSSProperties = {
@@ -70,6 +71,38 @@ export function LandingPage() {
       { title: t('landing.trust_signal_1_title'), description: t('landing.trust_signal_1_desc') },
       { title: t('landing.trust_signal_2_title'), description: t('landing.trust_signal_2_desc') },
       { title: t('landing.trust_signal_3_title'), description: t('landing.trust_signal_3_desc') },
+    ],
+    [t],
+  )
+
+  const pricingPlans = useMemo(
+    () => [
+      {
+        title: t('landing.pricing_plan_1_title'),
+        price: t('landing.pricing_plan_1_price'),
+        limit: t('landing.pricing_plan_1_limit'),
+      },
+      {
+        title: t('landing.pricing_plan_2_title'),
+        price: t('landing.pricing_plan_2_price'),
+        limit: t('landing.pricing_plan_2_limit'),
+      },
+      {
+        title: t('landing.pricing_plan_3_title'),
+        price: t('landing.pricing_plan_3_price'),
+        limit: t('landing.pricing_plan_3_limit'),
+      },
+    ],
+    [t],
+  )
+
+  const faqItems = useMemo(
+    () => [
+      { question: t('landing.faq_q_1'), answer: t('landing.faq_a_1') },
+      { question: t('landing.faq_q_2'), answer: t('landing.faq_a_2') },
+      { question: t('landing.faq_q_3'), answer: t('landing.faq_a_3') },
+      { question: t('landing.faq_q_4'), answer: t('landing.faq_a_4') },
+      { question: t('landing.faq_q_5'), answer: t('landing.faq_a_5') },
     ],
     [t],
   )
@@ -344,7 +377,7 @@ export function LandingPage() {
           style={{
             maxWidth: 960,
             margin: '0 auto',
-            padding: '0 24px 80px',
+            padding: '0 24px 44px',
             display: 'flex',
             gap: 20,
             flexWrap: 'wrap',
@@ -379,6 +412,146 @@ export function LandingPage() {
             <p style={{ margin: 0, fontSize: 14, color: 'var(--sh-text-secondary)', lineHeight: 1.55 }}>
               {t('landing.feature_share_desc')}
             </p>
+          </div>
+        </section>
+
+        {/* ── Pricing teaser ── */}
+        <section
+          style={{
+            maxWidth: 1120,
+            margin: '0 auto',
+            padding: '0 24px 44px',
+          }}
+        >
+          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.pricing_title')}</h2>
+          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.pricing_subtitle')}</p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+            {pricingPlans.map((plan) => (
+              <article
+                key={plan.title}
+                style={{
+                  flex: '1 1 220px',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  padding: '14px 16px',
+                  background: 'var(--sh-surface)',
+                  boxShadow: 'var(--sh-shadow-sm)',
+                }}
+              >
+                <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>{plan.title}</h3>
+                <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
+                  {plan.price}
+                </p>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--sh-text-secondary)' }}>{plan.limit}</p>
+              </article>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button
+              type='button'
+              className='sh-btn-primary'
+              style={{ fontSize: 15 }}
+              onClick={() => navigate(ROUTES.pricing)}
+            >
+              {t('landing.see_pricing')}
+            </button>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 15 }}
+              onClick={() => navigate(ROUTES.pricing)}
+            >
+              {t('landing.pricing_compare')}
+            </button>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section
+          style={{
+            maxWidth: 1120,
+            margin: '0 auto',
+            padding: '0 24px 44px',
+          }}
+        >
+          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.faq_title')}</h2>
+          <p style={{ margin: '0 0 20px', color: 'var(--sh-text-secondary)' }}>{t('landing.faq_subtitle')}</p>
+          <div
+            style={{
+              border: '1px solid var(--sh-border)',
+              borderRadius: 'var(--sh-radius-lg)',
+              background: 'var(--sh-surface)',
+              padding: '0 16px',
+              boxShadow: 'var(--sh-shadow-sm)',
+            }}
+          >
+            {faqItems.map((item, index) => (
+              <AccordionSection key={item.question} title={item.question} defaultOpen={index === 0}>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--sh-text-secondary)' }}>{item.answer}</p>
+              </AccordionSection>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
+            <button
+              type='button'
+              className='sh-btn-primary'
+              style={{ fontSize: 15 }}
+              onClick={() => navigate(ROUTES.login)}
+            >
+              {t('landing.hero_cta_signup')}
+            </button>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 15 }}
+              onClick={() => navigate(ROUTES.login)}
+            >
+              {t('landing.faq_cta_support')}
+            </button>
+          </div>
+        </section>
+
+        {/* ── Final CTA ── */}
+        <section
+          style={{
+            maxWidth: 1120,
+            margin: '0 auto',
+            padding: '0 24px 80px',
+          }}
+        >
+          <div
+            style={{
+              border: '1px solid color-mix(in srgb, var(--sh-primary) 30%, var(--sh-border))',
+              borderRadius: 'var(--sh-radius-xl)',
+              padding: '28px 24px',
+              background:
+                'linear-gradient(160deg, color-mix(in srgb, var(--sh-primary-bg) 70%, white), var(--sh-surface) 55%)',
+              boxShadow: 'var(--sh-shadow-md)',
+              textAlign: 'center',
+            }}
+          >
+            <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.final_cta_title')}</h2>
+            <p style={{ margin: '0 auto 20px', color: 'var(--sh-text-secondary)', maxWidth: 640 }}>
+              {t('landing.final_cta_subtitle')}
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type='button'
+                className='sh-btn-primary'
+                style={{ fontSize: 15 }}
+                onClick={() => navigate(ROUTES.login)}
+              >
+                {t('landing.hero_cta_signup')}
+              </button>
+              <button
+                type='button'
+                className='sh-btn-secondary'
+                style={{ fontSize: 15 }}
+                onClick={() => navigate(ROUTES.login)}
+              >
+                {t('landing.hero_cta_login')}
+              </button>
+            </div>
           </div>
         </section>
       </main>
