@@ -93,6 +93,10 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    host: true,
+    allowedHosts: ['shelfy.cz', 'www.shelfy.cz'],
+  },
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',

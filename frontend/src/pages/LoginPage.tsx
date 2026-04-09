@@ -82,6 +82,16 @@ export function LoginPage() {
             {isSubmitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Register'}
           </button>
         </form>
+
+        <button
+          type="button"
+          className="sh-btn-secondary"
+          onClick={() => navigate('/')}
+          style={{ width: '100%', marginTop: 12 }}
+        >
+          ← Back to homepage
+        </button>
+
       </div>
     </section>
   )
