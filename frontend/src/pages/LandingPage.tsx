@@ -49,15 +49,27 @@ export function LandingPage() {
       {
         title: t('landing.proof_card_1_title'),
         description: t('landing.proof_card_1_desc'),
+        metric: t('landing.proof_card_1_metric'),
       },
       {
         title: t('landing.proof_card_2_title'),
         description: t('landing.proof_card_2_desc'),
+        metric: t('landing.proof_card_2_metric'),
       },
       {
         title: t('landing.proof_card_3_title'),
         description: t('landing.proof_card_3_desc'),
+        metric: t('landing.proof_card_3_metric'),
       },
+    ],
+    [t],
+  )
+
+  const trustSignals = useMemo(
+    () => [
+      { title: t('landing.trust_signal_1_title'), description: t('landing.trust_signal_1_desc') },
+      { title: t('landing.trust_signal_2_title'), description: t('landing.trust_signal_2_desc') },
+      { title: t('landing.trust_signal_3_title'), description: t('landing.trust_signal_3_desc') },
     ],
     [t],
   )
@@ -241,9 +253,86 @@ export function LandingPage() {
                   padding: 16,
                 }}
               >
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
+                  {item.metric}
+                </p>
                 <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>{item.title}</h3>
                 <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
                   {item.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Before / After ── */}
+        <section
+          style={{
+            maxWidth: 1120,
+            margin: '0 auto',
+            padding: '0 24px 44px',
+          }}
+        >
+          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.before_after_title')}</h2>
+          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.before_after_subtitle')}</p>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <article
+              style={{
+                ...FEATURE_CARD_STYLE,
+                borderColor: 'color-mix(in srgb, var(--sh-danger) 30%, var(--sh-border))',
+              }}
+            >
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--sh-text-secondary)' }}>
+                {t('landing.before_label')}
+              </p>
+              <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>{t('landing.before_title')}</h3>
+              <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
+                {t('landing.before_desc')}
+              </p>
+            </article>
+            <article
+              style={{
+                ...FEATURE_CARD_STYLE,
+                borderColor: 'color-mix(in srgb, var(--sh-primary) 30%, var(--sh-border))',
+                background: 'color-mix(in srgb, var(--sh-primary-bg) 35%, var(--sh-surface))',
+              }}
+            >
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
+                {t('landing.after_label')}
+              </p>
+              <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>{t('landing.after_title')}</h3>
+              <p style={{ margin: 0, color: 'var(--sh-text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
+                {t('landing.after_desc')}
+              </p>
+            </article>
+          </div>
+        </section>
+
+        {/* ── Trust signals ── */}
+        <section
+          style={{
+            maxWidth: 1120,
+            margin: '0 auto',
+            padding: '0 24px 44px',
+          }}
+        >
+          <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', margin: '0 0 10px' }}>{t('landing.trust_title')}</h2>
+          <p style={{ margin: '0 0 24px', color: 'var(--sh-text-secondary)' }}>{t('landing.trust_subtitle')}</p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {trustSignals.map((signal) => (
+              <article
+                key={signal.title}
+                style={{
+                  flex: '1 1 250px',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  padding: '14px 16px',
+                  background: 'var(--sh-surface)',
+                }}
+              >
+                <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>{signal.title}</h3>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--sh-text-secondary)' }}>
+                  {signal.description}
                 </p>
               </article>
             ))}
