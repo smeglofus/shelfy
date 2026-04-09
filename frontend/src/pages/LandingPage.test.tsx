@@ -29,9 +29,44 @@ describe('LandingPage simple v2', () => {
 
     expect(screen.getByText('landing.hero_title')).toBeInTheDocument()
     expect(screen.getByText('landing.how_title')).toBeInTheDocument()
-    expect(screen.getByText('landing.proof_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.visual_proof_title')).toBeInTheDocument()
     expect(screen.getByText('landing.summary_title')).toBeInTheDocument()
     expect(screen.getByText('landing.final_cta_title')).toBeInTheDocument()
+  })
+
+  it('renders visual proof block with poster image', () => {
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    const section = screen.getByTestId('visual-proof')
+    expect(section).toBeInTheDocument()
+    const poster = section.querySelector('img[src="/landing/demo-poster.webp"]')
+    expect(poster).toBeInTheDocument()
+  })
+
+  it('renders 3 flow steps in visual proof', () => {
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('landing.visual_proof_step1_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.visual_proof_step2_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.visual_proof_step3_title')).toBeInTheDocument()
+  })
+
+  it('shows demo fallback when no video URL is configured', () => {
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/landing\.visual_proof_demo_coming/)).toBeInTheDocument()
   })
 
   it('tracks landing view with experiment variant from URL', () => {
@@ -95,3 +130,4 @@ describe('LandingPage simple v2', () => {
     )
   })
 })
+

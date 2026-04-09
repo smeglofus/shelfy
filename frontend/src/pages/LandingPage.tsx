@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -17,12 +17,37 @@ const SECTION_CONTAINER_STYLE = {
   padding: '0 20px 48px',
 }
 
+/** Set to a real URL (e.g. YouTube embed) when demo video is ready. */
+const DEMO_VIDEO_URL = ''
+
 export function LandingPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const howItWorksRef = useRef<HTMLElement | null>(null)
   const variantId = useMemo(() => resolveLandingVariantId(searchParams), [searchParams])
+  const [showVideo, setShowVideo] = useState(false)
+
+  const visualProofSteps = useMemo(
+    () => [
+      {
+        img: '/landing/scan-step-1.webp',
+        title: t('landing.visual_proof_step1_title'),
+        desc: t('landing.visual_proof_step1_desc'),
+      },
+      {
+        img: '/landing/scan-step-2.webp',
+        title: t('landing.visual_proof_step2_title'),
+        desc: t('landing.visual_proof_step2_desc'),
+      },
+      {
+        img: '/landing/scan-step-3.webp',
+        title: t('landing.visual_proof_step3_title'),
+        desc: t('landing.visual_proof_step3_desc'),
+      },
+    ],
+    [t],
+  )
 
   useEffect(() => {
     trackLandingView(variantId, i18n.language)
@@ -184,29 +209,169 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section style={SECTION_CONTAINER_STYLE}>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 8px' }}>{t('landing.proof_title')}</h2>
-          <p style={{ margin: '0 0 16px', color: 'var(--sh-text-secondary)' }}>{t('landing.proof_subtitle')}</p>
-          <article
+        <section style={SECTION_CONTAINER_STYLE} data-testid='visual-proof'>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 16px' }}>
+            {t('landing.visual_proof_title')}
+          </h2>
+
+          {/* Hero screenshot / poster */}
+          <div
             style={{
-              border: '1px solid color-mix(in srgb, var(--sh-primary) 20%, var(--sh-border))',
+              position: 'relative',
               borderRadius: 'var(--sh-radius-lg)',
-              background: 'color-mix(in srgb, var(--sh-primary-bg) 28%, var(--sh-surface))',
-              padding: 16,
+              overflow: 'hidden',
+              border: '1px solid var(--sh-border)',
+              boxShadow: 'var(--sh-shadow-md)',
+              background: 'var(--sh-surface)',
+              marginBottom: 20,
             }}
           >
-            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--sh-primary-text)' }}>
-              {t('landing.proof_highlight')}
-            </p>
-            <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>{t('landing.proof_block_title')}</h3>
-            <p style={{ margin: '0 0 8px', color: 'var(--sh-text-secondary)' }}>{t('landing.proof_block_desc')}</p>
-            <ul style={{ margin: 0, paddingInlineStart: 18, display: 'grid', gap: 6, color: 'var(--sh-text-secondary)' }}>
-              <li>{t('landing.proof_bullet_1')}</li>
-              <li>{t('landing.proof_bullet_2')}</li>
-              <li>{t('landing.proof_bullet_3')}</li>
-            </ul>
-          </article>
+            <img
+              src='/landing/demo-poster.webp'
+              alt={t('landing.visual_proof_title')}
+              style={{ width: '100%', display: 'block', maxHeight: 420, objectFit: 'cover' }}
+            />
+            <button
+              type='button'
+              onClick={() => {
+                trackSupportingCtaClick(t('landing.visual_proof_play_demo'), 'visual_proof')
+                if (DEMO_VIDEO_URL) setShowVideo(true)
+              }}
+              style={{
+                position: 'absolute',
+                bottom: 16,
+                right: 16,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(0,0,0,0.7)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 'var(--sh-radius-pill)',
+                padding: '8px 16px',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: DEMO_VIDEO_URL ? 'pointer' : 'default',
+                backdropFilter: 'blur(6px)',
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>▶</span>
+              {DEMO_VIDEO_URL ? t('landing.visual_proof_play_demo') : t('landing.visual_proof_demo_coming')}
+            </button>
+          </div>
+
+          {/* 3-step thumbnail row */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: 12,
+            }}
+          >
+            {visualProofSteps.map((step, i) => (
+              <article
+                key={step.title}
+                style={{
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  background: 'var(--sh-surface)',
+                  padding: 10,
+                  textAlign: 'center',
+                }}
+              >
+                <img
+                  src={step.img}
+                  alt={step.title}
+                  style={{
+                    width: '100%',
+                    height: 60,
+                    objectFit: 'cover',
+                    borderRadius: 'var(--sh-radius-sm)',
+                    marginBottom: 8,
+                    background: 'var(--sh-border)',
+                  }}
+                />
+                <p
+                  style={{
+                    margin: '0 0 4px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--sh-primary-text)',
+                  }}
+                >
+                  {t('landing.how_step_label', { count: i + 1 })}
+                </p>
+                <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>{step.title}</h3>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--sh-text-secondary)' }}>
+                  {step.desc}
+                </p>
+              </article>
+            ))}
+          </div>
         </section>
+
+        {/* Video lightbox modal */}
+        {showVideo && (
+          <div
+            className='sh-modal-overlay'
+            role='dialog'
+            aria-modal='true'
+            onClick={() => setShowVideo(false)}
+          >
+            <div
+              className='sh-modal-panel sh-modal-panel--lg'
+              style={{ padding: 0, overflow: 'hidden' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                {DEMO_VIDEO_URL ? (
+                  <iframe
+                    src={DEMO_VIDEO_URL}
+                    title={t('landing.visual_proof_play_demo')}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                    }}
+                    allow='autoplay; encrypted-media'
+                    allowFullScreen
+                  />
+                ) : (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                    }}
+                  >
+                    <img
+                      src='/landing/demo-poster.webp'
+                      alt=''
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }}
+                    />
+                    <p style={{ position: 'absolute', fontSize: 18, fontWeight: 600 }}>
+                      {t('landing.visual_proof_demo_coming')}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <button
+                type='button'
+                className='sh-btn-secondary'
+                style={{ margin: 12 }}
+                onClick={() => setShowVideo(false)}
+              >
+                {t('landing.visual_proof_close')}
+              </button>
+            </div>
+          </div>
+        )}
 
         <section style={SECTION_CONTAINER_STYLE}>
           <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', margin: '0 0 8px' }}>{t('landing.summary_title')}</h2>
