@@ -166,11 +166,13 @@ async def confirm_shelf_books(
 ) -> ShelfScanConfirmResponse:
     """Confirm scanned books and save them to the library with positions.
     Automatically queues background enrichment for all confirmed books if quota allows."""
+    # Snapshot scalar user id before downstream commits, to avoid ORM lazy-load on expired instance.
+    confirm_user_id = current_user.id
+
     book_ids = await confirm_shelf_scan(session, payload, library_id)
 
     # Auto-trigger background enrichment — only if the user has enough enrichment quota.
     # Books are always saved; enrichment is best-effort and skipped on quota exhaustion.
-    confirm_user_id = current_user.id
 
     if book_ids:
         n = len(book_ids)
