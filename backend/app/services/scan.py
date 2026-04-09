@@ -88,13 +88,26 @@ async def confirm_shelf_scan(
                 )
             )).scalar_one_or_none()
 
+        if existing is None:
+            # Re-save/replace flow: if a book already occupies the target shelf position,
+            # update it in place instead of inserting a new row.
+            existing = (await session.execute(
+                select(Book).where(
+                    Book.library_id == library_id,
+                    Book.location_id == payload.location_id,
+                    Book.shelf_position == target_position,
+                )
+            )).scalar_one_or_none()
+
         if existing is not None:
             existing.location_id = payload.location_id
             existing.shelf_position = target_position
-            if not existing.title and item.title:
-                existing.title = item.title
-            if not existing.author and item.author:
-                existing.author = item.author
+            existing.title = item.title
+            existing.author = item.author
+            existing.isbn = normalized_isbn
+            existing.processing_status = BookProcessingStatus.PARTIAL
+            if existing.reading_status is None:
+                existing.reading_status = ReadingStatus.UNREAD
             book_ids.append(existing.id)
             logger.info("shelf_scan_book_updated", book_id=str(existing.id), position=target_position)
         else:
@@ -115,7 +128,7 @@ async def confirm_shelf_scan(
                 await session.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Duplicate ISBN: {normalized_isbn or 'unknown'}",
+                    detail="Duplicate book position or ISBN conflict",
                 )
             book_ids.append(book.id)
             logger.info("shelf_scan_book_created", book_id=str(book.id), title=item.title, position=target_position)
