@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,42 +19,19 @@ beforeEach(() => {
   trackEventMock.mockReset()
 })
 
-describe('LandingPage conversion sections', () => {
-  it('renders pricing teaser, faq, and final cta sections', () => {
+describe('LandingPage simple v2', () => {
+  it('renders simplified sections', () => {
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('landing.pricing_title')).toBeInTheDocument()
-    expect(screen.getByText('landing.faq_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.hero_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.how_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.proof_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.summary_title')).toBeInTheDocument()
     expect(screen.getByText('landing.final_cta_title')).toBeInTheDocument()
-    expect(screen.getByText('landing.pricing_compare')).toBeInTheDocument()
-  })
-
-  it('toggles faq answers via accordion interaction', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>,
-    )
-
-    const faqHeading = screen.getByText('landing.faq_title')
-    const faqSection = faqHeading.closest('section')
-    expect(faqSection).not.toBeNull()
-    const faqWithin = within(faqSection as HTMLElement)
-
-    expect(faqWithin.getAllByText('landing.faq_a_1').length).toBeGreaterThan(0)
-    const secondQuestion = faqWithin.getByRole('button', { name: 'landing.faq_q_2' })
-    expect(secondQuestion).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(secondQuestion)
-
-    expect(secondQuestion).toHaveAttribute('aria-expanded', 'true')
-    expect(faqWithin.getAllByText('landing.faq_a_2').length).toBeGreaterThan(0)
   })
 
   it('tracks landing view with experiment variant from URL', () => {
@@ -82,7 +59,7 @@ describe('LandingPage conversion sections', () => {
       </MemoryRouter>,
     )
 
-    await user.click(screen.getAllByRole('button', { name: 'landing.hero_cta_signup' })[0])
+    await user.click(screen.getByRole('button', { name: 'landing.hero_cta_signup' }))
 
     expect(trackEventMock).toHaveBeenCalledWith(
       'lp_signup_start',
@@ -99,7 +76,7 @@ describe('LandingPage conversion sections', () => {
     )
   })
 
-  it('tracks faq expand events when closed question is opened', async () => {
+  it('tracks pricing summary click', async () => {
     const user = userEvent.setup()
 
     render(
@@ -108,14 +85,12 @@ describe('LandingPage conversion sections', () => {
       </MemoryRouter>,
     )
 
-    const secondQuestion = screen.getByRole('button', { name: 'landing.faq_q_2' })
-    await user.click(secondQuestion)
+    await user.click(screen.getByRole('button', { name: 'landing.summary_pricing_cta' }))
 
     expect(trackEventMock).toHaveBeenCalledWith(
-      'lp_faq_expand',
+      'lp_pricing_teaser_click',
       expect.objectContaining({
-        faq_id: 'faq_2',
-        faq_topic: 'landing.faq_q_2',
+        cta_label: 'landing.summary_pricing_cta',
       }),
     )
   })
