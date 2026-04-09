@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
@@ -125,6 +125,27 @@ async def delete_account(
         )
 
     user_id = str(current_user.id)
+
+    # Proactively delete libraries where the current user is the only member.
+    # Prevents orphaned library data when the account is removed.
+    sole_member_library_ids = (
+        select(LibraryMember.library_id)
+        .group_by(LibraryMember.library_id)
+        .having(func.count(LibraryMember.id) == 1)
+        .subquery()
+    )
+    sole_member_libraries = (
+        await session.execute(
+            select(Library)
+            .join(sole_member_library_ids, sole_member_library_ids.c.library_id == Library.id)
+            .join(LibraryMember, LibraryMember.library_id == Library.id)
+            .where(LibraryMember.user_id == current_user.id)
+        )
+    ).scalars().all()
+
+    for library in sole_member_libraries:
+        await session.delete(library)
+
     await billing_svc.cancel_stripe_subscription(session, current_user.id, settings)
     await session.delete(current_user)
     await session.commit()

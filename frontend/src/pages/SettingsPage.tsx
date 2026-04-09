@@ -62,9 +62,11 @@ function LibraryManagement() {
 
   const { data: libraries, isLoading: libLoading, isError: libError } = useLibraries()
 
-  // Auto-select first library when none is stored
+  // Auto-select first valid library when missing or stale.
   useEffect(() => {
-    if (!activeLibraryId && libraries && libraries.length > 0) {
+    if (!libraries || libraries.length === 0) return
+    const activeStillValid = activeLibraryId ? libraries.some((l) => l.id === activeLibraryId) : false
+    if (!activeStillValid) {
       setActiveLibraryId(libraries[0].id)
     }
   }, [activeLibraryId, libraries, setActiveLibraryId])

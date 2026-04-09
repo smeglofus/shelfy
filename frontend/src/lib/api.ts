@@ -45,6 +45,8 @@ import type {
 
 export const ACTIVE_LIBRARY_ID_KEY = 'shelfy.activeLibraryId'
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+
 export function getActiveLibraryId(): string | null {
   try {
     return localStorage.getItem(ACTIVE_LIBRARY_ID_KEY)
@@ -53,7 +55,33 @@ export function getActiveLibraryId(): string | null {
   }
 }
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+function clearActiveLibraryId(): void {
+  try {
+    localStorage.removeItem(ACTIVE_LIBRARY_ID_KEY)
+  } catch {
+    // ignore storage failures
+  }
+}
+
+async function recoverActiveLibraryIdFromServer(): Promise<string | null> {
+  const token = getAccessToken()
+  if (!token) return null
+
+  try {
+    const response = await axios.get<Library[]>(`${apiBaseUrl}/api/v1/libraries`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const nextId = response.data[0]?.id ?? null
+    if (nextId) {
+      localStorage.setItem(ACTIVE_LIBRARY_ID_KEY, nextId)
+      return nextId
+    }
+    clearActiveLibraryId()
+    return null
+  } catch {
+    return null
+  }
+}
 
 if (!apiBaseUrl) {
   throw new Error('VITE_API_BASE_URL is not set. Check your .env file.')
@@ -127,7 +155,7 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ detail?: string }>) => {
-    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined
+    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean; _libraryRetry?: boolean }) | undefined
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true
@@ -136,6 +164,18 @@ apiClient.interceptors.response.use(
       if (nextAccessToken) {
         originalRequest.headers = originalRequest.headers ?? {}
         originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`
+        return apiClient(originalRequest)
+      }
+    }
+    const requestUrl = originalRequest?.url ?? ''
+    const hadLibraryHeader = Boolean(getActiveLibraryId())
+
+    if (error.response?.status === 403 && originalRequest && !originalRequest._libraryRetry && hadLibraryHeader && !requestUrl.includes('/api/v1/libraries')) {
+      originalRequest._libraryRetry = true
+      const recoveredLibraryId = await recoverActiveLibraryIdFromServer()
+      if (recoveredLibraryId) {
+        originalRequest.headers = originalRequest.headers ?? {}
+        originalRequest.headers['X-Library-Id'] = recoveredLibraryId
         return apiClient(originalRequest)
       }
     }
@@ -422,6 +462,7 @@ export async function createPortalSession(): Promise<PortalResponse> {
 
 export async function deleteAccount(password: string): Promise<void> {
   await apiClient.delete('/api/v1/auth/me', { data: { password } })
+  clearActiveLibraryId()
 }
 
 export async function exportUserData(): Promise<Blob> {

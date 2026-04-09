@@ -1,7 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { getCurrentUser, login as apiLogin, refreshToken, register as apiRegister, registerAuthHandlers } from '../lib/api'
+import {
+  ACTIVE_LIBRARY_ID_KEY,
+  getCurrentUser,
+  login as apiLogin,
+  refreshToken,
+  register as apiRegister,
+  registerAuthHandlers,
+} from '../lib/api'
 import { clearTokens, getRefreshToken, setAccessToken, setRefreshToken } from '../lib/auth'
 import { identifyUser, resetUser, trackEvent } from '../lib/analytics'
 import type { User } from '../lib/types'
@@ -26,6 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearTokens()
+    try {
+      localStorage.removeItem(ACTIVE_LIBRARY_ID_KEY)
+      localStorage.removeItem('shelfy_onboarding_dismissed')
+    } catch {
+      // ignore storage failures
+    }
     setUser(null)
     setAccessTokenState(null)
     resetUser()
