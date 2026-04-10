@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 
 import { confirmCsvImport, formatApiError, previewCsvImport } from '../lib/api'
 import type { CsvImportConfirmRequest, CsvImportPreviewResponse } from '../lib/types'
-import Modal from './Modal'
+import { Modal } from './Modal'
 
 interface ImportCsvModalProps {
   open: boolean
