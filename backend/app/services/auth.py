@@ -10,6 +10,7 @@ import structlog
 from app.core.config import Settings
 from app.core.security import create_token, decode_token, get_password_hash, verify_password
 from app.models.user import User
+from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
 from app.services.library import create_personal_library
 
 logger = structlog.get_logger()
@@ -71,6 +72,16 @@ async def register_user(session: AsyncSession, email: str, password: str) -> Use
     user = User(email=email, hashed_password=get_password_hash(password))
     session.add(user)
     await session.flush()
+
+    # Eagerly create default subscription at registration (no lazy gap).
+    session.add(
+        Subscription(
+            user_id=user.id,
+            plan=SubscriptionPlan.free,
+            status=SubscriptionStatus.active,
+        )
+    )
+
     await create_personal_library(session, user)
     await session.commit()
     await session.refresh(user)

@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.security import create_token, decode_token, get_password_hash
 from app.models.user import User
+from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
 from app.services.auth import get_user_by_email
 from app.services.library import create_personal_library
 
@@ -238,6 +239,16 @@ async def find_or_create_google_user(
     )
     session.add(new_user)
     await session.flush()
+
+    # Eagerly create default subscription for OAuth-only registrations too.
+    session.add(
+        Subscription(
+            user_id=new_user.id,
+            plan=SubscriptionPlan.free,
+            status=SubscriptionStatus.active,
+        )
+    )
+
     await create_personal_library(session, new_user)
     await session.commit()
     await session.refresh(new_user)
