@@ -409,8 +409,10 @@ async def test_books_export_returns_csv(test_session: async_sessionmaker[AsyncSe
     assert response.status_code == 200
     assert response.headers['content-type'].startswith('text/csv')
     assert 'attachment; filename="shelfy-export.csv"' in response.headers.get('content-disposition', '')
-    assert 'title,author,isbn,publisher,language,publication_year,location,reading_status,is_currently_lent,created_at' in response.text
-    assert 'Export Me,Tester,1234567890' in response.text
+    # Check new column layout (description + individual location columns, UTF-8 BOM stripped)
+    content = response.content.lstrip(b"\xef\xbb\xbf").decode("utf-8")
+    assert 'title,author,isbn,publisher,language,publication_year,description,reading_status,room,furniture,shelf,shelf_position' in content
+    assert 'Export Me,Tester,1234567890' in content
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,7 @@
 {
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "cancel": "Cancel"
   },
   "nav": {
     "library": "Books",
@@ -500,5 +501,38 @@
     "pricing_title": "Plans & Pricing",
     "pricing_subtitle": "Choose the plan that fits your needs. All plans include PWA install and CSV export.",
     "pricing_footer": "All prices in EUR. Cancel anytime. Questions? Contact us."
+  },
+  "csv": {
+    "import_button": "Import CSV",
+    "export_success": "Library exported.",
+    "exporting": "Exporting…",
+    "import_success": "Import complete.",
+    "import_modal_label": "Import books from CSV",
+    "import_title": "Import books from CSV",
+    "import_description": "Upload a CSV file with columns: title, author, isbn, publisher, language, publication_year, description, reading_status, room, furniture, shelf, shelf_position. First row must be a header.",
+    "parsing": "Parsing file…",
+    "total_rows": "Total rows",
+    "valid_rows": "Valid",
+    "invalid_rows": "Invalid",
+    "would_create": "New",
+    "would_update": "Updates",
+    "parse_errors_title": "{{count}} row(s) have errors (will be skipped)",
+    "parse_errors_more": "…and {{count}} more",
+    "preview_table_label": "Preview (first {{count}} rows)",
+    "options_title": "Import options",
+    "create_missing_locations": "Auto-create missing locations (room / furniture / shelf)",
+    "mode_label": "Existing books:",
+    "mode_upsert": "Create & update",
+    "mode_create_only": "Create only (skip existing)",
+    "on_conflict_label": "On duplicate:",
+    "on_conflict_update": "Update",
+    "on_conflict_skip": "Skip",
+    "back": "← Back",
+    "confirm_import": "Import {{count}} books",
+    "importing": "Importing…",
+    "import_done": "Import completed successfully.",
+    "result_created": "Created",
+    "result_updated": "Updated",
+    "result_skipped": "Skipped"
   }
 }

@@ -1,6 +1,7 @@
 {
   "common": {
-    "close": "Zavřít"
+    "close": "Zavřít",
+    "cancel": "Zrušit"
   },
   "nav": {
     "library": "Knihy",
@@ -500,5 +501,38 @@
     "final_cta_button": "Začít se Shelfy",
     "footer_privacy": "Zásady ochrany soukromí",
     "footer_terms": "Podmínky použití"
+  },
+  "csv": {
+    "import_button": "Importovat CSV",
+    "export_success": "Knihovna exportována.",
+    "exporting": "Exportuji…",
+    "import_success": "Import dokončen.",
+    "import_modal_label": "Import knih z CSV",
+    "import_title": "Import knih z CSV",
+    "import_description": "Nahraj CSV soubor se sloupci: title, author, isbn, publisher, language, publication_year, description, reading_status, room, furniture, shelf, shelf_position. První řádek musí být záhlaví.",
+    "parsing": "Zpracovávám soubor…",
+    "total_rows": "Celkem řádků",
+    "valid_rows": "Platných",
+    "invalid_rows": "Chybných",
+    "would_create": "Nové",
+    "would_update": "Aktualizace",
+    "parse_errors_title": "{{count}} řádek/řádků obsahuje chyby (bude přeskočeno)",
+    "parse_errors_more": "…a dalších {{count}}",
+    "preview_table_label": "Náhled (prvních {{count}} řádků)",
+    "options_title": "Možnosti importu",
+    "create_missing_locations": "Automaticky vytvořit chybějící lokace (pokoj / nábytek / polička)",
+    "mode_label": "Existující knihy:",
+    "mode_upsert": "Vytvořit a aktualizovat",
+    "mode_create_only": "Pouze vytvořit (přeskočit existující)",
+    "on_conflict_label": "Při duplicitě:",
+    "on_conflict_update": "Aktualizovat",
+    "on_conflict_skip": "Přeskočit",
+    "back": "← Zpět",
+    "confirm_import": "Importovat {{count}} knih",
+    "importing": "Importuji…",
+    "import_done": "Import úspěšně dokončen.",
+    "result_created": "Vytvořeno",
+    "result_updated": "Aktualizováno",
+    "result_skipped": "Přeskočeno"
   }
 }

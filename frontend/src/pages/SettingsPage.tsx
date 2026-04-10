@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { deleteAccount, exportBooksCsv, exportUserData, formatApiError, purgeLibrary } from '../lib/api'
+import { ImportCsvModal } from '../components/ImportCsvModal'
 import { useEnrichAll } from '../hooks/useEnrich'
 import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
 import { useAddMember, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
@@ -461,10 +462,13 @@ export function SettingsPage() {
   const { user, logout } = useAuth()
   const enrichAllMutation = useEnrichAll()
   const resetOnboardingMutation = useResetOnboarding()
+  const queryClient = useQueryClient()
   const showSuccess = useToastStore((s) => s.showSuccess)
   const [purgePassword, setPurgePassword] = useState('')
   const [purging, setPurging] = useState(false)
   const [exportingData, setExportingData] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [deleteAccountExpanded, setDeleteAccountExpanded] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
@@ -545,40 +549,58 @@ export function SettingsPage() {
       {/* ── Billing & plan ── */}
       <BillingSection />
 
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.export_title')}</h3>
-          <p className='text-small'>{t('settings.export_description')}</p>
+      <article style={ARTICLE_STYLE}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 12 }}>
+          <div>
+            <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.export_title')}</h3>
+            <p className='text-small' style={{ margin: 0 }}>{t('settings.export_description')}</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              disabled={exportingCsv}
+              onClick={async () => {
+                try {
+                  setExportingCsv(true)
+                  const blob = await exportBooksCsv()
+                  const url = URL.createObjectURL(blob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = 'shelfy-export.csv'
+                  link.click()
+                  URL.revokeObjectURL(url)
+                  showSuccess(t('csv.export_success'))
+                } catch {
+                  showError(t('settings.export_error'))
+                } finally {
+                  setExportingCsv(false)
+                }
+              }}
+            >
+              {exportingCsv ? t('csv.exporting') : t('settings.export_button')}
+            </button>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              onClick={() => setShowImportModal(true)}
+              data-testid="open-import-modal-btn"
+            >
+              {t('csv.import_button')}
+            </button>
+          </div>
         </div>
-
-        <button
-          type='button'
-          className='sh-btn-secondary'
-          onClick={async () => {
-            try {
-              const blob = await exportBooksCsv()
-              const url = URL.createObjectURL(blob)
-              const link = document.createElement('a')
-              link.href = url
-              link.download = 'shelfy-export.csv'
-              link.click()
-              URL.revokeObjectURL(url)
-            } catch {
-              showError(t('settings.export_error'))
-            }
-          }}
-        >
-          {t('settings.export_button')}
-        </button>
       </article>
+
+      <ImportCsvModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImported={() => {
+          setShowImportModal(false)
+          showSuccess(t('csv.import_success'))
+          queryClient.invalidateQueries({ queryKey: ['books'] })
+        }}
+      />
 
       <article
         style={{

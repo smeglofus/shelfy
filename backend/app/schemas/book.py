@@ -8,6 +8,60 @@ from app.models.book import BookProcessingStatus, ReadingStatus
 from app.schemas.loan import LoanResponse
 
 
+# ── CSV Import / Export schemas ────────────────────────────────────────────────
+
+class CsvImportError(BaseModel):
+    row: int
+    error: str
+
+
+class CsvPreviewRow(BaseModel):
+    title: str
+    author: str | None
+    isbn: str | None
+    publisher: str | None
+    language: str | None
+    publication_year: int | None
+    description: str | None
+    reading_status: str | None
+    room: str | None
+    furniture: str | None
+    shelf: str | None
+    shelf_position: int | None
+
+
+class CsvImportSummary(BaseModel):
+    total_rows: int
+    valid_rows: int
+    invalid_rows: int
+    would_create: int
+    would_update: int
+    would_skip: int
+
+
+class CsvImportPreviewResponse(BaseModel):
+    import_token: str
+    expires_in: int
+    summary: CsvImportSummary
+    errors: list[CsvImportError]
+    preview_rows: list[CsvPreviewRow]
+
+
+class CsvImportConfirmRequest(BaseModel):
+    import_token: str
+    mode: Literal["upsert", "create_only"] = "upsert"
+    on_conflict: Literal["update", "skip"] = "update"
+    create_missing_locations: bool = False
+
+
+class CsvImportConfirmResponse(BaseModel):
+    created: int
+    updated: int
+    skipped: int
+    errors: int
+    warnings: list[str]
+
+
 class BookBaseRequest(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     author: str | None = Field(default=None, min_length=1, max_length=500)

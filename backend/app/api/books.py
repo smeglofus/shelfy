@@ -1,12 +1,14 @@
 import asyncio
 import uuid
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.library import get_library_id, require_editor_library
+from app.api.dependencies.redis import get_redis
 from app.db.session import get_db_session
 from app.models.subscription import UsageMetric
 from app.models.user import User
@@ -15,13 +17,15 @@ from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.schemas.book import (
     BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest,
     BulkDeleteRequest, BulkMoveRequest, BulkOperationResponse, BulkReorderRequest, BulkStatusRequest,
+    CsvImportConfirmRequest, CsvImportConfirmResponse, CsvImportPreviewResponse,
     RetryEnrichmentResponse,
 )
 from app.schemas.job import UploadResponse
 from app.services.book import (
-    build_books_export_csv, bulk_delete_books, bulk_move_books, bulk_reorder_books, bulk_update_status,
+    bulk_delete_books, bulk_move_books, bulk_reorder_books, bulk_update_status,
     create_book, delete_book, get_book_or_404, list_books, update_book,
 )
+from app.services.csv_import import build_books_export_csv, confirm_csv_import, preview_csv_import
 from app.services.job import create_upload_job
 from app.services.job_queue import get_celery_client
 from app.services.storage import delete_image_bytes
@@ -68,13 +72,47 @@ async def read_books(
 
 @router.get("/export")
 async def export_books_csv(
+    location_id: uuid.UUID | None = Query(default=None),
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
 ) -> StreamingResponse:
-    content = await build_books_export_csv(session, library_id)
-    response = StreamingResponse(iter([content]), media_type="text/csv")
+    content = await build_books_export_csv(session, library_id, location_id=location_id)
+    response = StreamingResponse(iter([content]), media_type="text/csv; charset=utf-8")
     response.headers["Content-Disposition"] = 'attachment; filename="shelfy-export.csv"'
     return response
+
+
+@router.post(
+    "/import/preview",
+    response_model=CsvImportPreviewResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def import_books_csv_preview(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+    redis_client: aioredis.Redis = Depends(get_redis),
+) -> CsvImportPreviewResponse:
+    """Step 1 — parse and validate a CSV upload; returns a preview + import token."""
+    file_bytes = await file.read()
+    return await preview_csv_import(file_bytes, library_id, session, redis_client)
+
+
+@router.post(
+    "/import/confirm",
+    response_model=CsvImportConfirmResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def import_books_csv_confirm(
+    payload: CsvImportConfirmRequest,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+    redis_client: aioredis.Redis = Depends(get_redis),
+) -> CsvImportConfirmResponse:
+    """Step 2 — apply a previewed import.  The token is consumed atomically."""
+    return await confirm_csv_import(
+        payload.import_token, library_id, session, redis_client, payload
+    )
 
 
 @router.post("", response_model=BookResponse, status_code=status.HTTP_201_CREATED)

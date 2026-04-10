@@ -315,3 +315,57 @@ export interface OAuthCallbackRequest {
   code: string
   state: string
 }
+
+// ── CSV Import ───────────────────────────────────────────────────────────────
+
+export interface CsvImportError {
+  row: number
+  error: string
+}
+
+export interface CsvPreviewRow {
+  title: string
+  author: string | null
+  isbn: string | null
+  publisher: string | null
+  language: string | null
+  publication_year: number | null
+  description: string | null
+  reading_status: string | null
+  room: string | null
+  furniture: string | null
+  shelf: string | null
+  shelf_position: number | null
+}
+
+export interface CsvImportSummary {
+  total_rows: number
+  valid_rows: number
+  invalid_rows: number
+  would_create: number
+  would_update: number
+  would_skip: number
+}
+
+export interface CsvImportPreviewResponse {
+  import_token: string
+  expires_in: number
+  summary: CsvImportSummary
+  errors: CsvImportError[]
+  preview_rows: CsvPreviewRow[]
+}
+
+export interface CsvImportConfirmRequest {
+  import_token: string
+  mode?: 'upsert' | 'create_only'
+  on_conflict?: 'update' | 'skip'
+  create_missing_locations?: boolean
+}
+
+export interface CsvImportConfirmResponse {
+  created: number
+  updated: number
+  skipped: number
+  errors: number
+  warnings: string[]
+}

@@ -1,5 +1,3 @@
-import csv
-from io import StringIO
 import uuid
 
 from fastapi import HTTPException, status
@@ -11,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.models.book import Book, ReadingStatus
-from app.models.loan import Loan
 from app.models.location import Location
 from app.schemas.book import BookCreateRequest, BookUpdateRequest
+
+# Re-export CSV helpers so existing imports from this module still work
+from app.services.csv_import import build_books_export_csv as build_books_export_csv  # noqa: F401
 
 logger = structlog.get_logger()
 
@@ -152,48 +152,6 @@ async def delete_book(session: AsyncSession, book_id: uuid.UUID, library_id: uui
     await session.delete(book)
     await session.commit()
     logger.info("book_deleted", book_id=str(book_id), library_id=str(library_id))
-
-
-async def build_books_export_csv(session: AsyncSession, library_id: uuid.UUID) -> bytes:
-    result = await session.execute(
-        select(Book, Location, Loan.id)
-        .where(Book.library_id == library_id)
-        .outerjoin(Location, Book.location_id == Location.id)
-        .outerjoin(Loan, (Loan.book_id == Book.id) & (Loan.returned_date.is_(None)))
-        .order_by(Book.created_at.desc(), Book.id.desc())
-    )
-    rows = result.all()
-
-    buffer = StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow([
-        "title", "author", "isbn", "publisher", "language",
-        "publication_year", "location", "reading_status", "is_currently_lent", "created_at",
-    ])
-
-    for book, location, active_loan_id in rows:
-        location_value = ""
-        if location is not None:
-            location_value = f"{location.room} / {location.furniture} / {location.shelf}"
-
-        reading_status_value = getattr(book, "reading_status", None)
-        if reading_status_value is None:
-            reading_status_value = getattr(book, "processing_status", "")
-
-        writer.writerow([
-            book.title,
-            book.author or "",
-            book.isbn or "",
-            book.publisher or "",
-            book.language or "",
-            book.publication_year or "",
-            location_value,
-            str(reading_status_value or ""),
-            str(active_loan_id is not None),
-            book.created_at.isoformat() if book.created_at else "",
-        ])
-
-    return buffer.getvalue().encode("utf-8")
 
 
 # ── Bulk operations ────────────────────────────────────────────────────────────

@@ -6,6 +6,9 @@ import type {
   AddMemberRequest,
   BillingStatus,
   CheckoutResponse,
+  CsvImportConfirmRequest,
+  CsvImportConfirmResponse,
+  CsvImportPreviewResponse,
   OAuthAuthorizeResponse,
   OAuthCallbackRequest,
   PortalResponse,
@@ -331,9 +334,32 @@ export async function getJobStatus(id: string): Promise<JobStatusResponse> {
   return response.data
 }
 
-export async function exportBooksCsv(): Promise<Blob> {
-  const response = await apiClient.get('/api/v1/books/export', { responseType: 'blob' })
+export async function exportBooksCsv(locationId?: string): Promise<Blob> {
+  const response = await apiClient.get('/api/v1/books/export', {
+    responseType: 'blob',
+    params: locationId ? { location_id: locationId } : undefined,
+  })
   return response.data as Blob
+}
+
+export async function previewCsvImport(file: File): Promise<CsvImportPreviewResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiClient.post<CsvImportPreviewResponse>(
+    '/api/v1/books/import/preview',
+    formData,
+  )
+  return response.data
+}
+
+export async function confirmCsvImport(
+  payload: CsvImportConfirmRequest,
+): Promise<CsvImportConfirmResponse> {
+  const response = await apiClient.post<CsvImportConfirmResponse>(
+    '/api/v1/books/import/confirm',
+    payload,
+  )
+  return response.data
 }
 
 
