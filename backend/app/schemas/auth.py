@@ -33,9 +33,28 @@ class UserResponse(BaseModel):
 
     id: uuid.UUID
     email: EmailStr
+    avatar_url: str | None = None
 
 
 class DeleteAccountRequest(BaseModel):
-    """Password confirmation required to permanently delete an account (GDPR Art. 17)."""
+    """Password confirmation required to permanently delete an account (GDPR Art. 17).
 
-    password: str
+    For local (email+password) accounts ``password`` must be the correct current
+    password.  For OAuth-only accounts the field can be omitted or sent as an
+    empty string — the valid Bearer token already proves identity.
+    """
+
+    password: str = ""
+
+
+# ── Google OAuth ───────────────────────────────────────────────────────────────
+
+class OAuthAuthorizeResponse(BaseModel):
+    """URL to redirect the user to for Google consent."""
+    auth_url: str
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Authorization code + state returned by Google after user consent."""
+    code: str
+    state: str

@@ -17,6 +17,7 @@ import { BookshelfViewPage } from './pages/BookshelfViewPage'
 import { PricingPage } from './pages/PricingPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { LandingPage } from './pages/LandingPage'
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
 
@@ -35,7 +36,7 @@ function HomeRoute() {
   return <LandingPage />
 }
 
-const PUBLIC_PATHS = new Set(['/', ROUTES.login, ROUTES.privacy, ROUTES.terms])
+const PUBLIC_PATHS = new Set(['/', ROUTES.login, ROUTES.privacy, ROUTES.terms, ROUTES.oauthCallback])
 
 function AppShell() {
   const { t } = useTranslation()
@@ -60,6 +61,7 @@ function AppShell() {
           {/* ── Public routes ── */}
           <Route path='/' element={<HomeRoute />} />
           <Route path={ROUTES.login} element={<LoginPage />} />
+          <Route path={ROUTES.oauthCallback} element={<OAuthCallbackPage />} />
           <Route path={ROUTES.privacy} element={<PrivacyPage />} />
           <Route path={ROUTES.terms} element={<TermsPage />} />
 

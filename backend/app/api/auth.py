@@ -21,6 +21,8 @@ from app.schemas.auth import (
     AccessTokenResponse,
     DeleteAccountRequest,
     LoginRequest,
+    OAuthAuthorizeResponse,
+    OAuthCallbackRequest,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
@@ -30,6 +32,13 @@ from app.services import billing as billing_svc
 from app.services import email as email_svc
 from app.services.auth import authenticate_user, issue_token_pair, read_refresh_token_subject, register_user
 from app.services.entitlements import get_or_create_subscription
+from app.services.oauth import (
+    build_google_authorize_url,
+    create_oauth_state,
+    exchange_code_for_claims,
+    find_or_create_google_user,
+    verify_oauth_state,
+)
 
 logger = structlog.get_logger()
 
@@ -118,11 +127,15 @@ async def delete_account(
       • PostgreSQL backup files in shelfy-backups — retained for BACKUP_KEEP_DAYS
         (default 30 days) for recovery purposes, then pruned automatically.
     """
-    if not verify_password(payload.password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect password",
-        )
+    # Local (email+password) accounts require password confirmation.
+    # OAuth-only accounts have no user-known password; the valid JWT is
+    # sufficient proof of identity for deletion.
+    if current_user.auth_provider == "local":
+        if not verify_password(payload.password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incorrect password",
+            )
 
     user_id = str(current_user.id)
 
@@ -271,3 +284,72 @@ async def export_my_data(
             "Content-Disposition": f'attachment; filename="shelfy-export-{user_id_str}.json"',
         },
     )
+
+
+# ── Google OAuth 2.0 ───────────────────────────────────────────────────────────
+
+@router.get("/google/authorize", response_model=OAuthAuthorizeResponse)
+async def google_authorize(
+    settings: Settings = Depends(get_settings),
+) -> OAuthAuthorizeResponse:
+    """Return the Google consent-screen URL.
+
+    The frontend should redirect ``window.location.href`` to the returned URL.
+    The ``state`` is a short-lived signed JWT used for CSRF validation on callback.
+    """
+    if not settings.google_client_id or not settings.google_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth is not configured on this server",
+        )
+    state = create_oauth_state(settings)
+    auth_url = build_google_authorize_url(settings, state)
+    return OAuthAuthorizeResponse(auth_url=auth_url)
+
+
+@router.post("/google/callback", response_model=TokenResponse)
+async def google_callback(
+    payload: OAuthCallbackRequest,
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> TokenResponse:
+    """Exchange the authorization code from Google for Shelfy access/refresh tokens.
+
+    Steps:
+      1. Validate CSRF state JWT.
+      2. Exchange code for Google ID token via Google's token endpoint.
+      3. Verify ID token signature and audience.
+      4. Find or create the local User (by google_sub → email → new).
+      5. Issue the usual JWT token pair and return it.
+    """
+    if not settings.google_client_id or not settings.google_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth is not configured on this server",
+        )
+
+    # 1. CSRF check
+    verify_oauth_state(payload.state)
+
+    # 2 + 3. Token exchange + ID-token verification
+    claims = await exchange_code_for_claims(payload.code, settings)
+
+    google_sub: str | None = claims.get("sub")
+    email: str | None = claims.get("email")
+    email_verified: bool = claims.get("email_verified", False)
+
+    if not google_sub or not email or not email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account must have a verified email address",
+        )
+
+    avatar_url: str | None = claims.get("picture")
+
+    # 4. Find / link / create user
+    user = await find_or_create_google_user(session, google_sub, email, avatar_url)
+
+    # 5. Issue token pair (same shape as /login)
+    access_token, refresh_token = issue_token_pair(user.email, settings)
+    logger.info("oauth_google_login", user_id=str(user.id))
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)

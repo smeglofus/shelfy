@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   ACTIVE_LIBRARY_ID_KEY,
   getCurrentUser,
+  googleOAuthCallback,
   login as apiLogin,
   refreshToken,
   register as apiRegister,
@@ -20,6 +21,7 @@ interface AuthContextValue {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  loginWithGoogle: (code: string, state: string) => Promise<void>
   logout: () => void
 }
 
@@ -75,6 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [login],
   )
 
+  const loginWithGoogle = useCallback(
+    async (code: string, state: string) => {
+      const tokens = await googleOAuthCallback({ code, state })
+      applyAccessToken(tokens.access_token)
+      setRefreshToken(tokens.refresh_token)
+      await fetchUser()
+    },
+    [applyAccessToken, fetchUser],
+  )
+
   useEffect(() => {
     registerAuthHandlers({
       onUnauthorized: logout,
@@ -117,9 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       register,
+      loginWithGoogle,
       logout,
     }),
-    [user, accessToken, isLoading, login, register, logout],
+    [user, accessToken, isLoading, login, register, loginWithGoogle, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

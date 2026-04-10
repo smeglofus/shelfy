@@ -11,6 +11,7 @@ export interface Location {
 export interface User {
   id: string
   email: string
+  avatar_url?: string | null
 }
 
 export interface LocationCreateRequest {
@@ -302,4 +303,15 @@ export interface AddMemberRequest {
 
 export interface UpdateMemberRoleRequest {
   role: LibraryRole
+}
+
+// ── Google OAuth ────────────────────────────────────────────────────────────
+
+export interface OAuthAuthorizeResponse {
+  auth_url: string
+}
+
+export interface OAuthCallbackRequest {
+  code: string
+  state: string
 }

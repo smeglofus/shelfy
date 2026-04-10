@@ -6,6 +6,8 @@ import type {
   AddMemberRequest,
   BillingStatus,
   CheckoutResponse,
+  OAuthAuthorizeResponse,
+  OAuthCallbackRequest,
   PortalResponse,
   QuotaErrorDetail,
   Book,
@@ -455,6 +457,18 @@ export async function createCheckoutSession(plan: 'pro' | 'library'): Promise<Ch
 
 export async function createPortalSession(): Promise<PortalResponse> {
   const response = await apiClient.post<PortalResponse>('/api/v1/billing/portal')
+  return response.data
+}
+
+// ── Google OAuth ───────────────────────────────────────────────────────────
+
+export async function getGoogleAuthorizeUrl(): Promise<OAuthAuthorizeResponse> {
+  const response = await apiClient.get<OAuthAuthorizeResponse>('/api/v1/auth/google/authorize')
+  return response.data
+}
+
+export async function googleOAuthCallback(payload: OAuthCallbackRequest): Promise<TokenResponse> {
+  const response = await apiClient.post<TokenResponse>('/api/v1/auth/google/callback', payload)
   return response.data
 }
 

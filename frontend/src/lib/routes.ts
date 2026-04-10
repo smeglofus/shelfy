@@ -10,6 +10,7 @@ export const ROUTES = {
   pricing: '/pricing',
   privacy: '/privacy',
   terms: '/terms',
+  oauthCallback: '/auth/callback',
 } as const
 
 export function getBookDetailRoute(bookId: string): string {

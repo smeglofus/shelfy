@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     # Keep False for local deployments without a trusted reverse proxy.
     trust_proxy_headers: bool = False
 
+    # Google OAuth 2.0 / OpenID Connect
+    # Obtain credentials at https://console.cloud.google.com/ → APIs & Services → Credentials
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    # Must match the redirect URI registered in the Google Cloud Console.
+    google_redirect_uri: str = "http://localhost:5173/auth/callback"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("jwt_secret_key")
