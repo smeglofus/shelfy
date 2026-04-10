@@ -12,6 +12,7 @@ export interface User {
   id: string
   email: string
   avatar_url?: string | null
+  has_local_password?: boolean
 }
 
 export interface LocationCreateRequest {

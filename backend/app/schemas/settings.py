@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class PurgeLibraryRequest(BaseModel):
-    password: str = Field(min_length=1, max_length=255)
+    password: str = Field(default="", max_length=255)
 
 
 class PurgeLibraryResponse(BaseModel):

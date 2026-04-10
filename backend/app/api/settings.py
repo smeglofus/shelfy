@@ -26,8 +26,9 @@ async def purge_library(
     current_user: User = Depends(get_current_user),
     library_id: uuid.UUID = Depends(get_library_id),
 ) -> PurgeLibraryResponse:
-    if not verify_password(payload.password, current_user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
+    if current_user.has_local_password:
+        if not verify_password(payload.password, current_user.hashed_password):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
 
     deleted_loans = (await session.execute(delete(Loan).where(Loan.library_id == library_id))).rowcount or 0
     deleted_books = (await session.execute(delete(Book).where(Book.library_id == library_id))).rowcount or 0

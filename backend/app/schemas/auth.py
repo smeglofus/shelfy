@@ -34,6 +34,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr
     avatar_url: str | None = None
+    has_local_password: bool = True
 
 
 class DeleteAccountRequest(BaseModel):

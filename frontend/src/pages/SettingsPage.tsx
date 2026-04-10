@@ -465,12 +465,14 @@ export function SettingsPage() {
   const queryClient = useQueryClient()
   const showSuccess = useToastStore((s) => s.showSuccess)
   const [purgePassword, setPurgePassword] = useState('')
+  const [purgeDeleteConfirm, setPurgeDeleteConfirm] = useState('')
   const [purging, setPurging] = useState(false)
   const [exportingData, setExportingData] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [deleteAccountExpanded, setDeleteAccountExpanded] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
   const currentLang = i18n.language === 'en' ? 'en' : 'cs'
 
@@ -739,32 +741,65 @@ export function SettingsPage() {
         <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6, color: 'var(--sh-red)' }}>{t('settings.danger_title')}</h3>
         <p className='text-small' style={{ marginTop: 0 }}>{t('settings.danger_description')}</p>
         <div style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
-          <input
-            className='sh-input'
-            type='password'
-            placeholder={t('settings.confirm_password')}
-            value={purgePassword}
-            onChange={(e) => setPurgePassword(e.target.value)}
-          />
-          <button
-            type='button'
-            className='sh-btn-danger'
-            disabled={purging || !purgePassword.trim()}
-            onClick={async () => {
-              try {
-                setPurging(true)
-                const res = await purgeLibrary(purgePassword.trim())
-                setPurgePassword('')
-                alert(t('settings.purge_success', { books: res.deleted_books, locations: res.deleted_locations }))
-              } catch (e) {
-                showError((e as Error)?.message || t('settings.purge_error'))
-              } finally {
-                setPurging(false)
-              }
-            }}
-          >
-            {purging ? t('settings.purging') : t('settings.purge_button')}
-          </button>
+          {user?.has_local_password === false ? (
+            <>
+              <input
+                className='sh-input'
+                type='text'
+                placeholder={t('settings.type_delete_to_confirm')}
+                value={purgeDeleteConfirm}
+                onChange={(e) => setPurgeDeleteConfirm(e.target.value)}
+              />
+              <button
+                type='button'
+                className='sh-btn-danger'
+                disabled={purging || purgeDeleteConfirm.trim().toUpperCase() !== 'DELETE'}
+                onClick={async () => {
+                  try {
+                    setPurging(true)
+                    const res = await purgeLibrary('')
+                    setPurgeDeleteConfirm('')
+                    alert(t('settings.purge_success', { books: res.deleted_books, locations: res.deleted_locations }))
+                  } catch (e) {
+                    showError((e as Error)?.message || t('settings.purge_error'))
+                  } finally {
+                    setPurging(false)
+                  }
+                }}
+              >
+                {purging ? t('settings.purging') : t('settings.purge_button')}
+              </button>
+            </>
+          ) : (
+            <>
+              <input
+                className='sh-input'
+                type='password'
+                placeholder={t('settings.confirm_password')}
+                value={purgePassword}
+                onChange={(e) => setPurgePassword(e.target.value)}
+              />
+              <button
+                type='button'
+                className='sh-btn-danger'
+                disabled={purging || !purgePassword.trim()}
+                onClick={async () => {
+                  try {
+                    setPurging(true)
+                    const res = await purgeLibrary(purgePassword.trim())
+                    setPurgePassword('')
+                    alert(t('settings.purge_success', { books: res.deleted_books, locations: res.deleted_locations }))
+                  } catch (e) {
+                    showError((e as Error)?.message || t('settings.purge_error'))
+                  } finally {
+                    setPurging(false)
+                  }
+                }}
+              >
+                {purging ? t('settings.purging') : t('settings.purge_button')}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Delete account */}
@@ -784,23 +819,39 @@ export function SettingsPage() {
             </button>
           ) : (
             <div style={{ display: 'grid', gap: 8, maxWidth: 360, marginTop: 8 }}>
-              <input
-                className='sh-input'
-                type='password'
-                placeholder={t('settings.confirm_password')}
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                autoFocus
-              />
+              {user?.has_local_password === false ? (
+                <input
+                  className='sh-input'
+                  type='text'
+                  placeholder={t('settings.type_delete_to_confirm')}
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  autoFocus
+                />
+              ) : (
+                <input
+                  className='sh-input'
+                  type='password'
+                  placeholder={t('settings.confirm_password')}
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  autoFocus
+                />
+              )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type='button'
                   className='sh-btn-danger'
-                  disabled={deletingAccount || !deletePassword.trim()}
+                  disabled={
+                    deletingAccount ||
+                    (user?.has_local_password === false
+                      ? deleteConfirmText.trim().toUpperCase() !== 'DELETE'
+                      : !deletePassword.trim())
+                  }
                   onClick={async () => {
                     try {
                       setDeletingAccount(true)
-                      await deleteAccount(deletePassword.trim())
+                      await deleteAccount(user?.has_local_password === false ? '' : deletePassword.trim())
                       logout()
                     } catch {
                       showError(t('settings.delete_account_error'))
@@ -814,7 +865,7 @@ export function SettingsPage() {
                   type='button'
                   className='sh-btn-secondary'
                   disabled={deletingAccount}
-                  onClick={() => { setDeleteAccountExpanded(false); setDeletePassword('') }}
+                  onClick={() => { setDeleteAccountExpanded(false); setDeletePassword(''); setDeleteConfirmText('') }}
                 >
                   {t('settings.delete_account_cancel')}
                 </button>

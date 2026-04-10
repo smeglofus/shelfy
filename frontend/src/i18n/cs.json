@@ -200,6 +200,7 @@
     "danger_title": "Nebezpečná zóna",
     "danger_description": "Smaže všechny knihy, půjčky a pozice. Akci nelze vrátit.",
     "confirm_password": "Potvrď heslem",
+    "type_delete_to_confirm": "Pro potvrzení napiš DELETE",
     "purge_button": "Smazat všechny knihy a pozice",
     "purging": "Mažu…",
     "purge_error": "Mazání selhalo. Zkontroluj heslo.",

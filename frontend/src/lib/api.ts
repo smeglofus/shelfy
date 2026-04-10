@@ -363,7 +363,7 @@ export async function confirmCsvImport(
 }
 
 
-export async function purgeLibrary(password: string): Promise<PurgeLibraryResponse> {
+export async function purgeLibrary(password = ""): Promise<PurgeLibraryResponse> {
   const response = await apiClient.post<PurgeLibraryResponse>('/api/v1/settings/purge-library', { password })
   return response.data
 }
@@ -500,7 +500,7 @@ export async function googleOAuthCallback(payload: OAuthCallbackRequest): Promis
 
 // ── GDPR ───────────────────────────────────────────────────────────────────
 
-export async function deleteAccount(password: string): Promise<void> {
+export async function deleteAccount(password = ""): Promise<void> {
   await apiClient.delete('/api/v1/auth/me', { data: { password } })
   clearActiveLibraryId()
 }

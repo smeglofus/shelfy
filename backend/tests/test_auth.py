@@ -12,6 +12,7 @@ from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models.user import User
+from app.models.library import Library, LibraryMember, LibraryRole
 from app.services.auth import issue_token_pair
 
 
@@ -267,3 +268,62 @@ async def test_linked_user_delete_still_requires_password(
 
     assert r1.status_code == 400
     assert r2.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_purge_library_requires_password_for_local_user(
+    test_settings: Settings,
+) -> None:
+    email = "purge.local@example.com"
+    password = "secret123"
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        reg = await client.post("/api/v1/auth/register", json={"email": email, "password": password})
+        assert reg.status_code == 201
+
+        login = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
+        token = login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        bad = await client.post("/api/v1/settings/purge-library", json={"password": ""}, headers=headers)
+        ok = await client.post("/api/v1/settings/purge-library", json={"password": password}, headers=headers)
+
+    assert bad.status_code == 401
+    assert ok.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_purge_library_oauth_only_allows_delete_confirmation_without_password(
+    test_session: AsyncSession,
+    test_settings: Settings,
+) -> None:
+    oauth_user = User(
+        email="purge.oauth@example.com",
+        hashed_password=get_password_hash(secrets.token_hex(32)),
+        google_sub="sub-purge-oauth",
+        auth_provider="google",
+        has_local_password=False,
+    )
+    test_session.add(oauth_user)
+    await test_session.flush()
+
+    library = Library(name="OAuth Library", created_by_user_id=oauth_user.id)
+    test_session.add(library)
+    await test_session.flush()
+
+    test_session.add(
+        LibraryMember(
+            library_id=library.id,
+            user_id=oauth_user.id,
+            role=LibraryRole.OWNER,
+        )
+    )
+    await test_session.commit()
+
+    access_token, _ = issue_token_pair("purge.oauth@example.com", test_settings)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/v1/settings/purge-library", json={"password": ""}, headers=headers)
+
+    assert response.status_code == 200
