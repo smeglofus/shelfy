@@ -19,8 +19,8 @@ beforeEach(() => {
   trackEventMock.mockReset()
 })
 
-describe('LandingPage simple v2', () => {
-  it('renders simplified sections', () => {
+describe('LandingPage', () => {
+  it('renders all sections', () => {
     render(
       <MemoryRouter>
         <LandingPage />
@@ -30,7 +30,8 @@ describe('LandingPage simple v2', () => {
     expect(screen.getByText('landing.hero_title')).toBeInTheDocument()
     expect(screen.getByText('landing.how_title')).toBeInTheDocument()
     expect(screen.getByText('landing.visual_proof_title')).toBeInTheDocument()
-    expect(screen.getByText('landing.summary_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.pricing_teaser_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.faq_title')).toBeInTheDocument()
     expect(screen.getByText('landing.final_cta_title')).toBeInTheDocument()
   })
 
@@ -67,6 +68,40 @@ describe('LandingPage simple v2', () => {
     )
 
     expect(screen.getByText(/landing\.visual_proof_demo_coming/)).toBeInTheDocument()
+  })
+
+  it('renders FAQ section with 5 questions', () => {
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    const faqSection = screen.getByTestId('faq')
+    expect(faqSection).toBeInTheDocument()
+    expect(screen.getByText('landing.faq_1_q')).toBeInTheDocument()
+    expect(screen.getByText('landing.faq_5_q')).toBeInTheDocument()
+  })
+
+  it('expands FAQ answer on click and tracks event', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    const firstQuestion = screen.getByText('landing.faq_1_q')
+    await user.click(firstQuestion.closest('button')!)
+
+    expect(trackEventMock).toHaveBeenCalledWith(
+      'lp_faq_expand',
+      expect.objectContaining({
+        faq_id: 'scanning',
+        faq_topic: 'how_scanning_works',
+      }),
+    )
   })
 
   it('tracks landing view with experiment variant from URL', () => {
@@ -111,7 +146,7 @@ describe('LandingPage simple v2', () => {
     )
   })
 
-  it('tracks pricing summary click', async () => {
+  it('tracks pricing teaser click', async () => {
     const user = userEvent.setup()
 
     render(
@@ -120,14 +155,13 @@ describe('LandingPage simple v2', () => {
       </MemoryRouter>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'landing.summary_pricing_cta' }))
+    await user.click(screen.getByRole('button', { name: 'landing.pricing_teaser_cta' }))
 
     expect(trackEventMock).toHaveBeenCalledWith(
       'lp_pricing_teaser_click',
       expect.objectContaining({
-        cta_label: 'landing.summary_pricing_cta',
+        cta_label: 'landing.pricing_teaser_cta',
       }),
     )
   })
 })
-
