@@ -7,7 +7,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import redis.asyncio as aioredis
+
 from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.redis import get_redis
 from app.core.config import Settings, get_settings
 from app.core.limiter import limiter
 from app.core.security import verify_password
@@ -127,10 +130,13 @@ async def delete_account(
       • PostgreSQL backup files in shelfy-backups — retained for BACKUP_KEEP_DAYS
         (default 30 days) for recovery purposes, then pruned automatically.
     """
-    # Local (email+password) accounts require password confirmation.
-    # OAuth-only accounts have no user-known password; the valid JWT is
-    # sufficient proof of identity for deletion.
-    if current_user.auth_provider == "local":
+    # Require password confirmation when the account has a user-known password.
+    # This covers:
+    #   • local-only accounts (registered with email+password)
+    #   • linked accounts (started as local, later connected Google)
+    # It does NOT require a password for pure OAuth-only accounts, which have
+    # has_local_password=False and no user-memorable password.
+    if current_user.has_local_password:
         if not verify_password(payload.password, current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -291,18 +297,20 @@ async def export_my_data(
 @router.get("/google/authorize", response_model=OAuthAuthorizeResponse)
 async def google_authorize(
     settings: Settings = Depends(get_settings),
+    redis_client: aioredis.Redis = Depends(get_redis),
 ) -> OAuthAuthorizeResponse:
     """Return the Google consent-screen URL.
 
     The frontend should redirect ``window.location.href`` to the returned URL.
-    The ``state`` is a short-lived signed JWT used for CSRF validation on callback.
+    The ``state`` is a signed JWT whose embedded nonce is stored in Redis with a
+    10-minute TTL and consumed exactly once on callback (CSRF + anti-replay).
     """
     if not settings.google_client_id or not settings.google_client_secret:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="Google OAuth is not configured on this server",
         )
-    state = create_oauth_state(settings)
+    state = await create_oauth_state(redis_client)
     auth_url = build_google_authorize_url(settings, state)
     return OAuthAuthorizeResponse(auth_url=auth_url)
 
@@ -312,15 +320,17 @@ async def google_callback(
     payload: OAuthCallbackRequest,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
+    redis_client: aioredis.Redis = Depends(get_redis),
 ) -> TokenResponse:
     """Exchange the authorization code from Google for Shelfy access/refresh tokens.
 
     Steps:
-      1. Validate CSRF state JWT.
-      2. Exchange code for Google ID token via Google's token endpoint.
-      3. Verify ID token signature and audience.
-      4. Find or create the local User (by google_sub → email → new).
-      5. Issue the usual JWT token pair and return it.
+      1. Validate state JWT (signature + expiry + purpose claim).
+      2. Consume state nonce from Redis — rejects replayed states immediately.
+      3. Exchange code for Google ID token via Google's token endpoint.
+      4. Verify ID token signature and audience.
+      5. Find or create the local User (by google_sub → email → new).
+      6. Issue the usual JWT token pair and return it.
     """
     if not settings.google_client_id or not settings.google_client_secret:
         raise HTTPException(
@@ -328,10 +338,10 @@ async def google_callback(
             detail="Google OAuth is not configured on this server",
         )
 
-    # 1. CSRF check
-    verify_oauth_state(payload.state)
+    # 1 + 2. CSRF check + one-time nonce consumption
+    await verify_oauth_state(payload.state, redis_client)
 
-    # 2 + 3. Token exchange + ID-token verification
+    # 3 + 4. Token exchange + ID-token verification
     claims = await exchange_code_for_claims(payload.code, settings)
 
     google_sub: str | None = claims.get("sub")
@@ -346,10 +356,10 @@ async def google_callback(
 
     avatar_url: str | None = claims.get("picture")
 
-    # 4. Find / link / create user
+    # 5. Find / link / create user
     user = await find_or_create_google_user(session, google_sub, email, avatar_url)
 
-    # 5. Issue token pair (same shape as /login)
+    # 6. Issue token pair (same shape as /login)
     access_token, refresh_token = issue_token_pair(user.email, settings)
     logger.info("oauth_google_login", user_id=str(user.id))
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

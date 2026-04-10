@@ -1,9 +1,10 @@
 """Google OAuth 2.0 / OpenID Connect service.
 
 Flow:
-  1. GET /auth/google/authorize  →  redirect user to Google
+  1. GET /auth/google/authorize  →  build consent URL, store one-time nonce in Redis
   2. Google redirects to /auth/callback?code=…&state=…
-  3. POST /auth/google/callback  →  exchange code, verify ID token, find/create user
+  3. POST /auth/google/callback  →  verify state (CSRF + anti-replay), exchange code,
+     verify ID token, find/create user
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from typing import Any
 
 import anyio
 import httpx
+import redis.asyncio as aioredis
 import structlog
 from fastapi import HTTPException, status
 from jose import JWTError
@@ -32,25 +34,43 @@ GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 GOOGLE_SCOPES = ["openid", "email", "profile"]
 
+# Redis key prefix and TTL for one-time state nonces.
+# The JWT expiry is set to the same value so both guards expire together.
+_STATE_PREFIX = "oauth:state:"
+_STATE_TTL_SECONDS = 600  # 10 minutes
 
-# ── State JWT (CSRF protection) ────────────────────────────────────────────────
 
-def create_oauth_state(settings: Settings) -> str:  # noqa: ARG001
-    """Return a short-lived signed JWT to use as the OAuth ``state`` parameter.
+# ── State JWT — CSRF + anti-replay ────────────────────────────────────────────
 
-    Using a self-contained JWT avoids a Redis round-trip.  The nonce embedded
-    in ``sub`` makes every state value unique.
+async def create_oauth_state(redis_client: aioredis.Redis) -> str:
+    """Generate a one-time OAuth state token.
+
+    Two-layer protection:
+    * **Signed JWT** — tamper-proof; verifies origin and expiry without a
+      DB/Redis lookup.
+    * **Redis nonce** — single-use enforcement; the nonce is stored with a TTL
+      and atomically consumed on the first callback, making replays impossible.
     """
     nonce = secrets.token_urlsafe(16)
+    # Store the nonce server-side; consumed exactly once in verify_oauth_state.
+    await redis_client.set(f"{_STATE_PREFIX}{nonce}", "1", ex=_STATE_TTL_SECONDS)
     return create_token(
         subject=nonce,
-        expires_delta=timedelta(minutes=10),
+        expires_delta=timedelta(seconds=_STATE_TTL_SECONDS),
         token_type="oauth_state",
     )
 
 
-def verify_oauth_state(state: str) -> None:
-    """Decode and validate the state JWT.  Raises HTTP 400 on any failure."""
+async def verify_oauth_state(state: str, redis_client: aioredis.Redis) -> None:
+    """Validate the OAuth state parameter.  Raises HTTP 400 on any failure.
+
+    Checks (in order):
+    1. JWT signature is valid and was issued by us.
+    2. JWT has not expired.
+    3. ``type`` claim equals ``"oauth_state"`` (prevents re-use of other JWTs).
+    4. Nonce is present in Redis → atomically deleted (one-time use).
+    """
+    # 1 + 2. Cryptographic validation
     try:
         payload = decode_token(state)
     except JWTError as exc:
@@ -59,17 +79,29 @@ def verify_oauth_state(state: str) -> None:
             detail="Invalid or expired OAuth state parameter",
         ) from exc
 
+    # 3. Purpose check
     if payload.get("type") != "oauth_state":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid OAuth state parameter",
         )
 
+    nonce: str = payload.get("sub", "")
+
+    # 4. One-time use: GETDEL returns the stored value and deletes the key
+    #    atomically.  Returns None if the key never existed or was already used.
+    stored = await redis_client.getdel(f"{_STATE_PREFIX}{nonce}")
+    if stored is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OAuth state has already been used or has expired",
+        )
+
 
 # ── Authorization URL ─────────────────────────────────────────────────────────
 
 def build_google_authorize_url(settings: Settings, state: str) -> str:
-    """Compose the Google OAuth consent screen URL."""
+    """Compose the Google OAuth consent-screen URL."""
     params: dict[str, str] = {
         "client_id": settings.google_client_id or "",
         "redirect_uri": settings.google_redirect_uri,
@@ -82,7 +114,7 @@ def build_google_authorize_url(settings: Settings, state: str) -> str:
     return f"{GOOGLE_AUTH_ENDPOINT}?{urllib.parse.urlencode(params)}"
 
 
-# ── Token exchange + ID-token verification ─────────────────────────────────────
+# ── Token exchange + ID-token verification ────────────────────────────────────
 
 async def exchange_code_for_claims(code: str, settings: Settings) -> dict[str, Any]:
     """Exchange authorization code → tokens; verify and return ID-token claims.
@@ -107,7 +139,8 @@ async def exchange_code_for_claims(code: str, settings: Settings) -> dict[str, A
         logger.warning(
             "google_token_exchange_failed",
             http_status=resp.status_code,
-            body=resp.text[:200],
+            # Log response body truncated; never log secrets/tokens.
+            body_preview=resp.text[:200],
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -125,7 +158,7 @@ async def exchange_code_for_claims(code: str, settings: Settings) -> dict[str, A
     audience = settings.google_client_id
 
     def _verify_sync() -> dict[str, Any]:
-        # Import here so the library is only loaded when Google OAuth is actually used.
+        # Import lazily — only loaded when Google OAuth is actually used.
         from google.auth.transport import requests as google_requests  # type: ignore[import-untyped]
         from google.oauth2 import id_token as google_id_token  # type: ignore[import-untyped]
 
@@ -160,7 +193,9 @@ async def find_or_create_google_user(
     Lookup order:
       1. Existing user with matching ``google_sub``  →  returning Google user.
       2. Existing user with same verified email       →  auto-link the account.
+         ``has_local_password`` is preserved (True if they had a real password).
       3. No match                                     →  create a new user.
+         ``has_local_password=False`` because no user-known password was set.
     """
     now = datetime.now(timezone.utc)
 
@@ -168,7 +203,6 @@ async def find_or_create_google_user(
     result = await session.execute(select(User).where(User.google_sub == google_sub))
     user = result.scalar_one_or_none()
     if user is not None:
-        # Refresh avatar in case it changed.
         if avatar_url and user.avatar_url != avatar_url:
             user.avatar_url = avatar_url
             await session.commit()
@@ -176,26 +210,29 @@ async def find_or_create_google_user(
         logger.info("oauth_login_existing", user_id=str(user.id))
         return user
 
-    # ── 2. Link to existing email account ─────────────────────────────────────
+    # ── 2. Link to existing email+password account ────────────────────────────
     user = await get_user_by_email(session, email)
     if user is not None:
         user.google_sub = google_sub
         user.auth_provider = "google"
         user.avatar_url = avatar_url
         user.oauth_linked_at = now
+        # Deliberately NOT changing has_local_password — the user still knows
+        # their original password, so account deletion must still confirm it.
         await session.commit()
         await session.refresh(user)
         logger.info("oauth_linked_existing_account", user_id=str(user.id), email=email)
         return user
 
-    # ── 3. Create new user ─────────────────────────────────────────────────────
-    # Assign an unguessable random password so the row satisfies NOT NULL while
-    # never being usable for password-based login.
+    # ── 3. Create new OAuth-only user ─────────────────────────────────────────
+    # Assign an unguessable random password so the NOT NULL constraint is
+    # satisfied while making password-based login impossible for this account.
     new_user = User(
         email=email,
         hashed_password=get_password_hash(secrets.token_hex(32)),
         google_sub=google_sub,
         auth_provider="google",
+        has_local_password=False,   # no user-known password → no password required for delete
         avatar_url=avatar_url,
         oauth_linked_at=now,
     )
