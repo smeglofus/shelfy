@@ -23,13 +23,13 @@ def test_detect_barcode_returns_normalized_isbn(monkeypatch) -> None:
 def test_gemini_fallback_triggers_when_no_barcode(monkeypatch) -> None:
     monkeypatch.setattr(celery_app, "_decode_image_bytes", lambda _bytes: np.zeros((10, 10, 3), dtype=np.uint8))
     monkeypatch.setattr(celery_app, "_detect_isbn_from_barcode", lambda _image: None)
-    async def _gemini(_image_bytes: bytes) -> dict[str, object] | None:
-        return {
+    async def _gemini(_image_bytes: bytes) -> list[dict[str, object]] | None:
+        return [{
             "isbn": None,
             "title": "The Pragmatic Programmer",
             "author": "Andrew Hunt",
             "source": "gemini_vision",
-        }
+        }]
 
     monkeypatch.setattr(celery_app, "_extract_spine_metadata_with_gemini", _gemini)
 
@@ -37,9 +37,10 @@ def test_gemini_fallback_triggers_when_no_barcode(monkeypatch) -> None:
 
     assert status == celery_app.ProcessingJobStatus.DONE
     assert error_message is None
-    assert result_json["source"] == "gemini_vision"
-    assert result_json["title"] == "The Pragmatic Programmer"
-    assert result_json["author"] == "Andrew Hunt"
+    assert isinstance(result_json, list)
+    assert result_json[0]["source"] == "gemini_vision"
+    assert result_json[0]["title"] == "The Pragmatic Programmer"
+    assert result_json[0]["author"] == "Andrew Hunt"
 
 
 def test_gemini_fallback_returns_failed_when_gemini_returns_none(monkeypatch) -> None:
@@ -157,6 +158,103 @@ def test_normalize_and_validate_isbn() -> None:
     assert celery_app.normalize_isbn("978-0-306-40615-7") == "9780306406157"
     assert celery_app.normalize_isbn("0-306-40615-2") == "0306406152"
     assert celery_app.normalize_isbn("1234567890") is None
+
+
+def test_normalize_vision_result_rejects_placeholder_isbn() -> None:
+    """Hallucinated ISBNs like '0000000000' should be rejected."""
+    result = celery_app._normalize_vision_result({
+        "title": "Some Book",
+        "author": "Author",
+        "isbn": "000-0-000-00000-0",
+        "observed_text": "Some Book Author",
+    })
+    assert result is not None
+    assert result["isbn"] is None
+
+
+def test_normalize_vision_result_rejects_placeholder_title() -> None:
+    """Placeholder titles like 'Unknown title' should become None."""
+    result = celery_app._normalize_vision_result({
+        "title": "Unknown title",
+        "author": None,
+        "isbn": None,
+        "observed_text": "blurry spine",
+    })
+    # No title, no author, no isbn → result should be None
+    assert result is None
+
+
+def test_normalize_vision_result_applies_casing() -> None:
+    """ALL CAPS titles → sentence case, authors → proper case."""
+    result = celery_app._normalize_vision_result({
+        "title": "THE GREAT GATSBY",
+        "author": "F. SCOTT FITZGERALD",
+        "isbn": None,
+    })
+    assert result is not None
+    assert result["title"] == "The great gatsby"
+    assert result["author"] == "F. Scott Fitzgerald"
+
+
+def test_normalize_vision_result_preserves_mixed_case() -> None:
+    """Mixed case titles should not be altered."""
+    result = celery_app._normalize_vision_result({
+        "title": "Harry Potter",
+        "author": "J.K. Rowling",
+        "isbn": None,
+    })
+    assert result is not None
+    assert result["title"] == "Harry Potter"
+    assert result["author"] == "J.K. Rowling"
+
+
+def test_normalize_vision_result_czech_casing() -> None:
+    """Czech ALL CAPS: title → sentence case with diacritics, author → proper case."""
+    result = celery_app._normalize_vision_result({
+        "title": "TIBETSKÁ KNIHA O ŽIVOTĚ A SMRTI",
+        "author": "SOGJAL RINPOČHE",
+        "isbn": None,
+    })
+    assert result is not None
+    assert result["title"] == "Tibetská kniha o životě a smrti"
+    assert result["author"] == "Sogjal Rinpočhe"
+
+
+def test_shelf_scan_fallback_includes_low_confidence_items() -> None:
+    """Low-confidence items should still be included as draft rows for review."""
+    import asyncio
+
+    gemini_response = {
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": '[{"title": null, "author": null, "isbn": null, '
+                            '"observed_text": "blurry text", "confidence": "low"}]'
+                }]
+            }
+        }]
+    }
+
+    async def fake_post(self, url, **kwargs):
+        class FakeResponse:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return gemini_response
+        return FakeResponse()
+
+    import httpx
+    original_post = httpx.AsyncClient.post
+    httpx.AsyncClient.post = fake_post
+    try:
+        result = asyncio.run(celery_app._extract_shelf_metadata_with_gemini(b"\xff\xd8\xff fake"))
+    finally:
+        httpx.AsyncClient.post = original_post
+
+    assert result is not None
+    assert len(result) == 1
+    assert result[0]["confidence"] == "low"
+    assert result[0]["observed_text"] == "blurry text"
+    assert result[0]["title"] is None
 
 
 def test_enrichment_cache_hit_skips_external_calls(monkeypatch) -> None:

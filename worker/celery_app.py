@@ -288,14 +288,30 @@ def _extract_json_array(text: str) -> list[dict[str, object]] | None:
 
 
 def _normalize_vision_result(parsed: dict[str, object]) -> dict[str, object] | None:
+    from text_normalize import normalize_book_fields
+
     observed_text = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
     candidate_isbn = parsed.get("isbn") if isinstance(parsed.get("isbn"), str) else None
+
+    # Reject hallucinated ISBN placeholders before validation
+    _isbn_placeholders = {"0000000000", "0000000000000", "1234567890", "1234567890123", "isbn"}
+    cleaned_isbn_check = re.sub(r"[^0-9a-zA-Z]", "", candidate_isbn or "").lower()
+    if cleaned_isbn_check in _isbn_placeholders:
+        candidate_isbn = None
+
     normalized_isbn = normalize_isbn(candidate_isbn or "") if candidate_isbn else None
     if normalized_isbn is None and observed_text:
         normalized_isbn = _extract_isbn_from_text(observed_text)
 
     title = parsed.get("title") if isinstance(parsed.get("title"), str) else None
     author = parsed.get("author") if isinstance(parsed.get("author"), str) else None
+
+    # Reject placeholder / hallucinated values
+    _placeholder_values = {"unknown", "unknown title", "unknown author", "n/a", "none", "null", "?", "??", "-"}
+    if title and title.strip().lower() in _placeholder_values:
+        title = None
+    if author and author.strip().lower() in _placeholder_values:
+        author = None
 
     if not (title or author or normalized_isbn):
         return None
@@ -308,6 +324,10 @@ def _normalize_vision_result(parsed: dict[str, object]) -> dict[str, object] | N
     }
     if observed_text:
         result["observed_text"] = observed_text
+
+    # Apply text normalization (whitespace, punctuation, casing)
+    normalize_book_fields(result, apply_casing=True)
+
     return result
 def _detect_mime_type(image_bytes: bytes) -> str:
     if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
@@ -340,18 +360,24 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         "You are an expert librarian analyzing a photo of books on a shelf. "
         "Read EVERY book spine visible in the image, strictly from LEFT to RIGHT.\n\n"
         "IMPORTANT RULES:\n"
-        "- Copy the text EXACTLY as printed on the spine. Do NOT guess or hallucinate titles.\n"
-        "- If a spine is partially obscured or blurry, set title to null and put whatever you CAN read in observed_text.\n"
-        "- Do NOT skip any book, even if you cannot read it — include it with observed_text describing what you see.\n"
-        "- For each book, rate your confidence: \"high\" if you can clearly read the full title, "
+        "1. Transcribe text EXACTLY as printed on the spine. Do NOT invent or hallucinate titles or authors.\n"
+        "2. If a spine is partially obscured or blurry, set title to null and put whatever you CAN read in observed_text.\n"
+        "3. Do NOT skip any book, even if unreadable — include it with observed_text describing what you see.\n"
+        "4. For each book, rate confidence separately for each field:\n"
+        "   - title_confidence, author_confidence: \"high\", \"medium\", or \"low\"\n"
+        "   - overall confidence: \"high\" if both title_confidence is high, "
         "\"medium\" if partially readable, \"low\" if mostly guessing.\n"
-        "- Many books may be in Czech or other languages — transcribe them exactly as written.\n\n"
-        "Return ONLY a strict JSON array (no markdown). Each item must have these keys:\n"
-        "  title (string|null) — full title as printed\n"
-        "  author (string|null) — author name if visible\n"
-        "  isbn (string|null) — ISBN if visible\n"
-        "  observed_text (string|null) — raw text visible on the spine\n"
-        "  confidence (\"high\"|\"medium\"|\"low\") — how confident you are in the reading"
+        "5. Many books are in Czech or other languages — transcribe them exactly as written, preserving diacritics (č, ř, ž, etc.).\n"
+        "6. For ISBN: only include if you can clearly see a printed ISBN/barcode number. "
+        "Do NOT guess or fabricate ISBNs. If unsure, set isbn to null.\n"
+        "7. If you cannot read the author at all, set author to null — do NOT guess.\n\n"
+        "Return ONLY a strict JSON array. No markdown, no ```json fences, no commentary.\n"
+        "Each array element must be an object with exactly these keys:\n"
+        "  title (string|null) — full title as printed on spine\n"
+        "  author (string|null) — author name if visible on spine\n"
+        "  isbn (string|null) — ISBN only if clearly visible, otherwise null\n"
+        "  observed_text (string) — all raw text visible on the spine\n"
+        "  confidence (\"high\"|\"medium\"|\"low\") — overall reading confidence"
     )
     mime_type = _detect_mime_type(image_bytes)
     request_payload: dict[str, object] = {
@@ -397,11 +423,16 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
 
     blob = "\n".join(text_blocks)
     parsed_array = _extract_json_array(blob)
+    parse_method = "json_array"
     if parsed_array is None:
         parsed_obj = _extract_json_object(blob)
         if parsed_obj is None:
+            logger.warning("shelf_scan_json_parse_failed", blob_length=len(blob))
             return None
         parsed_array = [parsed_obj]
+        parse_method = "json_object_fallback"
+
+    logger.info("shelf_scan_json_parsed", method=parse_method, item_count=len(parsed_array))
 
     normalized_results: list[dict[str, object]] = []
     for parsed in parsed_array:
@@ -436,9 +467,13 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         return None
 
     prompt = (
-        "You are reading a photo of a book spine or cover. "
-        "Return only strict JSON array. Each array item must be object with keys: title (string|null), author (string|null), "
-        "isbn (string|null), observed_text (string|null). Do not include markdown."
+        "You are reading a photo of a single book spine or cover. "
+        "Transcribe the text exactly as printed. Do NOT invent or hallucinate titles, authors, or ISBNs.\n"
+        "Books may be in Czech or other languages — preserve diacritics exactly.\n"
+        "If ISBN is not clearly visible, set isbn to null.\n\n"
+        "Return ONLY a strict JSON array (no markdown). Each item must have keys:\n"
+        "  title (string|null), author (string|null), isbn (string|null), "
+        "observed_text (string|null), confidence (\"high\"|\"medium\"|\"low\")."
     )
     mime_type = _detect_mime_type(image_bytes)
     request_payload: dict[str, object] = {
@@ -800,7 +835,7 @@ def process_book_image(self, job_id: str) -> None:
                 metadata: dict[str, object] | None = None
                 if isbn or title:
                     structlog.contextvars.bind_contextvars(isbn=isbn, processing_step="metadata_enrichment")
-                    metadata = asyncio.run(_enrich_metadata_with_fallback(lookup_isbn, title=title, author=author))
+                    metadata = asyncio.run(_enrich_metadata_with_fallback(isbn, title=title, author=author))
 
                 if metadata is None:
                     had_partial = True
@@ -911,6 +946,7 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
             image_bytes = _download_image_bytes(image.minio_path)
 
             # Use shelf-specific Gemini prompt
+            logger.info("shelf_scan_model_started", image_size_bytes=len(image_bytes))
             try:
                 vision_results = asyncio.run(_extract_shelf_metadata_with_gemini(image_bytes))
             except Exception as vision_exc:
@@ -922,9 +958,24 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                 job.result_json = {"books": [], "location_id": location_id}
                 job.error_message = "Could not extract books from shelf photo"
                 session.commit()
+                logger.warning("shelf_scan_no_results", job_id=job_id)
                 return
 
-            # Store raw vision results (no enrichment here – it runs separately on background)
+            # Log confidence summary for observability
+            conf_counts = {"high": 0, "medium": 0, "low": 0}
+            for r in vision_results:
+                c = r.get("confidence", "medium")
+                if isinstance(c, str) and c in conf_counts:
+                    conf_counts[c] += 1
+            logger.info(
+                "shelf_scan_model_completed",
+                total_items=len(vision_results),
+                confidence_high=conf_counts["high"],
+                confidence_medium=conf_counts["medium"],
+                confidence_low=conf_counts["low"],
+            )
+
+            # Store vision results (normalization already applied in _normalize_vision_result)
             processed_books: list[dict[str, object]] = []
             for idx, local_result in enumerate(vision_results):
                 confidence = local_result.get("confidence", "medium")
