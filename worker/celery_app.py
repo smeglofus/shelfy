@@ -288,7 +288,7 @@ def _extract_json_array(text: str) -> list[dict[str, object]] | None:
 
 
 def _normalize_vision_result(parsed: dict[str, object]) -> dict[str, object] | None:
-    from text_normalize import normalize_book_fields
+    from worker.text_normalize import normalize_book_fields
 
     observed_text = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
     candidate_isbn = parsed.get("isbn") if isinstance(parsed.get("isbn"), str) else None
