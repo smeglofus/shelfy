@@ -288,7 +288,15 @@ def _extract_json_array(text: str) -> list[dict[str, object]] | None:
 
 
 def _normalize_vision_result(parsed: dict[str, object]) -> dict[str, object] | None:
-    from worker.text_normalize import normalize_book_fields
+    try:
+        from text_normalize import normalize_book_fields
+    except ModuleNotFoundError:
+        import sys
+        from pathlib import Path
+        worker_dir = str(Path(__file__).resolve().parent)
+        if worker_dir not in sys.path:
+            sys.path.append(worker_dir)
+        from text_normalize import normalize_book_fields
 
     observed_text = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
     candidate_isbn = parsed.get("isbn") if isinstance(parsed.get("isbn"), str) else None
