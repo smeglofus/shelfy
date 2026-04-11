@@ -8,8 +8,13 @@
  *  - Demo / "try it" is the primary CTA everywhere
  *  - Less boxy — cards only where they earn their keep
  *  - Mobile-first responsive grid
+ *
+ * Visual proof section uses a showcase gallery pattern:
+ *  - One large, readable screenshot as primary focus
+ *  - Step tab selectors to switch between 3 screenshots
+ *  - Click-to-zoom lightbox for detail viewing
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -34,6 +39,14 @@ const FAQ_ITEMS = [
   { id: 'sharing', topic: 'family_sharing' },
 ] as const
 
+/** All showcase images: demo poster (index 0) + 3 step screenshots. */
+const SHOWCASE_IMAGES = [
+  '/landing/demo-poster.webp',
+  '/landing/scan-step-1.webp',
+  '/landing/scan-step-2.webp',
+  '/landing/scan-step-3.webp',
+] as const
+
 export function LandingPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -42,6 +55,12 @@ export function LandingPage() {
   const variantId = useMemo(() => resolveLandingVariantId(searchParams), [searchParams])
   const [showVideo, setShowVideo] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+
+  /** Active showcase tab: 0 = overview poster, 1–3 = step screenshots. */
+  const [activeShowcase, setActiveShowcase] = useState(0)
+
+  /** Lightbox: null = closed, string = image src to display. */
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
   useEffect(() => {
     trackLandingView(variantId, i18n.language)
@@ -66,14 +85,20 @@ export function LandingPage() {
     [t],
   )
 
-  const visualProofSteps = useMemo(
+  /** Step tab labels for the showcase gallery. */
+  const showcaseTabs = useMemo(
     () => [
-      { img: '/landing/scan-step-1.webp', title: t('landing.visual_proof_step1_title'), desc: t('landing.visual_proof_step1_desc') },
-      { img: '/landing/scan-step-2.webp', title: t('landing.visual_proof_step2_title'), desc: t('landing.visual_proof_step2_desc') },
-      { img: '/landing/scan-step-3.webp', title: t('landing.visual_proof_step3_title'), desc: t('landing.visual_proof_step3_desc') },
+      { label: t('landing.visual_proof_tab_overview'), desc: t('landing.visual_proof_step1_desc') },
+      { label: t('landing.visual_proof_step1_title'), desc: t('landing.visual_proof_step1_desc') },
+      { label: t('landing.visual_proof_step2_title'), desc: t('landing.visual_proof_step2_desc') },
+      { label: t('landing.visual_proof_step3_title'), desc: t('landing.visual_proof_step3_desc') },
     ],
     [t],
   )
+
+  const handleShowcaseClick = useCallback(() => {
+    setLightboxSrc(SHOWCASE_IMAGES[activeShowcase])
+  }, [activeShowcase])
 
   return (
     <div
@@ -144,50 +169,107 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ── Visual proof ── */}
-        <section className="lp-section" data-testid="visual-proof">
+        {/* ── Visual proof — showcase gallery ── */}
+        <section className="lp-section lp-section--wide" data-testid="visual-proof">
           <h2 className="lp-section-title">{t('landing.visual_proof_title')}</h2>
 
-          {/* Poster image */}
-          <div className="lp-poster-wrap">
+          {/* Main showcase image */}
+          <div
+            className="lp-showcase-frame"
+            onClick={handleShowcaseClick}
+            role="button"
+            tabIndex={0}
+            aria-label={t('landing.visual_proof_zoom')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleShowcaseClick() } }}
+          >
             <img
-              src="/landing/demo-poster.webp"
-              alt={t('landing.visual_proof_title')}
-              className="lp-poster-img"
+              src={SHOWCASE_IMAGES[activeShowcase]}
+              alt={showcaseTabs[activeShowcase].label}
+              className="lp-showcase-img"
             />
-            <button
-              type="button"
-              className="lp-poster-play"
-              onClick={() => {
-                trackSupportingCtaClick(t('landing.visual_proof_play_demo'), 'visual_proof')
-                if (DEMO_VIDEO_URL) setShowVideo(true)
-              }}
-            >
-              <span style={{ fontSize: 18, lineHeight: 1 }}>&#9654;</span>
-              {DEMO_VIDEO_URL ? t('landing.visual_proof_play_demo') : t('landing.visual_proof_demo_coming')}
-            </button>
+
+            {/* Zoom hint */}
+            <span className="lp-showcase-zoom-hint" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="7" cy="7" r="5" />
+                <path d="M11 11l3 3" />
+                <path d="M7 5v4M5 7h4" />
+              </svg>
+              {t('landing.visual_proof_zoom')}
+            </span>
+
+            {/* Video play overlay — only on poster (tab 0) */}
+            {activeShowcase === 0 && (
+              <button
+                type="button"
+                className="lp-showcase-play"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  trackSupportingCtaClick(t('landing.visual_proof_play_demo'), 'visual_proof')
+                  if (DEMO_VIDEO_URL) setShowVideo(true)
+                }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1 }}>&#9654;</span>
+                {DEMO_VIDEO_URL ? t('landing.visual_proof_play_demo') : t('landing.visual_proof_demo_coming')}
+              </button>
+            )}
           </div>
 
-          {/* 3-step thumbnails */}
-          <div className="lp-proof-steps">
-            {visualProofSteps.map((step, i) => (
-              <article key={step.title} className="lp-proof-step">
-                <img
-                  src={step.img}
-                  alt={step.title}
-                  className="lp-proof-step-img"
-                />
-                <span className="lp-proof-step-label">
-                  {t('landing.how_step_label', { count: i + 1 })}
-                </span>
-                <h3 className="lp-proof-step-title">{step.title}</h3>
-                <p className="lp-proof-step-desc">{step.desc}</p>
-              </article>
+          {/* Step tab selectors */}
+          <div className="lp-showcase-tabs" role="tablist" aria-label={t('landing.visual_proof_title')}>
+            {showcaseTabs.map((tab, i) => (
+              <button
+                key={tab.label}
+                type="button"
+                role="tab"
+                aria-selected={activeShowcase === i}
+                className={`lp-showcase-tab ${activeShowcase === i ? 'lp-showcase-tab--active' : ''}`}
+                onClick={() => setActiveShowcase(i)}
+              >
+                {i > 0 && <span className="lp-showcase-tab-num">{i}</span>}
+                <span className="lp-showcase-tab-label">{tab.label}</span>
+              </button>
             ))}
           </div>
+
+          {/* Active step description */}
+          {activeShowcase > 0 && (
+            <p className="lp-showcase-desc" data-testid="showcase-desc">
+              {showcaseTabs[activeShowcase].desc}
+            </p>
+          )}
         </section>
 
-        {/* Video lightbox modal */}
+        {/* Image lightbox */}
+        {lightboxSrc && (
+          <div
+            className="sh-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('landing.visual_proof_zoom')}
+            onClick={() => setLightboxSrc(null)}
+          >
+            <div className="lp-lightbox" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={lightboxSrc}
+                alt=""
+                className="lp-lightbox-img"
+              />
+              <button
+                type="button"
+                className="lp-lightbox-close"
+                onClick={() => setLightboxSrc(null)}
+                aria-label={t('landing.visual_proof_close')}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M5 5l10 10M15 5l-10 10" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Video lightbox */}
         {showVideo && (
           <div
             className="sh-modal-overlay"
