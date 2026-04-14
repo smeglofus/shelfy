@@ -378,7 +378,14 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         "5. Many books are in Czech or other languages — transcribe them exactly as written, preserving diacritics (č, ř, ž, etc.).\n"
         "6. For ISBN: only include if you can clearly see a printed ISBN/barcode number. "
         "Do NOT guess or fabricate ISBNs. If unsure, set isbn to null.\n"
-        "7. If you cannot read the author at all, set author to null — do NOT guess.\n\n"
+        "7. If you cannot read the author at all, set author to null — do NOT guess.\n"
+        "8. CRITICAL — ONE SPINE PER OBJECT: Each JSON object must describe EXACTLY ONE "
+        "physical book spine. Never combine or merge text from two adjacent spines into "
+        "a single object.\n"
+        "9. If the boundary between two spines is unclear, produce SEPARATE entries for "
+        "each possible spine with confidence \"low\" rather than one merged entry.\n"
+        "10. The author field must contain ONLY the author of that single book. "
+        "Do NOT include author names from neighboring spines.\n\n"
         "Return ONLY a strict JSON array. No markdown, no ```json fences, no commentary.\n"
         "Each array element must be an object with exactly these keys:\n"
         "  title (string|null) — full title as printed on spine\n"
@@ -442,12 +449,35 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
 
     logger.info("shelf_scan_json_parsed", method=parse_method, item_count=len(parsed_array))
 
+    # Import audit heuristics (sys.path already set up by _normalize_vision_result)
+    try:
+        from text_normalize import audit_book_row
+    except ModuleNotFoundError:
+        import sys as _sys
+        from pathlib import Path as _Path
+        _wd = str(_Path(__file__).resolve().parent)
+        if _wd not in _sys.path:
+            _sys.path.append(_wd)
+        from text_normalize import audit_book_row
+
     normalized_results: list[dict[str, object]] = []
     for parsed in parsed_array:
         confidence = parsed.get("confidence") if isinstance(parsed.get("confidence"), str) else "medium"
         normalized = _normalize_vision_result(parsed)
         if normalized is not None:
-            normalized["confidence"] = confidence
+            # Run quality heuristics — downgrade confidence when flagged
+            quality_flags = audit_book_row(normalized)
+            if quality_flags:
+                normalized["confidence"] = "needs_review"
+                normalized["quality_flags"] = quality_flags
+                logger.info(
+                    "shelf_scan_row_flagged",
+                    flags=quality_flags,
+                    title=normalized.get("title"),
+                    author=normalized.get("author"),
+                )
+            else:
+                normalized["confidence"] = confidence
             normalized_results.append(normalized)
         else:
             # Still include unrecognized items for user review
@@ -970,7 +1000,7 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                 return
 
             # Log confidence summary for observability
-            conf_counts = {"high": 0, "medium": 0, "low": 0}
+            conf_counts = {"high": 0, "medium": 0, "low": 0, "needs_review": 0}
             for r in vision_results:
                 c = r.get("confidence", "medium")
                 if isinstance(c, str) and c in conf_counts:
@@ -981,6 +1011,7 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                 confidence_high=conf_counts["high"],
                 confidence_medium=conf_counts["medium"],
                 confidence_low=conf_counts["low"],
+                confidence_needs_review=conf_counts["needs_review"],
             )
 
             # Store vision results (normalization already applied in _normalize_vision_result)
@@ -996,6 +1027,9 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                     "confidence": confidence,
                     "source": local_result.get("source", "gemini_vision"),
                 }
+                quality_flags = local_result.get("quality_flags")
+                if quality_flags:
+                    item["quality_flags"] = quality_flags
                 processed_books.append(item)
 
             job.status = ProcessingJobStatus.DONE

@@ -257,6 +257,216 @@ def test_shelf_scan_fallback_includes_low_confidence_items() -> None:
     assert result[0]["title"] is None
 
 
+def test_shelf_scan_merged_author_gets_needs_review() -> None:
+    """A merged author (slash separator) must downgrade confidence to needs_review."""
+    import asyncio
+
+    gemini_response = {
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": '[{"title": "The Trial", "author": "Franz Kafka / Milan Kundera",'
+                            ' "isbn": null, "observed_text": "The Trial Franz Kafka Milan Kundera",'
+                            ' "confidence": "high"}]'
+                }]
+            }
+        }]
+    }
+
+    async def fake_post(self, url, **kwargs):
+        class FakeResponse:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return gemini_response
+        return FakeResponse()
+
+    import httpx
+    original_post = httpx.AsyncClient.post
+    httpx.AsyncClient.post = fake_post
+    try:
+        result = asyncio.run(celery_app._extract_shelf_metadata_with_gemini(b"\xff\xd8\xff fake"))
+    finally:
+        httpx.AsyncClient.post = original_post
+
+    assert result is not None
+    assert len(result) == 1
+    row = result[0]
+    assert row["confidence"] == "needs_review"
+    assert "author_has_separator" in row["quality_flags"]
+    # Original fields preserved (not silently corrected)
+    assert "Kafka" in str(row["author"])
+    assert "Kundera" in str(row["author"])
+    assert row["observed_text"] is not None
+
+
+def test_shelf_scan_clean_row_keeps_confidence() -> None:
+    """A clean row (single author, no contamination) keeps Gemini's confidence."""
+    import asyncio
+
+    gemini_response = {
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": '[{"title": "The Trial", "author": "Franz Kafka",'
+                            ' "isbn": null, "observed_text": "The Trial Franz Kafka",'
+                            ' "confidence": "high"}]'
+                }]
+            }
+        }]
+    }
+
+    async def fake_post(self, url, **kwargs):
+        class FakeResponse:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return gemini_response
+        return FakeResponse()
+
+    import httpx
+    original_post = httpx.AsyncClient.post
+    httpx.AsyncClient.post = fake_post
+    try:
+        result = asyncio.run(celery_app._extract_shelf_metadata_with_gemini(b"\xff\xd8\xff fake"))
+    finally:
+        httpx.AsyncClient.post = original_post
+
+    assert result is not None
+    assert len(result) == 1
+    row = result[0]
+    assert row["confidence"] == "high"
+    assert "quality_flags" not in row
+
+
+def test_shelf_scan_title_author_overlap_flagged() -> None:
+    """If author name appears inside title, confidence must be downgraded."""
+    import asyncio
+
+    gemini_response = {
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": '[{"title": "1984 George Orwell", "author": "George Orwell",'
+                            ' "isbn": null, "observed_text": "1984 George Orwell",'
+                            ' "confidence": "high"}]'
+                }]
+            }
+        }]
+    }
+
+    async def fake_post(self, url, **kwargs):
+        class FakeResponse:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return gemini_response
+        return FakeResponse()
+
+    import httpx
+    original_post = httpx.AsyncClient.post
+    httpx.AsyncClient.post = fake_post
+    try:
+        result = asyncio.run(celery_app._extract_shelf_metadata_with_gemini(b"\xff\xd8\xff fake"))
+    finally:
+        httpx.AsyncClient.post = original_post
+
+    assert result is not None
+    row = result[0]
+    assert row["confidence"] == "needs_review"
+    assert "title_contains_author" in row["quality_flags"]
+
+
+def test_shelf_scan_excessive_author_tokens_flagged() -> None:
+    """Six+ meaningful author tokens should be flagged as merged spines."""
+    import asyncio
+
+    gemini_response = {
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": '[{"title": "Book", "author": "Karel Capek Milan Kundera Pavel Kohout",'
+                            ' "isbn": null, "observed_text": "Book Karel Capek Milan Kundera Pavel Kohout",'
+                            ' "confidence": "medium"}]'
+                }]
+            }
+        }]
+    }
+
+    async def fake_post(self, url, **kwargs):
+        class FakeResponse:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return gemini_response
+        return FakeResponse()
+
+    import httpx
+    original_post = httpx.AsyncClient.post
+    httpx.AsyncClient.post = fake_post
+    try:
+        result = asyncio.run(celery_app._extract_shelf_metadata_with_gemini(b"\xff\xd8\xff fake"))
+    finally:
+        httpx.AsyncClient.post = original_post
+
+    assert result is not None
+    row = result[0]
+    assert row["confidence"] == "needs_review"
+    assert "author_excessive_tokens" in row["quality_flags"]
+
+
+def test_shelf_scan_output_schema_with_quality_flags() -> None:
+    """Verify the full output shape is backwards-compatible (quality_flags is optional)."""
+    import asyncio
+
+    # Mixed batch: one clean, one flagged
+    gemini_response = {
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": '['
+                            '{"title": "Clean Book", "author": "Single Author",'
+                            ' "isbn": null, "observed_text": "Clean Book Single Author",'
+                            ' "confidence": "high"},'
+                            '{"title": "Dirty Book", "author": "Author A / Author B",'
+                            ' "isbn": null, "observed_text": "Dirty Book Author A Author B",'
+                            ' "confidence": "high"}'
+                            ']'
+                }]
+            }
+        }]
+    }
+
+    async def fake_post(self, url, **kwargs):
+        class FakeResponse:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return gemini_response
+        return FakeResponse()
+
+    import httpx
+    original_post = httpx.AsyncClient.post
+    httpx.AsyncClient.post = fake_post
+    try:
+        result = asyncio.run(celery_app._extract_shelf_metadata_with_gemini(b"\xff\xd8\xff fake"))
+    finally:
+        httpx.AsyncClient.post = original_post
+
+    assert result is not None
+    assert len(result) == 2
+
+    # Clean row: standard fields, no quality_flags key
+    clean = result[0]
+    assert clean["confidence"] == "high"
+    assert "quality_flags" not in clean
+    for key in ("title", "author", "isbn", "source"):
+        assert key in clean
+
+    # Flagged row: has quality_flags, confidence downgraded
+    flagged = result[1]
+    assert flagged["confidence"] == "needs_review"
+    assert isinstance(flagged["quality_flags"], list)
+    assert len(flagged["quality_flags"]) > 0
+    for key in ("title", "author", "isbn", "source"):
+        assert key in flagged
+
+
 def test_enrichment_cache_hit_skips_external_calls(monkeypatch) -> None:
     class FakeRedis:
         def get(self, _key):

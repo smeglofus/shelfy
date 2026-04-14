@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
@@ -12,6 +12,8 @@ import { SettingsPage } from './SettingsPage'
 vi.mock('../lib/api', () => ({
   formatApiError: vi.fn((e: unknown) => String(e)),
   exportBooksCsv: vi.fn(),
+  exportUserData: vi.fn(),
+  deleteAccount: vi.fn(),
   purgeLibrary: vi.fn(),
   listLibraries: vi.fn(),
   listLibraryMembers: vi.fn(),
@@ -23,14 +25,23 @@ vi.mock('../lib/api', () => ({
   skipOnboarding: vi.fn(),
   resetOnboarding: vi.fn(),
   enrichAll: vi.fn(),
+  getBillingStatus: vi.fn(() => Promise.resolve({
+    plan: 'free',
+    usage: { scans_used: 0, scans_limit: 10, enrichments_used: 0, enrichments_limit: 50 },
+    current_period_end: null,
+  })),
+  createCheckoutSession: vi.fn(),
+  createPortalSession: vi.fn(),
   ACTIVE_LIBRARY_ID_KEY: 'shelfy.activeLibraryId',
   getActiveLibraryId: vi.fn(() => null),
 }))
 
+const mockLogout = vi.fn()
+
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: vi.fn(() => ({
     user: { id: 'user-owner', email: 'owner@example.com' },
-    logout: vi.fn(),
+    logout: mockLogout,
   })),
 }))
 
@@ -49,11 +60,14 @@ vi.mock('../store/useLibraryStore', () => ({
 
 import {
   addLibraryMember,
+  deleteAccount,
   listLibraries,
   listLibraryMembers,
+  purgeLibrary,
   removeLibraryMember,
   updateLibraryMember,
 } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -81,11 +95,201 @@ function renderWithProviders(ui: ReactNode) {
   )
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+function resetAuthMock(overrides: Record<string, unknown> = {}) {
+  vi.mocked(useAuth).mockReturnValue({
+    user: { id: 'user-owner', email: 'owner@example.com', ...overrides },
+    logout: mockLogout,
+    // Only user and logout are consumed by SettingsPage
+  } as unknown as ReturnType<typeof useAuth>)
+}
+
+// ── Tests: page structure ────────────────────────────────────────────────────
+
+describe('SettingsPage – page structure', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetAuthMock()
+    vi.mocked(listLibraries).mockResolvedValue(LIBRARIES)
+    vi.mocked(listLibraryMembers).mockResolvedValue(MEMBERS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('renders all core sections', async () => {
+    renderWithProviders(<SettingsPage />)
+
+    expect(screen.getByTestId('section-preferences')).toBeInTheDocument()
+    expect(screen.getByTestId('section-account')).toBeInTheDocument()
+    expect(screen.getByTestId('section-data')).toBeInTheDocument()
+    expect(screen.getByTestId('section-about')).toBeInTheDocument()
+    expect(screen.getByTestId('section-danger')).toBeInTheDocument()
+  })
+
+  it('renders section headings with correct text', () => {
+    renderWithProviders(<SettingsPage />)
+
+    expect(screen.getByText('settings.preferences_title')).toBeInTheDocument()
+    expect(screen.getByText('settings.profile_title')).toBeInTheDocument()
+    expect(screen.getByText('settings.data_title')).toBeInTheDocument()
+    expect(screen.getByText('settings.about_title')).toBeInTheDocument()
+    expect(screen.getByText('settings.danger_title')).toBeInTheDocument()
+  })
+
+  it('danger zone is the last section on the page', () => {
+    renderWithProviders(<SettingsPage />)
+
+    const sections = document.querySelectorAll('[data-testid^="section-"]')
+    const last = sections[sections.length - 1]
+    expect(last.getAttribute('data-testid')).toBe('section-danger')
+  })
+
+  it('shows user email in the account section', () => {
+    renderWithProviders(<SettingsPage />)
+
+    const accountSection = screen.getByTestId('section-account')
+    expect(within(accountSection).getByText('owner@example.com')).toBeInTheDocument()
+  })
+
+  it('shows dark mode toggle in preferences section', () => {
+    renderWithProviders(<SettingsPage />)
+
+    const prefs = screen.getByTestId('section-preferences')
+    expect(within(prefs).getByLabelText('dark-mode-toggle')).toBeInTheDocument()
+  })
+
+  it('shows language selector with two options', () => {
+    renderWithProviders(<SettingsPage />)
+
+    const prefs = screen.getByTestId('section-preferences')
+    expect(within(prefs).getByText('settings.language_cs')).toBeInTheDocument()
+    expect(within(prefs).getByText('settings.language_en')).toBeInTheDocument()
+  })
+})
+
+// ── Tests: danger zone ──────────────────────────────────────────────────────
+
+describe('SettingsPage – danger zone (OAuth user)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetAuthMock({ has_local_password: false })
+    vi.mocked(listLibraries).mockResolvedValue(LIBRARIES)
+    vi.mocked(listLibraryMembers).mockResolvedValue(MEMBERS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows text confirmation input for purge', () => {
+    renderWithProviders(<SettingsPage />)
+
+    const danger = screen.getByTestId('section-danger')
+    const input = within(danger).getAllByPlaceholderText('settings.type_delete_to_confirm')[0]
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveAttribute('type', 'text')
+  })
+
+  it('purge button is disabled until DELETE is typed', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    const danger = screen.getByTestId('section-danger')
+    const purgeBtn = within(danger).getByText('settings.purge_button')
+    expect(purgeBtn).toBeDisabled()
+
+    const input = within(danger).getAllByPlaceholderText('settings.type_delete_to_confirm')[0]
+    await user.type(input, 'DELETE')
+
+    expect(purgeBtn).toBeEnabled()
+  })
+
+  it('delete account expand shows text confirmation', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    await user.click(screen.getByText('settings.delete_account_button'))
+
+    const danger = screen.getByTestId('section-danger')
+    const inputs = within(danger).getAllByPlaceholderText('settings.type_delete_to_confirm')
+    // One for purge, one for delete account
+    expect(inputs.length).toBe(2)
+    expect(inputs[1]).toHaveAttribute('type', 'text')
+  })
+
+  it('delete account confirm button is disabled until DELETE is typed', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    await user.click(screen.getByText('settings.delete_account_button'))
+
+    const confirmBtn = screen.getByText('settings.delete_account_confirm')
+    expect(confirmBtn).toBeDisabled()
+
+    const danger = screen.getByTestId('section-danger')
+    const inputs = within(danger).getAllByPlaceholderText('settings.type_delete_to_confirm')
+    await user.type(inputs[1], 'DELETE')
+
+    expect(confirmBtn).toBeEnabled()
+  })
+})
+
+describe('SettingsPage – danger zone (local password user)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetAuthMock({ has_local_password: true })
+    vi.mocked(listLibraries).mockResolvedValue(LIBRARIES)
+    vi.mocked(listLibraryMembers).mockResolvedValue(MEMBERS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows password confirmation input for purge', () => {
+    renderWithProviders(<SettingsPage />)
+
+    const danger = screen.getByTestId('section-danger')
+    const input = within(danger).getByPlaceholderText('settings.confirm_password')
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveAttribute('type', 'password')
+  })
+
+  it('purge button is disabled until password is entered', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    const danger = screen.getByTestId('section-danger')
+    const purgeBtn = within(danger).getByText('settings.purge_button')
+    expect(purgeBtn).toBeDisabled()
+
+    const input = within(danger).getByPlaceholderText('settings.confirm_password')
+    await user.type(input, 'mypassword')
+
+    expect(purgeBtn).toBeEnabled()
+  })
+
+  it('delete account expand shows password confirmation', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    await user.click(screen.getByText('settings.delete_account_button'))
+
+    const danger = screen.getByTestId('section-danger')
+    const inputs = within(danger).getAllByPlaceholderText('settings.confirm_password')
+    // One for purge, one for delete account
+    expect(inputs.length).toBe(2)
+    expect(inputs[1]).toHaveAttribute('type', 'password')
+  })
+})
+
+// ── Tests: library management ────────────────────────────────────────────────
 
 describe('SettingsPage – library management', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetAuthMock()
     vi.mocked(listLibraries).mockResolvedValue(LIBRARIES)
     vi.mocked(listLibraryMembers).mockResolvedValue(MEMBERS)
   })

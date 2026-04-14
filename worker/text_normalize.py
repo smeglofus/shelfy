@@ -216,3 +216,118 @@ def normalize_book_fields(
         book[field] = normalized if normalized else None
 
     return book
+
+
+# ── Shelf-scan quality heuristics ─────────────────────────────────────────────
+#
+# These detect patterns that strongly suggest cross-spine contamination in
+# shelf-scan output from Gemini.  They do NOT modify the data — they return
+# a list of short flag strings so the caller can downgrade confidence to
+# "needs_review" and let a human decide.
+#
+# Design principles:
+#   • Conservative: only flag patterns that almost never occur in legitimate
+#     single-book metadata.
+#   • No corrections: flagging is cheap, silent "fixing" is dangerous.
+#   • Tested with deterministic fixtures (no real-image dependency).
+
+# Separators that never appear in a legitimate single-author name.
+# Plain hyphen (-) is intentionally excluded — hyphenated surnames are common.
+_AUTHOR_SEPARATOR_RE = re.compile(r"[/|;]|\s–\s|\s—\s")
+
+# Name particles / prefixes that don't count as "meaningful" tokens.
+# These let "Johann Wolfgang von Goethe" (4 tokens, 3 meaningful) stay clean.
+_NAME_PARTICLES: frozenset[str] = frozenset({
+    "von", "van", "de", "da", "di", "del", "della", "du",
+    "le", "la", "al", "el", "den", "der", "ten", "ter",
+})
+
+# If meaningful (non-particle) token count exceeds this, flag the row.
+# Rationale: the longest common single-author representation is ~5 meaningful
+# tokens ("Sir Arthur Conan Doyle Jr.").  Six+ almost always means two
+# separate authors were concatenated from neighboring spines.
+_MAX_AUTHOR_TOKENS = 5
+
+
+def detect_merged_author(author: str | None) -> list[str]:
+    """Detect patterns suggesting author names merged from adjacent spines.
+
+    Safe because:
+    • Separator check: real single-author names never contain / | ; or em-dashes.
+    • Token-count check: name particles (von, de, ...) are excluded, so real
+      long names like "Johann Wolfgang von Goethe" stay under the threshold.
+
+    Returns a list of quality-flag strings (empty = clean).
+    """
+    if not author or not isinstance(author, str):
+        return []
+
+    flags: list[str] = []
+    stripped = author.strip()
+
+    # 1. Separators
+    if _AUTHOR_SEPARATOR_RE.search(stripped):
+        flags.append("author_has_separator")
+
+    # 2. Excessive meaningful tokens
+    tokens = stripped.split()
+    meaningful = [t for t in tokens if t.lower() not in _NAME_PARTICLES]
+    if len(meaningful) > _MAX_AUTHOR_TOKENS:
+        flags.append("author_excessive_tokens")
+
+    return flags
+
+
+def detect_title_author_overlap(
+    title: str | None,
+    author: str | None,
+) -> list[str]:
+    """Detect if the full author name appears verbatim inside the title
+    (or vice-versa), which indicates cross-field contamination.
+
+    Safe because:
+    • Only multi-word strings (>= 2 words) are checked — a single word like
+      "Kafka" matching in "Kafka on the Shore" is NOT flagged.
+    • Real book titles never contain the full author name as a substring.
+
+    Returns a list of quality-flag strings (empty = clean).
+    """
+    if not title or not author:
+        return []
+    if not isinstance(title, str) or not isinstance(author, str):
+        return []
+
+    flags: list[str] = []
+    t_lower = title.strip().lower()
+    a_lower = author.strip().lower()
+
+    # Author name found inside title text
+    if len(a_lower.split()) >= 2 and a_lower in t_lower:
+        flags.append("title_contains_author")
+
+    # Title text found inside author field (reverse contamination)
+    if len(t_lower.split()) >= 2 and t_lower in a_lower:
+        flags.append("author_contains_title")
+
+    return flags
+
+
+def audit_book_row(book: dict[str, object]) -> list[str]:
+    """Run all quality heuristics on a single shelf-scan row.
+
+    Returns a list of short flag identifiers.  Empty list = clean row.
+    The caller is responsible for downgrading confidence when flags are
+    present — this function never mutates ``book``.
+    """
+    flags: list[str] = []
+
+    title = book.get("title")
+    author = book.get("author")
+
+    if isinstance(author, str):
+        flags.extend(detect_merged_author(author))
+
+    if isinstance(title, str) and isinstance(author, str):
+        flags.extend(detect_title_author_overlap(title, author))
+
+    return flags

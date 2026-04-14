@@ -180,6 +180,9 @@
   },
   "settings": {
     "title": "Settings",
+    "preferences_title": "Preferences",
+    "data_title": "Data & export",
+    "about_title": "About & legal",
     "dark_mode_title": "Dark mode",
     "dark_mode_description": "Theme preference is stored locally in your browser.",
     "dark_mode_on": "On",
@@ -200,6 +203,7 @@
     "danger_title": "Danger zone",
     "danger_description": "Deletes all books, loans and locations. This cannot be undone.",
     "confirm_password": "Confirm with password",
+    "type_delete_to_confirm": "Type DELETE to confirm",
     "purge_button": "Delete all books and locations",
     "purging": "Deleting…",
     "purge_error": "Delete failed. Check your password.",

@@ -21,15 +21,6 @@ import { useLibraryStore } from '../store/useLibraryStore'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const ARTICLE_STYLE: React.CSSProperties = {
-  marginTop: 16,
-  border: '1px solid var(--sh-border)',
-  borderRadius: 'var(--sh-radius-lg)',
-  padding: 16,
-  background: 'var(--sh-surface)',
-  boxShadow: 'var(--sh-shadow-sm)',
-}
-
 function roleLabel(role: LibraryRole, t: (key: string) => string): string {
   if (role === 'owner') return t('library.role_owner')
   if (role === 'editor') return t('library.role_editor')
@@ -132,47 +123,26 @@ function LibraryManagement() {
   }
 
   return (
-    <article style={ARTICLE_STYLE}>
-      <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>
-        {t('library.title')}
-      </h3>
-      <p className='text-small' style={{ marginTop: 0 }}>
-        {t('library.description')}
-      </p>
+    <div className='stg-section' data-testid='section-library'>
+      <h3 className='stg-section-title'>{t('library.title')}</h3>
+      <p className='stg-row-desc' style={{ marginBottom: 12 }}>{t('library.description')}</p>
 
       {/* Library selector */}
-      {libLoading && <p className='text-small'>{t('library.loading')}</p>}
-      {libError && <p className='text-small' style={{ color: 'var(--sh-red)' }}>{t('library.error')}</p>}
+      {libLoading && <p className='stg-row-desc'>{t('library.loading')}</p>}
+      {libError && <p className='stg-row-desc' style={{ color: 'var(--sh-red)' }}>{t('library.error')}</p>}
       {libraries && libraries.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {libraries.map((lib) => {
             const active = lib.id === activeLibraryId
             return (
               <div
                 key={lib.id}
                 aria-label={`library-${lib.id}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--sh-radius-md)',
-                  border: active ? '2px solid var(--sh-accent)' : '1px solid var(--sh-border)',
-                  background: active ? 'var(--sh-accent-subtle, var(--sh-surface))' : 'var(--sh-surface)',
-                  gap: 8,
-                }}
+                className={`stg-lib-row${active ? ' stg-lib-row--active' : ''}`}
               >
-                <span style={{ fontWeight: active ? 600 : 400 }}>
+                <span className='stg-lib-name' style={{ fontWeight: active ? 600 : 400 }}>
                   {lib.name}
-                  <span
-                    style={{
-                      marginLeft: 8,
-                      fontSize: 11,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      background: 'var(--sh-border)',
-                    }}
-                  >
+                  <span className='stg-role-badge' style={{ marginLeft: 8 }}>
                     {roleLabel(lib.role, t)}
                   </span>
                 </span>
@@ -180,7 +150,7 @@ function LibraryManagement() {
                   <button
                     type='button'
                     className='sh-btn-secondary'
-                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    style={{ fontSize: 12, padding: '4px 12px' }}
                     onClick={() => setActiveLibraryId(lib.id)}
                   >
                     {t('library.switch')}
@@ -195,13 +165,13 @@ function LibraryManagement() {
       {/* Members */}
       {activeLibraryId && (
         <div style={{ marginTop: 20 }}>
-          <h4 style={{ marginTop: 0, marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          <h4 className='stg-row-title' style={{ marginBottom: 8 }}>
             {t('library.members_title')}
           </h4>
 
-          {membersLoading && <p className='text-small'>{t('library.members_loading')}</p>}
+          {membersLoading && <p className='stg-row-desc'>{t('library.members_loading')}</p>}
           {membersError && (
-            <p className='text-small' style={{ color: 'var(--sh-red)' }}>
+            <p className='stg-row-desc' style={{ color: 'var(--sh-red)' }}>
               {t('library.members_error')}
             </p>
           )}
@@ -211,30 +181,18 @@ function LibraryManagement() {
               {members.map((m) => {
                 const isCurrentUser = m.user_id === user?.id
                 return (
-                  <div
-                    key={m.user_id}
-                    aria-label={`member-${m.user_id}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '6px 10px',
-                      borderRadius: 'var(--sh-radius-md)',
-                      border: '1px solid var(--sh-border)',
-                      background: 'var(--sh-bg)',
-                    }}
-                  >
-                    <span style={{ flex: 1, fontSize: 14 }}>
+                  <div key={m.user_id} aria-label={`member-${m.user_id}`} className='stg-member-row'>
+                    <span className='stg-member-email'>
                       {m.email}
                       {isCurrentUser && (
-                        <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--sh-muted)' }}>
+                        <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--sh-text-muted)' }}>
                           {t('library.you')}
                         </span>
                       )}
                     </span>
 
                     {isOwner ? (
-                      <>
+                      <div className='stg-member-controls'>
                         <select
                           aria-label={`role-select-${m.user_id}`}
                           value={m.role}
@@ -250,22 +208,15 @@ function LibraryManagement() {
                           type='button'
                           aria-label={`remove-${m.user_id}`}
                           className='sh-btn-secondary'
-                          style={{ fontSize: 12, padding: '3px 8px', color: 'var(--sh-red)' }}
+                          style={{ fontSize: 12, padding: '3px 10px', color: 'var(--sh-red)' }}
                           disabled={removeMemberMutation.isPending}
                           onClick={() => handleRemove(m.user_id, m.email)}
                         >
                           {t('library.remove')}
                         </button>
-                      </>
+                      </div>
                     ) : (
-                      <span
-                        style={{
-                          fontSize: 12,
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: 'var(--sh-border)',
-                        }}
-                      >
+                      <span className='stg-role-badge'>
                         {roleLabel(m.role, t)}
                       </span>
                     )}
@@ -277,13 +228,9 @@ function LibraryManagement() {
 
           {/* Add member form — owners only */}
           {isOwner && (
-            <form
-              onSubmit={handleAddMember}
-              aria-label='add-member-form'
-              style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
-                <label style={{ fontSize: 12, fontWeight: 500 }}>{t('library.email_label')}</label>
+            <form onSubmit={handleAddMember} aria-label='add-member-form' className='stg-add-form'>
+              <div className='stg-add-form-field'>
+                <label>{t('library.email_label')}</label>
                 <input
                   className='sh-input'
                   type='email'
@@ -294,13 +241,13 @@ function LibraryManagement() {
                   aria-label='new-member-email'
                 />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 500 }}>{t('library.role_label')}</label>
+              <div className='stg-add-form-field' style={{ flex: '0 0 auto' }}>
+                <label>{t('library.role_label')}</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as LibraryRole)}
                   aria-label='new-member-role'
-                  style={{ fontSize: 13, height: 36 }}
+                  style={{ fontSize: 13, height: 38 }}
                 >
                   <option value='viewer'>{t('library.role_viewer')}</option>
                   <option value='editor'>{t('library.role_editor')}</option>
@@ -311,7 +258,7 @@ function LibraryManagement() {
                 type='submit'
                 className='sh-btn-primary'
                 disabled={addMemberMutation.isPending || !newEmail.trim()}
-                style={{ height: 36 }}
+                style={{ height: 38, alignSelf: 'flex-end' }}
               >
                 {addMemberMutation.isPending ? t('library.adding') : t('library.add_button')}
               </button>
@@ -319,7 +266,7 @@ function LibraryManagement() {
           )}
         </div>
       )}
-    </article>
+    </div>
   )
 }
 
@@ -335,8 +282,8 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 13 }}>{label}</span>
-        <span style={{ fontSize: 13, color: isOver ? 'var(--sh-red)' : 'var(--sh-text-secondary)', fontWeight: isOver ? 600 : 400 }}>
-          {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
+        <span style={{ fontSize: 13, color: isOver ? 'var(--sh-red)' : 'var(--sh-text-muted)', fontWeight: isOver ? 600 : 400 }}>
+          {limit === -1 ? `${used} / \u221E` : `${used} / ${limit}`}
         </span>
       </div>
       {limit !== -1 && (
@@ -350,6 +297,7 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 
 function BillingSection() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { data: billing, isLoading } = useBillingStatus()
   const checkoutMutation = useCreateCheckout()
   const portalMutation = useCreatePortal()
@@ -369,10 +317,10 @@ function BillingSection() {
 
   if (isLoading || !billing) {
     return (
-      <article style={ARTICLE_STYLE}>
-        <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('billing.section_title')}</h3>
-        <p className='text-small' style={{ color: 'var(--sh-text-secondary)' }}>{t('billing.loading')}</p>
-      </article>
+      <div className='stg-section' data-testid='section-billing'>
+        <h3 className='stg-section-title'>{t('billing.section_title')}</h3>
+        <p className='stg-row-desc'>{t('billing.loading')}</p>
+      </div>
     )
   }
 
@@ -380,14 +328,14 @@ function BillingSection() {
   const isFree = billing.plan === 'free'
 
   return (
-    <article style={ARTICLE_STYLE}>
+    <div className='stg-section' data-testid='section-billing'>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 className='text-h3' style={{ margin: 0 }}>{t('billing.section_title')}</h3>
+        <h3 className='stg-section-title' style={{ margin: 0 }}>{t('billing.section_title')}</h3>
         <span style={{
           fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
           padding: '3px 10px', borderRadius: 'var(--sh-radius-pill)',
           background: isFree ? 'var(--sh-border)' : 'var(--sh-primary)',
-          color: isFree ? 'var(--sh-text-secondary)' : 'white',
+          color: isFree ? 'var(--sh-text-muted)' : 'white',
         }}>
           {planLabel}
         </span>
@@ -438,17 +386,17 @@ function BillingSection() {
             disabled={portalMutation.isPending}
             style={{ fontSize: 13 }}
           >
-            {portalMutation.isPending ? '…' : t('billing.manage_subscription')}
+            {portalMutation.isPending ? '\u2026' : t('billing.manage_subscription')}
           </button>
         )}
       </div>
 
       {billing.current_period_end && !isFree && (
-        <p className='text-small' style={{ marginTop: 10, marginBottom: 0, color: 'var(--sh-text-secondary)' }}>
+        <p className='stg-row-desc' style={{ marginTop: 10, marginBottom: 0 }}>
           {t('billing.renews_on', { date: new Date(billing.current_period_end).toLocaleDateString() })}
         </p>
       )}
-    </article>
+    </div>
   )
 }
 
@@ -459,91 +407,98 @@ export function SettingsPage() {
   const darkMode = useSettingsStore((s) => s.darkMode)
   const setDarkMode = useSettingsStore((s) => s.setDarkMode)
   const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
   const { user, logout } = useAuth()
   const enrichAllMutation = useEnrichAll()
   const resetOnboardingMutation = useResetOnboarding()
   const queryClient = useQueryClient()
-  const showSuccess = useToastStore((s) => s.showSuccess)
+  const currentLang = i18n.language === 'en' ? 'en' : 'cs'
+
+  // ── Danger zone state ──
   const [purgePassword, setPurgePassword] = useState('')
   const [purgeDeleteConfirm, setPurgeDeleteConfirm] = useState('')
   const [purging, setPurging] = useState(false)
-  const [exportingData, setExportingData] = useState(false)
-  const [exportingCsv, setExportingCsv] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
   const [deleteAccountExpanded, setDeleteAccountExpanded] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
-  const currentLang = i18n.language === 'en' ? 'en' : 'cs'
+
+  // ── Export state ──
+  const [exportingData, setExportingData] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+
+  const isOAuthOnly = user?.has_local_password === false
 
   return (
-    <section className='container md-max-w-3xl' style={{ margin: '0 auto', width: '100%' }}>
+    <section className='stg-page'>
       <h2 className='text-h2'>{t('settings.title')}</h2>
 
-      <article
-        style={{
-          border: '1px solid var(--sh-border)',
-          borderRadius: 'var(--sh-radius-lg)',
-          padding: 16,
-          background: 'var(--sh-surface)',
-          boxShadow: 'var(--sh-shadow-sm)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.dark_mode_title')}</h3>
-          <p className='text-small'>{t('settings.dark_mode_description')}</p>
+      {/* ── Preferences ── */}
+      <div className='stg-section' data-testid='section-preferences'>
+        <h3 className='stg-section-title'>{t('settings.preferences_title')}</h3>
+
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.dark_mode_title')}</p>
+            <p className='stg-row-desc'>{t('settings.dark_mode_description')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <label className='stg-toggle' aria-label='dark-mode-toggle'>
+              <input
+                type='checkbox'
+                checked={darkMode}
+                onChange={(e) => setDarkMode(e.target.checked)}
+              />
+              <span className='stg-toggle-track' />
+            </label>
+          </div>
         </div>
 
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input
-            aria-label='dark-mode-toggle'
-            type='checkbox'
-            checked={darkMode}
-            onChange={(event) => setDarkMode(event.target.checked)}
-          />
-          <span>{darkMode ? t('settings.dark_mode_on') : t('settings.dark_mode_off')}</span>
-        </label>
-      </article>
-
-      <article style={ARTICLE_STYLE}>
-        <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.profile_title')}</h3>
-        <p className='text-small' style={{ marginTop: 0 }}>{t('settings.profile_description')}</p>
-        <p style={{ margin: '8px 0 0' }}><strong>{t('settings.profile_email')}:</strong> {user?.email ?? '-'}</p>
-        <button type='button' className='sh-btn-secondary' style={{ marginTop: 12 }} onClick={logout}>{t('nav.logout')}</button>
-      </article>
-
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.language_title')}</h3>
-          <p className='text-small'>{t('settings.language_description')}</p>
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.language_title')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <div className='stg-lang-group' role='radiogroup' aria-label={t('settings.language_title')}>
+              <button
+                type='button'
+                role='radio'
+                aria-checked={currentLang === 'cs'}
+                className={`stg-lang-btn${currentLang === 'cs' ? ' stg-lang-btn--active' : ''}`}
+                onClick={() => setLanguage('cs')}
+              >
+                {t('settings.language_cs')}
+              </button>
+              <button
+                type='button'
+                role='radio'
+                aria-checked={currentLang === 'en'}
+                className={`stg-lang-btn${currentLang === 'en' ? ' stg-lang-btn--active' : ''}`}
+                onClick={() => setLanguage('en')}
+              >
+                {t('settings.language_en')}
+              </button>
+            </div>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => { setLanguage('cs') }}
-            className={currentLang === 'cs' ? 'sh-btn-primary' : 'sh-btn-secondary'}
-          >
-            {t('settings.language_cs')}
-          </button>
-          <button
-            onClick={() => { setLanguage('en') }}
-            className={currentLang === 'en' ? 'sh-btn-primary' : 'sh-btn-secondary'}
-          >
-            {t('settings.language_en')}
-          </button>
+      </div>
+
+      {/* ── Account ── */}
+      <div className='stg-section' data-testid='section-account'>
+        <h3 className='stg-section-title'>{t('settings.profile_title')}</h3>
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.profile_email')}</p>
+            <p className='stg-row-value'>{user?.email ?? '-'}</p>
+          </div>
+          <div className='stg-row-control'>
+            <button type='button' className='sh-btn-secondary' onClick={logout}>
+              {t('nav.logout')}
+            </button>
+          </div>
         </div>
-      </article>
+      </div>
 
       {/* ── Library management ── */}
       <LibraryManagement />
@@ -551,16 +506,21 @@ export function SettingsPage() {
       {/* ── Billing & plan ── */}
       <BillingSection />
 
-      <article style={ARTICLE_STYLE}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 12 }}>
-          <div>
-            <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.export_title')}</h3>
-            <p className='text-small' style={{ margin: 0 }}>{t('settings.export_description')}</p>
+      {/* ── Data & export ── */}
+      <div className='stg-section' data-testid='section-data'>
+        <h3 className='stg-section-title'>{t('settings.data_title')}</h3>
+
+        {/* CSV export / import */}
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.export_title')}</p>
+            <p className='stg-row-desc'>{t('settings.export_description')}</p>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <div className='stg-row-control'>
             <button
               type='button'
               className='sh-btn-secondary'
+              style={{ fontSize: 13 }}
               disabled={exportingCsv}
               onClick={async () => {
                 try {
@@ -585,14 +545,77 @@ export function SettingsPage() {
             <button
               type='button'
               className='sh-btn-secondary'
+              style={{ fontSize: 13 }}
               onClick={() => setShowImportModal(true)}
-              data-testid="open-import-modal-btn"
+              data-testid='open-import-modal-btn'
             >
               {t('csv.import_button')}
             </button>
           </div>
         </div>
-      </article>
+
+        {/* Metadata enrichment */}
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.enrich_title')}</p>
+            <p className='stg-row-desc'>{t('settings.enrich_description')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 13 }}
+              disabled={enrichAllMutation.isPending}
+              onClick={() => enrichAllMutation.mutate({ force: false })}
+            >
+              {enrichAllMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_missing')}
+            </button>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 12 }}
+              disabled={enrichAllMutation.isPending}
+              onClick={() => enrichAllMutation.mutate({ force: true })}
+            >
+              {t('enrich.force_reindex')}
+            </button>
+          </div>
+        </div>
+
+        {/* GDPR data export */}
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.export_data_title')}</p>
+            <p className='stg-row-desc'>{t('settings.export_data_description')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 13 }}
+              disabled={exportingData}
+              onClick={async () => {
+                try {
+                  setExportingData(true)
+                  const blob = await exportUserData()
+                  const url = URL.createObjectURL(blob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = 'shelfy-export.json'
+                  link.click()
+                  URL.revokeObjectURL(url)
+                } catch {
+                  showError(t('settings.export_error'))
+                } finally {
+                  setExportingData(false)
+                }
+              }}
+            >
+              {exportingData ? t('settings.export_data_exporting') : t('settings.export_data_button')}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <ImportCsvModal
         open={showImportModal}
@@ -604,144 +627,66 @@ export function SettingsPage() {
         }}
       />
 
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.enrich_title')}</h3>
-          <p className='text-small'>{t('settings.enrich_description')}</p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-          <button
-            type='button'
-            className='sh-btn-secondary'
-            disabled={enrichAllMutation.isPending}
-            onClick={() => enrichAllMutation.mutate({ force: false })}
-          >
-            {enrichAllMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_missing')}
-          </button>
-          <button
-            type='button'
-            className='sh-btn-secondary'
-            disabled={enrichAllMutation.isPending}
-            onClick={() => enrichAllMutation.mutate({ force: true })}
-            style={{ fontSize: 12 }}
-          >
-            {t('enrich.force_reindex')}
-          </button>
-        </div>
-      </article>
+      {/* ── About & legal ── */}
+      <div className='stg-section' data-testid='section-about'>
+        <h3 className='stg-section-title'>{t('settings.about_title')}</h3>
 
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('onboarding.settings_reset_title')}</h3>
-          <p className='text-small'>{t('onboarding.settings_reset_desc')}</p>
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('onboarding.settings_reset_title')}</p>
+            <p className='stg-row-desc'>{t('onboarding.settings_reset_desc')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 13 }}
+              disabled={resetOnboardingMutation.isPending}
+              onClick={() => {
+                resetOnboardingMutation.mutate(undefined, {
+                  onSuccess: () => {
+                    localStorage.removeItem('shelfy_onboarding_dismissed')
+                    showSuccess(t('onboarding.reset_done'))
+                  },
+                })
+              }}
+            >
+              {t('onboarding.settings_reset')}
+            </button>
+          </div>
         </div>
-        <button
-          type='button'
-          className='sh-btn-secondary'
-          disabled={resetOnboardingMutation.isPending}
-          onClick={() => {
-            resetOnboardingMutation.mutate(undefined, {
-              onSuccess: () => {
-                localStorage.removeItem('shelfy_onboarding_dismissed')
-                showSuccess(t('onboarding.reset_done'))
-              },
-            })
-          }}
-        >
-          {t('onboarding.settings_reset')}
-        </button>
-      </article>
 
-      {/* ── GDPR: export my data ── */}
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.export_data_title')}</h3>
-          <p className='text-small' style={{ marginTop: 0 }}>{t('settings.export_data_description')}</p>
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.legal_title')}</p>
+            <p className='stg-row-desc'>{t('settings.legal_description')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <a
+              className='sh-btn-secondary'
+              href={ROUTES.privacy}
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: 13 }}
+            >
+              {t('settings.privacy_link')}
+            </a>
+            <a
+              className='sh-btn-secondary'
+              href={ROUTES.terms}
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: 13 }}
+            >
+              {t('settings.terms_link')}
+            </a>
+          </div>
         </div>
-        <button
-          type='button'
-          className='sh-btn-secondary'
-          disabled={exportingData}
-          onClick={async () => {
-            try {
-              setExportingData(true)
-              const blob = await exportUserData()
-              const url = URL.createObjectURL(blob)
-              const link = document.createElement('a')
-              link.href = url
-              link.download = 'shelfy-export.json'
-              link.click()
-              URL.revokeObjectURL(url)
-            } catch {
-              showError(t('settings.export_error'))
-            } finally {
-              setExportingData(false)
-            }
-          }}
-        >
-          {exportingData ? t('settings.export_data_exporting') : t('settings.export_data_button')}
-        </button>
-      </article>
-
-      {/* ── Legal links ── */}
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6 }}>{t('settings.legal_title')}</h3>
-          <p className='text-small' style={{ marginTop: 0 }}>{t('settings.legal_description')}</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a className='sh-btn-secondary' href={ROUTES.privacy} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('settings.privacy_link')}
-          </a>
-          <a className='sh-btn-secondary' href={ROUTES.terms} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('settings.terms_link')}
-          </a>
-        </div>
-      </article>
+      </div>
 
       {/* ── Danger zone ── */}
-      <article
-        style={{
-          ...ARTICLE_STYLE,
-          border: '1px solid rgba(220, 38, 38, 0.35)',
-        }}
-      >
-        <h3 className='text-h3' style={{ marginTop: 0, marginBottom: 6, color: 'var(--sh-red)' }}>{t('settings.danger_title')}</h3>
-        <p className='text-small' style={{ marginTop: 0 }}>{t('settings.danger_description')}</p>
-        <div style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
-          {user?.has_local_password === false ? (
+      <div className='stg-section stg-danger' data-testid='section-danger'>
+        <h3 className='stg-section-title'>{t('settings.danger_title')}</h3>
+        <p className='stg-danger-desc'>{t('settings.danger_description')}</p>
+
+        <div className='stg-confirm-grid'>
+          {isOAuthOnly ? (
             <>
               <input
                 className='sh-input'
@@ -803,23 +748,21 @@ export function SettingsPage() {
         </div>
 
         {/* Delete account */}
-        <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(220,38,38,0.2)' }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 14, color: 'var(--sh-red)' }}>
-            {t('settings.delete_account_title')}
-          </p>
-          <p className='text-small' style={{ marginTop: 0 }}>{t('settings.delete_account_description')}</p>
+        <div className='stg-danger-sub'>
+          <p className='stg-danger-sub-title'>{t('settings.delete_account_title')}</p>
+          <p className='stg-danger-desc'>{t('settings.delete_account_description')}</p>
+
           {!deleteAccountExpanded ? (
             <button
               type='button'
               className='sh-btn-danger'
-              style={{ marginTop: 4 }}
               onClick={() => setDeleteAccountExpanded(true)}
             >
               {t('settings.delete_account_button')}
             </button>
           ) : (
-            <div style={{ display: 'grid', gap: 8, maxWidth: 360, marginTop: 8 }}>
-              {user?.has_local_password === false ? (
+            <div className='stg-confirm-grid'>
+              {isOAuthOnly ? (
                 <input
                   className='sh-input'
                   type='text'
@@ -838,20 +781,20 @@ export function SettingsPage() {
                   autoFocus
                 />
               )}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className='stg-confirm-actions'>
                 <button
                   type='button'
                   className='sh-btn-danger'
                   disabled={
                     deletingAccount ||
-                    (user?.has_local_password === false
+                    (isOAuthOnly
                       ? deleteConfirmText.trim().toUpperCase() !== 'DELETE'
                       : !deletePassword.trim())
                   }
                   onClick={async () => {
                     try {
                       setDeletingAccount(true)
-                      await deleteAccount(user?.has_local_password === false ? '' : deletePassword.trim())
+                      await deleteAccount(isOAuthOnly ? '' : deletePassword.trim())
                       logout()
                     } catch {
                       showError(t('settings.delete_account_error'))
@@ -873,7 +816,7 @@ export function SettingsPage() {
             </div>
           )}
         </div>
-      </article>
+      </div>
     </section>
   )
 }
