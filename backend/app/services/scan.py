@@ -63,16 +63,32 @@ async def confirm_shelf_scan(
 
         position_offset = (anchor.shelf_position or 0) + 1
         shift_by = len(payload.books)
+
+        # Two-phase shift avoids transient unique collisions on
+        # (location_id, shelf_position) during bulk updates.
+        temp_bump = 100000
+        where_clause = (
+            (Book.library_id == library_id)
+            & (Book.location_id == payload.location_id)
+            & (Book.shelf_position.is_not(None))
+            & (Book.shelf_position >= position_offset)
+            & (Book.id != anchor.id)
+        )
+        await session.execute(
+            update(Book)
+            .where(where_clause)
+            .values(shelf_position=Book.shelf_position + temp_bump)
+        )
         await session.execute(
             update(Book)
             .where(
-                Book.library_id == library_id,
-                Book.location_id == payload.location_id,
-                Book.shelf_position.is_not(None),
-                Book.shelf_position >= position_offset,
-                Book.id != anchor.id,
+                (Book.library_id == library_id)
+                & (Book.location_id == payload.location_id)
+                & (Book.shelf_position.is_not(None))
+                & (Book.shelf_position >= position_offset + temp_bump)
+                & (Book.id != anchor.id)
             )
-            .values(shelf_position=Book.shelf_position + shift_by)
+            .values(shelf_position=Book.shelf_position - temp_bump + shift_by)
         )
 
     for item in payload.books:
