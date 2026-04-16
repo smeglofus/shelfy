@@ -44,7 +44,8 @@ services:
         - traefik.http.routers.traefik.service=api@internal
 
   postgres:
-    image: postgres:16
+    # Pin to a specific minor so prod stack rebuilds are reproducible.
+    image: postgres:16.6
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-shelfy}
       POSTGRES_USER: ${POSTGRES_USER:-shelfy}
@@ -60,7 +61,8 @@ services:
         condition: on-failure
 
   redis:
-    image: redis:7
+    # Pin to a specific minor so prod stack rebuilds are reproducible.
+    image: redis:7.4
     command:
       - /bin/sh
       - -ec
