@@ -78,6 +78,20 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET_KEY must not use default value outside development")
         return value
 
+    @field_validator("cors_allowed_origins")
+    @classmethod
+    def validate_cors_origins(cls, value: list[str], info: object) -> list[str]:
+        # The app sends cookies via allow_credentials=True; pairing this with a
+        # wildcard origin would be both insecure (credentialed CSRF) and rejected
+        # by browsers. Reject "*" explicitly so misconfiguration fails fast.
+        for origin in value:
+            if origin.strip() == "*":
+                raise ValueError(
+                    "CORS_ALLOWED_ORIGINS must not include '*' — wildcard "
+                    "origins are incompatible with credentialed requests"
+                )
+        return value
+
 
     @field_validator("minio_access_key", "minio_secret_key")
     @classmethod
