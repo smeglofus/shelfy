@@ -858,7 +858,10 @@ def process_book_image(self, job_id: str) -> None:
             if local_status == ProcessingJobStatus.FAILED:
                 job.status = local_status
                 job.result_json = {"books": local_results}
-                job.error_message = error_message
+                # error_message column is String(1000); truncate defensively to
+                # avoid silent DB-level truncation when providers return long
+                # error strings.
+                job.error_message = (error_message or "")[:1000] or None
                 session.commit()
                 return
 
@@ -994,7 +997,9 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
             if vision_results is None:
                 job.status = ProcessingJobStatus.FAILED
                 job.result_json = {"books": [], "location_id": location_id}
-                job.error_message = "Could not extract books from shelf photo"
+                # error_message column is String(1000); truncate here so we
+                # never silently drop characters at the DB layer.
+                job.error_message = "Could not extract books from shelf photo"[:1000]
                 session.commit()
                 logger.warning("shelf_scan_no_results", job_id=job_id)
                 return
