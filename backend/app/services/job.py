@@ -75,16 +75,22 @@ async def create_upload_job(
 async def get_job_or_404(
     session: AsyncSession, job_id: uuid.UUID, library_id: Optional[uuid.UUID] = None
 ) -> ProcessingJob:
-    """Fetch job by ID. If library_id is provided, job must belong to that library (404 otherwise).
-    If job.library_id is None (legacy/backfill gap), allow any authenticated user."""
+    """Fetch job by ID, enforcing library scoping when *library_id* is supplied.
+
+    All jobs created via the API after the multi-library migration carry a
+    library_id. A small population of legacy rows can still have
+    library_id IS NULL — for those we deny access from a library-scoped caller
+    instead of falling through, because there is no way to verify ownership of
+    a null-library job and allowing any user would be a cross-tenant IDOR.
+    Internal callers that pass *library_id*=None still see legacy jobs.
+    """
     result = await session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     job = result.scalar_one_or_none()
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    # Enforce library scope: if job has library_id set, it must match.
-    # If job.library_id is None (legacy), allow access for any authenticated user.
-    if library_id is not None and job.library_id is not None and job.library_id != library_id:
+    if library_id is not None and job.library_id != library_id:
+        # Mismatched library_id OR legacy null-library job — both are denied.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     return job

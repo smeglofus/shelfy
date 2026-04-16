@@ -153,18 +153,35 @@ async def test_upload_exceeds_10mb_returns_422(test_session: async_sessionmaker[
 @pytest.mark.asyncio
 async def test_job_status_endpoint_returns_correct_status(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with test_session() as session:
+        await _seed_user(session)
+        # The /api/v1/jobs endpoint enforces library scoping via the user's
+        # default library; mirror that here so the GET succeeds.
+        from app.models.user import User as _User
+        from app.services.library import get_default_user_library_id
+        u = (await session.execute(sa.select(_User).where(_User.email == "admin@example.com"))).scalar_one()
+        lib_id = await get_default_user_library_id(session, u.id)
+
         image = BookImage(minio_path="uploads/file.jpg")
         session.add(image)
         await session.flush()
-        job = ProcessingJob(book_image_id=image.id, status=ProcessingJobStatus.DONE, attempts=1)
+        job = ProcessingJob(
+            book_image_id=image.id,
+            status=ProcessingJobStatus.DONE,
+            attempts=1,
+            library_id=lib_id,
+        )
         session.add(job)
         await session.commit()
         await session.refresh(job)
         job_id = job.id
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        async with test_session() as session:
-            headers = await _auth_headers(client, session)
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        assert login.status_code == 200
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
         response = await client.get(f"/api/v1/jobs/{job_id}", headers=headers)
 
@@ -173,3 +190,39 @@ async def test_job_status_endpoint_returns_correct_status(test_session: async_se
     assert payload["id"] == str(job_id)
     assert payload["status"] == "done"
     assert payload["attempts"] == 1
+
+
+@pytest.mark.asyncio
+async def test_job_status_endpoint_rejects_legacy_null_library(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Jobs with library_id=NULL (legacy/backfill rows) must not be returned to
+    a library-scoped caller — that would be a cross-tenant IDOR."""
+    async with test_session() as session:
+        await _seed_user(session)
+        image = BookImage(minio_path="uploads/file.jpg")
+        session.add(image)
+        await session.flush()
+        # library_id intentionally left None to simulate a legacy row
+        job = ProcessingJob(
+            book_image_id=image.id,
+            status=ProcessingJobStatus.DONE,
+            attempts=1,
+            library_id=None,
+        )
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+        job_id = job.id
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        assert login.status_code == 200
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+        response = await client.get(f"/api/v1/jobs/{job_id}", headers=headers)
+
+    assert response.status_code == 404
