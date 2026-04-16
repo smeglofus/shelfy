@@ -128,6 +128,13 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # API responses are JSON-only; lock down what a browser can do with
+        # them in case anything is ever rendered. Frontend serves its own
+        # bundle from a separate origin and sets its own CSP.
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        )
         # HSTS only in production (Traefik handles TLS termination)
         if get_settings().environment == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
