@@ -28,6 +28,7 @@ from app.api.scan import router as scan_router
 from app.api.settings import router as settings_router
 from app.api.telemetry import router as telemetry_router
 from app.core.config import get_settings
+from app.core.csrf import CSRFMiddleware
 from app.core.limiter import limiter
 from app.core.logging import configure_structlog
 from app.core.metrics import record_http_request
@@ -140,13 +141,24 @@ def create_app() -> FastAPI:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
+    # ── CSRF protection ────────────────────────────────────────────────────────
+    # Double-submit cookie pattern. Enforced on all state-changing methods
+    # except a small whitelist (login / register / refresh / OAuth / Stripe
+    # webhook / telemetry). Bearer-authenticated requests are exempt. See
+    # app/core/csrf.py for the full contract.
+    app.add_middleware(CSRFMiddleware)
+
     # ── CORS ──────────────────────────────────────────────────────────────────
+    # ``allow_credentials=True`` is what lets the browser send the HttpOnly
+    # auth cookies on cross-origin XHR; the wildcard-origin config validator
+    # in app/core/config.py refuses to pair it with "*".
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["x-request-id"],
     )
 
     app.include_router(health_router)

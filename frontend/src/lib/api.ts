@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 
-import { clearTokens, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from './auth'
+import { clearTokens, getAccessToken, getCsrfToken, setAccessToken } from './auth'
 import type {
   AccessTokenResponse,
   AddMemberRequest,
@@ -69,13 +69,10 @@ function clearActiveLibraryId(): void {
 }
 
 async function recoverActiveLibraryIdFromServer(): Promise<string | null> {
-  const token = getAccessToken()
-  if (!token) return null
-
   try {
-    const response = await axios.get<Library[]>(`${apiBaseUrl}/api/v1/libraries`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    // Cookie-auth: no Authorization header; axios instance has
+    // withCredentials=true so the httpOnly access_token cookie flows.
+    const response = await apiClient.get<Library[]>('/api/v1/libraries')
     const nextId = response.data[0]?.id ?? null
     if (nextId) {
       localStorage.setItem(ACTIVE_LIBRARY_ID_KEY, nextId)
@@ -94,6 +91,9 @@ if (!apiBaseUrl) {
 
 const apiClient = axios.create({
   baseURL: apiBaseUrl,
+  // Send HttpOnly auth cookies on cross-origin XHR. Paired with
+  // allow_credentials=True on the backend CORS middleware.
+  withCredentials: true,
 })
 
 let onUnauthorized: (() => void) | null = null
@@ -109,25 +109,16 @@ export function registerAuthHandlers(handlers: {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) {
-    return null
-  }
-
   if (!refreshPromise) {
+    // Empty body — the backend reads the HttpOnly refresh_token cookie.
+    // The response sets a fresh access_token cookie via Set-Cookie which
+    // the browser will attach to subsequent requests automatically.
     refreshPromise = apiClient
-      .post<AccessTokenResponse | TokenResponse>('/api/v1/auth/refresh', {
-        refresh_token: refreshToken,
-      })
+      .post<AccessTokenResponse | TokenResponse>('/api/v1/auth/refresh', {})
       .then((response) => {
         const nextAccessToken = response.data.access_token
         setAccessToken(nextAccessToken)
         onTokenRefresh?.(nextAccessToken)
-
-        if ('refresh_token' in response.data && response.data.refresh_token) {
-          setRefreshToken(response.data.refresh_token)
-        }
-
         return nextAccessToken
       })
       .catch(() => {
@@ -143,15 +134,36 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise
 }
 
+const CSRF_EXEMPT_PATHS = new Set<string>([
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/google/authorize',
+  '/api/v1/auth/google/callback',
+])
+
 apiClient.interceptors.request.use((config) => {
-  const token = getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  // Auth travels in the HttpOnly cookie (withCredentials=true on the
+  // instance). We no longer attach Authorization: Bearer from JS — that
+  // would only work if tokens were accessible to JS, which is precisely
+  // what issue #117 moved us away from.
 
   const libraryId = getActiveLibraryId()
   if (libraryId) {
     config.headers['X-Library-Id'] = libraryId
+  }
+
+  // CSRF double-submit: echo the csrf_token cookie into a custom header
+  // on mutating requests. The backend (app/core/csrf.py) rejects any
+  // cookie-authenticated mutation whose header doesn't match.
+  const method = (config.method ?? 'get').toUpperCase()
+  const url = config.url ?? ''
+  const requiresCsrf = !['GET', 'HEAD', 'OPTIONS'].includes(method) && !CSRF_EXEMPT_PATHS.has(url)
+  if (requiresCsrf) {
+    const csrf = getCsrfToken()
+    if (csrf) {
+      config.headers['X-CSRF-Token'] = csrf
+    }
   }
 
   return config
@@ -167,8 +179,8 @@ apiClient.interceptors.response.use(
       const nextAccessToken = await refreshAccessToken()
 
       if (nextAccessToken) {
-        originalRequest.headers = originalRequest.headers ?? {}
-        originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`
+        // Retry with the same cookies now pointing at the rotated
+        // access_token — no header tweak needed.
         return apiClient(originalRequest)
       }
     }
@@ -220,9 +232,20 @@ export async function register(payload: RegisterRequest): Promise<User> {
   return response.data
 }
 
-export async function refreshToken(payload: { refresh_token: string }): Promise<AccessTokenResponse | TokenResponse> {
-  const response = await apiClient.post<AccessTokenResponse | TokenResponse>('/api/v1/auth/refresh', payload)
+export async function refreshToken(): Promise<AccessTokenResponse | TokenResponse> {
+  // Cookie-based: empty body, the backend reads the httpOnly refresh_token cookie.
+  const response = await apiClient.post<AccessTokenResponse | TokenResponse>('/api/v1/auth/refresh', {})
   return response.data
+}
+
+export async function logout(): Promise<void> {
+  // Server clears all three auth cookies on the response. Ignore errors —
+  // the frontend still clears its local state regardless.
+  try {
+    await apiClient.post('/api/v1/auth/logout')
+  } catch {
+    /* best-effort */
+  }
 }
 
 export async function getCurrentUser(): Promise<User> {

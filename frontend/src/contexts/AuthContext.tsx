@@ -6,11 +6,11 @@ import {
   getCurrentUser,
   googleOAuthCallback,
   login as apiLogin,
-  refreshToken,
+  logout as apiLogout,
   register as apiRegister,
   registerAuthHandlers,
 } from '../lib/api'
-import { clearTokens, getRefreshToken, setAccessToken, setRefreshToken } from '../lib/auth'
+import { clearTokens, setAccessToken } from '../lib/auth'
 import { identifyUser, resetUser, trackEvent } from '../lib/analytics'
 import type { User } from '../lib/types'
 
@@ -30,10 +30,15 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [user, setUser] = useState<User | null>(null)
+  // ``accessToken`` is kept in React state only as a cheap "am I authenticated?"
+  // flag for downstream consumers. The real credential lives in an HttpOnly
+  // cookie and is never visible to this JS.
   const [accessToken, setAccessTokenState] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const logout = useCallback(() => {
+    // Fire-and-forget; the server clears the auth cookies server-side.
+    void apiLogout()
     clearTokens()
     try {
       localStorage.removeItem(ACTIVE_LIBRARY_ID_KEY)
@@ -61,8 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const tokens = await apiLogin({ email, password })
+      // Backend has already set the HttpOnly cookies; the access_token in
+      // the body is only used as our in-memory "logged in" indicator.
       applyAccessToken(tokens.access_token)
-      setRefreshToken(tokens.refresh_token)
       await fetchUser()
     },
     [applyAccessToken, fetchUser],
@@ -81,7 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (code: string, state: string) => {
       const tokens = await googleOAuthCallback({ code, state })
       applyAccessToken(tokens.access_token)
-      setRefreshToken(tokens.refresh_token)
       await fetchUser()
     },
     [applyAccessToken, fetchUser],
@@ -97,20 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyAccessToken, logout])
 
   useEffect(() => {
+    // Bootstrap: if the HttpOnly cookie is still valid, /auth/me returns
+    // the user. If not, we surface the unauthenticated state. No token
+    // plumbing from client-side storage is needed anymore.
     const bootstrap = async () => {
-      const existingRefreshToken = getRefreshToken()
-      if (!existingRefreshToken) {
-        setIsLoading(false)
-        return
-      }
-
       try {
-        const refreshed = await refreshToken({ refresh_token: existingRefreshToken })
-        applyAccessToken(refreshed.access_token)
-        if ('refresh_token' in refreshed && refreshed.refresh_token) {
-          setRefreshToken(refreshed.refresh_token)
-        }
         await fetchUser()
+        // Success → we have a live session. Set a non-empty marker so
+        // `isAuthenticated` flips without exposing the real token.
+        applyAccessToken('session')
       } catch {
         clearTokens()
       } finally {

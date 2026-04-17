@@ -3,17 +3,30 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cookies import ACCESS_COOKIE_NAME
 from app.core.security import decode_token
 from app.db.session import get_db_session
 from app.models.user import User
 from app.services.auth import get_user_by_email
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# auto_error=False so a missing Authorization header doesn't short-circuit
+# with a 401 before we've had a chance to look at the cookie. This keeps
+# the auto-generated OpenAPI "Authorize" button working for Bearer tokens
+# while allowing the SPA to authenticate purely via httpOnly cookie.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+
+
+def _extract_token(request: Request, bearer_token: str | None) -> str | None:
+    """Prefer the httpOnly cookie (SPA), fall back to the Bearer header (mobile / CLI)."""
+    cookie_token = request.cookies.get(ACCESS_COOKIE_NAME)
+    if cookie_token:
+        return cookie_token
+    return bearer_token
 
 
 async def get_current_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
+    bearer_token: str | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_db_session),
 ) -> User:
     credentials_exception = HTTPException(
@@ -21,6 +34,11 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    token = _extract_token(request, bearer_token)
+    if not token:
+        raise credentials_exception
+
     try:
         payload = decode_token(token)
     except JWTError as exc:

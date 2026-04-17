@@ -96,6 +96,19 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: ['shelfy.cz', 'www.shelfy.cz'],
+    // Same-origin /api proxy for local dev. The SPA now authenticates via
+    // HttpOnly cookies with SameSite=Lax; those only flow on same-origin
+    // XHR, so in dev the backend must appear to live at the same origin
+    // as Vite. In production Traefik already merges frontend + API under
+    // one origin. Override the target via VITE_DEV_PROXY_TARGET if the
+    // backend runs somewhere other than localhost:8000.
+    proxy: {
+      '/api': {
+        target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   test: {
     environment: 'jsdom',

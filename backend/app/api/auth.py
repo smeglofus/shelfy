@@ -12,6 +12,7 @@ import redis.asyncio as aioredis
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.redis import get_redis
 from app.core.config import Settings, get_settings
+from app.core.cookies import clear_auth_cookies, set_access_cookie, set_auth_cookies
 from app.core.limiter import limiter
 from app.core.security import verify_password
 from app.db.session import get_db_session
@@ -71,24 +72,76 @@ async def register(
 async def login(
     request: Request,
     payload: LoginRequest,
+    response: Response,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> TokenResponse:
     user = await authenticate_user(session, str(payload.email), payload.password)
     access_token, refresh_token = issue_token_pair(user.email, settings)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    # Set httpOnly access + refresh cookies plus a fresh CSRF token. The
+    # SPA reads the csrf_token cookie (non-HttpOnly) and echoes it in the
+    # X-CSRF-Token header on mutations; see app/core/csrf.py.
+    csrf_value = set_auth_cookies(
+        response,
+        settings=settings,
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
+    # Bearer tokens are still returned in the body so mobile / CLI clients
+    # (or integration tests) that don't participate in the cookie flow
+    # continue to work unchanged.
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        csrf_token=csrf_value,
+    )
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
 @limiter.limit(SETTINGS.rate_limit_refresh)
 async def refresh_token(
     request: Request,
+    response: Response,
     payload: RefreshRequest,
     settings: Settings = Depends(get_settings),
 ) -> AccessTokenResponse:
-    subject = read_refresh_token_subject(payload.refresh_token)
+    # Prefer the httpOnly refresh cookie (SPA). Fall back to the body
+    # (legacy mobile / CLI clients). Exactly one of these paths is taken.
+    cookie_refresh = request.cookies.get("refresh_token")
+    token = cookie_refresh or payload.refresh_token
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token missing",
+        )
+
+    subject = read_refresh_token_subject(token)
     access_token, _ = issue_token_pair(subject, settings)
+
+    # Refresh only rotates the short-lived access cookie — keep the same
+    # refresh cookie (sliding-window rotation is a separate ticket).
+    set_access_cookie(response, settings=settings, access_token=access_token)
     return AccessTokenResponse(access_token=access_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    """Clear all auth cookies.
+
+    Stateless by design — the JWTs themselves remain technically valid
+    until their TTL expires, but the browser can no longer present them
+    after this call. A token-revocation list is follow-up work; the
+    shortened access TTL (15 min) limits the window in the meantime.
+
+    We construct the Response directly (rather than relying on a
+    DI-injected one + an empty body) so the Set-Cookie headers land on
+    the actual HTTP response instead of an ignored side-channel.
+    """
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_auth_cookies(response, settings=settings)
+    return response
 
 
 @router.get("/me", response_model=UserResponse)
@@ -169,7 +222,11 @@ async def delete_account(
     await session.delete(current_user)
     await session.commit()
     logger.info("account_deleted", user_id=user_id)
-    return Response(status_code=204)
+    # Log the caller out so their browser doesn't keep replaying a dead
+    # session cookie on subsequent requests.
+    response = Response(status_code=204)
+    clear_auth_cookies(response, settings=settings)
+    return response
 
 
 # ── GDPR: data export (Art. 20 — right to data portability) ───────────────────
@@ -318,6 +375,7 @@ async def google_authorize(
 @router.post("/google/callback", response_model=TokenResponse)
 async def google_callback(
     payload: OAuthCallbackRequest,
+    response: Response,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     redis_client: aioredis.Redis = Depends(get_redis),
@@ -359,7 +417,17 @@ async def google_callback(
     # 5. Find / link / create user
     user = await find_or_create_google_user(session, google_sub, email, avatar_url)
 
-    # 6. Issue token pair (same shape as /login)
+    # 6. Issue token pair (same shape as /login) + set cookies.
     access_token, refresh_token = issue_token_pair(user.email, settings)
+    csrf_value = set_auth_cookies(
+        response,
+        settings=settings,
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
     logger.info("oauth_google_login", user_id=str(user.id))
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        csrf_token=csrf_value,
+    )

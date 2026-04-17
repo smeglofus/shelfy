@@ -92,8 +92,20 @@ test(`${P0} protected routes redirect to login when unauthenticated`, async ({ p
 
 // ── 2. Login + logout round-trip ─────────────────────────────────────────────
 
-test(`${P0} auth login + logout flow`, async ({ page }) => {
+test(`${P0} auth login + logout flow`, async ({ page, context }) => {
   await login(page)
+
+  // ADR 007: After login the backend sets HttpOnly access_token + refresh_token
+  // cookies plus a non-HttpOnly csrf_token cookie (read by JS for double-submit).
+  // Assert all three are present so a regression that silently drops cookie-mode
+  // (e.g. removing set_auth_cookies from the login endpoint) fails here.
+  const cookiesAfterLogin = await context.cookies()
+  const names = cookiesAfterLogin.map((c) => c.name)
+  expect(names).toContain('access_token')
+  expect(names).toContain('refresh_token')
+  expect(names).toContain('csrf_token')
+  const accessCookie = cookiesAfterLogin.find((c) => c.name === 'access_token')!
+  expect(accessCookie.httpOnly).toBe(true)
 
   // SPA nav — avoids full page reload and the accompanying refresh-token call
   await clickSettingsNav(page)
@@ -101,6 +113,13 @@ test(`${P0} auth login + logout flow`, async ({ page }) => {
   await page.getByRole('button', { name: /Odhlásit|Logout/i }).first().click()
 
   await expect(page).toHaveURL(/\/login$/)
+
+  // Logout must clear the auth cookies server-side. After redirect, the
+  // browser should no longer have access_token / refresh_token set.
+  const cookiesAfterLogout = await context.cookies()
+  const namesAfterLogout = cookiesAfterLogout.map((c) => c.name)
+  expect(namesAfterLogout).not.toContain('access_token')
+  expect(namesAfterLogout).not.toContain('refresh_token')
 })
 
 // ── 3. Books page renders ────────────────────────────────────────────────────
@@ -128,7 +147,9 @@ test(`${P0} create manual book persists after reload`, async ({ page }) => {
   await login(page)
   await createManualBook(page, title, 'P0 Author')
 
-  // Full page reload: app re-bootstraps auth from localStorage, re-fetches books
+  // Full page reload: app re-bootstraps auth from HttpOnly cookies
+  // (access_token + refresh_token are persisted by the browser across reloads),
+  // calls /auth/me, then re-fetches books.
   await page.reload()
   await page.waitForURL(/\/books$/, { timeout: 30_000 })
   await page.waitForLoadState('networkidle')

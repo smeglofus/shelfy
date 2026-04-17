@@ -14,13 +14,29 @@ class RegisterRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
+    """Response shape for login / OAuth callback.
+
+    The SPA authenticates via the httpOnly ``access_token`` / ``refresh_token``
+    cookies set alongside this body. ``csrf_token`` mirrors the value of
+    the ``csrf_token`` cookie so a freshly loaded client can populate its
+    CSRF header without waiting for a subsequent response.
+
+    ``access_token`` / ``refresh_token`` remain in the body for backward
+    compatibility with the Bearer-header code paths used by mobile / CLI
+    clients — they are set to empty strings in environments where raw
+    token issuance to the body is disabled.
+    """
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    csrf_token: str | None = None
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    # Optional — cookie-based SPA clients submit an empty body and rely on
+    # the HttpOnly refresh_token cookie to be replayed by the browser.
+    refresh_token: str | None = None
 
 
 class AccessTokenResponse(BaseModel):

@@ -327,3 +327,236 @@ async def test_purge_library_oauth_only_allows_delete_confirmation_without_passw
         response = await client.post("/api/v1/settings/purge-library", json={"password": ""}, headers=headers)
 
     assert response.status_code == 200
+
+
+# ── Cookie-based auth + CSRF (issue #117) ─────────────────────────────────────
+
+
+def _cookie_attrs(set_cookie_header: str) -> dict[str, str]:
+    """Parse a Set-Cookie header into {attr_name_lower: value_or_empty}."""
+    parts = [p.strip() for p in set_cookie_header.split(";")]
+    out: dict[str, str] = {}
+    for i, part in enumerate(parts):
+        if "=" in part:
+            k, v = part.split("=", 1)
+        else:
+            k, v = part, ""
+        # First pair is the cookie's name=value — ignore for attribute dict
+        if i == 0:
+            out["__name__"] = k
+            out["__value__"] = v
+        else:
+            out[k.lower()] = v
+    return out
+
+
+@pytest.mark.asyncio
+async def test_login_sets_httponly_auth_cookies(test_session: AsyncSession) -> None:
+    """Login must set access_token + refresh_token HttpOnly cookies and a
+    non-HttpOnly csrf_token cookie readable by JS."""
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+
+    assert response.status_code == 200
+    set_cookies = response.headers.get_list("set-cookie")
+    assert len(set_cookies) == 3, f"Expected 3 Set-Cookie headers, got {set_cookies}"
+
+    by_name = {_cookie_attrs(c)["__name__"]: _cookie_attrs(c) for c in set_cookies}
+    assert set(by_name) == {"access_token", "refresh_token", "csrf_token"}
+
+    access = by_name["access_token"]
+    assert "httponly" in access
+    assert access.get("samesite", "").lower() == "lax"
+    assert access.get("path") == "/api/v1"
+
+    refresh = by_name["refresh_token"]
+    assert "httponly" in refresh
+    assert refresh.get("path") == "/api/v1/auth"
+
+    csrf = by_name["csrf_token"]
+    # CSRF cookie MUST be reachable from JS to enable double-submit.
+    assert "httponly" not in csrf
+    assert csrf["__value__"]  # non-empty token
+
+    # Response body mirrors the csrf cookie value so a just-loaded SPA can
+    # populate its header immediately.
+    assert response.json()["csrf_token"] == csrf["__value__"]
+
+
+@pytest.mark.asyncio
+async def test_protected_endpoint_accepts_cookie_auth(test_session: AsyncSession) -> None:
+    """Authenticating purely via the HttpOnly cookie (no Bearer header) succeeds."""
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        assert login.status_code == 200
+        # AsyncClient auto-persists cookies set by the server. Drop the
+        # Bearer path entirely — request is cookie-only.
+        response = await client.get("/api/v1/auth/me")
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "admin@example.com"
+
+
+@pytest.mark.asyncio
+async def test_refresh_via_cookie_without_body(test_session: AsyncSession) -> None:
+    """SPA refresh: empty body, relies on HttpOnly refresh_token cookie."""
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        # No refresh_token in body — the server must read the cookie.
+        response = await client.post("/api/v1/auth/refresh", json={})
+
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_refresh_without_cookie_or_body_returns_401(test_session: AsyncSession) -> None:
+    """With no cookie AND no body, refresh must reject."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/v1/auth/refresh", json={})
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_logout_clears_all_auth_cookies(test_session: AsyncSession) -> None:
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        # Read csrf_token cookie value for header echo (CSRF middleware).
+        csrf = client.cookies.get("csrf_token")
+        assert csrf
+
+        response = await client.post(
+            "/api/v1/auth/logout",
+            headers={"X-CSRF-Token": csrf},
+        )
+
+    assert response.status_code == 204
+    expired_cookies = response.headers.get_list("set-cookie")
+    assert len(expired_cookies) == 3
+    for c in expired_cookies:
+        attrs = _cookie_attrs(c)
+        # max-age=0 expires the cookie. Value is empty (Starlette emits
+        # it as an empty-double-quoted string on some versions, "" or '""').
+        assert attrs.get("max-age") == "0"
+        assert attrs["__value__"] in ("", '""')
+
+
+@pytest.mark.asyncio
+async def test_csrf_blocks_cookie_auth_mutation_without_header(test_session: AsyncSession) -> None:
+    """A cookie-authenticated POST / DELETE without X-CSRF-Token must 403."""
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        # DELETE on a mutation endpoint without the CSRF header.
+        response = await client.request(
+            "DELETE",
+            "/api/v1/auth/me",
+            json={"password": "secret"},
+        )
+
+    assert response.status_code == 403
+    assert "CSRF" in response.json().get("detail", "")
+
+
+@pytest.mark.asyncio
+async def test_csrf_blocks_mismatched_token(test_session: AsyncSession) -> None:
+    """Header present but not matching the cookie value → 403."""
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        response = await client.request(
+            "DELETE",
+            "/api/v1/auth/me",
+            json={"password": "secret"},
+            headers={"X-CSRF-Token": "not-the-real-token"},
+        )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_csrf_allows_bearer_mutation_without_header(
+    test_session: AsyncSession,
+    test_settings: Settings,
+) -> None:
+    """Bearer clients are exempt — the Authorization header can't be forged
+    cross-origin without CORS cooperation, so CSRF doesn't apply."""
+    await _seed_user(test_session)
+    access, _ = issue_token_pair("admin@example.com", test_settings)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.request(
+            "DELETE",
+            "/api/v1/auth/me",
+            json={"password": "secret"},
+            headers={"Authorization": f"Bearer {access}"},
+        )
+
+    assert response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_csrf_pass_with_matching_header(test_session: AsyncSession) -> None:
+    """The happy path: cookie + matching header → request proceeds."""
+    await _seed_user(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "secret"},
+        )
+        csrf = client.cookies.get("csrf_token")
+        assert csrf
+
+        response = await client.request(
+            "DELETE",
+            "/api/v1/auth/me",
+            json={"password": "secret"},
+            headers={"X-CSRF-Token": csrf},
+        )
+
+    assert response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_csrf_whitelisted_endpoints_do_not_require_token() -> None:
+    """Login/register/refresh are explicitly whitelisted — a browser visiting
+    the app for the first time has no cookie yet."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Register with no cookie and no CSRF header must reach the
+        # business logic (it'll succeed with 201, not 403).
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "fresh@example.com", "password": "secret123"},
+        )
+
+    assert response.status_code == 201
