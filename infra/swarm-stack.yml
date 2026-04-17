@@ -57,6 +57,13 @@ services:
     networks:
       - internal
     deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1536M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
       restart_policy:
         condition: on-failure
 
@@ -93,6 +100,13 @@ services:
       - public
       - internal
     deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1536M
+        reservations:
+          cpus: "0.50"
+          memory: 512M
       labels:
         - traefik.enable=true
         - traefik.http.routers.minio-api.rule=Host(`${MINIO_API_HOST}`)
@@ -174,6 +188,13 @@ services:
     networks:
       - internal
     deploy:
+      resources:
+        limits:
+          cpus: "2.00"
+          memory: 2048M
+        reservations:
+          cpus: "0.50"
+          memory: 512M
       restart_policy:
         condition: on-failure
 
