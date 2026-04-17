@@ -193,24 +193,33 @@ async def test_job_status_endpoint_returns_correct_status(test_session: async_se
 
 
 @pytest.mark.asyncio
-async def test_job_status_endpoint_rejects_legacy_null_library(
+async def test_job_status_endpoint_rejects_cross_library_access(
     test_session: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Jobs with library_id=NULL (legacy/backfill rows) must not be returned to
-    a library-scoped caller — that would be a cross-tenant IDOR."""
+    """A user must not be able to read a ProcessingJob belonging to another
+    library — the equality check on ``library_id`` (now NOT NULL post-
+    migration 20260417_000016) is the sole IDOR gate."""
     async with test_session() as session:
-        await _seed_user(session)
+        # Seed victim with a job in their own library.
+        victim = User(email="victim@example.com", hashed_password=get_password_hash("secret"))
+        session.add(victim)
+        await session.flush()
+        victim_lib = await create_personal_library(session, victim)
         image = BookImage(minio_path="uploads/file.jpg")
         session.add(image)
         await session.flush()
-        # library_id intentionally left None to simulate a legacy row
         job = ProcessingJob(
             book_image_id=image.id,
             status=ProcessingJobStatus.DONE,
             attempts=1,
-            library_id=None,
+            library_id=victim_lib.id,
         )
         session.add(job)
+        # Seed attacker with their own separate library.
+        attacker = User(email="attacker@example.com", hashed_password=get_password_hash("secret"))
+        session.add(attacker)
+        await session.flush()
+        await create_personal_library(session, attacker)
         await session.commit()
         await session.refresh(job)
         job_id = job.id
@@ -218,11 +227,12 @@ async def test_job_status_endpoint_rejects_legacy_null_library(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         login = await client.post(
             "/api/v1/auth/login",
-            json={"email": "admin@example.com", "password": "secret"},
+            json={"email": "attacker@example.com", "password": "secret"},
         )
         assert login.status_code == 200
         headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
         response = await client.get(f"/api/v1/jobs/{job_id}", headers=headers)
 
+    # Indistinguishable from "never existed" — do not leak existence.
     assert response.status_code == 404

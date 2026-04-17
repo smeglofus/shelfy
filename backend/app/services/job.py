@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
@@ -17,7 +16,7 @@ MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 async def create_upload_job(
     session: AsyncSession,
     upload_file: UploadFile,
-    library_id: Optional[uuid.UUID] = None,
+    library_id: uuid.UUID,
 ) -> tuple[ProcessingJob, str]:
     content_type = upload_file.content_type
     if content_type is None:
@@ -73,24 +72,18 @@ async def create_upload_job(
 
 
 async def get_job_or_404(
-    session: AsyncSession, job_id: uuid.UUID, library_id: Optional[uuid.UUID] = None
+    session: AsyncSession, job_id: uuid.UUID, library_id: uuid.UUID
 ) -> ProcessingJob:
-    """Fetch job by ID, enforcing library scoping when *library_id* is supplied.
+    """Fetch a job by ID, scoped to the caller's library.
 
-    All jobs created via the API after the multi-library migration carry a
-    library_id. A small population of legacy rows can still have
-    library_id IS NULL — for those we deny access from a library-scoped caller
-    instead of falling through, because there is no way to verify ownership of
-    a null-library job and allowing any user would be a cross-tenant IDOR.
-    Internal callers that pass *library_id*=None still see legacy jobs.
+    ``processing_jobs.library_id`` is NOT NULL post-migration
+    ``20260417_000016``, so this is a straight equality check — any
+    mismatch (or missing row) is indistinguishable from "not found" to
+    avoid leaking existence across tenants.
     """
     result = await session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     job = result.scalar_one_or_none()
-    if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-
-    if library_id is not None and job.library_id != library_id:
-        # Mismatched library_id OR legacy null-library job — both are denied.
+    if job is None or job.library_id != library_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     return job
