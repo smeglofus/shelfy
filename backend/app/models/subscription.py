@@ -58,6 +58,13 @@ class Subscription(Base):
     trial_ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     current_period_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # High-water mark for the Stripe event.created timestamp that most recently
+    # mutated this row. Older events are marked processed (stripe_events row
+    # still gets written) but their side-effects are skipped to protect against
+    # out-of-order webhook delivery. See migration 20260417_000017.
+    last_stripe_event_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

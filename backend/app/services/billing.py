@@ -4,15 +4,30 @@ All Stripe API calls are synchronous (stripe-python SDK) and are executed
 in a worker thread via anyio.to_thread.run_sync to avoid blocking the event loop.
 
 Webhook handling flow:
-  1. Validate Stripe-Signature header
-  2. Dispatch to event-specific handler
-  3. Update local Subscription record in Postgres
+  1. Validate Stripe-Signature header (HMAC via ``stripe.Webhook.construct_event``).
+  2. Claim the event by inserting into ``stripe_events`` (idempotency key).
+     The insert + dispatch share ONE transaction — if dispatch raises, both
+     the claim row and any partial side-effect are rolled back, so Stripe's
+     retry lands on a clean slate.
+  3. Dispatch to event-specific handler. Handlers mutate the local row in
+     place and rely on the outer transaction to commit.
+
+Out-of-order protection:
+  Stripe does not guarantee event ordering. For events that mutate the
+  ``Subscription`` row we compare ``event.created`` against
+  ``Subscription.last_stripe_event_at`` and skip older side-effects.
 
 Supported events:
-  checkout.session.completed    → link stripe_subscription_id after purchase
-  customer.subscription.created
-  customer.subscription.updated → update plan / status / period
-  customer.subscription.deleted → mark as canceled
+  checkout.session.completed      → link stripe_subscription_id after purchase
+  customer.subscription.created   → sync plan / status / period
+  customer.subscription.updated   → sync plan / status / period
+  customer.subscription.deleted   → mark as canceled
+  invoice.payment_succeeded       → recover past_due → active, extend period
+  invoice.payment_failed          → flip to past_due (entitlements fall back to free)
+
+Unknown event types are recorded in ``stripe_events`` (so Stripe stops
+retrying) but otherwise ignored — safe default per Stripe guidance:
+https://stripe.com/docs/webhooks/best-practices#event-handling
 """
 from __future__ import annotations
 
@@ -22,9 +37,11 @@ from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar
 
 import stripe as _stripe
+import structlog
 from anyio import to_thread
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -35,6 +52,9 @@ from app.models.subscription import (
     StripeEvent,
 )
 from app.models.user import User
+
+
+logger = structlog.get_logger()
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -81,6 +101,11 @@ _STATUS_MAP: dict[str, SubscriptionStatus] = {
     "incomplete_expired": SubscriptionStatus.canceled,
     "paused":             SubscriptionStatus.past_due,
 }
+
+
+def _ts(val: int | None) -> datetime | None:
+    """Convert a Unix timestamp (seconds) from Stripe to an aware datetime."""
+    return datetime.fromtimestamp(val, tz=timezone.utc) if val else None
 
 
 # ── Customer management ────────────────────────────────────────────────────────
@@ -211,11 +236,44 @@ async def handle_webhook_event(
 ) -> None:
     """Validate Stripe webhook signature, deduplicate, and dispatch to handler.
 
-    Stripe delivers webhooks at-least-once (and sometimes out-of-order).
-    We guard against duplicate processing by recording each event.id in the
-    stripe_events table before dispatching. A second delivery of the same
-    event_id is a no-op.
+    Contract with the caller:
+      * The caller hands us a session that has NOT yet been committed. We own
+        the transaction: on success we commit; on failure we rollback and
+        re-raise. This is the key fix for issue #120 — previously the sub-
+        handlers each did their own ``session.commit()``, so a failure after
+        the ``StripeEvent`` row was flushed could leave a stale claim with no
+        side-effect, permanently losing the update on the next delivery.
+
+    Security:
+      * ``settings.stripe_webhook_secret`` must be set; otherwise 503.
+      * Missing ``Stripe-Signature`` header → 400 before touching the SDK.
+      * ``stripe.Webhook.construct_event`` is used for HMAC verification —
+        it compares timestamps and signature in constant time internally.
+
+    Idempotency:
+      * Claim the event by inserting ``StripeEvent(event_id=...)``. Relies on
+        the PRIMARY KEY constraint. If ``IntegrityError`` is raised we treat
+        it as "another delivery already processed this one" and return 200
+        after rolling back — never re-applies side-effects.
+
+    Out-of-order:
+      * ``event.created`` is threaded into each subscription-mutating handler.
+        The handler compares it against ``Subscription.last_stripe_event_at``
+        and skips the side effect (but keeps the event recorded) when older.
     """
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe webhook is not configured",
+        )
+
+    # Reject missing signature before we call the SDK (faster, clearer error).
+    if not sig_header:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing Stripe signature",
+        )
+
     _stripe.api_key = settings.stripe_secret_key
 
     try:
@@ -227,43 +285,107 @@ async def handle_webhook_event(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid Stripe signature",
         ) from exc
+    except ValueError as exc:
+        # construct_event raises ValueError for malformed JSON payloads.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Stripe webhook payload",
+        ) from exc
 
     event_id: str = event["id"]
     event_type: str = event["type"]
+    # Stripe objects support subscript but not dict.get() in all SDK versions.
+    try:
+        _created_raw = event["created"]
+    except (KeyError, AttributeError):
+        _created_raw = None
+    event_created_at: datetime = _ts(_created_raw) or datetime.now(timezone.utc)
 
-    # ── Idempotency check ─────────────────────────────────────────────────────
-    # If this event_id was already processed (duplicate delivery) skip silently.
+    # ── Atomic claim-and-apply ────────────────────────────────────────────────
+    # Insert the StripeEvent row as our idempotency claim. The PRIMARY KEY on
+    # event_id makes this race-safe: if a concurrent delivery already claimed
+    # the event, either our SELECT finds it (fast path) or the INSERT raises
+    # IntegrityError (slow path) — both short-circuit to 200 with no side
+    # effect.
     existing = await session.get(StripeEvent, event_id)
     if existing is not None:
+        logger.info("stripe_webhook_duplicate", event_id=event_id, event_type=event_type)
         return
 
-    session.add(StripeEvent(
-        event_id=event_id,
-        event_type=event_type,
-        processed_at=datetime.now(timezone.utc),
-    ))
-    await session.flush()  # lock the row before we do any side-effects
+    session.add(
+        StripeEvent(
+            event_id=event_id,
+            event_type=event_type,
+            processed_at=datetime.now(timezone.utc),
+        )
+    )
 
-    # ── Dispatch ──────────────────────────────────────────────────────────────
-    data: Any = event["data"]["object"]
+    try:
+        # Flush the claim so a concurrent delivery racing in here hits the PK
+        # constraint now (before we've done any work). If the flush raises
+        # IntegrityError, another worker beat us — roll back and 200.
+        try:
+            await session.flush()
+        except IntegrityError:
+            await session.rollback()
+            logger.info(
+                "stripe_webhook_duplicate_race", event_id=event_id, event_type=event_type
+            )
+            return
 
-    if event_type == "checkout.session.completed":
-        await _handle_checkout_completed(session, data)
-    elif event_type in (
-        "customer.subscription.created",
-        "customer.subscription.updated",
-    ):
-        await _handle_subscription_updated(session, data, settings)
-    elif event_type == "customer.subscription.deleted":
-        await _handle_subscription_deleted(session, data)
-    # All other events (invoice.*, payment_intent.*, etc.) are silently ignored.
+        # Normalise the event data to a plain nested dict. ``StripeObject``
+        # in stripe-python 15+ does NOT expose a ``.get()`` method (attribute
+        # lookup routes through ``__getattr__`` → KeyError → AttributeError),
+        # which makes handlers that tolerate missing keys awkward. Converting
+        # once at dispatch time keeps handlers simple and lets tests pass in
+        # plain dicts directly.
+        raw_obj = event["data"]["object"]
+        if hasattr(raw_obj, "to_dict"):
+            data: dict[str, Any] = raw_obj.to_dict()
+        else:
+            data = dict(raw_obj)
 
+        if event_type == "checkout.session.completed":
+            await _handle_checkout_completed(session, data)
+        elif event_type in (
+            "customer.subscription.created",
+            "customer.subscription.updated",
+        ):
+            await _handle_subscription_updated(session, data, event_created_at, settings)
+        elif event_type == "customer.subscription.deleted":
+            await _handle_subscription_deleted(session, data, event_created_at)
+        elif event_type == "invoice.payment_succeeded":
+            await _handle_invoice_payment_succeeded(session, data, event_created_at)
+        elif event_type == "invoice.payment_failed":
+            await _handle_invoice_payment_failed(session, data, event_created_at)
+        else:
+            # Unknown / unsubscribed event type: claim is kept, no side-effect.
+            # This prevents Stripe from retrying forever for events we
+            # explicitly don't care about (payment_intent.*, charge.*, …).
+            logger.info(
+                "stripe_webhook_ignored_event", event_id=event_id, event_type=event_type
+            )
+
+        # Single commit for BOTH the claim row and any sub-handler mutation.
+        await session.commit()
+
+    except Exception:
+        # Rollback cancels the StripeEvent claim AND any partial side-effect
+        # — Stripe's retry (within ~3 days) lands on a clean slate.
+        await session.rollback()
+        raise
+
+
+# ── Event handlers ─────────────────────────────────────────────────────────────
 
 async def _handle_checkout_completed(
     session: AsyncSession,
     checkout_session: Any,
 ) -> None:
-    """Link stripe_subscription_id to our local subscription after a successful checkout."""
+    """Link stripe_subscription_id to our local subscription after a successful checkout.
+
+    Idempotent: overwriting the same value is a no-op.
+    """
     user_id_str: str | None = (checkout_session.get("metadata") or {}).get("user_id")
     stripe_sub_id: str | None = checkout_session.get("subscription")
 
@@ -281,15 +403,42 @@ async def _handle_checkout_completed(
     sub = result.scalar_one_or_none()
     if sub:
         sub.stripe_subscription_id = stripe_sub_id
-        await session.commit()
+        # NB: no commit here — the outer handle_webhook_event owns the tx.
+
+
+def _subscription_is_stale(sub: Subscription, event_created_at: datetime) -> bool:
+    """True when an incoming event.created is older than the last one applied.
+
+    Protects against out-of-order delivery: if an older event arrives after
+    a newer one we've already applied, its side-effect would silently undo
+    the newer state. We keep the dedup row (so Stripe stops retrying) but
+    skip the mutation.
+
+    Normalises both sides to tz-aware UTC — SQLite (used in tests) strips
+    tzinfo when it round-trips ``TIMESTAMP WITH TIME ZONE`` columns.
+    """
+    if sub.last_stripe_event_at is None:
+        return False
+    stored = sub.last_stripe_event_at
+    if stored.tzinfo is None:
+        stored = stored.replace(tzinfo=timezone.utc)
+    incoming = event_created_at
+    if incoming.tzinfo is None:
+        incoming = incoming.replace(tzinfo=timezone.utc)
+    return incoming < stored
 
 
 async def _handle_subscription_updated(
     session: AsyncSession,
     stripe_sub: Any,
+    event_created_at: datetime,
     settings: Settings,
 ) -> None:
-    """Sync plan, status, and period from a Stripe subscription object."""
+    """Sync plan, status, and period from a Stripe subscription object.
+
+    Idempotent + out-of-order safe: older events are recorded but skip the
+    mutation so newer state isn't clobbered.
+    """
     # Locate our local subscription via stripe_customer_id (most reliable)
     customer_id: str = stripe_sub["customer"]
     result = await session.execute(
@@ -313,6 +462,17 @@ async def _handle_subscription_updated(
     if sub is None:
         return
 
+    if _subscription_is_stale(sub, event_created_at):
+        logger.info(
+            "stripe_webhook_out_of_order_skipped",
+            customer_id=customer_id,
+            event_created_at=event_created_at.isoformat(),
+            last_event_at=(
+                sub.last_stripe_event_at.isoformat() if sub.last_stripe_event_at else None
+            ),
+        )
+        return
+
     # Status
     sub.status = _STATUS_MAP.get(stripe_sub["status"], SubscriptionStatus.active)
 
@@ -323,16 +483,12 @@ async def _handle_subscription_updated(
         sub.plan = _plan_from_price_id(price_id, settings)
 
     # Period timestamps
-    def _ts(val: int | None) -> datetime | None:
-        return datetime.fromtimestamp(val, tz=timezone.utc) if val else None
-
     sub.current_period_start = _ts(stripe_sub.get("current_period_start"))
     sub.current_period_end = _ts(stripe_sub.get("current_period_end"))
     sub.trial_ends_at = _ts(stripe_sub.get("trial_end"))
     sub.stripe_subscription_id = stripe_sub["id"]
     sub.stripe_customer_id = customer_id
-
-    await session.commit()
+    sub.last_stripe_event_at = event_created_at
 
 
 async def cancel_stripe_subscription(
@@ -368,6 +524,7 @@ async def cancel_stripe_subscription(
 async def _handle_subscription_deleted(
     session: AsyncSession,
     stripe_sub: Any,
+    event_created_at: datetime,
 ) -> None:
     """Mark our local subscription as canceled when Stripe deletes it."""
     customer_id: str = stripe_sub["customer"]
@@ -375,6 +532,104 @@ async def _handle_subscription_deleted(
         select(Subscription).where(Subscription.stripe_customer_id == customer_id)
     )
     sub = result.scalar_one_or_none()
-    if sub:
-        sub.status = SubscriptionStatus.canceled
-        await session.commit()
+    if sub is None:
+        return
+
+    if _subscription_is_stale(sub, event_created_at):
+        logger.info(
+            "stripe_webhook_out_of_order_skipped",
+            customer_id=customer_id,
+            event_type="customer.subscription.deleted",
+        )
+        return
+
+    sub.status = SubscriptionStatus.canceled
+    sub.last_stripe_event_at = event_created_at
+
+
+async def _handle_invoice_payment_succeeded(
+    session: AsyncSession,
+    invoice: Any,
+    event_created_at: datetime,
+) -> None:
+    """Recover a past_due subscription when a retried charge finally clears.
+
+    Stripe typically retries failed charges for up to ~3 weeks (smart retries).
+    When a retry succeeds we want to flip the local status back to ``active``
+    so entitlements stop falling back to the free tier immediately.
+
+    Idempotent: running this twice for the same invoice leaves the row at
+    ``active`` with the same period_end.
+    """
+    customer_id: str | None = invoice.get("customer")
+    if not customer_id:
+        return
+
+    result = await session.execute(
+        select(Subscription).where(Subscription.stripe_customer_id == customer_id)
+    )
+    sub = result.scalar_one_or_none()
+    if sub is None:
+        return
+
+    if _subscription_is_stale(sub, event_created_at):
+        logger.info(
+            "stripe_webhook_out_of_order_skipped",
+            customer_id=customer_id,
+            event_type="invoice.payment_succeeded",
+        )
+        return
+
+    # Only recover to active from a degraded state. We never *downgrade* a
+    # trialing / canceled subscription here — Stripe's subscription.updated
+    # is the canonical source for plan/status transitions.
+    current = SubscriptionStatus(sub.status)
+    if current in (SubscriptionStatus.past_due,):
+        sub.status = SubscriptionStatus.active
+
+    # Extend the local period_end if the invoice advances it (keeps UI
+    # consistent between subscription.updated and invoice events).
+    period_end = _ts(invoice.get("period_end"))
+    if period_end is not None:
+        if sub.current_period_end is None or period_end > sub.current_period_end:
+            sub.current_period_end = period_end
+
+    sub.last_stripe_event_at = event_created_at
+
+
+async def _handle_invoice_payment_failed(
+    session: AsyncSession,
+    invoice: Any,
+    event_created_at: datetime,
+) -> None:
+    """Flip the local subscription to past_due when a recurring charge fails.
+
+    This is what causes entitlements to fall back to the free tier
+    (``_effective_plan`` maps past_due → free). A later
+    ``invoice.payment_succeeded`` (smart retry) flips it back.
+    """
+    customer_id: str | None = invoice.get("customer")
+    if not customer_id:
+        return
+
+    result = await session.execute(
+        select(Subscription).where(Subscription.stripe_customer_id == customer_id)
+    )
+    sub = result.scalar_one_or_none()
+    if sub is None:
+        return
+
+    if _subscription_is_stale(sub, event_created_at):
+        logger.info(
+            "stripe_webhook_out_of_order_skipped",
+            customer_id=customer_id,
+            event_type="invoice.payment_failed",
+        )
+        return
+
+    # Only degrade from healthy states — don't clobber a canceled row.
+    current = SubscriptionStatus(sub.status)
+    if current in (SubscriptionStatus.active, SubscriptionStatus.trialing):
+        sub.status = SubscriptionStatus.past_due
+
+    sub.last_stripe_event_at = event_created_at
