@@ -15,7 +15,7 @@ class UsageSummary(BaseModel):
 
 
 class BillingStatusResponse(BaseModel):
-    plan: str                              # 'free' | 'pro' | 'library'
+    plan: str                              # 'free' | 'home' | 'pro' | 'library'
     status: str                            # 'active' | 'trialing' | 'canceled' | 'past_due'
     has_payment_method: bool               # True when stripe_customer_id is set
     trial_ends_at: Optional[datetime]
@@ -24,7 +24,15 @@ class BillingStatusResponse(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    plan: Literal["pro", "library"]
+    """Payload for POST /api/v1/billing/checkout.
+
+    ``interval`` defaults to ``monthly`` for backwards compatibility with
+    older clients that don't know about yearly pricing. The backend maps
+    the (plan, interval) pair to a concrete Stripe price ID.
+    """
+
+    plan: Literal["home", "pro", "library"]
+    interval: Literal["monthly", "yearly"] = "monthly"
 
 
 class CheckoutResponse(BaseModel):

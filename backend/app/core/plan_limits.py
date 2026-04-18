@@ -16,6 +16,16 @@ LIMITS: dict[SubscriptionPlan, dict[str, int]] = {
         "libraries": 1,
         "members_per_library": 1,
     },
+    # Home sits between free and pro — starter paid tier aimed at one
+    # household. TODO(product): confirm final numbers; these are provisional
+    # and chosen so Home is always strictly more generous than Free and
+    # strictly less generous than Pro.
+    SubscriptionPlan.home: {
+        "scans_per_month": 20,
+        "enrichments_per_month": 100,
+        "libraries": 1,
+        "members_per_library": 3,
+    },
     SubscriptionPlan.pro: {
         "scans_per_month": 50,
         "enrichments_per_month": -1,       # -1 = unlimited

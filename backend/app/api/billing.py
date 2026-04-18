@@ -84,9 +84,14 @@ async def create_checkout(
     """Create a Stripe Checkout Session. The response contains a redirect URL."""
     _require_stripe(settings)
     url = await billing_svc.create_checkout_session(
-        session, current_user, payload.plan, settings
+        session, current_user, payload.plan, settings, interval=payload.interval
     )
-    logger.info("checkout_session_created", user_id=str(current_user.id), plan=payload.plan)
+    logger.info(
+        "checkout_session_created",
+        user_id=str(current_user.id),
+        plan=payload.plan,
+        interval=payload.interval,
+    )
     return CheckoutResponse(url=url)
 
 

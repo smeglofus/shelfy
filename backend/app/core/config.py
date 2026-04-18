@@ -43,10 +43,26 @@ class Settings(BaseSettings):
 
     # Billing / Stripe
     # Set these in .env once you create products in the Stripe dashboard.
+    # The secret key controls which Stripe mode the whole integration runs in
+    # — sk_test_… for test mode, sk_live_… for production. Always roll keys
+    # after they leak; check Developers → API keys in the dashboard.
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
-    stripe_price_id_pro: str | None = None
-    stripe_price_id_library: str | None = None
+
+    # Price IDs per plan × billing interval. Each env var points at a Stripe
+    # Price object; we look up the plan from the price the checkout was
+    # created against. Unknown price IDs fall back to SubscriptionPlan.free.
+    stripe_price_id_home_monthly: str | None = None
+    stripe_price_id_home_yearly: str | None = None
+    stripe_price_id_pro_monthly: str | None = None
+    stripe_price_id_pro_yearly: str | None = None
+    stripe_price_id_library_monthly: str | None = None
+    stripe_price_id_library_yearly: str | None = None
+
+    # URL the Stripe Customer Portal redirects back to after changes.
+    # Falls back to ``<app_url>/settings#billing`` when unset.
+    stripe_portal_return_url: str | None = None
+
     # Public URL of the frontend — used as base for Stripe success/cancel redirect URLs.
     app_url: str = "http://localhost:5173"
 

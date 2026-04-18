@@ -83,12 +83,54 @@ def _stripe_call(fn: Callable[[], _T], *, retries: int = 3, backoff: float = 0.5
     raise last_exc
 
 
+def _price_id_for(
+    plan: str, interval: str, settings: Settings
+) -> str | None:
+    """Resolve the Stripe price ID for a (plan, interval) pair.
+
+    Returns None when the plan/interval combination is not configured —
+    callers raise 503 so missing config surfaces as a server error rather
+    than silently falling back to a default plan.
+    """
+    table: dict[tuple[str, str], str | None] = {
+        ("home",    "monthly"): settings.stripe_price_id_home_monthly,
+        ("home",    "yearly"):  settings.stripe_price_id_home_yearly,
+        ("pro",     "monthly"): settings.stripe_price_id_pro_monthly,
+        ("pro",     "yearly"):  settings.stripe_price_id_pro_yearly,
+        ("library", "monthly"): settings.stripe_price_id_library_monthly,
+        ("library", "yearly"):  settings.stripe_price_id_library_yearly,
+    }
+    return table.get((plan, interval))
+
+
 def _plan_from_price_id(price_id: str, settings: Settings) -> SubscriptionPlan:
-    if price_id and price_id == settings.stripe_price_id_pro:
-        return SubscriptionPlan.pro
-    if price_id and price_id == settings.stripe_price_id_library:
-        return SubscriptionPlan.library
-    return SubscriptionPlan.free
+    """Reverse-lookup: Stripe price ID → SubscriptionPlan.
+
+    Built by inverting the configured price-id-per-plan map. Unknown or
+    empty price IDs fall back to ``SubscriptionPlan.free`` — this is the
+    safe default for webhook handling: if an admin reconfigured prices
+    mid-flight, users stay on the free tier until we see a price we
+    recognise, rather than getting silently promoted.
+    """
+    if not price_id:
+        return SubscriptionPlan.free
+
+    # Yearly and monthly map to the same plan — we only care about the plan
+    # the customer bought, not the billing cadence (that's stored separately
+    # on ``current_period_end``).
+    reverse: dict[str | None, SubscriptionPlan] = {
+        settings.stripe_price_id_home_monthly:    SubscriptionPlan.home,
+        settings.stripe_price_id_home_yearly:     SubscriptionPlan.home,
+        settings.stripe_price_id_pro_monthly:     SubscriptionPlan.pro,
+        settings.stripe_price_id_pro_yearly:      SubscriptionPlan.pro,
+        settings.stripe_price_id_library_monthly: SubscriptionPlan.library,
+        settings.stripe_price_id_library_yearly:  SubscriptionPlan.library,
+    }
+    # Drop the None key so an unconfigured slot doesn't accidentally match
+    # an incoming empty price_id (already short-circuited above, but belt +
+    # braces).
+    reverse.pop(None, None)
+    return reverse.get(price_id, SubscriptionPlan.free)
 
 
 _STATUS_MAP: dict[str, SubscriptionStatus] = {
@@ -148,6 +190,7 @@ async def create_checkout_session(
     user: User,
     plan: str,
     settings: Settings,
+    interval: str = "monthly",
 ) -> str:
     """Create a Stripe Checkout Session and return the hosted URL.
 
@@ -156,18 +199,26 @@ async def create_checkout_session(
 
     First-time subscribers (no previous stripe_subscription_id) automatically
     receive a 14-day free trial. Returning subscribers go straight to billing.
-    """
-    if plan == "pro":
-        price_id = settings.stripe_price_id_pro
-    elif plan == "library":
-        price_id = settings.stripe_price_id_library
-    else:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid plan")
 
+    ``plan`` is one of ``home``/``pro``/``library``. ``interval`` is
+    ``monthly`` or ``yearly``. Unknown combinations → 400.
+    """
+    if plan not in ("home", "pro", "library"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid plan"
+        )
+    if interval not in ("monthly", "yearly"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid billing interval"
+        )
+
+    price_id = _price_id_for(plan, interval, settings)
     if not price_id:
+        # Either this plan/interval is not configured in env (admin hasn't
+        # created the Stripe price yet), or the server is self-hosted.
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Billing is not configured on this server",
+            detail=f"Billing is not configured for plan={plan} interval={interval}",
         )
 
     from app.services.entitlements import get_or_create_subscription
@@ -217,10 +268,11 @@ async def create_portal_session(
         )
 
     _stripe.api_key = settings.stripe_secret_key
+    return_url = settings.stripe_portal_return_url or f"{settings.app_url}/settings#billing"
     portal = await to_thread.run_sync(
         lambda: _stripe_call(lambda: _stripe.billing_portal.Session.create(
             customer=sub.stripe_customer_id,
-            return_url=f"{settings.app_url}/settings#billing",
+            return_url=return_url,
         ))
     )
     return portal["url"]

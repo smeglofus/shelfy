@@ -25,9 +25,10 @@ Covers:
     - an older event.created does NOT downgrade a newer subscription state
 
   Plan mapping
-    - STRIPE_PRICE_ID_PRO → SubscriptionPlan.pro
-    - STRIPE_PRICE_ID_LIBRARY → SubscriptionPlan.library
-    - unknown price ID → SubscriptionPlan.free
+    - STRIPE_PRICE_ID_HOME_* → SubscriptionPlan.home (monthly + yearly)
+    - STRIPE_PRICE_ID_PRO_* → SubscriptionPlan.pro (monthly + yearly)
+    - STRIPE_PRICE_ID_LIBRARY_* → SubscriptionPlan.library (monthly + yearly)
+    - unknown / empty price ID → SubscriptionPlan.free
 
 All tests use an in-memory SQLite DB and a fake Stripe signing secret; no
 network calls to Stripe are performed. Signatures are constructed using the
@@ -66,8 +67,17 @@ from app.services import billing as billing_svc
 # ── Fixtures ────────────────────────────────────────────────────────────────────
 
 _WEBHOOK_SECRET = "whsec_test_123456789012345678901234567890"
-_PRICE_PRO = "price_test_pro"
-_PRICE_LIBRARY = "price_test_library"
+_PRICE_HOME_MONTHLY = "price_test_home_monthly"
+_PRICE_HOME_YEARLY = "price_test_home_yearly"
+_PRICE_PRO_MONTHLY = "price_test_pro_monthly"
+_PRICE_PRO_YEARLY = "price_test_pro_yearly"
+_PRICE_LIBRARY_MONTHLY = "price_test_library_monthly"
+_PRICE_LIBRARY_YEARLY = "price_test_library_yearly"
+
+# Back-compat aliases so the older tests in this module keep reading clearly:
+# the monthly price is the canonical one exercised in most flows.
+_PRICE_PRO = _PRICE_PRO_MONTHLY
+_PRICE_LIBRARY = _PRICE_LIBRARY_MONTHLY
 
 
 @pytest.fixture
@@ -87,8 +97,12 @@ def test_settings() -> Settings:
         jwt_algorithm="HS256",
         stripe_secret_key="sk_test_dummy",
         stripe_webhook_secret=_WEBHOOK_SECRET,
-        stripe_price_id_pro=_PRICE_PRO,
-        stripe_price_id_library=_PRICE_LIBRARY,
+        stripe_price_id_home_monthly=_PRICE_HOME_MONTHLY,
+        stripe_price_id_home_yearly=_PRICE_HOME_YEARLY,
+        stripe_price_id_pro_monthly=_PRICE_PRO_MONTHLY,
+        stripe_price_id_pro_yearly=_PRICE_PRO_YEARLY,
+        stripe_price_id_library_monthly=_PRICE_LIBRARY_MONTHLY,
+        stripe_price_id_library_yearly=_PRICE_LIBRARY_YEARLY,
     )
 
 
@@ -594,19 +608,40 @@ async def test_older_event_does_not_downgrade_newer_state(
 # ── Plan mapping ───────────────────────────────────────────────────────────────
 
 
-def test_plan_from_price_id_maps_pro(test_settings: Settings) -> None:
-    assert (
-        billing_svc._plan_from_price_id(_PRICE_PRO, test_settings) is SubscriptionPlan.pro
-    )
+@pytest.mark.parametrize(
+    "price_attr,expected_plan",
+    [
+        (_PRICE_HOME_MONTHLY,    SubscriptionPlan.home),
+        (_PRICE_HOME_YEARLY,     SubscriptionPlan.home),
+        (_PRICE_PRO_MONTHLY,     SubscriptionPlan.pro),
+        (_PRICE_PRO_YEARLY,      SubscriptionPlan.pro),
+        (_PRICE_LIBRARY_MONTHLY, SubscriptionPlan.library),
+        (_PRICE_LIBRARY_YEARLY,  SubscriptionPlan.library),
+    ],
+)
+def test_plan_from_price_id_maps_all_six_variants(
+    price_attr: str,
+    expected_plan: SubscriptionPlan,
+    test_settings: Settings,
+) -> None:
+    """Each of the 6 configured price IDs must map to the correct plan.
 
-
-def test_plan_from_price_id_maps_library(test_settings: Settings) -> None:
+    Guards the invariant that yearly and monthly variants share the same
+    plan enum value — the billing cadence is tracked separately via
+    ``Subscription.current_period_end``.
+    """
     assert (
-        billing_svc._plan_from_price_id(_PRICE_LIBRARY, test_settings) is SubscriptionPlan.library
+        billing_svc._plan_from_price_id(price_attr, test_settings) is expected_plan
     )
 
 
 def test_plan_from_price_id_maps_unknown_to_free(test_settings: Settings) -> None:
+    """Unknown price IDs are safe-defaulted to ``free``.
+
+    This is the safe fallback for webhooks: if an admin reconfigures prices
+    mid-flight, we'd rather drop users to free and let them re-checkout
+    than silently promote them to a plan they didn't pay for.
+    """
     assert (
         billing_svc._plan_from_price_id("price_totally_unknown", test_settings)
         is SubscriptionPlan.free
@@ -615,3 +650,67 @@ def test_plan_from_price_id_maps_unknown_to_free(test_settings: Settings) -> Non
 
 def test_plan_from_price_id_handles_empty(test_settings: Settings) -> None:
     assert billing_svc._plan_from_price_id("", test_settings) is SubscriptionPlan.free
+
+
+def test_plan_from_price_id_ignores_unconfigured_slots() -> None:
+    """If a slot is left empty (None) in Settings, the empty-price lookup
+    must not accidentally match it.
+
+    Regression test for the None-pollution bug the reverse-lookup table
+    could have had without the explicit ``reverse.pop(None, None)``.
+    """
+    partial_settings = Settings(
+        database_url="sqlite+aiosqlite:///:memory:",
+        jwt_secret_key="test-secret",
+        jwt_algorithm="HS256",
+        stripe_secret_key="sk_test_dummy",
+        stripe_webhook_secret=_WEBHOOK_SECRET,
+        # Only configure pro/monthly — everything else is None.
+        stripe_price_id_pro_monthly=_PRICE_PRO_MONTHLY,
+    )
+    assert (
+        billing_svc._plan_from_price_id("", partial_settings) is SubscriptionPlan.free
+    )
+    assert (
+        billing_svc._plan_from_price_id("price_unrelated", partial_settings)
+        is SubscriptionPlan.free
+    )
+    assert (
+        billing_svc._plan_from_price_id(_PRICE_PRO_MONTHLY, partial_settings)
+        is SubscriptionPlan.pro
+    )
+
+
+@pytest.mark.asyncio
+async def test_home_plan_sync_on_subscription_updated(
+    test_sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    """End-to-end: a subscription.updated carrying the Home yearly price
+    lifts the local row to ``plan=home`` (the new SaaS tier)."""
+    customer_id = "cus_home_sync"
+    await _seed_user_with_customer(test_sessionmaker, customer_id=customer_id)
+
+    period_start = int(time.time())
+    period_end = period_start + 365 * 86400
+    payload = _event(
+        "customer.subscription.updated",
+        {
+            "id": "sub_home",
+            "customer": customer_id,
+            "status": "active",
+            "items": {"data": [{"price": {"id": _PRICE_HOME_YEARLY}}]},
+            "current_period_start": period_start,
+            "current_period_end": period_end,
+            "trial_end": None,
+        },
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        res = await _post_webhook(client, payload, sig=_sign(payload))
+    assert res.status_code == 200, res.text
+
+    async with test_sessionmaker() as s:
+        sub = (
+            await s.execute(select(Subscription).where(Subscription.stripe_customer_id == customer_id))
+        ).scalar_one()
+    assert SubscriptionPlan(sub.plan) is SubscriptionPlan.home
+    assert SubscriptionStatus(sub.status) is SubscriptionStatus.active

@@ -18,6 +18,7 @@ from app.db.base import Base
 
 class SubscriptionPlan(str, enum.Enum):
     free = "free"
+    home = "home"
     pro = "pro"
     library = "library"
 
