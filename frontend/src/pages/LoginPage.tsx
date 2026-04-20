@@ -4,10 +4,10 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { formatApiError, getGoogleAuthorizeUrl } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
-
-interface RouteState {
-  from?: string
-}
+import {
+  resolvePostLoginDestination,
+  type PostLoginRouteState,
+} from '../lib/post-login-destination'
 
 type AuthMode = 'signin' | 'register'
 
@@ -106,8 +106,8 @@ export function LoginPage() {
 
             authAction
               .then(() => {
-                const state = location.state as RouteState | undefined
-                navigate(state?.from ?? '/', { replace: true })
+                const state = location.state as PostLoginRouteState | undefined
+                navigate(resolvePostLoginDestination(state), { replace: true })
               })
               .catch((authError: unknown) => {
                 setError(formatApiError(authError))

@@ -15,6 +15,7 @@ LIMITS: dict[SubscriptionPlan, dict[str, int]] = {
         "enrichments_per_month": 20,
         "libraries": 1,
         "members_per_library": 1,
+        "books_per_library": 200,
     },
     # Home sits between free and pro — starter paid tier aimed at one
     # household. TODO(product): confirm final numbers; these are provisional
@@ -25,18 +26,21 @@ LIMITS: dict[SubscriptionPlan, dict[str, int]] = {
         "enrichments_per_month": 100,
         "libraries": 1,
         "members_per_library": 3,
+        "books_per_library": 1000,
     },
     SubscriptionPlan.pro: {
         "scans_per_month": 50,
         "enrichments_per_month": -1,       # -1 = unlimited
         "libraries": 3,
         "members_per_library": 3,
+        "books_per_library": 5000,
     },
     SubscriptionPlan.library: {
         "scans_per_month": 200,
         "enrichments_per_month": -1,       # -1 = unlimited
         "libraries": 10,
         "members_per_library": 15,
+        "books_per_library": 30000,
     },
 }
 

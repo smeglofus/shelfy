@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.plan_limits import get_limit, is_unlimited
+from app.models.book import Book
 from app.models.library import Library, LibraryMember
 from app.models.subscription import (
     Subscription,
@@ -161,6 +162,34 @@ async def can_add_member(
     return current < limit
 
 
+async def can_add_books_to_library(
+    session: AsyncSession,
+    library_id: uuid.UUID,
+    count: int = 1,
+) -> bool:
+    """Return True if the library can fit *count* more books under owner's plan."""
+    if count <= 0:
+        return True
+
+    owner_id = await session.scalar(
+        select(Library.created_by_user_id).where(Library.id == library_id)
+    )
+    if owner_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Library not found")
+
+    sub = await get_or_create_subscription(session, owner_id)
+    plan = _effective_plan(sub)
+    limit = get_limit(plan, "books_per_library")
+    if limit == -1:
+        return True
+
+    current = await session.scalar(
+        select(func.count()).select_from(Book).where(Book.library_id == library_id)
+    )
+    current = int(current or 0)
+    return current + count <= limit
+
+
 # ── Hard checks (raise HTTP exception) ────────────────────────────────────────
 
 async def assert_can_use(
@@ -252,6 +281,45 @@ async def assert_can_add_member(
                 "code": "member_limit_reached",
                 "plan": plan.value,
                 "limit": limit,
+                "upgrade_url": "/settings#billing",
+            },
+        )
+
+
+async def assert_can_add_books_to_library(
+    session: AsyncSession,
+    library_id: uuid.UUID,
+    count: int = 1,
+) -> None:
+    """Raise HTTP 403 when adding *count* books would exceed plan limit."""
+    if count <= 0:
+        return
+
+    owner_id = await session.scalar(
+        select(Library.created_by_user_id).where(Library.id == library_id)
+    )
+    if owner_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Library not found")
+
+    sub = await get_or_create_subscription(session, owner_id)
+    plan = _effective_plan(sub)
+    limit = get_limit(plan, "books_per_library")
+    if limit == -1:
+        return
+
+    current = await session.scalar(
+        select(func.count()).select_from(Book).where(Book.library_id == library_id)
+    )
+    current = int(current or 0)
+    if current + count > limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "book_limit_reached",
+                "plan": plan.value,
+                "limit": limit,
+                "used": current,
+                "requested": count,
                 "upgrade_url": "/settings#billing",
             },
         )

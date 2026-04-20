@@ -244,8 +244,14 @@ export interface OnboardingStatus {
 }
 
 // Billing / Subscriptions
-export type SubscriptionPlan = 'free' | 'pro' | 'library'
+export type SubscriptionPlan = 'free' | 'home' | 'pro' | 'library'
 export type SubscriptionStatus = 'active' | 'trialing' | 'canceled' | 'past_due'
+
+/** Billing interval for paid plans. Monthly is the backward-compatible default. */
+export type BillingInterval = 'monthly' | 'yearly'
+
+/** Paid plans that can be checked out via Stripe (excludes 'free'). */
+export type PaidPlan = Exclude<SubscriptionPlan, 'free'>
 
 export interface UsageSummary {
   scans_used: number
@@ -273,7 +279,7 @@ export interface PortalResponse {
 
 /** Structured detail returned by 402 / 403 quota-exceeded responses. */
 export interface QuotaErrorDetail {
-  code: 'quota_exceeded' | 'library_limit_reached' | 'member_limit_reached'
+  code: 'quota_exceeded' | 'library_limit_reached' | 'member_limit_reached' | 'book_limit_reached'
   metric?: string
   plan: SubscriptionPlan
   limit: number

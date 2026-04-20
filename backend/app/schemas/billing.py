@@ -41,3 +41,20 @@ class CheckoutResponse(BaseModel):
 
 class PortalResponse(BaseModel):
     url: str
+
+
+class WalletReadinessResponse(BaseModel):
+    """Diagnostic response for ``GET /api/v1/billing/wallet-readiness``.
+
+    Mirrors :class:`app.services.billing.WalletReadiness`. Surfaces every
+    server-side check that determines whether Stripe will render the Apple
+    Pay / Google Pay button on hosted Checkout. ``ok`` is True iff
+    ``warnings`` is empty.
+    """
+
+    ok: bool
+    app_url_host: Optional[str]
+    app_url_https: bool
+    apple_pay_domain_registered: bool
+    apple_pay_domain_verified: bool
+    warnings: list[str]

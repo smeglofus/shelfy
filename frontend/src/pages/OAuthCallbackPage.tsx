@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { formatApiError } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
+import { readPendingCheckout } from '../lib/pending-checkout'
 import { ROUTES } from '../lib/routes'
 
 export function OAuthCallbackPage() {
@@ -44,7 +45,12 @@ export function OAuthCallbackPage() {
     loginWithGoogle(code, state)
       .then(() => {
         trackEvent('oauth_google_success')
-        navigate(ROUTES.books, { replace: true })
+        // If the user arrived at OAuth from "Sign in to continue" on the
+        // pricing page, a pending-checkout intent is waiting in
+        // sessionStorage. The pricing page owns the intent lifecycle, so
+        // we just route there and let its resume effect run.
+        const destination = readPendingCheckout() ? ROUTES.pricing : ROUTES.books
+        navigate(destination, { replace: true })
       })
       .catch((err: unknown) => {
         trackEvent('oauth_google_error', { reason: formatApiError(err) })

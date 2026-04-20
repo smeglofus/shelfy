@@ -3,6 +3,11 @@
  *
  * Wired to `useUpgradeStore`: any component or API call that triggers a
  * quota-exceeded error will automatically open this modal.
+ *
+ * The modal always offers the *next two tiers above* the user's current plan,
+ * driven by the `UPGRADE_PATH` table below. Yearly billing is available on the
+ * full pricing page — this modal defaults to monthly to keep the quota-hit
+ * flow as frictionless as possible.
  */
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -11,9 +16,11 @@ import { useUpgradeStore } from '../store/useUpgradeStore'
 import { useCreateCheckout } from '../hooks/useBilling'
 import { trackEvent } from '../lib/analytics'
 import { ROUTES } from '../lib/routes'
+import type { BillingInterval, PaidPlan, SubscriptionPlan } from '../lib/types'
 
-const PLAN_LABELS: Record<string, string> = {
+const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   free: 'Free',
+  home: 'Home',
   pro: 'Pro',
   library: 'Library',
 }
@@ -21,6 +28,66 @@ const PLAN_LABELS: Record<string, string> = {
 const METRIC_LABELS: Record<string, string> = {
   scans: 'shelf scans',
   enrichments: 'metadata enrichments',
+}
+
+/**
+ * Monthly CZK price shown in the modal. Must match Stripe
+ * STRIPE_PRICE_ID_*_MONTHLY. Kept in sync with PricingPage.tsx.
+ */
+const PLAN_PRICE_CZK: Record<PaidPlan, number> = {
+  home: 59,
+  pro: 129,
+  library: 299,
+}
+
+/**
+ * Given the user's current plan, show the two next tiers. We show monthly
+ * pricing here — users who want yearly click "See all plans" and use the
+ * PricingPage toggle.
+ */
+const UPGRADE_PATH: Record<SubscriptionPlan, readonly PaidPlan[]> = {
+  free: ['home', 'pro'],
+  home: ['pro', 'library'],
+  pro: ['library'],
+  library: [],
+}
+
+const PLAN_FEATURE_KEYS: Record<PaidPlan, readonly string[]> = {
+  home: [
+    'billing.feature_home_scans',
+    'billing.feature_home_enrichments',
+    'billing.feature_home_library',
+    'billing.feature_home_members',
+    'billing.feature_home_books',
+  ],
+  pro: [
+    'billing.feature_pro_scans',
+    'billing.feature_pro_enrichments',
+    'billing.feature_pro_libraries',
+    'billing.feature_pro_members',
+    'billing.feature_pro_books',
+  ],
+  library: [
+    'billing.feature_library_scans',
+    'billing.feature_library_enrichments',
+    'billing.feature_library_libraries',
+    'billing.feature_library_members',
+    'billing.feature_library_books',
+  ],
+}
+
+const PLAN_NAME_KEYS: Record<PaidPlan, string> = {
+  home: 'billing.plan_home',
+  pro: 'billing.plan_pro',
+  library: 'billing.plan_library',
+}
+
+function formatCzk(amount: number): string {
+  return new Intl.NumberFormat('cs-CZ', {
+    style: 'currency',
+    currency: 'CZK',
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 export function UpgradePrompt() {
@@ -33,10 +100,11 @@ export function UpgradePrompt() {
 
   const metricLabel = detail.metric ? (METRIC_LABELS[detail.metric] ?? detail.metric) : null
   const currentPlan = PLAN_LABELS[detail.plan] ?? detail.plan
+  const suggestions = UPGRADE_PATH[detail.plan] ?? []
 
-  function handleUpgrade(plan: 'pro' | 'library') {
-    trackEvent('upgrade_clicked', { plan, source: 'quota_prompt', metric: detail?.metric })
-    checkoutMutation.mutate(plan)
+  function handleUpgrade(plan: PaidPlan, interval: BillingInterval = 'monthly') {
+    trackEvent('upgrade_clicked', { plan, interval, source: 'quota_prompt', metric: detail?.metric })
+    checkoutMutation.mutate({ plan, interval })
     hide()
   }
 
@@ -75,7 +143,7 @@ export function UpgradePrompt() {
           borderRadius: 'var(--sh-radius-lg)',
           boxShadow: 'var(--sh-shadow-lg)',
           padding: '28px 24px',
-          width: 'min(480px, calc(100vw - 32px))',
+          width: 'min(520px, calc(100vw - 32px))',
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
@@ -117,7 +185,9 @@ export function UpgradePrompt() {
             <p className='text-small' style={{ margin: 0 }}>
               {detail.code === 'library_limit_reached'
                 ? t('billing.library_limit_message', { plan: currentPlan })
-                : t('billing.member_limit_message', { plan: currentPlan })}
+                : detail.code === 'book_limit_reached'
+                  ? t('billing.book_limit_message', { plan: currentPlan })
+                  : t('billing.member_limit_message', { plan: currentPlan })}
             </p>
           )}
           <p className='text-small' style={{ margin: 0, color: 'var(--sh-text-secondary)' }}>
@@ -126,24 +196,28 @@ export function UpgradePrompt() {
         </div>
 
         {/* Plan options */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <PlanCard
-            name='Pro'
-            price='€4.99'
-            features={['50 scans/month', 'Unlimited enrichments', '3 libraries', '3 members/library']}
-            highlighted={detail.plan === 'free'}
-            onSelect={() => handleUpgrade('pro')}
-            loading={checkoutMutation.isPending}
-          />
-          <PlanCard
-            name='Library'
-            price='€14.99'
-            features={['200 scans/month', 'Unlimited enrichments', '10 libraries', '15 members/library']}
-            highlighted={detail.plan === 'pro'}
-            onSelect={() => handleUpgrade('library')}
-            loading={checkoutMutation.isPending}
-          />
-        </div>
+        {suggestions.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${suggestions.length}, 1fr)`,
+              gap: 10,
+            }}
+          >
+            {suggestions.map((plan, idx) => (
+              <PlanCard
+                key={plan}
+                testId={`upgrade-plan-${plan}`}
+                name={t(PLAN_NAME_KEYS[plan])}
+                price={formatCzk(PLAN_PRICE_CZK[plan])}
+                features={PLAN_FEATURE_KEYS[plan].map((k) => t(k))}
+                highlighted={idx === 0}
+                onSelect={() => handleUpgrade(plan)}
+                loading={checkoutMutation.isPending}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Footer */}
         <button
@@ -160,6 +234,7 @@ export function UpgradePrompt() {
 }
 
 interface PlanCardProps {
+  testId?: string
   name: string
   price: string
   features: string[]
@@ -168,10 +243,11 @@ interface PlanCardProps {
   loading: boolean
 }
 
-function PlanCard({ name, price, features, highlighted, onSelect, loading }: PlanCardProps) {
+function PlanCard({ testId, name, price, features, highlighted, onSelect, loading }: PlanCardProps) {
   const { t } = useTranslation()
   return (
     <div
+      data-testid={testId}
       style={{
         border: highlighted ? '2px solid var(--sh-primary)' : '1px solid var(--sh-border)',
         borderRadius: 'var(--sh-radius-lg)',
@@ -194,7 +270,7 @@ function PlanCard({ name, price, features, highlighted, onSelect, loading }: Pla
       )}
       <div>
         <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{name}</p>
-        <p style={{ margin: '2px 0 0', fontWeight: 600, color: 'var(--sh-primary)', fontSize: 17 }}>{price}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--sh-text-secondary)' }}>/mo</span></p>
+        <p style={{ margin: '2px 0 0', fontWeight: 600, color: 'var(--sh-primary)', fontSize: 17 }}>{price}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--sh-text-secondary)' }}> / {t('billing.per_month_short')}</span></p>
       </div>
       <ul style={{ margin: 0, padding: '0 0 0 14px', listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {features.map((f) => (

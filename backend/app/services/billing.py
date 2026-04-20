@@ -33,8 +33,10 @@ from __future__ import annotations
 
 import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar
+from urllib.parse import urlparse
 
 import stripe as _stripe
 import structlog
@@ -57,16 +59,51 @@ from app.models.user import User
 logger = structlog.get_logger()
 
 
+# ── Wallet readiness (Apple Pay / Google Pay) ─────────────────────────────────
+#
+# Stripe Checkout (hosted) renders Apple Pay / Google Pay automatically when:
+#   1. The session's ``payment_method_types`` includes ``card`` (or the
+#      Dashboard is configured with ``card`` enabled and we don't override it).
+#   2. The customer's browser/device supports the wallet (Safari on iOS/macOS
+#      for Apple Pay; Chrome with a Google Pay-enabled card for Google Pay).
+#   3. For Apple Pay: the domain hosting the redirect-to-Stripe button — i.e.
+#      our ``app_url`` — is registered as a verified ``PaymentMethodDomain``
+#      in the Stripe account. (Google Pay does NOT require explicit domain
+#      verification on Stripe Checkout, but we surface both checks together.)
+#
+# We deliberately DO NOT pass ``payment_method_types`` on Session.create:
+# Stripe then falls back to the Dashboard's payment-method settings, which is
+# the recommended configuration mode and lets ops teams enable/disable methods
+# without a code deploy. Passing the parameter would silently override the
+# Dashboard and is the most common reason wallets disappear in production.
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 _T = TypeVar("_T")
+
+# Build the retryable-error tuple at import time so the except clause itself
+# never raises AttributeError on a stripe-python version where one of these
+# names was removed/renamed. stripe-python 15+ dropped ``Timeout`` (it was
+# folded into ``APIConnectionError``); using ``getattr`` keeps us working
+# across both 14.x and 15.x. Any new transient error class can be added here.
+_RETRYABLE_STRIPE_ERRORS: tuple[type[BaseException], ...] = tuple(
+    cls
+    for cls in (
+        getattr(_stripe.error, "APIConnectionError", None),
+        getattr(_stripe.error, "Timeout", None),
+    )
+    if cls is not None
+)
 
 
 def _stripe_call(fn: Callable[[], _T], *, retries: int = 3, backoff: float = 0.5) -> _T:
     """Execute a synchronous Stripe SDK call with exponential-backoff retries.
 
-    Only retries on transient network errors (APIConnectionError, Timeout).
-    Authentication and invalid-request errors are not retried.
+    Only retries on transient network errors (``APIConnectionError`` and, on
+    older stripe-python, ``Timeout``). Authentication, invalid-request, and
+    plain ``StripeError`` raises propagate immediately so callers can
+    differentiate misconfig (don't retry) from a flaky network (retry).
 
     Intended to be used inside anyio.to_thread.run_sync:
         result = await to_thread.run_sync(lambda: _stripe_call(lambda: _stripe.Customer.create(...)))
@@ -75,7 +112,7 @@ def _stripe_call(fn: Callable[[], _T], *, retries: int = 3, backoff: float = 0.5
     for attempt in range(retries):
         try:
             return fn()
-        except (_stripe.error.APIConnectionError, _stripe.error.Timeout) as exc:
+        except _RETRYABLE_STRIPE_ERRORS as exc:
             last_exc = exc
             if attempt < retries - 1:
                 time.sleep(backoff * (2 ** attempt))  # 0.5 s, 1 s, …
@@ -233,18 +270,212 @@ async def create_checkout_session(
         subscription_data["trial_period_days"] = _TRIAL_DAYS
 
     _stripe.api_key = settings.stripe_secret_key
+    # Build kwargs as a dict so the wallet-related parameters are easy to
+    # surface in tests and audit (see test_create_checkout_session_payload).
+    #
+    # Wallet-enablement notes:
+    #   * We intentionally OMIT ``payment_method_types`` so Dashboard settings
+    #     drive the supported methods (see module-level comment).
+    #   * ``payment_method_collection="always"`` is the default for subscription
+    #     mode but stating it explicitly documents intent: we always need a
+    #     payment method on file at the end of checkout (incl. for trials),
+    #     which is what the Apple Pay / Google Pay buttons collect.
+    #   * Subscription mode forces ``setup_future_usage=off_session`` on the
+    #     underlying SetupIntent, which is required for wallets to be offered
+    #     for a recurring charge — Stripe handles this automatically.
+    session_kwargs: dict[str, Any] = {
+        "customer": customer_id,
+        "mode": "subscription",
+        "line_items": [{"price": price_id, "quantity": 1}],
+        "success_url": f"{settings.app_url}/settings?billing_success=1",
+        "cancel_url": f"{settings.app_url}/settings#billing",
+        "metadata": {"user_id": str(user.id)},
+        "subscription_data": subscription_data,
+        "payment_method_collection": "always",
+        # Allow promotion codes — wallets work fine alongside this; surfacing
+        # it here so the field is reviewed when we revisit checkout config.
+        "allow_promotion_codes": True,
+    }
+
     checkout = await to_thread.run_sync(
-        lambda: _stripe_call(lambda: _stripe.checkout.Session.create(
-            customer=customer_id,
-            mode="subscription",
-            line_items=[{"price": price_id, "quantity": 1}],
-            success_url=f"{settings.app_url}/settings?billing_success=1",
-            cancel_url=f"{settings.app_url}/settings#billing",
-            metadata={"user_id": str(user.id)},
-            subscription_data=subscription_data,
-        ))
+        lambda: _stripe_call(lambda: _stripe.checkout.Session.create(**session_kwargs))
     )
+
+    # Best-effort wallet-readiness telemetry. Never block checkout — wallets
+    # are an enhancement, not a requirement; the session itself works fine
+    # without them. This log line is the primary signal we'll grep for if
+    # ops reports "wallet button missing in production".
+    logger.info(
+        "stripe_checkout_session_created",
+        user_id=str(user.id),
+        plan=plan,
+        interval=interval,
+        session_id=checkout["id"],
+        # Echo the wallet-relevant flags so they're queryable in log search:
+        wallet_compatible=True,
+        explicit_payment_method_types=False,
+        payment_method_collection="always",
+        mode="subscription",
+        app_url_scheme=urlparse(settings.app_url).scheme or "unknown",
+        app_url_host=urlparse(settings.app_url).hostname or "unknown",
+    )
+
     return checkout["url"]
+
+
+# ── Wallet readiness probe ────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class WalletReadiness:
+    """Server-side assessment of whether Stripe will surface Apple Pay / GPay.
+
+    Returned by :func:`assess_wallet_readiness`. Purely advisory — we never
+    block checkout on it, but the verifier script and an admin endpoint use
+    it to surface misconfiguration.
+
+    Attributes
+    ----------
+    app_url_https : bool
+        True when ``settings.app_url`` is HTTPS. Wallets only render on
+        secure origins; localhost is a special case browsers permit but
+        Stripe's hosted checkout is always served over HTTPS so this only
+        affects domain registration, not the checkout page itself.
+    app_url_host : str | None
+        Hostname extracted from ``settings.app_url`` (used as the candidate
+        for the Apple Pay payment-method-domain check).
+    apple_pay_domain_registered : bool
+        True iff a ``PaymentMethodDomain`` with this exact host exists in
+        the Stripe account. Required for Apple Pay on Checkout.
+    apple_pay_domain_verified : bool
+        True iff the registered domain shows as "active" / verified by
+        Stripe — Stripe re-checks the well-known file every 24h.
+    warnings : tuple[str, ...]
+        Human-readable warnings; empty when everything checks out.
+    """
+
+    app_url_https: bool
+    app_url_host: str | None
+    apple_pay_domain_registered: bool
+    apple_pay_domain_verified: bool
+    warnings: tuple[str, ...]
+
+    @property
+    def ok(self) -> bool:
+        return not self.warnings
+
+
+def _list_payment_method_domains() -> list[dict[str, Any]]:
+    """Return all ``PaymentMethodDomain`` objects, paginated.
+
+    Stripe's SDK returns ``StripeObject`` instances which we normalise to
+    plain dicts so callers don't have to deal with the SDK's quirks (no
+    ``.get()`` on StripeObject in stripe-python 15+).
+    """
+    out: list[dict[str, Any]] = []
+    page = _stripe.PaymentMethodDomain.list(limit=100)
+    for d in page.auto_paging_iter():
+        out.append(d.to_dict() if hasattr(d, "to_dict") else dict(d))
+    return out
+
+
+async def assess_wallet_readiness(settings: Settings) -> WalletReadiness:
+    """Probe Stripe for everything needed to surface Apple Pay on Checkout.
+
+    Performs at most one paginated Stripe API call. Safe to invoke from a
+    request handler — wraps the SDK call in ``anyio.to_thread.run_sync`` so
+    we never block the event loop. Returns a structured assessment that the
+    caller can log/render.
+
+    Caller is responsible for short-circuiting when ``settings.stripe_secret_key``
+    is unset (we'd otherwise hit Stripe with the literal string ``None``).
+    """
+    parsed = urlparse(settings.app_url or "")
+    host = parsed.hostname
+    https = parsed.scheme == "https"
+
+    warnings: list[str] = []
+    registered = False
+    verified = False
+
+    if not settings.stripe_secret_key:
+        warnings.append(
+            "STRIPE_SECRET_KEY is not configured — cannot probe wallet readiness."
+        )
+        return WalletReadiness(
+            app_url_https=https,
+            app_url_host=host,
+            apple_pay_domain_registered=False,
+            apple_pay_domain_verified=False,
+            warnings=tuple(warnings),
+        )
+
+    if not host:
+        warnings.append(
+            f"APP_URL ({settings.app_url!r}) has no hostname — cannot register "
+            "Apple Pay domain."
+        )
+
+    if not https and host not in (None, "localhost", "127.0.0.1"):
+        warnings.append(
+            f"APP_URL scheme is {parsed.scheme!r}; Apple Pay requires HTTPS in "
+            "production (Stripe will reject domain registration over HTTP)."
+        )
+
+    _stripe.api_key = settings.stripe_secret_key
+    try:
+        domains = await to_thread.run_sync(
+            lambda: _stripe_call(_list_payment_method_domains)
+        )
+    except _stripe.error.StripeError as exc:
+        warnings.append(
+            f"Stripe API error while listing PaymentMethodDomains: "
+            f"{getattr(exc, 'user_message', None) or type(exc).__name__}"
+        )
+        return WalletReadiness(
+            app_url_https=https,
+            app_url_host=host,
+            apple_pay_domain_registered=False,
+            apple_pay_domain_verified=False,
+            warnings=tuple(warnings),
+        )
+
+    if host:
+        for d in domains:
+            if d.get("domain_name") == host:
+                registered = True
+                # ``apple_pay`` sub-object carries ``status`` ("active" /
+                # "inactive") and a ``status_details.error_message`` if the
+                # well-known fetch failed. Treat anything other than "active"
+                # as "registered but not verified" so the warning is precise.
+                ap = d.get("apple_pay") or {}
+                status_str = ap.get("status")
+                verified = status_str == "active"
+                if not verified:
+                    err = (ap.get("status_details") or {}).get("error_message")
+                    warnings.append(
+                        f"Apple Pay domain {host!r} is registered but not "
+                        f"verified (status={status_str!r}). "
+                        f"{('Stripe says: ' + err) if err else ''}"
+                        "Re-trigger verification in Dashboard → Settings → "
+                        "Payment methods → Apple Pay."
+                    )
+                break
+        else:
+            warnings.append(
+                f"Apple Pay domain {host!r} is NOT registered in Stripe. "
+                "Add it in Dashboard → Settings → Payment methods → Apple Pay "
+                "and host the well-known file at "
+                f"https://{host}/.well-known/apple-developer-merchantid-domain-association."
+            )
+
+    return WalletReadiness(
+        app_url_https=https,
+        app_url_host=host,
+        apple_pay_domain_registered=registered,
+        apple_pay_domain_verified=verified,
+        warnings=tuple(warnings),
+    )
 
 
 # ── Customer Portal ────────────────────────────────────────────────────────────

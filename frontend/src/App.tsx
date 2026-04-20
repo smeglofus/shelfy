@@ -36,7 +36,7 @@ function HomeRoute() {
   return <LandingPage />
 }
 
-const PUBLIC_PATHS = new Set(['/', ROUTES.login, ROUTES.privacy, ROUTES.terms, ROUTES.oauthCallback])
+const PUBLIC_PATHS = new Set(['/', ROUTES.login, ROUTES.pricing, ROUTES.privacy, ROUTES.terms, ROUTES.oauthCallback])
 
 function AppShell() {
   const { t } = useTranslation()
@@ -64,6 +64,7 @@ function AppShell() {
           <Route path={ROUTES.oauthCallback} element={<OAuthCallbackPage />} />
           <Route path={ROUTES.privacy} element={<PrivacyPage />} />
           <Route path={ROUTES.terms} element={<TermsPage />} />
+          <Route path={ROUTES.pricing} element={<PricingPage />} />
 
           {/* ── Protected routes ── */}
           <Route element={<ProtectedRoute />}>
@@ -74,7 +75,6 @@ function AppShell() {
             <Route path={ROUTES.bookDetail} element={<BookDetailPage />} />
             <Route path={ROUTES.locations} element={<Navigate to={`${ROUTES.bookshelfView}?tab=locations`} replace />} />
             <Route path={ROUTES.settings} element={<SettingsPage />} />
-            <Route path={ROUTES.pricing} element={<PricingPage />} />
           </Route>
         </Routes>
       </div>

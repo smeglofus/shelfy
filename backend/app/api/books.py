@@ -121,6 +121,7 @@ async def create_book_endpoint(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BookResponse:
+    await entitlements.assert_can_add_books_to_library(session, library_id, count=1)
     book = await create_book(session, payload, library_id)
     return BookResponse.model_validate(book)
 

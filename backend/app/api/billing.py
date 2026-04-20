@@ -18,6 +18,7 @@ from app.schemas.billing import (
     CheckoutResponse,
     PortalResponse,
     UsageSummary,
+    WalletReadinessResponse,
 )
 from app.services import billing as billing_svc
 from app.services.entitlements import (
@@ -93,6 +94,48 @@ async def create_checkout(
         interval=payload.interval,
     )
     return CheckoutResponse(url=url)
+
+
+# ── Wallet readiness (admin / dev probe) ──────────────────────────────────────
+
+
+@router.get("/wallet-readiness", response_model=WalletReadinessResponse)
+async def get_wallet_readiness(
+    settings: Settings = Depends(get_settings),
+    current_user: User = Depends(get_current_user),
+) -> WalletReadinessResponse:
+    """Surface whether Stripe will render Apple Pay / Google Pay on Checkout.
+
+    Authenticated endpoint (any logged-in user) — purely diagnostic, hits
+    Stripe at most once. Returns the structured assessment so operators can
+    ``curl /api/v1/billing/wallet-readiness`` and confirm the production
+    domain is registered + verified after a deploy.
+
+    Never raises on misconfig — that's exactly what the ``warnings`` field
+    is for. The only failure modes are 401 (unauthenticated) and 503 (Stripe
+    not configured at all).
+    """
+    _require_stripe(settings)
+    readiness = await billing_svc.assess_wallet_readiness(settings)
+    if readiness.warnings:
+        # Log warnings — useful even for the local dev path so misconfig is
+        # noticeable in the regular request log without inspecting the body.
+        logger.warning(
+            "stripe_wallet_readiness_warnings",
+            user_id=str(current_user.id),
+            warnings=list(readiness.warnings),
+            host=readiness.app_url_host,
+            registered=readiness.apple_pay_domain_registered,
+            verified=readiness.apple_pay_domain_verified,
+        )
+    return WalletReadinessResponse(
+        ok=readiness.ok,
+        app_url_host=readiness.app_url_host,
+        app_url_https=readiness.app_url_https,
+        apple_pay_domain_registered=readiness.apple_pay_domain_registered,
+        apple_pay_domain_verified=readiness.apple_pay_domain_verified,
+        warnings=list(readiness.warnings),
+    )
 
 
 # ── Customer Portal ────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { clearTokens, getAccessToken, getCsrfToken, setAccessToken } from './aut
 import type {
   AccessTokenResponse,
   AddMemberRequest,
+  BillingInterval,
   BillingStatus,
   CheckoutResponse,
   CsvImportConfirmRequest,
@@ -36,6 +37,7 @@ import type {
   LocationUpdateRequest,
   LoginRequest,
   OnboardingStatus,
+  PaidPlan,
   PurgeLibraryResponse,
   RegisterRequest,
   ShelfScanConfirmRequest,
@@ -499,8 +501,21 @@ export async function getBillingStatus(): Promise<BillingStatus> {
   return response.data
 }
 
-export async function createCheckoutSession(plan: 'pro' | 'library'): Promise<CheckoutResponse> {
-  const response = await apiClient.post<CheckoutResponse>('/api/v1/billing/checkout', { plan })
+/**
+ * Kick off a Stripe Checkout session.
+ *
+ * Backend contract (CheckoutRequest): `{ plan: 'home'|'pro'|'library', interval?: 'monthly'|'yearly' }`
+ * — `interval` defaults to `'monthly'` on the server. We always send it
+ * explicitly when we know the user's choice, but omit it at the call-site-level
+ * for backward-compat with any older internal caller that passes only a plan.
+ */
+export async function createCheckoutSession(
+  plan: PaidPlan,
+  interval?: BillingInterval,
+): Promise<CheckoutResponse> {
+  const payload: { plan: PaidPlan; interval?: BillingInterval } = { plan }
+  if (interval) payload.interval = interval
+  const response = await apiClient.post<CheckoutResponse>('/api/v1/billing/checkout', payload)
   return response.data
 }
 

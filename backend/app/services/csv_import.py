@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.book import Book, ReadingStatus
 from app.models.loan import Loan
 from app.models.location import Location
+from app.services import entitlements
 from app.schemas.book import (
     CsvImportConfirmRequest,
     CsvImportConfirmResponse,
@@ -459,6 +460,13 @@ async def confirm_csv_import(
         )
 
     rows: list[dict[str, Any]] = json.loads(stored)
+
+    requested_creates = sum(1 for row in rows if row.get("_existing_id") is None)
+    await entitlements.assert_can_add_books_to_library(
+        session,
+        library_id,
+        count=requested_creates,
+    )
 
     # Re-read current state for deduplication (covers concurrent imports)
     by_isbn, by_norm = await _load_books_for_dedup(session, library_id)
