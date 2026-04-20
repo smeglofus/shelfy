@@ -8,7 +8,6 @@ import { Navigation } from './components/Navigation'
 import { UpgradePrompt } from './components/UpgradePrompt'
 import { useToastStore } from './lib/toast-store'
 import { useAuth } from './contexts/AuthContext'
-import { getAccessToken } from './lib/auth'
 
 import { LoginPage, ProtectedRoute } from './features/auth'
 import { BooksPage, AddBookPage, BookDetailPage } from './features/books'
@@ -25,14 +24,31 @@ import { ROUTES } from './lib/routes'
 
 export { ROUTES }
 
-/** Smart home route: authenticated → /books, else → Landing page. */
+/**
+ * Smart home route — drives `/`.
+ *
+ * Auth truth is whatever ``useAuth()`` says; we never fall back to reading
+ * the module-level access-token singleton (that used to cause a blank
+ * render whenever the token was set before ``user`` committed — see #125).
+ *
+ * While auth is bootstrapping OR a login is mid-flight we show an explicit
+ * spinner fallback rather than returning ``null``. A silent null render
+ * is exactly what the issue report described as "blank until refresh".
+ */
 function HomeRoute() {
-  const { user } = useAuth()
-  const hasToken = !!getAccessToken()
+  const { isAuthenticated, isLoading } = useAuth()
 
-  // Token present but user not yet loaded → still initializing; show nothing.
-  if (!user && hasToken) return null
-  if (user) return <Navigate to={ROUTES.books} replace />
+  if (isLoading) {
+    return (
+      <div
+        data-testid='home-route-loading'
+        style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}
+      >
+        <div className='sh-spinner' aria-label='loading' />
+      </div>
+    )
+  }
+  if (isAuthenticated) return <Navigate to={ROUTES.books} replace />
   return <LandingPage />
 }
 

@@ -7,20 +7,24 @@ import {
   removeLibraryMember,
   updateLibraryMember,
 } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import type { AddMemberRequest, LibraryRole } from '../lib/types'
 
 export function useLibraries() {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: ['libraries'],
     queryFn: listLibraries,
+    enabled: isAuthenticated,
   })
 }
 
 export function useLibraryMembers(libraryId: string | null) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: ['library-members', libraryId],
     queryFn: () => listLibraryMembers(libraryId!),
-    enabled: !!libraryId,
+    enabled: isAuthenticated && !!libraryId,
   })
 }
 

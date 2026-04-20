@@ -14,24 +14,38 @@ import {
   uploadBookImage,
 } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
+import { useAuth } from '../contexts/AuthContext'
 import type { BookCreateRequest, BookListParams, BookUpdateRequest, BulkDeleteRequest, BulkMoveRequest, BulkStatusRequest } from '../lib/types'
 import { useTranslation } from 'react-i18next'
 
 export const BOOKS_QUERY_KEY = ['books']
 
+/**
+ * List books for the current user.
+ *
+ * Gated on ``isAuthenticated`` as defense-in-depth — in practice ``BooksPage``
+ * only mounts under ``ProtectedRoute``, but issue #125 showed that any page
+ * mounting while auth is mid-transition can fire a query prematurely and end
+ * up with a "failed+not-retried" cache entry that survives until refresh.
+ * Gating here keeps the cache clean when auth isn't settled yet.
+ */
 export function useBooks(params: BookListParams) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: [...BOOKS_QUERY_KEY, params],
     queryFn: () => listBooks(params),
     retry: false,
+    enabled: isAuthenticated,
   })
 }
 
 export function useBook(bookId: string) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: [...BOOKS_QUERY_KEY, 'detail', bookId],
     queryFn: () => getBook(bookId),
     retry: false,
+    enabled: isAuthenticated && Boolean(bookId),
   })
 }
 

@@ -298,7 +298,11 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 function BillingSection() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { data: billing, isLoading } = useBillingStatus()
+  // Gate on auth — SettingsPage is inside ProtectedRoute today, but this query
+  // is also mounted by sub-sections and we want the cache to stay clean across
+  // auth boundaries (see #125).
+  const { isAuthenticated } = useAuth()
+  const { data: billing, isLoading } = useBillingStatus({ enabled: isAuthenticated })
   const checkoutMutation = useCreateCheckout()
   const portalMutation = useCreatePortal()
   const showSuccess = useToastStore((s) => s.showSuccess)

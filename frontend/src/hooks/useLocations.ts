@@ -4,15 +4,22 @@ import { useTranslation } from 'react-i18next'
 
 import { createLocation, deleteLocation, formatApiError, listLocations, updateLocation } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
+import { useAuth } from '../contexts/AuthContext'
 import type { Location, LocationCreateRequest, LocationUpdateRequest } from '../lib/types'
 
 const LOCATIONS_QUERY_KEY = ['locations']
 
+/**
+ * List the current user's locations. Gated on ``isAuthenticated`` so the
+ * query never fires before auth bootstrap has settled (see #125).
+ */
 export function useLocations() {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: LOCATIONS_QUERY_KEY,
     queryFn: listLocations,
     retry: false,
+    enabled: isAuthenticated,
   })
 }
 
