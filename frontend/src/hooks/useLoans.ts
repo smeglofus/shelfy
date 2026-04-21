@@ -3,16 +3,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { createLoan, formatApiError, listLoans, returnLoan } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { useToastStore } from '../lib/toast-store'
 import type { LoanCreateRequest, LoanReturnRequest } from '../lib/types'
 
 const loansKey = (bookId: string) => ['loans', bookId]
 
 export function useLoans(bookId: string) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: loansKey(bookId),
     queryFn: () => listLoans(bookId),
-    enabled: Boolean(bookId),
+    enabled: isAuthenticated && Boolean(bookId),
     retry: false,
   })
 }

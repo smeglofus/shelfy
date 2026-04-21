@@ -157,10 +157,11 @@ export function useBulkUpdateStatus() {
 }
 
 export function useJobStatus(jobId: string | null) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: ['job-status', jobId],
     queryFn: () => getJobStatus(jobId as string),
-    enabled: Boolean(jobId),
+    enabled: isAuthenticated && Boolean(jobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status
       return status === 'done' || status === 'failed' ? false : 2000
