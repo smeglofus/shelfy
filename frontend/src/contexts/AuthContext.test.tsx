@@ -29,6 +29,10 @@ interface Deferred<T> {
 }
 
 const meQueue: Deferred<{ id: string; email: string }>[] = []
+let authHandlers: {
+  onUnauthorized: (() => void) | null
+  onTokenRefresh: ((accessToken: string) => void) | null
+} = { onUnauthorized: null, onTokenRefresh: null }
 
 function enqueueDeferred(): Deferred<{ id: string; email: string }> {
   let resolve!: (value: { id: string; email: string }) => void
@@ -59,7 +63,12 @@ vi.mock('../lib/api', () => {
     register: vi.fn(() => Promise.resolve({ id: 'u1', email: 'a@b.co' })),
     logout: vi.fn(() => Promise.resolve()),
     googleOAuthCallback: vi.fn(() => Promise.resolve({ access_token: 'tok-google' })),
-    registerAuthHandlers: vi.fn(),
+    registerAuthHandlers: vi.fn((handlers: {
+      onUnauthorized: (() => void) | null
+      onTokenRefresh: ((accessToken: string) => void) | null
+    }) => {
+      authHandlers = handlers
+    }),
   }
 })
 
@@ -135,6 +144,7 @@ function renderWithProviders(onSnapshot: (row: SnapshotRow) => void) {
 
 beforeEach(() => {
   meQueue.length = 0
+  authHandlers = { onUnauthorized: null, onTokenRefresh: null }
   vi.mocked(apiModule.login).mockClear()
   vi.mocked(apiModule.logout).mockClear()
   vi.mocked(apiModule.getCurrentUser).mockClear()
@@ -260,6 +270,39 @@ describe('AuthContext — login flow', () => {
     // "flash of wrong data" symptom described in #125.
     expect(client.getQueryData(['stale-books'])).toBeUndefined()
   })
+
+  it('ignores stale unauthorized callbacks while login transition is in flight', async () => {
+    renderWithProviders(() => {})
+
+    const bootstrapMe = await waitForNextMeCall()
+    await act(async () => {
+      bootstrapMe.reject(new Error('401'))
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('no'),
+    )
+
+    await act(async () => {
+      screen.getByTestId('do-login').click()
+    })
+
+    // Simulate race from stale in-flight request:
+    // /auth/me -> 401, refresh -> 401, interceptor calls onUnauthorized.
+    await act(async () => {
+      authHandlers.onUnauthorized?.()
+      authHandlers.onUnauthorized?.()
+    })
+
+    const loginMe = await waitForNextMeCall()
+    await act(async () => {
+      loginMe.resolve({ id: 'u2', email: 'u2@example.com' })
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('yes'),
+    )
+    expect(vi.mocked(apiModule.logout)).not.toHaveBeenCalled()
+  })
 })
 
 describe('AuthContext — logout', () => {
@@ -285,5 +328,43 @@ describe('AuthContext — logout', () => {
       expect(screen.getByTestId('auth-flag').textContent).toBe('no'),
     )
     expect(client.getQueryData(['stale-books'])).toBeUndefined()
+  })
+
+  it('supports quick logout -> login without ending in an unauthenticated state', async () => {
+    renderWithProviders(() => {})
+
+    const bootstrapMe = await waitForNextMeCall()
+    await act(async () => {
+      bootstrapMe.resolve({ id: 'u1', email: 'a@b.co' })
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('yes'),
+    )
+
+    await act(async () => {
+      screen.getByTestId('do-logout').click()
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('no'),
+    )
+
+    await act(async () => {
+      screen.getByTestId('do-login').click()
+    })
+
+    // A late stale unauthorized signal should be ignored during this transition.
+    await act(async () => {
+      authHandlers.onUnauthorized?.()
+    })
+
+    const loginMe = await waitForNextMeCall()
+    await act(async () => {
+      loginMe.resolve({ id: 'u3', email: 'u3@example.com' })
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('yes'),
+    )
+    expect(screen.getByTestId('loading-flag').textContent).toBe('no')
   })
 })

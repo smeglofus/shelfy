@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -65,6 +66,8 @@ interface AuthState {
 }
 
 type AuthAction =
+  | { type: 'transition_started' }
+  | { type: 'transition_finished' }
   | { type: 'bootstrap_settled'; user: User | null; accessToken: string | null }
   | { type: 'session_established'; user: User; accessToken: string }
   | { type: 'session_cleared' }
@@ -72,6 +75,10 @@ type AuthAction =
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
+    case 'transition_started':
+      return { ...state, isLoading: true }
+    case 'transition_finished':
+      return { ...state, isLoading: false }
     case 'bootstrap_settled':
       return { user: action.user, accessToken: action.accessToken, isLoading: false }
     case 'session_established':
@@ -92,6 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [state, dispatch] = useReducer(authReducer, INITIAL_STATE)
+  const transitionSequenceRef = useRef(0)
+  const activeTransitionRef = useRef<number | null>(null)
+
+  const beginTransition = useCallback(() => {
+    const transitionId = ++transitionSequenceRef.current
+    activeTransitionRef.current = transitionId
+    dispatch({ type: 'transition_started' })
+    return transitionId
+  }, [])
+
+  const endTransition = useCallback((transitionId: number) => {
+    if (activeTransitionRef.current !== transitionId) return
+    activeTransitionRef.current = null
+    dispatch({ type: 'transition_finished' })
+  }, [])
 
   // ── Query-cache hygiene ────────────────────────────────────────────────
   // The query cache MUST be wiped on every auth boundary:
@@ -110,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient])
 
   const logout = useCallback(() => {
+    const transitionId = beginTransition()
     // Fire-and-forget; the server clears the auth cookies server-side.
     void apiLogout()
     clearTokens()
@@ -123,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'session_cleared' })
     resetUser()
     navigate('/login', { replace: true })
-  }, [navigate, resetQueryCache])
+    endTransition(transitionId)
+  }, [beginTransition, endTransition, navigate, resetQueryCache])
 
   /**
    * Establish a session atomically: one call to the backend for the user,
@@ -132,11 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * ever sees the half-applied auth state that used to cause blank renders.
    */
   const establishSession = useCallback(
-    async (accessTokenMarker: string) => {
+    async (accessTokenMarker: string, transitionId: number) => {
       // Keep the in-memory module singleton in sync so the axios interceptors
       // that live outside React can still read "has token" synchronously.
       setAccessToken(accessTokenMarker)
       const user = await getCurrentUser()
+      if (activeTransitionRef.current !== transitionId) return
       identifyUser(user.id)
       // Wipe any cached queries from a previous session before the UI can
       // remount under the new auth identity. Done BEFORE the dispatch so
@@ -153,10 +178,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const tokens = await apiLogin({ email, password })
-      await establishSession(tokens.access_token)
+      const transitionId = beginTransition()
+      try {
+        const tokens = await apiLogin({ email, password })
+        await establishSession(tokens.access_token, transitionId)
+      } catch (error) {
+        dispatch({ type: 'session_cleared' })
+        throw error
+      } finally {
+        endTransition(transitionId)
+      }
     },
-    [establishSession],
+    [beginTransition, endTransition, establishSession],
   )
 
   const register = useCallback(
@@ -172,31 +205,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = useCallback(
     async (code: string, state: string) => {
-      const tokens = await googleOAuthCallback({ code, state })
-      await establishSession(tokens.access_token)
+      const transitionId = beginTransition()
+      try {
+        const tokens = await googleOAuthCallback({ code, state })
+        await establishSession(tokens.access_token, transitionId)
+      } catch (error) {
+        dispatch({ type: 'session_cleared' })
+        throw error
+      } finally {
+        endTransition(transitionId)
+      }
     },
-    [establishSession],
+    [beginTransition, endTransition, establishSession],
   )
 
   const handleTokenRefresh = useCallback((token: string) => {
+    if (activeTransitionRef.current !== null) return
     setAccessToken(token)
     dispatch({ type: 'token_refreshed', accessToken: token })
   }, [])
 
+  const handleUnauthorized = useCallback(() => {
+    if (activeTransitionRef.current !== null) return
+    logout()
+  }, [logout])
+
   useEffect(() => {
     registerAuthHandlers({
-      onUnauthorized: logout,
+      onUnauthorized: handleUnauthorized,
       onTokenRefresh: handleTokenRefresh,
     })
 
     return () => registerAuthHandlers({ onUnauthorized: null, onTokenRefresh: null })
-  }, [handleTokenRefresh, logout])
+  }, [handleTokenRefresh, handleUnauthorized])
 
   useEffect(() => {
     // Bootstrap: if the HttpOnly cookie is still valid, /auth/me returns the
     // user. If not, surface the unauthenticated state. No token plumbing from
     // client-side storage is needed — everything flows through cookies.
     let cancelled = false
+    const transitionId = beginTransition()
     const bootstrap = async () => {
       try {
         const user = await getCurrentUser()
@@ -215,6 +263,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         clearTokens()
         dispatch({ type: 'bootstrap_settled', user: null, accessToken: null })
+      } finally {
+        endTransition(transitionId)
       }
     }
 
@@ -222,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [beginTransition, endTransition])
 
   const value = useMemo<AuthContextValue>(
     () => ({
