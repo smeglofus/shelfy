@@ -118,7 +118,7 @@ export function Navigation() {
   const fabRef = useRef<HTMLDivElement>(null)
   const { logout } = useAuth()
 
-  /* Grouped sidebar items (desktop) — Locations removed, accessible via Bookshelf → tab */
+  /* Grouped sidebar items (desktop) */
   const navGroup = useMemo<NavItem[]>(
     () => [
       { label: t('nav.library'), icon: 'library', path: ROUTES.books },
@@ -142,11 +142,10 @@ export function Navigation() {
     [t],
   )
 
-  /* Mobile bottom nav: 4 items + center FAB */
+  /* Mobile bottom nav: 3 tabs + center FAB */
   const mobileTabs = useMemo(
     () => [
       { label: t('nav.library'), icon: 'library', path: ROUTES.books },
-      // FAB placeholder (handled separately)
       { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
       { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
     ],
@@ -197,7 +196,7 @@ export function Navigation() {
     )
   }
 
-  /* ── Desktop Sidebar ─────────────────────────────────────────────── */
+  /* ── Desktop Sidebar (unchanged) ──────────────────────────────── */
   if (isDesktop) {
     return (
       <nav
@@ -222,7 +221,6 @@ export function Navigation() {
           <h2 className="text-h3" style={{ margin: 0 }}>Shelfy</h2>
         </div>
 
-        {/* Group: Navigate */}
         {navGroup.map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon]
@@ -238,7 +236,6 @@ export function Navigation() {
           )
         })}
 
-        {/* Group: Actions */}
         <div className="sh-sidebar-divider" />
         <span className="sh-sidebar-group-label">{t('nav.actions', 'Actions')}</span>
         {actionGroup.map((tab) => {
@@ -256,7 +253,6 @@ export function Navigation() {
           )
         })}
 
-        {/* Group: Settings + Logout */}
         <div className="sh-sidebar-divider" style={{ marginTop: 'auto' }} />
         {settingsGroup.map((tab) => {
           const active = isActive(tab.path)
@@ -272,10 +268,7 @@ export function Navigation() {
             </button>
           )
         })}
-        <button
-          onClick={logout}
-          className="sh-sidebar-btn"
-        >
+        <button onClick={logout} className="sh-sidebar-btn">
           <IconLogout size={20} />
           <span>{t('nav.logout', 'Logout')}</span>
         </button>
@@ -283,8 +276,33 @@ export function Navigation() {
     )
   }
 
-  /* ── Mobile Bottom Nav ───────────────────────────────────────────── */
+  /* ── Mobile Bottom Nav ─────────────────────────────────────────── */
+  // CHANGED: nav is split into two rows:
+  //   1. Tab row  — the actual tappable items (Library | FAB | Shelves | Settings)
+  //   2. Safe zone — fills env(safe-area-inset-bottom) so items never overlap
+  //                  the iPhone home indicator. Minimum 16px even on non-notch devices.
+  //
+  // Requires `viewport-fit=cover` in <meta name="viewport"> (see index.html).
+
   const isFabActionActive = isActive(ROUTES.addBook) || isActive(ROUTES.scanShelf)
+
+  const mobileTabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: '10px 0 8px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: active ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
+    fontSize: 11,
+    fontWeight: active ? 600 : 500,
+    transition: 'color 0.2s ease',
+    minHeight: 56,
+  })
 
   return (
     <nav
@@ -295,206 +313,173 @@ export function Navigation() {
         left: 0,
         right: 0,
         display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'space-around',
+        flexDirection: 'column',   // ← key: stack tab row above safe zone
         background: 'var(--sh-surface)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderTop: '1px solid var(--sh-border)',
-        paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         zIndex: 100,
         boxShadow: '0 -4px 20px rgba(0,0,0,0.03)',
       }}
     >
-      {/* First tab */}
-      {mobileTabs.slice(0, 1).map((tab) => {
-        const active = isActive(tab.path)
-        const Icon = iconComponents[tab.icon]
-        return (
+      {/* ── Tab row ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around' }}>
+
+        {/* First tab */}
+        {mobileTabs.slice(0, 1).map((tab) => {
+          const active = isActive(tab.path)
+          const Icon = iconComponents[tab.icon as NavIcon]
+          return (
+            <button key={tab.path} onClick={() => navigate(tab.path)} style={mobileTabStyle(active)}>
+              <Icon size={22} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+
+        {/* Center FAB */}
+        <div ref={fabRef} style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+          {fabOpen && (
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 98 }}
+                onClick={() => setFabOpen(false)}
+              />
+              <div
+                id="fab-actions-menu"
+                role="menu"
+                aria-label={t('nav.actions', 'Actions')}
+                className="sh-fab-menu"
+                style={{
+                  position: 'absolute',
+                  bottom: 68,   // slightly higher to clear the safe zone bar
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  zIndex: 99,
+                }}
+              >
+                <button
+                  role="menuitem"
+                  onClick={() => navigate(ROUTES.addBook)}
+                  className="sh-fab-menu-item"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 20px',
+                    background: 'var(--sh-surface)',
+                    border: '1px solid var(--sh-border)',
+                    borderRadius: 'var(--sh-radius-md)',
+                    cursor: 'pointer',
+                    color: 'var(--sh-text-main)',
+                    fontSize: 14, fontWeight: 500,
+                    fontFamily: "'Inter', sans-serif",
+                    whiteSpace: 'nowrap',
+                    boxShadow: 'var(--sh-shadow-lg)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <IconBookPlus size={20} />
+                  {t('nav.add_book', 'Add book')}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => navigate(ROUTES.scanShelf)}
+                  className="sh-fab-menu-item"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 20px',
+                    background: 'var(--sh-surface)',
+                    border: '1px solid var(--sh-border)',
+                    borderRadius: 'var(--sh-radius-md)',
+                    cursor: 'pointer',
+                    color: 'var(--sh-text-main)',
+                    fontSize: 14, fontWeight: 500,
+                    fontFamily: "'Inter', sans-serif",
+                    whiteSpace: 'nowrap',
+                    boxShadow: 'var(--sh-shadow-lg)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <IconCamera size={20} />
+                  {t('nav.scan_shelf', 'Scan shelf')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* FAB button */}
           <button
-            key={tab.path}
-            onClick={() => navigate(tab.path)}
+            onClick={() => setFabOpen((v) => !v)}
+            aria-label={t('nav.actions', 'Actions')}
+            aria-expanded={fabOpen}
+            aria-controls="fab-actions-menu"
             style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              padding: '10px 0 8px',
-              background: 'none',
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: fabOpen ? 'var(--sh-teal-dark)' : 'var(--sh-teal)',
+              color: 'white',
               border: 'none',
               cursor: 'pointer',
-              color: active ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
-              fontSize: 11,
-              fontWeight: active ? 600 : 500,
-              transition: 'color 0.2s ease',
-              minHeight: 56,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(45, 122, 95, 0.35)',
+              // Lifted higher to clear the safe zone bar below
+              transform: `translateY(-16px) rotate(${fabOpen ? '45deg' : '0deg'})`,
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              zIndex: 101,
             }}
           >
-            <Icon size={22} />
-            <span>{tab.label}</span>
+            <IconPlus size={26} />
           </button>
-        )
-      })}
 
-      {/* Center FAB */}
-      <div ref={fabRef} style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
-        {/* FAB popup menu */}
-        {fabOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.3)',
-                zIndex: 98,
-              }}
-              onClick={() => setFabOpen(false)}
-            />
-            <div
-              id="fab-actions-menu"
-              role="menu"
-              aria-label={t('nav.actions', 'Actions')}
-              className="sh-fab-menu"
-              style={{
-                position: 'absolute',
-                bottom: 64,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                zIndex: 99,
-              }}
-            >
-              <button
-                role="menuitem"
-                onClick={() => navigate(ROUTES.addBook)}
-                className="sh-fab-menu-item"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '12px 20px',
-                  background: 'var(--sh-surface)',
-                  border: '1px solid var(--sh-border)',
-                  borderRadius: 'var(--sh-radius-md)',
-                  cursor: 'pointer',
-                  color: 'var(--sh-text-main)',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  fontFamily: "'Outfit', sans-serif",
-                  whiteSpace: 'nowrap',
-                  boxShadow: 'var(--sh-shadow-lg)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <IconBookPlus size={20} />
-                {t('nav.add_book', 'Přidat knihu')}
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => navigate(ROUTES.scanShelf)}
-                className="sh-fab-menu-item"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '12px 20px',
-                  background: 'var(--sh-surface)',
-                  border: '1px solid var(--sh-border)',
-                  borderRadius: 'var(--sh-radius-md)',
-                  cursor: 'pointer',
-                  color: 'var(--sh-text-main)',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  fontFamily: "'Outfit', sans-serif",
-                  whiteSpace: 'nowrap',
-                  boxShadow: 'var(--sh-shadow-lg)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <IconCamera size={20} />
-                {t('nav.scan_shelf', 'Skenovat polici')}
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* FAB button */}
-        <button
-          onClick={() => setFabOpen((v) => !v)}
-          aria-label={t('nav.actions', 'Actions')}
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background: fabOpen ? 'var(--sh-teal-dark)' : 'var(--sh-teal)',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(45, 122, 95, 0.35)',
-            transform: `translateY(-14px) rotate(${fabOpen ? '45deg' : '0deg'})`,
-            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            position: 'relative',
-            zIndex: 101,
-          }}
-        >
-          <IconPlus size={26} />
-        </button>
-        {/* Active indicator dot for FAB when on add/scan page */}
-        {isFabActionActive && !fabOpen && (
-          <div
-            style={{
+          {/* Active dot */}
+          {isFabActionActive && !fabOpen && (
+            <div style={{
               position: 'absolute',
               bottom: 4,
               left: '50%',
               transform: 'translateX(-50%)',
-              width: 5,
-              height: 5,
+              width: 5, height: 5,
               borderRadius: '50%',
               background: 'var(--sh-teal)',
-            }}
-          />
-        )}
+            }} />
+          )}
+        </div>
+
+        {/* Last two tabs */}
+        {mobileTabs.slice(1).map((tab) => {
+          const active = isActive(tab.path)
+          const Icon = iconComponents[tab.icon as NavIcon]
+          return (
+            <button key={tab.path} onClick={() => navigate(tab.path)} style={mobileTabStyle(active)}>
+              <Icon size={22} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Last two tabs */}
-      {mobileTabs.slice(1).map((tab) => {
-        const active = isActive(tab.path)
-        const Icon = iconComponents[tab.icon]
-        return (
-          <button
-            key={tab.path}
-            onClick={() => navigate(tab.path)}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              padding: '10px 0 8px',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: active ? 'var(--sh-teal)' : 'var(--sh-text-muted)',
-              fontSize: 11,
-              fontWeight: active ? 600 : 500,
-              transition: 'color 0.2s ease',
-              minHeight: 56,
-            }}
-          >
-            <Icon size={22} />
-            <span>{tab.label}</span>
-          </button>
-        )
-      })}
+      {/* ── Safe zone bar ──────────────────────────────────────────────
+           Fills the iPhone home indicator area. Height = the larger of:
+           - env(safe-area-inset-bottom): the actual safe inset (0 on non-notch)
+           - 16px: minimum so there's always some breathing room
+           
+           Requires viewport-fit=cover in <meta name="viewport">.
+      ─────────────────────────────────────────────────────────────── */}
+      <div
+        aria-hidden
+        style={{
+          height: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+          background: 'var(--sh-surface)',
+          borderTop: '1px solid var(--sh-border)',
+          flexShrink: 0,
+        }}
+      />
     </nav>
   )
 }
