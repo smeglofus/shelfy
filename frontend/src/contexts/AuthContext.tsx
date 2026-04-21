@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import {
   ACTIVE_LIBRARY_ID_KEY,
+  bumpAuthEpoch,
   getCurrentUser,
   googleOAuthCallback,
   login as apiLogin,
@@ -80,6 +81,16 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     case 'transition_finished':
       return { ...state, isLoading: false }
     case 'bootstrap_settled':
+      // Race-safe bootstrap commit (#125): if a concurrent login / OAuth
+      // callback has ALREADY established a session while bootstrap's own
+      // /auth/me was in flight, do not clobber that session with whatever
+      // bootstrap ultimately saw. This is the exact window that produced
+      // the "blank UI after quick relogin" symptom — the OAuth callback's
+      // ``session_established`` would commit, then bootstrap's late-arriving
+      // ``bootstrap_settled(null, null)`` would wipe it back to logged-out.
+      if (state.user && state.accessToken) {
+        return { ...state, isLoading: false }
+      }
       return { user: action.user, accessToken: action.accessToken, isLoading: false }
     case 'session_established':
       return { user: action.user, accessToken: action.accessToken, isLoading: false }
@@ -109,6 +120,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return transitionId
   }, [])
 
+  /**
+   * Bootstrap begins its /auth/me probe on every mount, which — during an
+   * OAuth callback — runs CONCURRENTLY with ``loginWithGoogle``. Because
+   * React fires children's effects before the parent's, ``loginWithGoogle``
+   * claims the transition ref first and bootstrap would otherwise stomp on
+   * it, causing the login's own ``establishSession`` guard to mis-read the
+   * override as "another transition took over" and bail without ever
+   * dispatching ``session_established``. That was the repro in #125.
+   *
+   * So bootstrap YIELDS: it only claims the ref when no explicit transition
+   * is already in flight. Its own dispatches also check they're still the
+   * active transition before touching state.
+   */
+  const beginBootstrapTransition = useCallback(() => {
+    const transitionId = ++transitionSequenceRef.current
+    if (activeTransitionRef.current === null) {
+      activeTransitionRef.current = transitionId
+    }
+    dispatch({ type: 'transition_started' })
+    return transitionId
+  }, [])
+
   const endTransition = useCallback((transitionId: number) => {
     if (activeTransitionRef.current !== transitionId) return
     activeTransitionRef.current = null
@@ -133,6 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     const transitionId = beginTransition()
+    // Invalidate anything in flight under the outgoing session so its
+    // late-arriving 401 / refresh cannot reach back into the reducer (#125).
+    bumpAuthEpoch()
     // Fire-and-forget; the server clears the auth cookies server-side.
     void apiLogout()
     clearTokens()
@@ -160,6 +196,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Keep the in-memory module singleton in sync so the axios interceptors
       // that live outside React can still read "has token" synchronously.
       setAccessToken(accessTokenMarker)
+      // The backend response for apiLogin / googleOAuthCallback has already
+      // installed the new session cookies. Bump the epoch a SECOND time
+      // (login() bumps at transition start; this bumps at session-live) so
+      // any /auth/me that was issued DURING the transition under the prior
+      // epoch — e.g. the bootstrap effect's own pre-login probe — stale-
+      // rejects on 401 instead of cascading into a refresh → onUnauthorized
+      // → logout that would drop the session we just established (#125).
+      bumpAuthEpoch()
       const user = await getCurrentUser()
       if (activeTransitionRef.current !== transitionId) return
       identifyUser(user.id)
@@ -179,6 +223,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const transitionId = beginTransition()
+      // Move to a new auth epoch BEFORE hitting the backend, so any stale
+      // in-flight requests from the prior (logged-out) session are cleanly
+      // dropped by the api.ts 401 interceptor (#125).
+      bumpAuthEpoch()
       try {
         const tokens = await apiLogin({ email, password })
         await establishSession(tokens.access_token, transitionId)
@@ -206,6 +254,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(
     async (code: string, state: string) => {
       const transitionId = beginTransition()
+      // Bump epoch before the POST /auth/google/callback, so bootstrap's
+      // concurrent /auth/me (racing from the same remount — see #125) is
+      // forced through the stale-epoch rejection path on its eventual 401
+      // instead of tripping a refresh → onUnauthorized → logout cascade.
+      bumpAuthEpoch()
       try {
         const tokens = await googleOAuthCallback({ code, state })
         await establishSession(tokens.access_token, transitionId)
@@ -244,11 +297,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // user. If not, surface the unauthenticated state. No token plumbing from
     // client-side storage is needed — everything flows through cookies.
     let cancelled = false
-    const transitionId = beginTransition()
+    const transitionId = beginBootstrapTransition()
     const bootstrap = async () => {
       try {
         const user = await getCurrentUser()
         if (cancelled) return
+        // If an explicit transition (login / logout / OAuth) has taken over
+        // while we were awaiting, defer to its outcome instead of racing to
+        // dispatch. See beginBootstrapTransition's comment for #125 context.
+        if (activeTransitionRef.current !== transitionId) return
         identifyUser(user.id)
         // Mark us authenticated with an opaque "session" sentinel — the real
         // token is in the HttpOnly cookie. Committed in the same reducer pass
@@ -261,6 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
       } catch {
         if (cancelled) return
+        if (activeTransitionRef.current !== transitionId) return
         clearTokens()
         dispatch({ type: 'bootstrap_settled', user: null, accessToken: null })
       } finally {
@@ -272,7 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [beginTransition, endTransition])
+  }, [beginBootstrapTransition, endTransition])
 
   const value = useMemo<AuthContextValue>(
     () => ({

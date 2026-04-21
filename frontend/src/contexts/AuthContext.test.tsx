@@ -11,7 +11,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -69,6 +69,11 @@ vi.mock('../lib/api', () => {
     }) => {
       authHandlers = handlers
     }),
+    // bumpAuthEpoch is a no-op at the AuthContext unit level — the real epoch
+    // plumbing is covered by api.ts tests. The mock just has to exist so the
+    // import doesn't break.
+    bumpAuthEpoch: vi.fn(() => 1),
+    getAuthEpoch: vi.fn(() => 1),
   }
 })
 
@@ -301,6 +306,117 @@ describe('AuthContext — login flow', () => {
     await waitFor(() =>
       expect(screen.getByTestId('auth-flag').textContent).toBe('yes'),
     )
+    expect(vi.mocked(apiModule.logout)).not.toHaveBeenCalled()
+  })
+})
+
+// Mounts as a child of AuthProvider so its useEffect fires BEFORE the parent's
+// bootstrap effect (React fires effects bottom-up). This reproduces the exact
+// mount shape of OAuthCallbackPage, which is what originally triggered the
+// concurrent bootstrap-vs-OAuth race in #125.
+function AutoOAuthLogin() {
+  const { loginWithGoogle } = useAuth()
+  useEffect(() => {
+    void loginWithGoogle('auth-code', 'state-token')
+  }, [loginWithGoogle])
+  return null
+}
+
+function renderWithOAuthCallback(onSnapshot: (row: SnapshotRow) => void) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AuthProvider>
+          <AutoOAuthLogin />
+          {children}
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+  render(<Probe onSnapshot={onSnapshot} />, { wrapper })
+  return queryClient
+}
+
+describe('AuthContext — concurrent bootstrap race (#125)', () => {
+  it('completes OAuth login even when bootstrap /auth/me is in flight', async () => {
+    // Reproduces the original #125 repro: an OAuth callback remount fires
+    // loginWithGoogle (child useEffect) BEFORE AuthProvider's bootstrap
+    // useEffect runs. Before the fix, bootstrap's beginTransition would
+    // overwrite loginWithGoogle's activeTransitionRef, making
+    // establishSession's guard (``activeTransitionRef.current !== transitionId``)
+    // false and causing it to bail silently — no session_established was
+    // ever dispatched and the UI sat in isLoading=false, isAuthenticated=false.
+    //
+    // With the fix, beginBootstrapTransition YIELDS when a transition is
+    // already active, so establishSession's guard passes and the session
+    // commits atomically.
+    const snapshots: SnapshotRow[] = []
+    renderWithOAuthCallback((row) => snapshots.push(row))
+
+    // Effect order + microtask scheduling produces this queue:
+    //   #1 = bootstrap's /auth/me (parent effect, no awaits before the call)
+    //   #2 = establishSession's /auth/me (after googleOAuthCallback resolves)
+    const bootstrapMe = await waitForNextMeCall()
+    const oauthMe = await waitForNextMeCall()
+
+    // Reject bootstrap first — the realistic case: the HttpOnly cookie from
+    // the previous session is gone, so /auth/me returns 401. Under the old
+    // code this would dispatch bootstrap_settled(null, null) and ALSO cause
+    // the OAuth callback's guard to bail. Now it's a no-op.
+    await act(async () => {
+      bootstrapMe.reject(new Error('401 stale cookie'))
+    })
+
+    // OAuth side completes — must dispatch session_established.
+    await act(async () => {
+      oauthMe.resolve({ id: 'u-oauth', email: 'oauth@example.com' })
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('yes'),
+    )
+    expect(screen.getByTestId('loading-flag').textContent).toBe('no')
+
+    // The atomic-dispatch invariant from #125 must hold under race conditions
+    // too: no snapshot may have isAuthenticated=true with userId=null.
+    for (const row of snapshots) {
+      if (row.isAuthenticated) expect(row.userId).not.toBeNull()
+    }
+
+    // And the stale bootstrap rejection MUST NOT have cascaded into logout.
+    expect(vi.mocked(apiModule.logout)).not.toHaveBeenCalled()
+  })
+
+  it('late bootstrap rejection does not clobber an established OAuth session', async () => {
+    // Same remount shape, different settlement order: OAuth completes FIRST,
+    // then bootstrap's /auth/me rejects late. The non-destructive
+    // ``bootstrap_settled`` reducer rule (reducer checks "user+token already
+    // set? just end loading") is the final line of defense here, beneath the
+    // active-transition ref guard. Either guard alone would catch this; having
+    // both makes the fix robust to future refactors of the transition plumbing.
+    renderWithOAuthCallback(() => {})
+
+    const bootstrapMe = await waitForNextMeCall()
+    const oauthMe = await waitForNextMeCall()
+
+    await act(async () => {
+      oauthMe.resolve({ id: 'u-oauth', email: 'oauth@example.com' })
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-flag').textContent).toBe('yes'),
+    )
+
+    // Late 401 on the pre-OAuth /auth/me — used to clobber the session.
+    await act(async () => {
+      bootstrapMe.reject(new Error('401 stale cookie'))
+    })
+
+    // Session is still alive; no involuntary logout.
+    expect(screen.getByTestId('auth-flag').textContent).toBe('yes')
+    expect(screen.getByTestId('loading-flag').textContent).toBe('no')
     expect(vi.mocked(apiModule.logout)).not.toHaveBeenCalled()
   })
 })

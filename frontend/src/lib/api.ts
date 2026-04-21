@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 
-import { clearTokens, getAccessToken, getCsrfToken, setAccessToken } from './auth'
+import { clearTokens, getCsrfToken, setAccessToken } from './auth'
 import type {
   AccessTokenResponse,
   AddMemberRequest,
@@ -98,6 +98,36 @@ const apiClient = axios.create({
   withCredentials: true,
 })
 
+// ── Auth epoch (issue #125) ────────────────────────────────────────────────
+// Every auth transition (login, OAuth callback, logout, bootstrap) bumps the
+// epoch. Every outbound request is tagged with ``_authEpoch`` at send time,
+// so when a 401 comes back we can tell whether the request was even issued
+// under the CURRENT auth session.
+//
+// Why: the reported repro is "logout → quick Google login", where an
+// in-flight ``/auth/me`` from the old session returns 401 AFTER the new
+// session is established. Previously the generic 401 path would (a) kick off
+// a refresh that itself 401'd, then (b) call ``onUnauthorized`` → ``logout``,
+// silently tearing down the freshly-logged-in user. With the epoch tag the
+// stale 401 is recognised and dropped without any side effects; legitimate
+// 401s in the current session still refresh and, on failure, still log out.
+let authEpoch = 0
+
+export function bumpAuthEpoch(): number {
+  authEpoch += 1
+  return authEpoch
+}
+
+export function getAuthEpoch(): number {
+  return authEpoch
+}
+
+type AuthAwareConfig = AxiosRequestConfig & {
+  _retry?: boolean
+  _libraryRetry?: boolean
+  _authEpoch?: number
+}
+
 let onUnauthorized: (() => void) | null = null
 let onTokenRefresh: ((accessToken: string) => void) | null = null
 let refreshPromise: Promise<string | null> | null = null
@@ -112,18 +142,26 @@ export function registerAuthHandlers(handlers: {
 
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
+    // Capture the epoch at the moment refresh starts. If auth state has moved
+    // on by the time this settles (e.g. a relogin completed concurrently —
+    // see issue #125), we MUST NOT run the side-effects below: promoting a
+    // stale token would desync React state, and firing ``onUnauthorized``
+    // would tear down a perfectly valid new session.
+    const startEpoch = authEpoch
     // Empty body — the backend reads the HttpOnly refresh_token cookie.
     // The response sets a fresh access_token cookie via Set-Cookie which
     // the browser will attach to subsequent requests automatically.
     refreshPromise = apiClient
       .post<AccessTokenResponse | TokenResponse>('/api/v1/auth/refresh', {})
       .then((response) => {
+        if (authEpoch !== startEpoch) return null
         const nextAccessToken = response.data.access_token
         setAccessToken(nextAccessToken)
         onTokenRefresh?.(nextAccessToken)
         return nextAccessToken
       })
       .catch(() => {
+        if (authEpoch !== startEpoch) return null
         clearTokens()
         onUnauthorized?.()
         return null
@@ -150,6 +188,11 @@ apiClient.interceptors.request.use((config) => {
   // would only work if tokens were accessible to JS, which is precisely
   // what issue #117 moved us away from.
 
+  // Tag the request with the auth epoch at send time so the response
+  // interceptor can recognise replies that belong to a superseded session
+  // (see the ``authEpoch`` block above and issue #125).
+  ;(config as AuthAwareConfig)._authEpoch = authEpoch
+
   const libraryId = getActiveLibraryId()
   if (libraryId) {
     config.headers['X-Library-Id'] = libraryId
@@ -174,9 +217,31 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ detail?: string }>) => {
-    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean; _libraryRetry?: boolean }) | undefined
+    const originalRequest = error.config as AuthAwareConfig | undefined
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // Refresh-endpoint deadlock guard. When /auth/refresh itself returns
+      // 401 (no / expired refresh cookie — the canonical fresh-visitor
+      // scenario), we MUST NOT recursively call ``refreshAccessToken``:
+      // singleflight would hand back the same in-flight promise, which
+      // depends on this very axios call's interceptor chain finishing —
+      // a circular wait that hangs the whole bootstrap. Let the 401
+      // propagate so the outer ``.catch`` in refreshAccessToken can finish.
+      const requestUrl = originalRequest.url ?? ''
+      if (requestUrl.includes('/api/v1/auth/refresh')) {
+        return Promise.reject(error)
+      }
+
+      // Stale-session guard for #125. If the request was issued under a
+      // prior auth epoch, this 401 tells us nothing about the CURRENT
+      // session; do NOT trigger refresh (which would 401 again) and do NOT
+      // let it cascade into a logout. Reject silently — the caller's
+      // component is usually already unmounted or gated by isAuthenticated.
+      const requestEpoch = originalRequest._authEpoch
+      if (typeof requestEpoch === 'number' && requestEpoch !== authEpoch) {
+        return Promise.reject(error)
+      }
+
       originalRequest._retry = true
       const nextAccessToken = await refreshAccessToken()
 
