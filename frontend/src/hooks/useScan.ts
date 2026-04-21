@@ -9,6 +9,7 @@ import {
   listBooksByLocation,
   scanShelf,
 } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { useToastStore } from '../lib/toast-store'
 import type { ShelfScanConfirmRequest } from '../lib/types'
 import { BOOKS_QUERY_KEY } from './useBooks'
@@ -26,10 +27,11 @@ export function useScanShelf() {
 }
 
 export function useShelfScanResult(jobId: string | null) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: ['shelf-scan', jobId],
     queryFn: () => getShelfScanResult(jobId as string),
-    enabled: Boolean(jobId),
+    enabled: isAuthenticated && Boolean(jobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status
       return status === 'done' || status === 'failed' ? false : 2000
@@ -57,10 +59,11 @@ export function useConfirmShelfScan() {
 }
 
 export function useBooksByLocation(locationId: string | null) {
+  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: ['books-by-location', locationId],
     queryFn: () => listBooksByLocation(locationId as string),
-    enabled: Boolean(locationId),
+    enabled: isAuthenticated && Boolean(locationId),
     retry: false,
   })
 }
