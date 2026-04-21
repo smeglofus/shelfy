@@ -10,6 +10,7 @@ import {
   getBook,
   getJobStatus,
   listBooks,
+  listBooksForShelf,
   updateBook,
   uploadBookImage,
 } from '../lib/api'
@@ -34,6 +35,26 @@ export function useBooks(params: BookListParams) {
   return useQuery({
     queryKey: [...BOOKS_QUERY_KEY, params],
     queryFn: () => listBooks(params),
+    retry: false,
+    enabled: isAuthenticated,
+  })
+}
+
+/**
+ * Fetch the complete book dataset for bookshelf rendering.
+ *
+ * Unlike ``useBooks``, this is unpaginated — required because BookshelfView
+ * needs every book in every location to build a correct reorder payload
+ * (issue #128). Reorder-/move-/delete-/create-book mutations still hit the
+ * ``BOOKS_QUERY_KEY`` prefix on invalidation, which matches this key too.
+ */
+export const BOOKS_SHELF_QUERY_KEY = [...BOOKS_QUERY_KEY, 'shelf']
+
+export function useBooksForShelf() {
+  const { isAuthenticated } = useAuth()
+  return useQuery({
+    queryKey: BOOKS_SHELF_QUERY_KEY,
+    queryFn: () => listBooksForShelf(),
     retry: false,
     enabled: isAuthenticated,
   })

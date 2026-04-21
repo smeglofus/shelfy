@@ -438,6 +438,188 @@ async def test_create_book_with_reading_status(test_session: async_sessionmaker[
     assert response.json()["reading_status"] == "reading"
 
 
+# ── Issue #128: bookshelf complete-dataset endpoint + reorder hardening ──────
+
+@pytest.mark.asyncio
+async def test_shelf_endpoint_returns_all_books_unpaginated(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Regression for #128: ``/books/shelf`` must return every book in the
+    library, not just the first page. Libraries with >100 books were losing
+    books from the shelf UI because the FE called the paginated list endpoint.
+    """
+    async with test_session() as session:
+        _, library = await _seed_user_with_library(session)
+        location_id = await _create_location(session, library.id)
+        session.add_all(
+            [
+                Book(
+                    library_id=library.id,
+                    title=f"Book {index:03d}",
+                    location_id=location_id,
+                    shelf_position=index,
+                )
+                for index in range(150)
+            ]
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get("/api/v1/books/shelf", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 150
+    # Every book has the expected location_id and sequential shelf_position.
+    positions = sorted(item["shelf_position"] for item in payload)
+    assert positions == list(range(150))
+
+
+@pytest.mark.asyncio
+async def test_shelf_endpoint_orders_by_location_and_shelf_position(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Shelf rendering relies on a deterministic ``(location, position)`` order."""
+    async with test_session() as session:
+        _, library = await _seed_user_with_library(session)
+        location_a = Location(library_id=library.id, room="r1", furniture="f1", shelf="s1")
+        location_b = Location(library_id=library.id, room="r1", furniture="f1", shelf="s2")
+        session.add_all([location_a, location_b])
+        await session.flush()
+        session.add_all(
+            [
+                Book(library_id=library.id, title="B3", location_id=location_b.id, shelf_position=1),
+                Book(library_id=library.id, title="A1", location_id=location_a.id, shelf_position=0),
+                Book(library_id=library.id, title="B1", location_id=location_b.id, shelf_position=0),
+                Book(library_id=library.id, title="A2", location_id=location_a.id, shelf_position=1),
+                # Unassigned book — must still appear but at the tail.
+                Book(library_id=library.id, title="Z-unassigned"),
+            ]
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get("/api/v1/books/shelf", headers=headers)
+
+    assert response.status_code == 200
+    titles = [item["title"] for item in response.json()]
+    # Location A (assuming its id sorts before B's) comes first with pos 0,1;
+    # then Location B with pos 0,1. Unassigned is last.
+    # We assert the relative ordering WITHIN each location and that the
+    # unassigned book is at the end.
+    assigned = [t for t in titles if t != "Z-unassigned"]
+    assert titles[-1] == "Z-unassigned"
+    # Within each location, positions must be increasing.
+    assert assigned.index("A1") < assigned.index("A2")
+    assert assigned.index("B1") < assigned.index("B3")
+
+
+@pytest.mark.asyncio
+async def test_shelf_endpoint_requires_authentication() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/api/v1/books/shelf")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_bulk_reorder_rejects_partial_payload_with_409(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Regression for #128: reorder must 4xx on partial-coverage payloads,
+    not 500 from the ``uq_books_location_shelf_position`` unique index.
+
+    Scenario: shelf has books at positions 0, 1, 2 but caller only knows
+    about books at 0 and 1 and tries to swap them. The unmoved book at
+    position 2 is not in the payload, so the swap itself is safe — but if
+    the caller instead tries to place a book at position 2 without also
+    moving book-at-2, that collides.
+    """
+    async with test_session() as session:
+        _, library = await _seed_user_with_library(session)
+        location_id = await _create_location(session, library.id)
+        book_ids: list[uuid.UUID] = []
+        for index in range(3):
+            book = Book(
+                library_id=library.id,
+                title=f"Book {index}",
+                location_id=location_id,
+                shelf_position=index,
+            )
+            session.add(book)
+            await session.flush()
+            book_ids.append(book.id)
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        # Caller tries to put book 0 at position 2 (where book 2 already sits)
+        # without including book 2 in the payload. That's exactly the partial
+        # dataset bug from prod.
+        response = await client.post(
+            "/api/v1/books/bulk/reorder",
+            json={
+                "items": [
+                    {"id": str(book_ids[0]), "location_id": str(location_id), "shelf_position": 2},
+                ],
+            },
+            headers=headers,
+        )
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert "shelf" in detail.lower() or "refetch" in detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_bulk_reorder_full_coverage_succeeds(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Sanity check that the #128 hardening doesn't break legitimate reorders."""
+    async with test_session() as session:
+        _, library = await _seed_user_with_library(session)
+        location_id = await _create_location(session, library.id)
+        book_ids: list[uuid.UUID] = []
+        for index in range(3):
+            book = Book(
+                library_id=library.id,
+                title=f"Book {index}",
+                location_id=location_id,
+                shelf_position=index,
+            )
+            session.add(book)
+            await session.flush()
+            book_ids.append(book.id)
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        # Reverse the shelf — all three books in the payload, no collision.
+        response = await client.post(
+            "/api/v1/books/bulk/reorder",
+            json={
+                "items": [
+                    {"id": str(book_ids[0]), "location_id": str(location_id), "shelf_position": 2},
+                    {"id": str(book_ids[1]), "location_id": str(location_id), "shelf_position": 1},
+                    {"id": str(book_ids[2]), "location_id": str(location_id), "shelf_position": 0},
+                ],
+            },
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["affected"] == 3
+
+
 @pytest.mark.asyncio
 async def test_update_book_reading_status_to_read(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

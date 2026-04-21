@@ -27,7 +27,7 @@ import { CSS } from '@dnd-kit/utilities'
 
 import { EmptyShelfIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
-import { useBooks, useBulkMoveBooks } from '../hooks/useBooks'
+import { useBooksForShelf, useBulkMoveBooks } from '../hooks/useBooks'
 import { bulkReorderBooks } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { useLocations } from '../hooks/useLocations'
@@ -43,8 +43,11 @@ export function BookshelfViewPage() {
   const showSuccess = useToastStore((s) => s.showSuccess)
 
   const { data: locations = [] } = useLocations()
-  const { data: booksData } = useBooks({ pageSize: 100 })
-  const allBooks = booksData?.items ?? []
+  // BookshelfView MUST have the full library dataset. ``useBooks`` paginates
+  // at 100 rows/page — any book beyond that would be invisible here and the
+  // reorder payload we POST below would collide with it on the server (see
+  // issue #128). ``useBooksForShelf`` is the unpaginated variant.
+  const { data: allBooks = [] } = useBooksForShelf()
 
   const preselectedLocationId = searchParams.get('location_id')
   const highlightBookId = searchParams.get('highlight_book_id')

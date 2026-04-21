@@ -23,7 +23,8 @@ from app.schemas.book import (
 from app.schemas.job import UploadResponse
 from app.services.book import (
     bulk_delete_books, bulk_move_books, bulk_reorder_books, bulk_update_status,
-    create_book, delete_book, get_book_or_404, list_books, update_book,
+    create_book, delete_book, get_book_or_404, list_all_books_for_shelf,
+    list_books, update_book,
 )
 from app.services.csv_import import build_books_export_csv, confirm_csv_import, preview_csv_import
 from app.services.job import create_upload_job
@@ -68,6 +69,26 @@ async def read_books(
         page_size=page_size,
         items=[BookResponse.model_validate(book) for book in books],
     )
+
+
+@router.get("/shelf", response_model=list[BookResponse])
+async def read_books_for_shelf(
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(get_library_id),
+) -> list[BookResponse]:
+    """Return every book in the library, ordered for bookshelf rendering.
+
+    The bookshelf UI needs a complete per-location dataset or its reorder
+    flow builds payloads that collide with books hidden by pagination (see
+    issue #128). This endpoint returns the full library without pagination;
+    callers should not use it for generic browsing.
+
+    NOTE: This route MUST be registered before the ``/{book_id}`` dynamic
+    path (FastAPI matches in declaration order — otherwise "shelf" would be
+    parsed as a book id).
+    """
+    books = await list_all_books_for_shelf(session, library_id=library_id)
+    return [BookResponse.model_validate(book) for book in books]
 
 
 @router.get("/export")

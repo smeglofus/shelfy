@@ -339,6 +339,21 @@ export async function deleteLocation(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/locations/${id}`)
 }
 
+/**
+ * Fetch the **complete** book dataset for the library, ordered for bookshelf
+ * rendering.
+ *
+ * This is a deliberately different endpoint from ``listBooks`` — it has no
+ * pagination. BookshelfView needs every book for every location or its
+ * reorder flow will build payloads that collide with the books that were
+ * hidden by pagination (issue #128). Do not use this for generic browsing;
+ * the payload can be large for sizable libraries.
+ */
+export async function listBooksForShelf(): Promise<Book[]> {
+  const response = await apiClient.get<Book[]>('/api/v1/books/shelf')
+  return response.data
+}
+
 export async function listBooks(params: BookListParams = {}): Promise<BookListResponse> {
   const response = await apiClient.get<BookListResponse>('/api/v1/books', {
     params: {

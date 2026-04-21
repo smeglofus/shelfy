@@ -84,6 +84,36 @@ async def list_books(
     return books, total
 
 
+async def list_all_books_for_shelf(
+    session: AsyncSession,
+    *,
+    library_id: uuid.UUID,
+) -> list[Book]:
+    """Return every book in the library, ordered for bookshelf rendering.
+
+    The bookshelf view renders books grouped by ``location_id`` and sorted by
+    ``shelf_position``. It cannot tolerate a paginated dataset: if any book
+    for a rendered location is missing, the UI reorder flow builds a payload
+    that collides with the hidden book's ``(location_id, shelf_position)``
+    and crashes the reorder RPC (see issue #128).
+
+    This service returns the complete library dataset, unpaginated. Order is
+    ``(location_id NULLS LAST, shelf_position NULLS LAST, id)`` so the FE can
+    trust the slot of each book within its location.
+    """
+    query = (
+        select(Book)
+        .options(selectinload(Book.loans))
+        .where(Book.library_id == library_id)
+        .order_by(
+            Book.location_id.asc().nulls_last(),
+            Book.shelf_position.asc().nulls_last(),
+            Book.id.asc(),
+        )
+    )
+    return list((await session.execute(query)).scalars().all())
+
+
 async def create_book(session: AsyncSession, payload: BookCreateRequest, library_id: uuid.UUID) -> Book:
     await _validate_location_belongs_to_library(session, payload.location_id, library_id)
     book = Book(**payload.model_dump(), library_id=library_id)
@@ -291,26 +321,74 @@ async def bulk_reorder_books(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate target shelf position in payload")
         seen_pairs.add(key)
 
+    # Partial-coverage guard (issue #128). If the payload tries to place a
+    # book at ``(location, position)`` where some OTHER book (not in the
+    # payload) already sits, the two-phase UPDATE below would violate the
+    # partial unique index ``uq_books_location_shelf_position`` and surface
+    # as an opaque 500 to the UI. That scenario happens whenever the caller
+    # reorders a shelf based on a truncated list (e.g. the FE had only the
+    # first page of books). Detect it up front and return a clean 409 that
+    # callers can recover from by refetching the full shelf dataset.
+    payload_ids = set(ids)
+    positions_by_location: dict[uuid.UUID, set[int]] = {}
+    for _, loc_id, pos in items:
+        positions_by_location.setdefault(loc_id, set()).add(pos)
+
+    for loc_id, positions in positions_by_location.items():
+        conflict_query = (
+            select(Book.id)
+            .where(
+                Book.library_id == library_id,
+                Book.location_id == loc_id,
+                Book.shelf_position.in_(list(positions)),
+                Book.id.not_in(list(payload_ids)),
+            )
+            .limit(1)
+        )
+        colliding = (await session.execute(conflict_query)).scalar_one_or_none()
+        if colliding is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Reorder payload does not fully cover the affected shelf. "
+                    "Refetch the complete shelf dataset and resubmit."
+                ),
+            )
+
     whens_loc = [(Book.id == bid, lid) for bid, lid, _ in items]
     temp_whens_pos = [(Book.id == bid, -(idx + 1)) for idx, (bid, _, _) in enumerate(items)]
 
-    await session.execute(
-        update(Book)
-        .where(Book.id.in_(ids), Book.library_id == library_id)
-        .values(
-            location_id=case(*whens_loc, else_=Book.location_id),
-            shelf_position=case(*temp_whens_pos, else_=Book.shelf_position),
+    try:
+        await session.execute(
+            update(Book)
+            .where(Book.id.in_(ids), Book.library_id == library_id)
+            .values(
+                location_id=case(*whens_loc, else_=Book.location_id),
+                shelf_position=case(*temp_whens_pos, else_=Book.shelf_position),
+            )
         )
-    )
 
-    final_whens_pos = [(Book.id == bid, pos) for bid, _, pos in items]
-    await session.execute(
-        update(Book)
-        .where(Book.id.in_(ids), Book.library_id == library_id)
-        .values(shelf_position=case(*final_whens_pos, else_=Book.shelf_position))
-    )
+        final_whens_pos = [(Book.id == bid, pos) for bid, _, pos in items]
+        await session.execute(
+            update(Book)
+            .where(Book.id.in_(ids), Book.library_id == library_id)
+            .values(shelf_position=case(*final_whens_pos, else_=Book.shelf_position))
+        )
 
-    await session.commit()
+        await session.commit()
+    except IntegrityError as exc:
+        # Defense-in-depth: the partial-coverage guard above SHOULD catch
+        # every case that would trigger ``uq_books_location_shelf_position``,
+        # but any race with a concurrent writer or a future schema change
+        # must still surface as a clean 4xx rather than a 500.
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Reorder conflicts with the current shelf state. "
+                "Refetch and resubmit."
+            ),
+        ) from exc
     return len(items)
 
 
