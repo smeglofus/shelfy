@@ -687,15 +687,57 @@ async def test_confirm_location_not_created_when_flag_false(
             headers=headers,
         )
 
-    assert confirm.json()["created"] == 1
+    result = confirm.json()
+    assert result["created"] == 0
+    assert result["skipped"] == 1
+    assert any("create_missing_locations=false" in w for w in result.get("warnings", []))
 
     async with test_session() as session:
         async with test_session() as s2:
             _, library = await _seed_user_with_library(s2)
-        book = (await session.execute(
+        books = (await session.execute(
             select(Book).where(Book.library_id == library.id)
-        )).scalar_one()
-    assert book.location_id is None, "location_id should be None when flag is False"
+        )).scalars().all()
+    assert books == [], "row with unresolved location should be skipped when flag is False"
+
+
+@pytest.mark.asyncio
+async def test_reimport_unresolved_location_create_missing_false_is_idempotent(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    csv_bytes = _make_csv([{
+        "title": "No ISBN Located",
+        "author": "A",
+        "room": "Missing Room", "furniture": "Missing Shelf", "shelf": "X",
+    }])
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        for _ in range(2):
+            preview = await client.post(
+                "/api/v1/books/import/preview",
+                files={"file": ("books.csv", csv_bytes, "text/csv")},
+                headers=headers,
+            )
+            token = preview.json()["import_token"]
+            confirm = await client.post(
+                "/api/v1/books/import/confirm",
+                json={"import_token": token, "create_missing_locations": False},
+                headers=headers,
+            )
+            result = confirm.json()
+            assert result["created"] == 0
+            assert result["skipped"] == 1
+
+    async with test_session() as session:
+        async with test_session() as s2:
+            _, library = await _seed_user_with_library(s2)
+        count = (await session.execute(
+            select(Book).where(Book.library_id == library.id)
+        )).scalars().all()
+    assert len(count) == 0
 
 
 @pytest.mark.asyncio

@@ -515,6 +515,15 @@ async def confirm_csv_import(
                 except Exception as exc:
                     warnings.append(f"Could not create location {room}/{furniture}/{shelf}: {exc}")
 
+            # If location columns are present but unresolved and auto-create is disabled,
+            # skip row to keep dedup stable across repeated imports.
+            if location_id is None and not options.create_missing_locations:
+                skipped += 1
+                warnings.append(
+                    f"Skipped '{row.get('title', 'Untitled')}': location {room}/{furniture}/{shelf} not found and create_missing_locations=false."
+                )
+                continue
+
         # ── Determine reading_status ─────────────────────────────────────────
         rs_val = row.get("reading_status", "unread")
         try:
