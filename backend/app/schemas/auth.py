@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -11,6 +11,17 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        if len(value) < 10:
+            raise ValueError("Password must be at least 10 characters long")
+        if not any(ch.isdigit() for ch in value):
+            raise ValueError("Password must contain at least one digit")
+        if not any(not ch.isdigit() for ch in value):
+            raise ValueError("Password must contain at least one non-digit character")
+        return value
 
 
 class TokenResponse(BaseModel):

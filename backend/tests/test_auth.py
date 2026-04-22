@@ -155,11 +155,22 @@ async def test_register_creates_user(test_session: AsyncSession) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/auth/register",
-            json={"email": "new.user@example.com", "password": "secret123"},
+            json={"email": "new.user@example.com", "password": "StrongPass123"},
         )
 
     assert response.status_code == 201
     assert response.json()["email"] == "new.user@example.com"
+
+
+@pytest.mark.asyncio
+async def test_register_weak_password_returns_422(test_session: AsyncSession) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "weak.user@example.com", "password": "1234567"},
+        )
+
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -169,7 +180,7 @@ async def test_register_duplicate_email_returns_409(test_session: AsyncSession) 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/auth/register",
-            json={"email": "admin@example.com", "password": "secret"},
+            json={"email": "admin@example.com", "password": "StrongPass123"},
         )
 
     assert response.status_code == 409

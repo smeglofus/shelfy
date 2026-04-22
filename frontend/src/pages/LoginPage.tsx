@@ -24,6 +24,12 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
+  const passwordChecks = {
+    length: password.length >= 10,
+    digit: /\d/.test(password),
+    nonDigit: /\D/.test(password),
+  }
+
   if (isAuthenticated) {
     return <Navigate to="/" replace />
   }
@@ -125,6 +131,32 @@ export function LoginPage() {
             <span>Password</span>
             <input className="sh-input" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </label>
+
+          {mode === 'register' && (
+            <div
+              style={{
+                marginTop: -8,
+                fontSize: 12,
+                color: 'var(--sh-text-muted)',
+                background: 'var(--sh-surface-elevated)',
+                border: '1px solid var(--sh-border)',
+                borderRadius: 'var(--sh-radius-md)',
+                padding: '8px 10px',
+                display: 'grid',
+                gap: 4,
+              }}
+            >
+              <div style={{ color: passwordChecks.length ? 'var(--sh-teal)' : 'var(--sh-text-muted)' }}>
+                {passwordChecks.length ? '✓' : '•'} Min. 10 characters
+              </div>
+              <div style={{ color: passwordChecks.digit ? 'var(--sh-teal)' : 'var(--sh-text-muted)' }}>
+                {passwordChecks.digit ? '✓' : '•'} At least 1 digit
+              </div>
+              <div style={{ color: passwordChecks.nonDigit ? 'var(--sh-teal)' : 'var(--sh-text-muted)' }}>
+                {passwordChecks.nonDigit ? '✓' : '•'} At least 1 letter/symbol
+              </div>
+            </div>
+          )}
 
           {mode === 'register' && (
             <label style={{ display: 'grid', gap: 6 }}>
