@@ -26,6 +26,7 @@ from redis import Redis
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from gemini_parser import parse_gemini_candidates
 from settings import worker_settings
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
@@ -250,43 +251,6 @@ def _extract_title_author_from_text(text: str) -> tuple[str | None, str | None]:
     return title, author
 
 
-def _extract_json_object(text: str) -> dict[str, object] | None:
-    start_index = text.find("{")
-    end_index = text.rfind("}")
-    if start_index == -1 or end_index == -1 or end_index <= start_index:
-        return None
-
-    try:
-        parsed = json.loads(text[start_index : end_index + 1])
-    except json.JSONDecodeError:
-        return None
-
-    return parsed if isinstance(parsed, dict) else None
-
-
-
-
-def _extract_json_array(text: str) -> list[dict[str, object]] | None:
-    start_index = text.find("[")
-    end_index = text.rfind("]")
-    if start_index == -1 or end_index == -1 or end_index <= start_index:
-        return None
-
-    try:
-        parsed = json.loads(text[start_index : end_index + 1])
-    except json.JSONDecodeError:
-        return None
-
-    if not isinstance(parsed, list):
-        return None
-
-    out: list[dict[str, object]] = []
-    for item in parsed:
-        if isinstance(item, dict):
-            out.append(item)
-    return out or None
-
-
 def _normalize_vision_result(parsed: dict[str, object]) -> dict[str, object] | None:
     try:
         from text_normalize import normalize_book_fields
@@ -423,31 +387,12 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         logger.warning("gemini_shelf_scan_failed", error_type=type(exc).__name__)
         return None
 
-    candidates = payload.get("candidates")
-    if not isinstance(candidates, list) or not candidates:
+    parsed_result = parse_gemini_candidates(payload)
+    if parsed_result is None:
+        logger.warning("shelf_scan_json_parse_failed")
         return None
-
-    content = candidates[0].get("content", {})
-    parts = content.get("parts", [])
-    if not isinstance(parts, list):
-        return None
-
-    text_blocks = [part.get("text") for part in parts if isinstance(part, dict) and isinstance(part.get("text"), str)]
-    if not text_blocks:
-        return None
-
-    blob = "\n".join(text_blocks)
-    parsed_array = _extract_json_array(blob)
-    parse_method = "json_array"
-    if parsed_array is None:
-        parsed_obj = _extract_json_object(blob)
-        if parsed_obj is None:
-            logger.warning("shelf_scan_json_parse_failed", blob_length=len(blob))
-            return None
-        parsed_array = [parsed_obj]
-        parse_method = "json_object_fallback"
-
-    logger.info("shelf_scan_json_parsed", method=parse_method, item_count=len(parsed_array))
+    parsed_items, parse_method = parsed_result
+    logger.info("shelf_scan_json_parsed", method=parse_method, item_count=len(parsed_items))
 
     # Import audit heuristics (sys.path already set up by _normalize_vision_result)
     try:
@@ -461,9 +406,9 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         from text_normalize import audit_book_row
 
     normalized_results: list[dict[str, object]] = []
-    for parsed in parsed_array:
-        confidence = parsed.get("confidence") if isinstance(parsed.get("confidence"), str) else "medium"
-        normalized = _normalize_vision_result(parsed)
+    for parsed in parsed_items:
+        confidence = parsed.confidence
+        normalized = _normalize_vision_result(parsed.model_dump())
         if normalized is not None:
             # Run quality heuristics — downgrade confidence when flagged
             quality_flags = audit_book_row(normalized)
@@ -481,7 +426,7 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
             normalized_results.append(normalized)
         else:
             # Still include unrecognized items for user review
-            observed = parsed.get("observed_text") if isinstance(parsed.get("observed_text"), str) else None
+            observed = parsed.observed_text
             normalized_results.append({
                 "isbn": None,
                 "title": None,
@@ -550,33 +495,14 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         )
         return None
 
-    candidates = payload.get("candidates")
-    if not isinstance(candidates, list) or not candidates:
+    parsed_result = parse_gemini_candidates(payload)
+    if parsed_result is None:
         return None
-
-    content = candidates[0].get("content", {})
-    parts = content.get("parts", [])
-    if not isinstance(parts, list):
-        return None
-
-    text_blocks = [part.get("text") for part in parts if isinstance(part, dict) and isinstance(part.get("text"), str)]
-    if not text_blocks:
-        return None
-
-    blob = "\n".join(text_blocks)
-    parsed_array = _extract_json_array(blob)
-    parsed_items: list[dict[str, object]]
-    if parsed_array is not None:
-        parsed_items = parsed_array
-    else:
-        parsed_obj = _extract_json_object(blob)
-        if parsed_obj is None:
-            return None
-        parsed_items = [parsed_obj]
+    parsed_items, _parse_method = parsed_result
 
     normalized_results: list[dict[str, object]] = []
     for parsed in parsed_items:
-        normalized = _normalize_vision_result(parsed)
+        normalized = _normalize_vision_result(parsed.model_dump())
         if normalized is not None:
             normalized_results.append(normalized)
 
