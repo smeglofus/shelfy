@@ -43,8 +43,12 @@ async def create_library(
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> LibraryResponse:
-    # Gate: raises HTTP 403 if the user has reached their plan's library limit
-    await entitlements.assert_can_create_library(session, current_user.id)
+    # Gate: raises HTTP 403 if the user has reached their plan's library limit.
+    # ``lock=True`` takes a FOR UPDATE row lock on the user's Subscription row,
+    # serializing concurrent library creations so two parallel requests cannot
+    # both observe "under limit" and both insert (issue #119). The lock is
+    # released when the transaction commits below.
+    await entitlements.assert_can_create_library(session, current_user.id, lock=True)
 
     lib = Library(name=payload.name, created_by_user_id=current_user.id)
     session.add(lib)
@@ -74,9 +78,15 @@ async def create_member(
     current_user: User = Depends(get_current_user),
 ) -> LibraryMemberResponse:
     await require_library_role(session, current_user.id, library_id, LibraryRole.OWNER)
-    # Gate: raises HTTP 403 if the library has reached its plan's member limit
-    await entitlements.assert_can_add_member(session, current_user.id, library_id)
+    # Gate: raises HTTP 403 if the library has reached its plan's member limit.
+    # ``lock=True`` takes a FOR UPDATE row lock on the parent Library row so
+    # concurrent add-member requests serialize behind each other and cannot
+    # both observe "under limit" before inserting (issue #119). The lock lives
+    # until this endpoint commits below; ``add_member`` no longer commits
+    # internally for that reason.
+    await entitlements.assert_can_add_member(session, current_user.id, library_id, lock=True)
     member = await add_member(session, library_id, str(payload.email), payload.role)
+    await session.commit()
     user = await session.get(User, member.user_id)
     assert user is not None
     return LibraryMemberResponse(user_id=member.user_id, email=user.email, role=member.role)

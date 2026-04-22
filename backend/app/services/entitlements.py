@@ -130,9 +130,31 @@ async def can_use_metric_n(
     return used + count <= limit
 
 
-async def can_create_library(session: AsyncSession, user_id: uuid.UUID) -> bool:
-    """Return True if the user can create another library under their current plan."""
+async def can_create_library(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    lock: bool = False,
+) -> bool:
+    """Return True if the user can create another library under their current plan.
+
+    When *lock* is True, acquire a row-level ``FOR UPDATE`` lock on the user's
+    Subscription row before counting. This serializes concurrent creation
+    attempts through the subscription row so the check-then-insert pattern in
+    the endpoint cannot exceed the plan limit under parallel requests
+    (issue #119). The lock is released when the enclosing transaction commits
+    or rolls back, so callers must commit only after the INSERT completes.
+    """
     sub = await get_or_create_subscription(session, user_id)
+    if lock:
+        # Serialize concurrent library creations for this user. The INSERT that
+        # follows the check lives in the same transaction as this lock, so any
+        # other transaction blocks here until we commit (or roll back).
+        await session.execute(
+            select(Subscription.id)
+            .where(Subscription.user_id == user_id)
+            .with_for_update()
+        )
     plan = _effective_plan(sub)
     limit = get_limit(plan, "libraries")
     count_result = await session.execute(
@@ -148,9 +170,25 @@ async def can_add_member(
     session: AsyncSession,
     user_id: uuid.UUID,
     library_id: uuid.UUID,
+    *,
+    lock: bool = False,
 ) -> bool:
-    """Return True if the library owner can add another member."""
+    """Return True if the library owner can add another member.
+
+    When *lock* is True, acquire a row-level ``FOR UPDATE`` lock on the parent
+    Library row before counting. This serializes concurrent add-member calls
+    for the same library so the check-then-insert pattern in the endpoint
+    cannot exceed the plan limit under parallel requests (issue #119). The
+    lock is released when the enclosing transaction commits or rolls back, so
+    callers must commit only after the INSERT completes.
+    """
     sub = await get_or_create_subscription(session, user_id)
+    if lock:
+        # Serialize concurrent member inserts for this library. All add-member
+        # flows route through this lock, so counting is a consistent snapshot.
+        await session.execute(
+            select(Library.id).where(Library.id == library_id).with_for_update()
+        )
     plan = _effective_plan(sub)
     limit = get_limit(plan, "members_per_library")
     count_result = await session.execute(
@@ -248,9 +286,20 @@ async def assert_can_use_n(
         )
 
 
-async def assert_can_create_library(session: AsyncSession, user_id: uuid.UUID) -> None:
-    """Raise HTTP 403 if the user has reached their library limit."""
-    if not await can_create_library(session, user_id):
+async def assert_can_create_library(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    lock: bool = False,
+) -> None:
+    """Raise HTTP 403 if the user has reached their library limit.
+
+    Pass ``lock=True`` from endpoints that will immediately INSERT a Library
+    in the same transaction (issue #119). This serializes concurrent create
+    attempts via a row lock on the user's Subscription row, ensuring the
+    count-then-insert check cannot be raced.
+    """
+    if not await can_create_library(session, user_id, lock=lock):
         sub = await get_or_create_subscription(session, user_id)
         plan = _effective_plan(sub)
         limit = get_limit(plan, "libraries")
@@ -269,9 +318,17 @@ async def assert_can_add_member(
     session: AsyncSession,
     user_id: uuid.UUID,
     library_id: uuid.UUID,
+    *,
+    lock: bool = False,
 ) -> None:
-    """Raise HTTP 403 if the library has reached its member limit."""
-    if not await can_add_member(session, user_id, library_id):
+    """Raise HTTP 403 if the library has reached its member limit.
+
+    Pass ``lock=True`` from endpoints that will immediately INSERT a
+    LibraryMember in the same transaction (issue #119). This serializes
+    concurrent add-member calls for the same library via a row lock on the
+    parent Library row, ensuring the count-then-insert check cannot be raced.
+    """
+    if not await can_add_member(session, user_id, library_id, lock=lock):
         sub = await get_or_create_subscription(session, user_id)
         plan = _effective_plan(sub)
         limit = get_limit(plan, "members_per_library")

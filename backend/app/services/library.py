@@ -73,6 +73,14 @@ async def list_members(session: AsyncSession, library_id: uuid.UUID) -> list[tup
 
 
 async def add_member(session: AsyncSession, library_id: uuid.UUID, email: str, role: LibraryRole) -> LibraryMember:
+    """Insert or update a library membership.
+
+    The caller owns the transaction boundary — this function flushes but does
+    not commit. That invariant matters for issue #119: the endpoint takes a
+    ``FOR UPDATE`` lock on the parent Library row before calling here, and the
+    lock must stay held until the INSERT is durable. Committing inside this
+    function would release the lock early and re-open the race.
+    """
     user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User with this email does not exist")
@@ -88,7 +96,7 @@ async def add_member(session: AsyncSession, library_id: uuid.UUID, email: str, r
         session.add(member)
     else:
         member.role = role
-    await session.commit()
+    await session.flush()
     await session.refresh(member)
     return member
 
