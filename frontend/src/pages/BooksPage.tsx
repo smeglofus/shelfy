@@ -8,21 +8,19 @@ import { OnboardingWizard } from '../components/OnboardingWizard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
-import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
+import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBooksForShelf, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
 import type { Book, Location, ReadingStatus } from '../lib/types'
 
-const PAGE_SIZE = 20
 type StatFilter = 'total' | 'read' | 'reading' | 'lent'
 
 export function BooksPage() {
   const { t } = useTranslation()
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput.trim(), 300)
-  const [page, setPage] = useState(1)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [uploadJobId, setUploadJobId] = useState<string | null>(null)
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
@@ -55,28 +53,8 @@ export function BooksPage() {
     [t],
   )
 
-  // Reset to page 1 when search changes
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch])
-
   const activeAdvancedCount = (debouncedLanguage ? 1 : 0) + (debouncedPublisher ? 1 : 0) + (yearFromInput || yearToInput ? 1 : 0)
 
-  const queryParams = useMemo(
-    () => ({
-      page,
-      pageSize: PAGE_SIZE,
-      search: debouncedSearch || undefined,
-      readingStatus: readingFilter ?? undefined,
-      locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined,
-      unassignedOnly: locationFilter === 'unassigned' ? true : undefined,
-      language: debouncedLanguage || undefined,
-      publisher: debouncedPublisher || undefined,
-      yearFrom: yearFromInput ? Number(yearFromInput) : undefined,
-      yearTo: yearToInput ? Number(yearToInput) : undefined,
-    }),
-    [page, debouncedSearch, readingFilter, locationFilter, debouncedLanguage, debouncedPublisher, yearFromInput, yearToInput],
-  )
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -101,7 +79,7 @@ export function BooksPage() {
   const selectAll = () => { setSelectMode(true); setSelectedIds(new Set(books.map((b) => b.id))) }
   const clearSelection = () => { setSelectedIds(new Set()); setSelectMode(false) }
 
-  const booksQuery = useBooks(queryParams)
+  const booksQuery = useBooksForShelf()
   const locationsQuery = useLocations()
 
   const deleteMutation = useDeleteBook()
@@ -151,14 +129,54 @@ export function BooksPage() {
   ])
 
   const books = useMemo(() => {
-    let raw = booksQuery.data?.items ?? []
+    const all = booksQuery.data ?? []
+    const q = debouncedSearch.toLowerCase()
+
+    let raw = all.filter((b) => {
+      if (readingFilter && b.reading_status !== readingFilter) return false
+      if (locationFilter === 'unassigned' && b.location_id !== null) return false
+      if (locationFilter !== 'all' && locationFilter !== 'unassigned' && b.location_id !== locationFilter) return false
+      if (debouncedLanguage && (b.language ?? '').toLowerCase() !== debouncedLanguage.toLowerCase()) return false
+      if (debouncedPublisher && !(b.publisher ?? '').toLowerCase().includes(debouncedPublisher.toLowerCase())) return false
+      if (yearFromInput && (b.published_year ?? 0) < Number(yearFromInput)) return false
+      if (yearToInput && (b.published_year ?? 9999) > Number(yearToInput)) return false
+      if (q) {
+        const hay = `${b.title} ${b.author ?? ''} ${b.isbn ?? ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
 
     if (statFilter === 'lent') {
       raw = raw.filter((book) => !!book.is_currently_lent)
     }
 
+    raw.sort((a, b) => {
+      const la = a.location_id ? locationById.get(a.location_id) : null
+      const lb = b.location_id ? locationById.get(b.location_id) : null
+      const ka = la ? `${la.room}${la.furniture}${la.shelf}` : '￿'
+      const kb = lb ? `${lb.room}${lb.furniture}${lb.shelf}` : '￿'
+      if (ka < kb) return -1
+      if (ka > kb) return 1
+      const pa = a.shelf_position ?? Number.MAX_SAFE_INTEGER
+      const pb = b.shelf_position ?? Number.MAX_SAFE_INTEGER
+      if (pa !== pb) return pa - pb
+      return a.title.localeCompare(b.title)
+    })
+
     return raw
-  }, [booksQuery.data?.items, statFilter])
+  }, [
+    booksQuery.data,
+    debouncedSearch,
+    readingFilter,
+    locationFilter,
+    debouncedLanguage,
+    debouncedPublisher,
+    yearFromInput,
+    yearToInput,
+    statFilter,
+    locationById,
+  ])
 
   const moveTargetMaxPosition = useMemo(() => {
     if (!bulkMoveTarget) return books.length
@@ -177,7 +195,7 @@ export function BooksPage() {
     return map
   }, [books])
 
-  const total = booksQuery.data?.total ?? 0
+  const total = books.length
 
   const booksCountLabel = t('books.books_count')
 
@@ -223,7 +241,6 @@ export function BooksPage() {
             if (key === 'read') setReadingFilter('read')
             else if (key === 'reading') setReadingFilter('reading')
             else setReadingFilter(null)
-            setPage(1)
           }}
         />
       </div>
@@ -238,8 +255,7 @@ export function BooksPage() {
               onClick={() => {
                 setReadingFilter(tab.value)
                 setStatFilter(tab.value === 'read' ? 'read' : tab.value === 'reading' ? 'reading' : 'total')
-                setPage(1)
-              }}
+                  }}
               className={`sh-underline-tab${isActive ? ' sh-underline-tab--active' : ''}`}
             >
               {tab.label}
@@ -299,7 +315,7 @@ export function BooksPage() {
         <select
           className="sh-select"
           value={locationFilter}
-          onChange={(event) => { setLocationFilter(event.target.value); setPage(1) }}
+          onChange={(event) => { setLocationFilter(event.target.value) }}
           style={{ minWidth: 200 }}
         >
           <option value="all">{t('books.filter_all_locations')}</option>
@@ -322,7 +338,7 @@ export function BooksPage() {
                 className="sh-input"
                 placeholder={t('books.filter_language_placeholder')}
                 value={languageInput}
-                onChange={(e) => { setLanguageInput(e.target.value); setPage(1) }}
+                onChange={(e) => { setLanguageInput(e.target.value) }}
               />
             </div>
             <div>
@@ -331,7 +347,7 @@ export function BooksPage() {
                 className="sh-input"
                 placeholder={t('books.filter_publisher_placeholder')}
                 value={publisherInput}
-                onChange={(e) => { setPublisherInput(e.target.value); setPage(1) }}
+                onChange={(e) => { setPublisherInput(e.target.value) }}
               />
             </div>
             <div>
@@ -342,7 +358,7 @@ export function BooksPage() {
                   inputMode="numeric"
                   placeholder={t('books.filter_year_from')}
                   value={yearFromInput}
-                  onChange={(e) => { setYearFromInput(e.target.value.replace(/\D/g, '')); setPage(1) }}
+                  onChange={(e) => { setYearFromInput(e.target.value.replace(/\D/g, '')) }}
                   style={{ width: 72 }}
                 />
                 <span style={{ color: 'var(--sh-text-muted)', fontSize: 14 }}>–</span>
@@ -351,7 +367,7 @@ export function BooksPage() {
                   inputMode="numeric"
                   placeholder={t('books.filter_year_to')}
                   value={yearToInput}
-                  onChange={(e) => { setYearToInput(e.target.value.replace(/\D/g, '')); setPage(1) }}
+                  onChange={(e) => { setYearToInput(e.target.value.replace(/\D/g, '')) }}
                   style={{ width: 72 }}
                 />
               </div>
@@ -360,7 +376,7 @@ export function BooksPage() {
           {activeAdvancedCount > 0 && (
             <button
               type="button"
-              onClick={() => { setLanguageInput(''); setPublisherInput(''); setYearFromInput(''); setYearToInput(''); setPage(1) }}
+              onClick={() => { setLanguageInput(''); setPublisherInput(''); setYearFromInput(''); setYearToInput('') }}
               style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--sh-danger)', padding: '2px 0', fontWeight: 500 }}
             >
               {t('books.filter_clear_all')}
@@ -373,17 +389,17 @@ export function BooksPage() {
       {activeAdvancedCount > 0 && (
         <div style={{ margin: '8px 24px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {debouncedLanguage && (
-            <button type="button" className="sh-filter-chip" onClick={() => { setLanguageInput(''); setPage(1) }}>
+            <button type="button" className="sh-filter-chip" onClick={() => { setLanguageInput('') }}>
               {t('books.filter_chip_language', { value: debouncedLanguage })} ×
             </button>
           )}
           {debouncedPublisher && (
-            <button type="button" className="sh-filter-chip" onClick={() => { setPublisherInput(''); setPage(1) }}>
+            <button type="button" className="sh-filter-chip" onClick={() => { setPublisherInput('') }}>
               {t('books.filter_chip_publisher', { value: debouncedPublisher })} ×
             </button>
           )}
           {(yearFromInput || yearToInput) && (
-            <button type="button" className="sh-filter-chip" onClick={() => { setYearFromInput(''); setYearToInput(''); setPage(1) }}>
+            <button type="button" className="sh-filter-chip" onClick={() => { setYearFromInput(''); setYearToInput('') }}>
               {t('books.filter_chip_year', { from: yearFromInput || '?', to: yearToInput || '?' })} ×
             </button>
           )}
@@ -460,30 +476,6 @@ export function BooksPage() {
             </div>
           )
         })}
-
-        {total > PAGE_SIZE && (
-          <div className="sh-pagination">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="sh-btn-secondary"
-              style={{ opacity: page <= 1 ? 0.3 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
-            >
-              {t('books.prev_page')}
-            </button>
-            <span className="sh-pagination__info">
-              {page} / {Math.ceil(total / PAGE_SIZE)}
-            </span>
-            <button
-              disabled={page >= Math.ceil(total / PAGE_SIZE)}
-              onClick={() => setPage((p) => p + 1)}
-              className="sh-btn-secondary"
-              style={{ opacity: page >= Math.ceil(total / PAGE_SIZE) ? 0.3 : 1, cursor: page >= Math.ceil(total / PAGE_SIZE) ? 'not-allowed' : 'pointer' }}
-            >
-              {t('books.next_page')}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Bulk actions toolbar ── */}
