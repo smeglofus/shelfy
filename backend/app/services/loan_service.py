@@ -12,7 +12,7 @@ _ALLOWED_RETURN_CONDITIONS = {"perfect", "good", "fair", "damaged", "lost"}
 
 
 async def create_loan(session: AsyncSession, book_id: UUID, data: LoanCreate, library_id: UUID) -> Loan:
-    book = await _get_book_or_404(session, book_id, library_id)
+    await _get_book_or_404(session, book_id, library_id)  # raises 404 if book absent or not in library
 
     active_loan = await _get_active_loan(session, book_id)
     if active_loan is not None:
