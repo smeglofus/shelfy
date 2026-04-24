@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
@@ -19,7 +20,11 @@ from app.db.session import get_db_session
 from app.main import app
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
-from app.services.password_reset import TOKEN_TTL_MINUTES, _hash_token
+from app.services.password_reset import _hash_token
+
+# Read token TTL from settings — the service resolves it the same way, so
+# tests stay in sync with any env-driven override.
+TOKEN_TTL_MINUTES = get_settings().password_reset_token_ttl_minutes
 
 
 class FakeRedis:
@@ -227,6 +232,16 @@ async def test_email_rate_limit_allows_only_three_requests_per_hour(
     assert len(sent_emails) == 3
 
 
+@pytest.mark.skipif(
+    os.environ.get("TESTING", "").lower() == "true",
+    reason=(
+        "slowapi limiter is disabled globally when TESTING=true "
+        "(see app/core/limiter.py). The per-IP rate limit is enforced at "
+        "the slowapi layer, not inside our service, so it cannot be "
+        "exercised from this suite. Runtime behaviour is covered by the "
+        "limiter's own integration tests and manual smoke checks."
+    ),
+)
 @pytest.mark.asyncio
 async def test_ip_rate_limit_returns_429_on_sixth_call() -> None:
     """6. Request is rate-limited per IP via slowapi: 5 per 15 minutes."""

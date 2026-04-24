@@ -73,7 +73,17 @@ class Settings(BaseSettings):
     rate_limit_refresh: str = "30/minute"
     rate_limit_password_reset: str = "5/15minutes"
     rate_limit_telemetry_frontend_error: str = "15/minute"
-    password_reset_ttl_minutes: int = 60
+
+    # Password-reset TTLs — split on purpose.
+    # ``password_reset_token_ttl_minutes`` controls how long an issued reset
+    # token remains valid.
+    # ``password_reset_email_ratelimit_window_minutes`` controls the TTL of
+    # the Redis per-email rate-limit key (N requests per window per email).
+    # Previously one overloaded ``PASSWORD_RESET_TTL_MINUTES`` was used for
+    # both — split so token lifetime can be tightened independently of the
+    # anti-abuse window.
+    password_reset_token_ttl_minutes: int = 60
+    password_reset_email_ratelimit_window_minutes: int = 60
 
     # Trust proxy headers (X-Forwarded-For / CF-Connecting-IP) for real client IP
     # Keep False for local deployments without a trusted reverse proxy.
