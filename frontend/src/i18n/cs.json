@@ -633,6 +633,7 @@
     "pw_rule_digit": "Alespoň 1 číslice",
     "pw_rule_non_digit": "Alespoň 1 písmeno nebo symbol",
     "show_password": "Zobrazit",
-    "hide_password": "Skrýt"
+    "hide_password": "Skrýt",
+    "network_error_try_again": "Chyba připojení. Zkus to prosím znovu."
   }
 }

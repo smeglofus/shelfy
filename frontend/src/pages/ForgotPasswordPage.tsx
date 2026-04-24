@@ -12,6 +12,7 @@ export function ForgotPasswordPage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
   const showSuccess = useToastStore((s) => s.showSuccess)
+  const showError = useToastStore((s) => s.showError)
 
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -33,8 +34,13 @@ export function ForgotPasswordPage() {
             event.preventDefault()
             setIsSubmitting(true)
             requestPasswordReset({ email })
-              .finally(() => {
+              .then(() => {
                 showSuccess(t('auth.password_reset_request_success', "If an account exists for that email, we've sent a reset link. Check your inbox."))
+              })
+              .catch(() => {
+                showError(t('auth.network_error_try_again', 'Connection error. Please try again.'))
+              })
+              .finally(() => {
                 setIsSubmitting(false)
               })
           }}
