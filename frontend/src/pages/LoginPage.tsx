@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '../contexts/AuthContext'
 import { formatApiError, getGoogleAuthorizeUrl } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
+import { useToastStore } from '../lib/toast-store'
+import { ROUTES } from '../lib/routes'
 import {
   resolvePostLoginDestination,
   type PostLoginRouteState,
@@ -17,6 +19,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login, register, isAuthenticated } = useAuth()
+  const showSuccess = useToastStore((s) => s.showSuccess)
 
   const [mode, setMode] = useState<AuthMode>('signin')
   const [email, setEmail] = useState('')
@@ -27,6 +30,13 @@ export function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  useEffect(() => {
+    const state = location.state as { toastSuccess?: unknown } | undefined
+    if (typeof state?.toastSuccess !== 'string') return
+    showSuccess(state.toastSuccess)
+    navigate(location.pathname, { replace: true, state: {} })
+  }, [location.pathname, location.state, navigate, showSuccess])
 
   const passwordChecks = {
     length: password.length >= 10,
@@ -154,6 +164,16 @@ export function LoginPage() {
                 {showPassword ? t('auth.hide_password', 'Hide') : t('auth.show_password', 'Show')}
               </button>
             </div>
+            {mode === 'signin' && (
+              <button
+                type='button'
+                className='sh-btn-ghost'
+                onClick={() => navigate(ROUTES.forgotPassword)}
+                style={{ justifySelf: 'start', marginTop: 4, fontSize: 13, padding: 0 }}
+              >
+                {t('auth.forgot_password_link', 'Forgot your password?')}
+              </button>
+            )}
           </label>
 
           {mode === 'register' && (

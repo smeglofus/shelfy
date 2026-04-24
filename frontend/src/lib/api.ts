@@ -38,6 +38,9 @@ import type {
   LoginRequest,
   OnboardingStatus,
   PaidPlan,
+  PasswordResetConfirmPayload,
+  PasswordResetRequestPayload,
+  PasswordResetRequestResponse,
   PurgeLibraryResponse,
   RegisterRequest,
   ShelfScanConfirmRequest,
@@ -297,6 +300,20 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
 export async function register(payload: RegisterRequest): Promise<User> {
   const response = await apiClient.post<User>('/api/v1/auth/register', payload)
   return response.data
+}
+
+export async function requestPasswordReset(
+  payload: PasswordResetRequestPayload,
+): Promise<PasswordResetRequestResponse> {
+  const response = await apiClient.post<PasswordResetRequestResponse>(
+    '/api/v1/auth/password-reset/request',
+    payload,
+  )
+  return response.data
+}
+
+export async function confirmPasswordReset(payload: PasswordResetConfirmPayload): Promise<void> {
+  await apiClient.post('/api/v1/auth/password-reset/confirm', payload)
 }
 
 export async function refreshToken(): Promise<AccessTokenResponse | TokenResponse> {

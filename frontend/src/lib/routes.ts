@@ -1,5 +1,7 @@
 export const ROUTES = {
   login: '/login',
+  forgotPassword: '/forgot-password',
+  resetPassword: '/reset-password',
   books: '/books',
   bookDetail: '/books/:bookId',
   addBook: '/books/new',

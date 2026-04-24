@@ -617,11 +617,23 @@
     "please_wait": "Please wait…",
     "signin_cta": "Sign in",
     "register_cta": "Register",
+    "forgot_password_link": "Forgot your password?",
+    "forgot_password_title": "Forgot password",
+    "forgot_password_subtitle": "Enter your email and we will send you a password reset link.",
+    "send_reset_link": "Send reset link",
+    "password_reset_request_success": "If an account exists for that email, we've sent a reset link. Check your inbox.",
+    "reset_password_title": "Set new password",
+    "reset_password_subtitle": "Choose a strong password for your account.",
+    "reset_password_cta": "Reset password",
+    "reset_invalid_or_expired": "This link is invalid or has expired. Please request a new one.",
+    "password_reset_success": "Password reset successfully. Please sign in.",
+    "back_to_login": "Back to sign in",
     "back_home": "Back to homepage",
     "pw_rule_len": "Min. 10 characters",
     "pw_rule_digit": "At least 1 digit",
     "pw_rule_non_digit": "At least 1 letter/symbol",
     "show_password": "Show",
-    "hide_password": "Hide"
+    "hide_password": "Hide",
+    "network_error_try_again": "Connection error. Please try again."
   }
 }
