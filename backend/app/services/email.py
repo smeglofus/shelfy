@@ -178,3 +178,23 @@ async def send_limit_approaching(
         subject=f"You're at {pct}% of your {metric_label} quota",
         html=html,
     )
+
+
+async def send_password_reset(to: str, reset_url: str) -> None:
+    """Sent when a user requests a password reset."""
+    html = _base(f"""
+<p>Hey,</p>
+<p>We received a request to reset the password for your Shelfy account.</p>
+<p>
+  <a href="{reset_url}"
+     style="background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;
+            text-decoration:none;display:inline-block;margin-top:8px">
+    Reset my password →
+  </a>
+</p>
+<p>This link is valid for 60 minutes and can be used only once.
+   If you did not request a reset, you can safely ignore this email —
+   your password has not been changed.</p>
+<p style="color:#555">The Shelfy team</p>
+""")
+    await _send(to=to, subject="Reset your Shelfy password", html=html)

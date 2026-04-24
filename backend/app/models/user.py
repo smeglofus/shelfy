@@ -46,6 +46,10 @@ class User(Base):
         DateTime(timezone=True), nullable=True, default=None
     )
 
+    password_changed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # ── Timestamps ───────────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
