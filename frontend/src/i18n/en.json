@@ -620,6 +620,8 @@
     "back_home": "Back to homepage",
     "pw_rule_len": "Min. 10 characters",
     "pw_rule_digit": "At least 1 digit",
-    "pw_rule_non_digit": "At least 1 letter/symbol"
+    "pw_rule_non_digit": "At least 1 letter/symbol",
+    "show_password": "Show",
+    "hide_password": "Hide"
   }
 }

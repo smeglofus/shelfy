@@ -620,6 +620,8 @@
     "back_home": "Zpět na úvodní stránku",
     "pw_rule_len": "Min. 10 znaků",
     "pw_rule_digit": "Alespoň 1 číslice",
-    "pw_rule_non_digit": "Alespoň 1 písmeno nebo symbol"
+    "pw_rule_non_digit": "Alespoň 1 písmeno nebo symbol",
+    "show_password": "Zobrazit",
+    "hide_password": "Skrýt"
   }
 }

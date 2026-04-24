@@ -25,6 +25,8 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const passwordChecks = {
     length: password.length >= 10,
@@ -140,7 +142,18 @@ export function LoginPage() {
 
           <label style={{ display: 'grid', gap: 6 }}>
             <span>{t('auth.password_label', 'Password')}</span>
-            <input className="sh-input" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <input className="sh-input" required type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} />
+              <button
+                type='button'
+                className='sh-btn-ghost'
+                onClick={() => setShowPassword((v) => !v)}
+                style={{ padding: '0 10px', fontSize: 12, whiteSpace: 'nowrap' }}
+                aria-label={showPassword ? t('auth.hide_password', 'Hide') : t('auth.show_password', 'Show')}
+              >
+                {showPassword ? t('auth.hide_password', 'Hide') : t('auth.show_password', 'Show')}
+              </button>
+            </div>
           </label>
 
           {mode === 'register' && (
@@ -172,7 +185,18 @@ export function LoginPage() {
           {mode === 'register' && (
             <label style={{ display: 'grid', gap: 6 }}>
               <span>{t('auth.confirm_password_label', 'Confirm password')}</span>
-              <input className="sh-input" required type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input className="sh-input" required type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                <button
+                  type='button'
+                  className='sh-btn-ghost'
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  style={{ padding: '0 10px', fontSize: 12, whiteSpace: 'nowrap' }}
+                  aria-label={showConfirmPassword ? t('auth.hide_password', 'Hide') : t('auth.show_password', 'Show')}
+                >
+                  {showConfirmPassword ? t('auth.hide_password', 'Hide') : t('auth.show_password', 'Show')}
+                </button>
+              </div>
             </label>
           )}
 
