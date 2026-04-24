@@ -1,8 +1,7 @@
-from __future__ import annotations
-
-from fastapi import APIRouter, Request
 import re
+
 import structlog
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
