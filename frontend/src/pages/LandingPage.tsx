@@ -149,6 +149,19 @@ export function LandingPage() {
               {t('landing.hero_cta_watch_demo')} &darr;
             </button>
           </div>
+
+          <p
+            className="text-small"
+            style={{
+              marginTop: 12,
+              color: 'var(--sh-text-muted)',
+              textAlign: 'center',
+              maxWidth: 760,
+              marginInline: 'auto',
+            }}
+          >
+            {t('landing.hero_free_limits')}
+          </p>
         </section>
 
         {/* ── How it works ── */}

@@ -235,6 +235,7 @@
     "hero_cta_signup": "Try it free",
     "hero_cta_login": "Sign in",
     "hero_cta_watch_demo": "How it works",
+    "hero_free_limits": "Free plan: up to 200 books, 5 shelf scans/month, 20 metadata enrichments. No card required.",
     "how_title": "How it works",
     "how_subtitle": "Three steps. One photo. A complete catalog.",
     "how_step_label": "Step {{count}}",
