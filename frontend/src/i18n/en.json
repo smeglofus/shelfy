@@ -136,7 +136,9 @@
     "title_label": "Title",
     "author_label": "Author",
     "shelf_position": "Shelf position",
-    "show_in_twin": "Show on shelf"
+    "show_in_twin": "Show on shelf",
+    "danger_zone_title": "Danger zone",
+    "danger_zone_hint": "Permanently deleting this book cannot be undone. Continue only if you are sure."
   },
   "reading_status": {
     "unassigned": "Unassigned",

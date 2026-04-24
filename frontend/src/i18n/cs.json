@@ -136,7 +136,9 @@
     "title_label": "Název",
     "author_label": "Autor",
     "shelf_position": "Pozice na polici",
-    "show_in_twin": "Ukázat v polici"
+    "show_in_twin": "Ukázat v polici",
+    "danger_zone_title": "Nebezpečná zóna",
+    "danger_zone_hint": "Trvalé smazání knihy je nevratné. Pokračuj jen pokud si jsi jistý/á."
   },
   "reading_status": {
     "unassigned": "Nepřiřazeno",

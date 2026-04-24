@@ -392,30 +392,33 @@ export function BookDetailPage() {
             <LoanHistory bookId={book.id} />
           </AccordionSection>
 
-          {/* ── Danger zone ── */}
-          <div className="sh-danger-zone" style={{ marginTop: 8 }}>
-            <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500 }}>
-              {t('book_detail.delete_confirm_body')}
-            </span>
-            <button
-              type="button"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deleteMutation.isPending) return
-                setDeleteConfirmOpen(true)
-              }}
-              className="sh-btn-ghost"
-              style={{
-                color: 'var(--sh-red)',
-                fontSize: 13,
-                padding: '6px 12px',
-                flexShrink: 0,
-                marginLeft: 12,
-              }}
-            >
-              {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete')}
-            </button>
-          </div>
+          {/* ── Danger zone (de-emphasized) ── */}
+          <AccordionSection title={t('book_detail.danger_zone_title')} defaultOpen={false}>
+            <div className="sh-danger-zone" style={{ marginTop: 4 }}>
+              <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500 }}>
+                {t('book_detail.danger_zone_hint')}
+              </span>
+              <button
+                type="button"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (deleteMutation.isPending) return
+                  setDeleteConfirmOpen(true)
+                }}
+                className="sh-btn-ghost"
+                style={{
+                  color: 'var(--sh-red)',
+                  fontSize: 12,
+                  padding: '4px 8px',
+                  border: '1px dashed var(--sh-border)',
+                  flexShrink: 0,
+                  marginLeft: 12,
+                }}
+              >
+                {deleteMutation.isPending ? t('book_detail.deleting') : t('book_detail.delete')}
+              </button>
+            </div>
+          </AccordionSection>
           </div>{/* end .sh-book-detail-content */}
         </div>{/* end .sh-book-detail-layout */}
       </article>
