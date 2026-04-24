@@ -15,8 +15,7 @@ from app.api.dependencies.redis import get_redis
 from app.core.config import Settings, get_settings
 from app.core.cookies import clear_auth_cookies, set_access_cookie, set_auth_cookies
 from app.core.limiter import limiter
-from pydantic import ValidationError
-
+from app.core.password_policy import validate_password_strength
 from app.core.security import decode_token, verify_password
 from app.db.session import get_db_session
 from app.models.book import Book
@@ -41,7 +40,11 @@ from app.services import billing as billing_svc
 from app.services import email as email_svc
 from app.services.auth import authenticate_user, issue_token_pair, read_refresh_token_subject, register_user
 from app.services.entitlements import get_or_create_subscription
-from app.services.password_reset import _check_and_bump_email_rate_limit, consume_reset_token, create_reset_token
+from app.services.password_reset import (
+    check_and_bump_email_rate_limit,
+    consume_reset_token,
+    create_reset_token,
+)
 from app.services.oauth import (
     build_google_authorize_url,
     create_oauth_state,
@@ -163,7 +166,7 @@ async def request_password_reset(
     email = str(payload.email).lower()
     email_hash = hashlib.sha256(email.encode("utf-8")).hexdigest()
 
-    if not await _check_and_bump_email_rate_limit(redis_client, email):
+    if not await check_and_bump_email_rate_limit(redis_client, email):
         logger.info("password_reset_request", email_hash=email_hash, outcome="rate_limited")
         return {"status": "ok"}
 
@@ -193,13 +196,16 @@ async def confirm_password_reset(
     payload: PasswordResetConfirmRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> Response:
+    # Enforce the same password policy as registration. Call the shared
+    # helper directly — the previous implementation instantiated
+    # ``RegisterRequest`` with a placeholder email for validation, which
+    # was broken because ``EmailStr`` rejects the reserved ``.invalid``
+    # TLD (RFC 2606) and masked the real password error with an email
+    # error, so every confirm returned 400 regardless of the password.
     try:
-        RegisterRequest(email="policy-check@shelfy.invalid", password=payload.new_password)
-    except ValidationError as exc:
-        msg = exc.errors()[0].get("msg", "Invalid password")
-        if isinstance(msg, str) and msg.startswith("Value error, "):
-            msg = msg.replace("Value error, ", "", 1)
-        raise HTTPException(status_code=400, detail=msg) from exc
+        validate_password_strength(payload.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     user = await consume_reset_token(session, payload.token, payload.new_password)
     logger.info("password_reset_completed", user_id=str(user.id))
