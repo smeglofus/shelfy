@@ -19,6 +19,8 @@ import { LandingPage } from './pages/LandingPage'
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 
 import { ROUTES } from './lib/routes'
 
@@ -52,7 +54,16 @@ function HomeRoute() {
   return <LandingPage />
 }
 
-const PUBLIC_PATHS = new Set(['/', ROUTES.login, ROUTES.pricing, ROUTES.privacy, ROUTES.terms, ROUTES.oauthCallback])
+const PUBLIC_PATHS = new Set([
+  '/',
+  ROUTES.login,
+  ROUTES.forgotPassword,
+  ROUTES.resetPassword,
+  ROUTES.pricing,
+  ROUTES.privacy,
+  ROUTES.terms,
+  ROUTES.oauthCallback,
+])
 
 function AppShell() {
   const { t } = useTranslation()
@@ -77,6 +88,8 @@ function AppShell() {
           {/* ── Public routes ── */}
           <Route path='/' element={<HomeRoute />} />
           <Route path={ROUTES.login} element={<LoginPage />} />
+          <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
+          <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
           <Route path={ROUTES.oauthCallback} element={<OAuthCallbackPage />} />
           <Route path={ROUTES.privacy} element={<PrivacyPage />} />
           <Route path={ROUTES.terms} element={<TermsPage />} />

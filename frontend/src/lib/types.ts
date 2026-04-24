@@ -147,6 +147,19 @@ export interface RegisterRequest {
   password: string
 }
 
+export interface PasswordResetRequestPayload {
+  email: string
+}
+
+export interface PasswordResetRequestResponse {
+  status: 'ok'
+}
+
+export interface PasswordResetConfirmPayload {
+  token: string
+  new_password: string
+}
+
 export interface TokenResponse {
   access_token: string
   refresh_token: string
