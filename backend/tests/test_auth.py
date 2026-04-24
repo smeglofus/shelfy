@@ -286,7 +286,7 @@ async def test_purge_library_requires_password_for_local_user(
     test_settings: Settings,
 ) -> None:
     email = "purge.local@example.com"
-    password = "secret123"
+    password = "Secret12345"  # must meet ≥10-char + digit policy
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         reg = await client.post("/api/v1/auth/register", json={"email": email, "password": password})
@@ -567,7 +567,7 @@ async def test_csrf_whitelisted_endpoints_do_not_require_token() -> None:
         # business logic (it'll succeed with 201, not 403).
         response = await client.post(
             "/api/v1/auth/register",
-            json={"email": "fresh@example.com", "password": "secret123"},
+            json={"email": "fresh@example.com", "password": "Secret12345"},  # must meet ≥10-char + digit policy
         )
 
     assert response.status_code == 201

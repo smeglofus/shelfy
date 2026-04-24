@@ -106,7 +106,6 @@ class TestFreeLimit:
 
     async def test_blocked_after_limit(self, session: AsyncSession) -> None:
         user = await _make_user(session)
-        period = date.today().replace(day=1)
         # Exhaust the 5 free scans
         for _ in range(5):
             await entitlements.consume(session, user.id, UsageMetric.scans)

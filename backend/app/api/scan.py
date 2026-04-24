@@ -7,8 +7,6 @@ import structlog
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = structlog.get_logger()
-
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
@@ -27,6 +25,8 @@ from app.services.job import create_upload_job
 from app.services.job_queue import get_celery_client
 from app.services.scan import confirm_shelf_scan
 from app.services.storage import delete_image_bytes
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1/scan", tags=["scan"])
 

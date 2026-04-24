@@ -10,6 +10,7 @@ from app.models.user import User
 
 __all__ = [
     "User", "Location", "Book", "Loan", "BookImage", "ProcessingJob",
+    "Library", "LibraryMember", "LibraryRole",
     "PasswordResetToken",
     "Subscription", "UsageCounter", "UsageEvent", "SubscriptionPlan", "SubscriptionStatus", "UsageMetric",
 ]

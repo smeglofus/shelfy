@@ -28,7 +28,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.book import Book, ReadingStatus
-from app.models.loan import Loan
 from app.models.location import Location
 from app.services import entitlements
 from app.schemas.book import (
