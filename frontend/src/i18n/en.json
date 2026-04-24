@@ -407,7 +407,11 @@
     "submitting": "Adding…",
     "submit": "Add to library",
     "error": "Failed to add book.",
-    "processing_label": "Processing image…"
+    "processing_label": "Processing image…",
+    "location_optional": "optional",
+    "no_location_option": "No location",
+    "location_help": "Location is optional. You can set it later.",
+    "add_location_cta": "Add location"
   },
   "enrich": {
     "enriching": "Enriching…",

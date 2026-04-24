@@ -152,7 +152,7 @@ export function AddBookPage() {
 
         {/* 3-level location */}
         <div style={{ background: 'var(--sh-surface)', padding: 16, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)' }}>
-          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 12 }}>{t('add_book.location_label')}</label>
+          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 12 }}>{t('add_book.location_label')} <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>({t('add_book.location_optional')})</span></label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('add_book.room_label')}</label>
@@ -162,7 +162,7 @@ export function AddBookPage() {
                 value={selRoom}
                 onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}
               >
-                <option value="">—</option>
+                <option value="">{t('add_book.no_location_option')}</option>
                 {rooms.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
@@ -175,7 +175,7 @@ export function AddBookPage() {
                 disabled={!selRoom}
                 onChange={e => { setSelFurniture(e.target.value); setSelShelf('') }}
               >
-                <option value="">—</option>
+                <option value="">{t('add_book.no_location_option')}</option>
                 {furnitures.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
@@ -188,11 +188,23 @@ export function AddBookPage() {
                 disabled={!selFurniture}
                 onChange={e => setSelShelf(e.target.value)}
               >
-                <option value="">—</option>
+                <option value="">{t('add_book.no_location_option')}</option>
                 {shelves.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
+          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: 'var(--sh-text-muted)' }}>
+            {t('add_book.location_help')}
+            {' '}
+            <button
+              type='button'
+              className='sh-btn-ghost'
+              onClick={() => navigate(ROUTES.locations)}
+              style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
+            >
+              {t('add_book.add_location_cta')}
+            </button>
+          </p>
         </div>
 
         <div className="md-grid-2">

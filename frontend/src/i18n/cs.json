@@ -358,7 +358,11 @@
     "submitting": "Přidávám…",
     "submit": "Přidat do knihovny",
     "error": "Nepodařilo se přidat knihu.",
-    "processing_label": "Zpracovávám obrázek…"
+    "processing_label": "Zpracovávám obrázek…",
+    "location_optional": "volitelné",
+    "no_location_option": "Bez umístění",
+    "location_help": "Umístění je volitelné. Můžeš ho přidat i později.",
+    "add_location_cta": "Přidat umístění"
   },
   "enrich": {
     "enriching": "Obohacuji…",
