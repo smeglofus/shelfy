@@ -71,7 +71,9 @@ class Settings(BaseSettings):
     rate_limit_register: str = "10/minute"
     rate_limit_login: str = "20/minute"
     rate_limit_refresh: str = "30/minute"
+    rate_limit_password_reset: str = "5/15minutes"
     rate_limit_telemetry_frontend_error: str = "15/minute"
+    password_reset_ttl_minutes: int = 60
 
     # Trust proxy headers (X-Forwarded-For / CF-Connecting-IP) for real client IP
     # Keep False for local deployments without a trusted reverse proxy.

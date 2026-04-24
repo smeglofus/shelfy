@@ -19,8 +19,9 @@ def get_password_hash(password: str) -> str:
 
 def create_token(subject: str, expires_delta: timedelta, token_type: str) -> str:
     settings = get_settings()
-    expire = datetime.now(timezone.utc) + expires_delta
-    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": token_type}
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + expires_delta
+    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": token_type, "iat": issued_at}
     token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return cast(str, token)
 

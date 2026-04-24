@@ -1,5 +1,6 @@
 """Authentication endpoints — register, login, token refresh, profile, GDPR."""
 import json
+import hashlib
 from datetime import datetime, timezone
 
 import structlog
@@ -14,12 +15,14 @@ from app.api.dependencies.redis import get_redis
 from app.core.config import Settings, get_settings
 from app.core.cookies import clear_auth_cookies, set_access_cookie, set_auth_cookies
 from app.core.limiter import limiter
-from app.core.security import verify_password
+from pydantic import ValidationError
+
+from app.core.security import decode_token, verify_password
 from app.db.session import get_db_session
 from app.models.book import Book
 from app.models.library import Library, LibraryMember
 from app.models.loan import Loan
-from app.models.subscription import Subscription, UsageCounter
+from app.models.subscription import UsageCounter
 from app.models.user import User
 from app.schemas.auth import (
     AccessTokenResponse,
@@ -29,6 +32,8 @@ from app.schemas.auth import (
     OAuthCallbackRequest,
     RefreshRequest,
     RegisterRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
     TokenResponse,
     UserResponse,
 )
@@ -36,6 +41,7 @@ from app.services import billing as billing_svc
 from app.services import email as email_svc
 from app.services.auth import authenticate_user, issue_token_pair, read_refresh_token_subject, register_user
 from app.services.entitlements import get_or_create_subscription
+from app.services.password_reset import _check_and_bump_email_rate_limit, consume_reset_token, create_reset_token
 from app.services.oauth import (
     build_google_authorize_url,
     create_oauth_state,
@@ -103,6 +109,7 @@ async def refresh_token(
     request: Request,
     response: Response,
     payload: RefreshRequest,
+    session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> AccessTokenResponse:
     # Prefer the httpOnly refresh cookie (SPA). Fall back to the body
@@ -116,12 +123,87 @@ async def refresh_token(
         )
 
     subject = read_refresh_token_subject(token)
+    decoded = decode_token(token)
+
+    user = (await session.execute(select(User).where(User.email == subject))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    jwt_iat = decoded.get("iat")
+    if not isinstance(jwt_iat, (int, float)):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+    jwt_iat_dt = datetime.fromtimestamp(jwt_iat, tz=timezone.utc)
+    password_changed_at = user.password_changed_at
+    if password_changed_at is not None and password_changed_at.tzinfo is None:
+        password_changed_at = password_changed_at.replace(tzinfo=timezone.utc)
+    if password_changed_at and jwt_iat_dt < password_changed_at:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session invalidated — please sign in again",
+        )
+
     access_token, _ = issue_token_pair(subject, settings)
 
     # Refresh only rotates the short-lived access cookie — keep the same
     # refresh cookie (sliding-window rotation is a separate ticket).
     set_access_cookie(response, settings=settings, access_token=access_token)
     return AccessTokenResponse(access_token=access_token)
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(SETTINGS.rate_limit_password_reset)
+async def request_password_reset(
+    request: Request,
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+    redis_client: aioredis.Redis = Depends(get_redis),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    email = str(payload.email).lower()
+    email_hash = hashlib.sha256(email.encode("utf-8")).hexdigest()
+
+    if not await _check_and_bump_email_rate_limit(redis_client, email):
+        logger.info("password_reset_request", email_hash=email_hash, outcome="rate_limited")
+        return {"status": "ok"}
+
+    user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    if user is None:
+        logger.info("password_reset_request", email_hash=email_hash, outcome="user_not_found")
+        return {"status": "ok"}
+    if not user.has_local_password:
+        logger.info("password_reset_request", email_hash=email_hash, outcome="oauth_only")
+        return {"status": "ok"}
+
+    plaintext_token = await create_reset_token(
+        session,
+        user,
+        requested_ip=request.client.host if request.client else None,
+        requested_user_agent=request.headers.get("user-agent"),
+    )
+    reset_url = f"{settings.app_url}/reset-password?token={plaintext_token}"
+    background_tasks.add_task(email_svc.send_password_reset, user.email, reset_url)
+    await session.commit()
+    logger.info("password_reset_request", email_hash=email_hash, outcome="token_created")
+    return {"status": "ok"}
+
+
+@router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
+async def confirm_password_reset(
+    payload: PasswordResetConfirmRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> Response:
+    try:
+        RegisterRequest(email="policy-check@shelfy.invalid", password=payload.new_password)
+    except ValidationError as exc:
+        msg = exc.errors()[0].get("msg", "Invalid password")
+        if isinstance(msg, str) and msg.startswith("Value error, "):
+            msg = msg.replace("Value error, ", "", 1)
+        raise HTTPException(status_code=400, detail=msg) from exc
+
+    user = await consume_reset_token(session, payload.token, payload.new_password)
+    logger.info("password_reset_completed", user_id=str(user.id))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

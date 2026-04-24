@@ -50,6 +50,15 @@ class RefreshRequest(BaseModel):
     refresh_token: str | None = None
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class AccessTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
