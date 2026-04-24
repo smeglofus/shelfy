@@ -40,11 +40,12 @@
     "move_to": "Přesunout na…",
     "no_location": "Bez umístění",
     "status_label": "Nový stav",
-    "select_mode": "Vybrat",
+    "select_mode": "Hromadný výběr",
     "insert_position_label": "Vložit na pozici",
     "insert_position_placeholder": "prázdné = přidat na konec",
     "select_mode_hint": "Režim výběru je aktivní — kliknutím označ knihy",
-    "insert_position_max": "Aktuální max index pro polici: {{max}} (vyšší hodnota přidá na konec)"
+    "insert_position_max": "Aktuální max index pro polici: {{max}} (vyšší hodnota přidá na konec)",
+    "select_mode_tooltip": "Označ více knih najednou pro hromadné akce"
   },
   "books": {
     "title": "Moje Knihovna",
@@ -89,7 +90,12 @@
     "filter_chip_year": "rok: {{from}} – {{to}}",
     "books_count": "knih",
     "filter_all_locations": "Všechna umístění",
-    "filter_unassigned": "Bez umístění"
+    "filter_unassigned": "Bez umístění",
+    "reorder_mode": "Přeskládat knihy",
+    "reorder_done": "Uložit pořadí",
+    "reorder_hint": "Přetáhni knihy pro změnu pořadí. Na mobilu podrž prst pro zahájení přesunu.",
+    "reorder_mode_tooltip": "Změň pořadí knih v polici a pak ho ulož",
+    "saving": "Ukládám…"
   },
   "book_detail": {
     "title": "Detail knihy",
@@ -130,7 +136,7 @@
     "title_label": "Název",
     "author_label": "Autor",
     "shelf_position": "Pozice na polici",
-    "show_in_twin": "Ukázat v digitálním dvojčeti"
+    "show_in_twin": "Ukázat v polici"
   },
   "reading_status": {
     "unassigned": "Nepřiřazeno",
@@ -406,7 +412,7 @@
     "empty_title": "Žádné knihovny",
     "empty_desc": "Naskenujte svou první polici a vytvořte digitální dvojče knihovny.",
     "empty_shelf": "Prázdná police",
-    "tab_shelves": "Digitální dvojče",
+    "tab_shelves": "Policový pohled",
     "tab_locations": "Správa pozic"
   },
   "library": {

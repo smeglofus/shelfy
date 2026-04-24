@@ -316,6 +316,7 @@ export function BookshelfViewPage() {
           <>
             <button
               type="button"
+              title={t('bulk.select_mode_tooltip')}
               onClick={() => {
                 const next = !selectMode
                 setSelectMode(next)
@@ -329,6 +330,7 @@ export function BookshelfViewPage() {
             </button>
             <button
               type="button"
+              title={t('books.reorder_mode_tooltip')}
               onClick={async () => {
                 if (reorderMode) {
                   await persistCurrentReorder()

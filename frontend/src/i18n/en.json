@@ -40,11 +40,12 @@
     "move_to": "Move to…",
     "no_location": "No location",
     "status_label": "New status",
-    "select_mode": "Select",
+    "select_mode": "Bulk select",
     "insert_position_label": "Insert at position",
     "insert_position_placeholder": "leave empty = append to end",
-    "select_mode_hint": "Select mode active — click books to select them",
-    "insert_position_max": "Max index for this shelf right now: {{max}} (higher values append to end)"
+    "select_mode_hint": "Bulk select mode is active — click books to select them",
+    "insert_position_max": "Max index for this shelf right now: {{max}} (higher values append to end)",
+    "select_mode_tooltip": "Select multiple books for bulk actions"
   },
   "books": {
     "title": "My Library",
@@ -89,7 +90,12 @@
     "filter_chip_year": "year: {{from}} – {{to}}",
     "books_count": "books",
     "filter_all_locations": "All locations",
-    "filter_unassigned": "Unassigned"
+    "filter_unassigned": "Unassigned",
+    "reorder_mode": "Reorder books",
+    "reorder_done": "Save order",
+    "reorder_hint": "Drag books to reorder. On touch devices, long-press to start drag.",
+    "reorder_mode_tooltip": "Rearrange books on shelf, then save the new order",
+    "saving": "Saving..."
   },
   "book_detail": {
     "title": "Book details",
@@ -130,7 +136,7 @@
     "title_label": "Title",
     "author_label": "Author",
     "shelf_position": "Shelf position",
-    "show_in_twin": "Show in digital twin"
+    "show_in_twin": "Show on shelf"
   },
   "reading_status": {
     "unassigned": "Unassigned",
@@ -455,7 +461,7 @@
     "empty_title": "No bookshelves",
     "empty_desc": "Scan your first shelf to create a digital twin of your bookshelf.",
     "empty_shelf": "Empty shelf",
-    "tab_shelves": "Shelves view",
+    "tab_shelves": "Shelf view",
     "tab_locations": "Locations management"
   },
   "library": {
