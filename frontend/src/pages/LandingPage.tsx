@@ -162,6 +162,35 @@ export function LandingPage() {
           >
             {t('landing.hero_free_limits')}
           </p>
+          <p
+            className="text-small"
+            style={{
+              marginTop: 8,
+              color: 'var(--sh-text-muted)',
+              textAlign: 'center',
+              maxWidth: 760,
+              marginInline: 'auto',
+            }}
+          >
+            {t('landing.hero_trust_summary')}{' '}
+            <button
+              type="button"
+              className="sh-btn-ghost"
+              onClick={() => navigate(ROUTES.privacy)}
+              style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
+            >
+              {t('landing.footer_privacy')}
+            </button>
+            {' · '}
+            <button
+              type="button"
+              className="sh-btn-ghost"
+              onClick={() => navigate(ROUTES.terms)}
+              style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
+            >
+              {t('landing.footer_terms')}
+            </button>
+          </p>
         </section>
 
         {/* ── How it works ── */}

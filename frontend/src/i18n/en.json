@@ -236,8 +236,8 @@
     "update_button": "Update app"
   },
   "landing": {
-    "hero_title": "Every book in its place. You just forgot where.",
-    "hero_subtitle": "Snap a photo of your shelf, let AI read the spines, and never hunt for a book again. Organized by room, shelf, and title — searchable in seconds.",
+    "hero_title": "Find every book in seconds.",
+    "hero_subtitle": "Take one shelf photo and Shelfy recognizes titles and authors, then organizes your catalog by room and shelf. Search by title, author, or ISBN instantly.",
     "hero_cta_signup": "Try it free",
     "hero_cta_login": "Sign in",
     "hero_cta_watch_demo": "How it works",
@@ -246,11 +246,11 @@
     "how_subtitle": "Three steps. One photo. A complete catalog.",
     "how_step_label": "Step {{count}}",
     "how_step_1_title": "Scan",
-    "how_step_1_desc": "Point your phone at a shelf and take a photo. That's it.",
+    "how_step_1_desc": "Take a shelf photo with your phone. Done.",
     "how_step_2_title": "Confirm",
-    "how_step_2_desc": "AI reads the spines and fills in metadata. You just fix anything it missed.",
+    "how_step_2_desc": "Shelfy reads titles and authors. You can quickly correct anything on the review screen.",
     "how_step_3_title": "Search",
-    "how_step_3_desc": "Find any book by title, author, or ISBN. Share your library with family.",
+    "how_step_3_desc": "Find any book by title, author, or ISBN. Share your catalog with family.",
     "visual_proof_title": "See it in action",
     "visual_proof_tab_overview": "Overview",
     "visual_proof_zoom": "Click to enlarge",
@@ -273,16 +273,17 @@
     "faq_2_q": "Is my data private?",
     "faq_2_a": "Yes. Your library data belongs to you. We don't sell it or share it with third parties. You can export a full copy or delete your account at any time from Settings.",
     "faq_3_q": "What if the AI gets a title wrong?",
-    "faq_3_a": "It happens — worn spines and unusual fonts can trip it up. Before saving, you get a review screen where you can correct any mistakes. You can also edit metadata later.",
+    "faq_3_a": "If AI misses something, you can correct it on the review screen before saving. You can also edit book details anytime later.",
     "faq_4_q": "Is it really free?",
-    "faq_4_a": "The free plan covers most personal libraries. You get a generous number of scans and books each month. Pro is there if you need more capacity — but many people never need it.",
+    "faq_4_a": "The Free plan covers most home libraries: up to 200 books, 5 shelf scans/month, and 20 metadata enrichments. Upgrade anytime if you need more.",
     "faq_5_q": "Can I share my library with family?",
     "faq_5_a": "Absolutely. You can invite family members to view or help manage your library. Everyone sees the same catalog, so no more asking \"do we already own this one?\"",
     "final_cta_title": "Your shelves, sorted",
     "final_cta_subtitle": "One photo and you'll know exactly what you own and where it lives.",
     "final_cta_button": "Try Shelfy free",
     "footer_privacy": "Privacy Policy",
-    "footer_terms": "Terms of Service"
+    "footer_terms": "Terms of Service",
+    "hero_trust_summary": "Your data stays yours. Export anytime and delete your account whenever you want."
   },
   "tabs": {
     "all": "All",
@@ -598,5 +599,25 @@
     "result_created": "Created",
     "result_updated": "Updated",
     "result_skipped": "Skipped"
+  },
+  "auth": {
+    "signin_tab": "Sign in",
+    "register_tab": "Register",
+    "intro_title": "Create your Shelfy account in under a minute",
+    "intro_subtitle": "Free plan includes up to 200 books and 5 shelf scans per month. You can upgrade anytime.",
+    "email_label": "Email",
+    "password_label": "Password",
+    "confirm_password_label": "Confirm password",
+    "redirecting": "Redirecting…",
+    "continue_google": "Continue with Google",
+    "or": "or",
+    "password_mismatch": "Passwords do not match.",
+    "please_wait": "Please wait…",
+    "signin_cta": "Sign in",
+    "register_cta": "Register",
+    "back_home": "Back to homepage",
+    "pw_rule_len": "Min. 10 characters",
+    "pw_rule_digit": "At least 1 digit",
+    "pw_rule_non_digit": "At least 1 letter/symbol"
   }
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '../contexts/AuthContext'
 import { formatApiError, getGoogleAuthorizeUrl } from '../lib/api'
@@ -12,6 +13,7 @@ import {
 type AuthMode = 'signin' | 'register'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { login, register, isAuthenticated } = useAuth()
@@ -52,8 +54,17 @@ export function LoginPage() {
     <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--sh-bg)' }}>
       <div style={{ background: 'var(--sh-surface)', padding: '40px 32px', borderRadius: 'var(--sh-radius-xl)', width: '100%', maxWidth: 420, boxShadow: 'var(--sh-shadow-lg)', border: '1px solid var(--sh-border)' }}>
         <div style={{ display: 'flex', marginBottom: 24, border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-pill)', overflow: 'hidden' }}>
-          <button type="button" onClick={() => setMode('signin')} style={{ flex: 1, border: 'none', padding: '10px 12px', background: mode === 'signin' ? 'var(--sh-teal-bg)' : 'transparent', color: 'var(--sh-text-main)', fontWeight: 600, cursor: 'pointer' }}>Sign in</button>
-          <button type="button" onClick={() => setMode('register')} style={{ flex: 1, border: 'none', padding: '10px 12px', background: mode === 'register' ? 'var(--sh-teal-bg)' : 'transparent', color: 'var(--sh-text-main)', fontWeight: 600, cursor: 'pointer' }}>Register</button>
+          <button type="button" onClick={() => setMode('signin')} style={{ flex: 1, border: 'none', padding: '10px 12px', background: mode === 'signin' ? 'var(--sh-teal-bg)' : 'transparent', color: 'var(--sh-text-main)', fontWeight: 600, cursor: 'pointer' }}>{t('auth.signin_tab', 'Sign in')}</button>
+          <button type="button" onClick={() => setMode('register')} style={{ flex: 1, border: 'none', padding: '10px 12px', background: mode === 'register' ? 'var(--sh-teal-bg)' : 'transparent', color: 'var(--sh-text-main)', fontWeight: 600, cursor: 'pointer' }}>{t('auth.register_tab', 'Register')}</button>
+        </div>
+
+        <div style={{ marginBottom: 14, color: 'var(--sh-text-muted)', fontSize: 13, lineHeight: 1.45 }}>
+          <div style={{ color: 'var(--sh-text-main)', fontWeight: 600, marginBottom: 4 }}>
+            {t('auth.intro_title', 'Create your Shelfy account in under a minute')}
+          </div>
+          <div>
+            {t('auth.intro_subtitle', 'Free plan includes up to 200 books and 5 shelf scans per month. You can upgrade anytime.')}
+          </div>
         </div>
 
         {/* ── Google OAuth ───────────────────────────────────────────────── */}
@@ -87,13 +98,13 @@ export function LoginPage() {
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             <path fill="none" d="M0 0h48v48H0z"/>
           </svg>
-          {isGoogleLoading ? 'Redirecting…' : 'Continue with Google'}
+          {isGoogleLoading ? t('auth.redirecting', 'Redirecting…') : t('auth.continue_google', 'Continue with Google')}
         </button>
 
         {/* ── Divider ───────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 1, background: 'var(--sh-border)' }} />
-          <span style={{ color: 'var(--sh-text-muted)', fontSize: 12 }}>or</span>
+          <span style={{ color: 'var(--sh-text-muted)', fontSize: 12 }}>{t('auth.or', 'or')}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--sh-border)' }} />
         </div>
 
@@ -103,7 +114,7 @@ export function LoginPage() {
             setError(null)
 
             if (mode === 'register' && password !== confirmPassword) {
-              setError('Passwords do not match.')
+              setError(t('auth.password_mismatch', 'Passwords do not match.'))
               return
             }
 
@@ -123,12 +134,12 @@ export function LoginPage() {
           style={{ display: 'grid', gap: 16 }}
         >
           <label style={{ display: 'grid', gap: 6 }}>
-            <span>Email</span>
+            <span>{t('auth.email_label', 'Email')}</span>
             <input className="sh-input" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
 
           <label style={{ display: 'grid', gap: 6 }}>
-            <span>Password</span>
+            <span>{t('auth.password_label', 'Password')}</span>
             <input className="sh-input" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </label>
 
@@ -147,20 +158,20 @@ export function LoginPage() {
               }}
             >
               <div style={{ color: passwordChecks.length ? 'var(--sh-teal)' : 'var(--sh-text-muted)' }}>
-                {passwordChecks.length ? '✓' : '•'} Min. 10 characters
+                {passwordChecks.length ? '✓' : '•'} {t('auth.pw_rule_len', 'Min. 10 characters')}
               </div>
               <div style={{ color: passwordChecks.digit ? 'var(--sh-teal)' : 'var(--sh-text-muted)' }}>
-                {passwordChecks.digit ? '✓' : '•'} At least 1 digit
+                {passwordChecks.digit ? '✓' : '•'} {t('auth.pw_rule_digit', 'At least 1 digit')}
               </div>
               <div style={{ color: passwordChecks.nonDigit ? 'var(--sh-teal)' : 'var(--sh-text-muted)' }}>
-                {passwordChecks.nonDigit ? '✓' : '•'} At least 1 letter/symbol
+                {passwordChecks.nonDigit ? '✓' : '•'} {t('auth.pw_rule_non_digit', 'At least 1 letter/symbol')}
               </div>
             </div>
           )}
 
           {mode === 'register' && (
             <label style={{ display: 'grid', gap: 6 }}>
-              <span>Confirm password</span>
+              <span>{t('auth.confirm_password_label', 'Confirm password')}</span>
               <input className="sh-input" required type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
             </label>
           )}
@@ -168,7 +179,7 @@ export function LoginPage() {
           {error && <p style={{ color: 'var(--sh-red)', margin: 0 }}>{error}</p>}
 
           <button type="submit" className="sh-btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Register'}
+            {isSubmitting ? t('auth.please_wait', 'Please wait…') : mode === 'signin' ? t('auth.signin_cta', 'Sign in') : t('auth.register_cta', 'Register')}
           </button>
         </form>
 
@@ -178,7 +189,7 @@ export function LoginPage() {
           onClick={() => navigate('/')}
           style={{ width: '100%', marginTop: 12 }}
         >
-          ← Back to homepage
+          ← {t('auth.back_home', 'Back to homepage')}
         </button>
 
       </div>

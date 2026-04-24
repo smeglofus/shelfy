@@ -518,8 +518,8 @@
     "feature_priority_support": "Prioritní podpora"
   },
   "landing": {
-    "hero_title": "Kde jsi to dal? Shelfy ti poradí.",
-    "hero_subtitle": "Vyfoť polici, AI přečte hřbety a ty máš přehled o každé knize. Seřazeno podle místnosti, police a názvu — dohledatelné během vteřin.",
+    "hero_title": "Najdi každou knihu během vteřin.",
+    "hero_subtitle": "Vyfoť polici, Shelfy rozpozná názvy i autory a vytvoří přehledný katalog podle místnosti a police. Hledání podle názvu, autora nebo ISBN je otázka chvilky.",
     "hero_cta_signup": "Vyzkoušet zdarma",
     "hero_cta_login": "Přihlásit se",
     "hero_cta_watch_demo": "Jak to funguje",
@@ -528,11 +528,11 @@
     "how_subtitle": "Tři kroky. Jedna fotka. Kompletní katalog.",
     "how_step_label": "Krok {{count}}",
     "how_step_1_title": "Vyfoť",
-    "how_step_1_desc": "Namiř mobil na polici a cvakni fotku. Nic víc.",
+    "how_step_1_desc": "Vyfoť polici mobilem. Hotovo.",
     "how_step_2_title": "Zkontroluj",
-    "how_step_2_desc": "AI přečte hřbety a doplní metadata. Ty jen opravíš, co netrefilo.",
+    "how_step_2_desc": "Shelfy načte názvy a autory. Co nesedí, snadno opravíš na kontrolní obrazovce.",
     "how_step_3_title": "Hledej",
-    "how_step_3_desc": "Najdi knihu podle názvu, autora nebo ISBN. Sdílej knihovnu s rodinou.",
+    "how_step_3_desc": "Najdi knihu podle názvu, autora nebo ISBN. Katalog můžeš sdílet s rodinou.",
     "visual_proof_title": "Podívej se, jak to vypadá",
     "visual_proof_tab_overview": "Přehled",
     "visual_proof_zoom": "Klikni pro zvětšení",
@@ -555,16 +555,17 @@
     "faq_2_q": "Jsou moje data v bezpečí?",
     "faq_2_a": "Ano. Tvoje knihovna patří tobě. Data neprodáváme ani nesdílíme s třetími stranami. V Nastavení si kdykoli stáhneš kompletní export nebo smažeš celý účet.",
     "faq_3_q": "Co když AI nerozpozná název správně?",
-    "faq_3_a": "Stává se to — opotřebované hřbety nebo neobvyklá písma občas zlobí. Před uložením máš kontrolní obrazovku, kde cokoliv opravíš. Metadata jde upravit i dodatečně.",
+    "faq_3_a": "Když AI něco nepozná přesně, jednoduše to opravíš na kontrolní obrazovce. Údaje o knize můžeš kdykoli upravit i později.",
     "faq_4_q": "Je to opravdu zdarma?",
-    "faq_4_a": "Volný plán pokryje většinu domácích knihoven. Každý měsíc máš štědrý počet skenů a knih. Plán Pro je tu pro případ, že potřebuješ víc — ale spousta lidí si vystačí zadarmo.",
+    "faq_4_a": "Free plán pokryje většinu domácích knihoven: až 200 knih, 5 skenů polic měsíčně a 20 obohacení metadat. Pro větší sbírky můžeš kdykoli přejít na placený plán.",
     "faq_5_q": "Můžu knihovnu sdílet s rodinou?",
     "faq_5_a": "Jasně. Pozvi členy rodiny, ať knihovnu prohlížejí nebo spravují společně. Všichni vidí stejný katalog, takže konec otázkám: nemáme to už doma?",
     "final_cta_title": "Pořádek na policích začíná jednou fotkou",
     "final_cta_subtitle": "Vyzkoušej to — budeš vědět, co vlastníš a kde to najdeš.",
     "final_cta_button": "Vyzkoušet Shelfy zdarma",
     "footer_privacy": "Zásady ochrany soukromí",
-    "footer_terms": "Podmínky použití"
+    "footer_terms": "Podmínky použití",
+    "hero_trust_summary": "Tvoje data patří tobě. Kdykoli je exportuješ a účet můžeš jednoduše smazat."
   },
   "csv": {
     "import_button": "Importovat CSV",
@@ -598,5 +599,25 @@
     "result_created": "Vytvořeno",
     "result_updated": "Aktualizováno",
     "result_skipped": "Přeskočeno"
+  },
+  "auth": {
+    "signin_tab": "Přihlásit",
+    "register_tab": "Registrace",
+    "intro_title": "Založ si Shelfy účet do minuty",
+    "intro_subtitle": "Free plán obsahuje až 200 knih a 5 skenů polic měsíčně. Kdykoli můžeš přejít na vyšší plán.",
+    "email_label": "E-mail",
+    "password_label": "Heslo",
+    "confirm_password_label": "Potvrzení hesla",
+    "redirecting": "Přesměrování…",
+    "continue_google": "Pokračovat přes Google",
+    "or": "nebo",
+    "password_mismatch": "Hesla se neshodují.",
+    "please_wait": "Chvíli strpení…",
+    "signin_cta": "Přihlásit se",
+    "register_cta": "Registrovat",
+    "back_home": "Zpět na úvodní stránku",
+    "pw_rule_len": "Min. 10 znaků",
+    "pw_rule_digit": "Alespoň 1 číslice",
+    "pw_rule_non_digit": "Alespoň 1 písmeno nebo symbol"
   }
 }
