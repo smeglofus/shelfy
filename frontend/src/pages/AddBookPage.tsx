@@ -12,6 +12,7 @@ export function AddBookPage() {
   const { t } = useTranslation()
   const navigate      = useNavigate()
   const showError     = useToastStore(s => s.showError)
+  const showSuccess   = useToastStore(s => s.showSuccess)
   const { data: locations = [] } = useLocations()
   const createMutation  = useCreateBook()
   const uploadMutation  = useUploadBookImage()
@@ -65,7 +66,10 @@ export function AddBookPage() {
       reading_status: reading,
     }
     createMutation.mutate(payload, {
-      onSuccess: () => navigate(ROUTES.books),
+      onSuccess: () => {
+        showSuccess(t('add_book.success_created', 'Kniha byla přidána.'))
+        navigate(ROUTES.books)
+      },
       onError:   ()  => showError(t('add_book.error')),
     })
   }
