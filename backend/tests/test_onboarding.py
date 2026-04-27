@@ -65,7 +65,6 @@ async def _seed_and_login(session: AsyncSession, client: AsyncClient) -> dict[st
 
 # ── Auth guard ────────────────────────────────────────────────
 
-@pytest.mark.xfail(strict=True, reason="Known bug (tracked): onboarding endpoints return 403 (CSRF middleware intercepts first) instead of 401 for unauthenticated requests. Auth ordering needs fixing.")
 @pytest.mark.asyncio
 async def test_onboarding_endpoints_require_auth() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -73,6 +72,37 @@ async def test_onboarding_endpoints_require_auth() -> None:
         assert (await client.post("/api/v1/settings/onboarding/complete")).status_code == 401
         assert (await client.post("/api/v1/settings/onboarding/skip")).status_code == 401
         assert (await client.post("/api/v1/settings/onboarding/reset")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_csrf_still_enforced_for_cookie_session(test_session: AsyncSession) -> None:
+    """Regression: cookie-auth POST without CSRF header → 403, not 401.
+
+    The CSRF fix must only relax enforcement for unauthenticated requests
+    (no access_token cookie). Once a session exists, CSRF must still block
+    requests that omit the X-CSRF-Token header.
+    """
+    test_session.add(User(email="csrf-guard@example.com", hashed_password=get_password_hash("secret")))
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "csrf-guard@example.com", "password": "secret"},
+        )
+        assert login.status_code == 200
+        token = login.json()["access_token"]
+
+        # Inject the access_token cookie manually so it reaches the CSRF
+        # middleware (Python's CookieJar skips Secure cookies on plain HTTP
+        # in tests, so we bypass the jar).  No X-CSRF-Token header → 403.
+        resp = await client.post(
+            "/api/v1/settings/onboarding/complete",
+            cookies={"access_token": token},
+        )
+
+    assert resp.status_code == 403
+    assert "CSRF" in resp.json().get("detail", "")
 
 
 # ── Initial state ─────────────────────────────────────────────

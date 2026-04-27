@@ -79,6 +79,43 @@ def sent_emails() -> list[tuple[str, str]]:
     return []
 
 
+@pytest.fixture
+def enabled_limiter() -> Iterator[None]:
+    """Temporarily enable the module-level limiter with fresh in-memory storage.
+
+    The global limiter is disabled when TESTING=true so ordinary tests are not
+    affected by rate limits.  Swapping app.state.limiter with a new instance
+    does NOT work: the @limiter.limit() decorator captures self (the original
+    limiter instance) in its closure and calls self._check_request_limit() at
+    request time, so any new limiter put in app.state has no effect on the
+    per-route limit check.
+
+    Instead we mutate the original limiter: enable it and replace its storage
+    with a fresh MemoryStorage (no Redis dependency), then restore everything
+    after the test.
+    """
+    import app.core.limiter as limiter_mod
+    from limits.storage import MemoryStorage
+    from limits.strategies import STRATEGIES
+
+    lim = limiter_mod.limiter
+    saved_enabled = lim.enabled
+    saved_storage = lim._storage
+    saved_rate_limiter = lim._limiter
+
+    new_storage = MemoryStorage()
+    strategy = lim._strategy or "fixed-window"
+    lim.enabled = True
+    lim._storage = new_storage
+    lim._limiter = STRATEGIES[strategy](new_storage)
+
+    yield
+
+    lim.enabled = saved_enabled
+    lim._storage = saved_storage
+    lim._limiter = saved_rate_limiter
+
+
 @pytest.fixture(autouse=True)
 def override_dependencies(
     monkeypatch: pytest.MonkeyPatch,
@@ -232,29 +269,28 @@ async def test_email_rate_limit_allows_only_three_requests_per_hour(
     assert len(sent_emails) == 3
 
 
-@pytest.mark.skipif(
-    os.environ.get("TESTING", "").lower() == "true",
-    reason=(
-        "slowapi limiter is disabled globally when TESTING=true "
-        "(see app/core/limiter.py). The per-IP rate limit is enforced at "
-        "the slowapi layer, not inside our service, so it cannot be "
-        "exercised from this suite. Runtime behaviour is covered by the "
-        "limiter's own integration tests and manual smoke checks."
-    ),
-)
 @pytest.mark.asyncio
-async def test_ip_rate_limit_returns_429_on_sixth_call() -> None:
-    """6. Request is rate-limited per IP via slowapi: 5 per 15 minutes."""
-    headers, cookies = _csrf()
+async def test_ip_rate_limit_returns_429_on_sixth_call(enabled_limiter: None) -> None:
+    """IP rate-limited via slowapi: 5 per 15 minutes; 6th call → 429.
+
+    Uses an isolated in-memory limiter (enabled_limiter fixture) so the test
+    is not affected by the global TESTING=true bypass in app/core/limiter.py
+    and does not need a Redis instance.
+    """
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        for i in range(6):
-            response = await client.post(
+        for i in range(5):
+            resp = await client.post(
                 "/api/v1/auth/password-reset/request",
                 json={"email": f"ip{i}@example.com"},
-                headers=headers,
-                cookies=cookies,
             )
-    assert response.status_code == 429
+            assert resp.status_code == 202, f"call {i + 1} expected 202, got {resp.status_code}"
+
+        # 6th request from the same IP (test client host) exceeds 5/15min limit.
+        resp = await client.post(
+            "/api/v1/auth/password-reset/request",
+            json={"email": "ip5@example.com"},
+        )
+    assert resp.status_code == 429
 
 
 @pytest.mark.asyncio
