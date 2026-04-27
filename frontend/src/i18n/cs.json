@@ -55,9 +55,9 @@
     "loading": "Načítám knihy…",
     "error": "Nepodařilo se načíst knihy.",
     "retry": "Zkusit znovu",
-    "empty_title": "Žádné knihy",
+    "empty_title": "Tvoje knihovna je prázdná",
     "empty_search": "Nic nenalezeno pro „{{query}}",
-    "empty_library": "Přidej svou první knihu tlačítkem ↓",
+    "empty_library": "Začni přidáním první knihy — ručně nebo naskenováním celé police pomocí AI.",
     "no_location": "Bez umístění",
     "empty_category": "Žádné knihy v této kategorii",
     "search_label": "Hledat knihy",
@@ -95,7 +95,10 @@
     "reorder_done": "Uložit pořadí",
     "reorder_hint": "Přetáhni knihy pro změnu pořadí. Na mobilu podrž prst pro zahájení přesunu.",
     "reorder_mode_tooltip": "Změň pořadí knih v polici a pak ho ulož",
-    "saving": "Ukládám…"
+    "saving": "Ukládám…",
+    "empty_cta_add": "Přidat knihu",
+    "empty_cta_scan": "Naskenovat polici",
+    "empty_cta_location": "Vytvořit umístění"
   },
   "book_detail": {
     "title": "Detail knihy",

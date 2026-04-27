@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { BookCard } from '../components/BookCard'
@@ -13,12 +14,14 @@ import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
+import { ROUTES } from '../lib/routes'
 import type { Book, Location, ReadingStatus } from '../lib/types'
 
 type StatFilter = 'total' | 'read' | 'reading' | 'lent'
 
 export function BooksPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput.trim(), 300)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
@@ -96,7 +99,7 @@ export function BooksPage() {
   }, [locationsQuery.data])
 
   useEffect(() => {
-    const failed = (booksQuery.data?.items ?? []).filter(
+    const failed = (booksQuery.data ?? []).filter(
       (b) => b.processing_status === 'failed' && !toastedFailedIdsRef.current.has(b.id),
     )
     if (!failed.length) return
@@ -196,6 +199,9 @@ export function BooksPage() {
   }, [books])
 
   const total = books.length
+  // rawCount is the unfiltered library size — used to distinguish "library is
+  // truly empty" (rawCount === 0) from "filters produced no results" (total === 0).
+  const rawCount = (booksQuery.data ?? []).length
 
   const booksCountLabel = t('books.books_count')
 
@@ -428,25 +434,63 @@ export function BooksPage() {
           </p>
         )}
 
-        {!booksQuery.isLoading && !booksQuery.isError && total === 0 && (
-          <div className="sh-empty-state">
+        {/* ── Truly empty library: show onboarding empty state with CTAs (issue #130) ── */}
+        {!booksQuery.isLoading && !booksQuery.isError && rawCount === 0 && (
+          <div className="sh-empty-state" data-testid="empty-library-state">
             <div className="sh-empty-state__icon">
-              <EmptyLibraryIcon size={56} />
+              <EmptyLibraryIcon size={64} />
             </div>
-            <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>{t('books.empty_title')}</p>
-            <p className="text-p">
-              {debouncedSearch ? t('books.empty_search', { query: debouncedSearch }) : t('books.empty_library')}
+            <h3 className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>
+              {t('books.empty_title')}
+            </h3>
+            <p className="text-p" style={{ maxWidth: 340, textAlign: 'center', marginBottom: 20 }}>
+              {t('books.empty_library')}
             </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="sh-btn-primary"
+                onClick={() => navigate(ROUTES.addBook)}
+              >
+                {t('books.empty_cta_add')}
+              </button>
+              <button
+                type="button"
+                className="sh-btn-secondary"
+                onClick={() => navigate(ROUTES.scanShelf)}
+              >
+                {t('books.empty_cta_scan')}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.locations)}
+              style={{
+                marginTop: 14,
+                background: 'none',
+                border: 'none',
+                fontSize: 13,
+                color: 'var(--sh-text-muted)',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              {t('books.empty_cta_location')}
+            </button>
           </div>
         )}
 
-        {!booksQuery.isLoading && !booksQuery.isError && total > 0 && readingFilter && books.length === 0 && (
+        {/* ── Has books but search / filter produced no results ── */}
+        {!booksQuery.isLoading && !booksQuery.isError && rawCount > 0 && total === 0 && (
           <div className="sh-empty-state">
             <div className="sh-empty-state__icon">
               <NoResultsIcon size={56} />
             </div>
             <p className="text-h3" style={{ color: 'var(--sh-text-main)', marginTop: 0 }}>
-              {t('books.empty_category')}
+              {debouncedSearch
+                ? t('books.empty_search', { query: debouncedSearch })
+                : t('books.empty_category')}
             </p>
           </div>
         )}

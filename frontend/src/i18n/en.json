@@ -55,9 +55,9 @@
     "loading": "Loading books…",
     "error": "Failed to load books.",
     "retry": "Try again",
-    "empty_title": "No books",
+    "empty_title": "Your library is empty",
     "empty_search": "No results for “{{query}}",
-    "empty_library": "Add your first book using the button below ↓",
+    "empty_library": "Start by adding your first book — manually or by scanning a whole shelf with AI.",
     "no_location": "No location",
     "empty_category": "No books in this category",
     "search_label": "Search books",
@@ -95,7 +95,10 @@
     "reorder_done": "Save order",
     "reorder_hint": "Drag books to reorder. On touch devices, long-press to start drag.",
     "reorder_mode_tooltip": "Rearrange books on shelf, then save the new order",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "empty_cta_add": "Add book",
+    "empty_cta_scan": "Scan shelf",
+    "empty_cta_location": "Create a location"
   },
   "book_detail": {
     "title": "Book details",
