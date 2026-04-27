@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 const SECTION: CSSProperties = { marginBottom: 32 }
 const H2: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
-const H3: CSSProperties = { fontSize: 15, fontWeight: 600, margin: '16px 0 6px' }
-const P: CSSProperties = { margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh-text-secondary)' }
+const P: CSSProperties ={ margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh-text-secondary)' }
 const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }
 const TABLE: CSSProperties = { width: '100%', borderCollapse: 'collapse', margin: '10px 0 16px', fontSize: 14 }
 const TH: CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid var(--sh-border)', fontWeight: 600, fontSize: 13 }

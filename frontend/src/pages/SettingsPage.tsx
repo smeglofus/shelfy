@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useQueryClient } from '@tanstack/react-query'
@@ -75,7 +75,7 @@ function LibraryManagement() {
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<LibraryRole>('viewer')
 
-  function handleAddMember(e: React.FormEvent) {
+  function handleAddMember(e: FormEvent) {
     e.preventDefault()
     if (!newEmail.trim()) return
     addMemberMutation.mutate(

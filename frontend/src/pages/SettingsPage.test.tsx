@@ -60,10 +60,8 @@ vi.mock('../store/useLibraryStore', () => ({
 
 import {
   addLibraryMember,
-  deleteAccount,
   listLibraries,
   listLibraryMembers,
-  purgeLibrary,
   removeLibraryMember,
   updateLibraryMember,
 } from '../lib/api'
