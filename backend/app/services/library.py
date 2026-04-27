@@ -124,9 +124,9 @@ async def update_member_role(
         )
     ).scalar_one_or_none()
     if member is None:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     if member.role == LibraryRole.OWNER and role != LibraryRole.OWNER and await _owner_count(session, library_id) <= 1:
-        raise HTTPException(status_code=400, detail="Cannot remove last owner")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove last owner")
     member.role = role
     await session.commit()
     await session.refresh(member)
@@ -144,6 +144,6 @@ async def remove_member(session: AsyncSession, library_id: uuid.UUID, user_id: u
     if member is None:
         return
     if member.role == LibraryRole.OWNER and await _owner_count(session, library_id) <= 1:
-        raise HTTPException(status_code=400, detail="Cannot remove last owner")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove last owner")
     await session.delete(member)
     await session.commit()

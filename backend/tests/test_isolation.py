@@ -121,6 +121,10 @@ async def _add_member(
 async def _login(client: AsyncClient, email: str, password: str = "secret") -> dict[str, str]:
     resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200, f"Login failed: {resp.text}"
+    # Clear cookies so that when multiple users log in within the same client
+    # instance, the last login's cookie doesn't shadow earlier users' Bearer
+    # tokens (auth dependency prefers cookie over Authorization header).
+    client.cookies.clear()
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
@@ -310,7 +314,6 @@ async def test_viewer_can_read_but_not_write(
         assert (await client.post("/api/v1/locations", json={"room": "r", "furniture": "f", "shelf": "s"}, headers=vh)).status_code == 403
 
 
-@pytest.mark.xfail(strict=True, reason="Known bug (tracked): owner member-management endpoints return unexpected status codes — likely an entitlement plan seeding issue in the test fixture.")
 @pytest.mark.asyncio
 async def test_owner_can_manage_members_editor_cannot(
     test_session: async_sessionmaker[AsyncSession],
@@ -430,7 +433,6 @@ async def test_removing_member_preserves_data(
         assert any(b["title"] == "Survivor" for b in resp.json()["items"])
 
 
-@pytest.mark.xfail(strict=True, reason="Known bug (tracked): ISBN unique constraint is global across all libraries; should be scoped per-library so the same ISBN can appear in two different libraries.")
 @pytest.mark.asyncio
 async def test_duplicate_isbn_across_libraries_allowed(
     test_session: async_sessionmaker[AsyncSession],
