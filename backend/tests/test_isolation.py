@@ -178,7 +178,6 @@ async def test_user_a_cannot_see_library_b_data(
     assert "Book B" not in titles
 
 
-@pytest.mark.xfail(strict=True, reason="Known bug (tracked): library membership check does not enforce 403 when user passes a foreign X-Library-Id header — GET /books returns 200 instead.")
 @pytest.mark.asyncio
 async def test_user_a_cannot_access_library_b_directly(
     test_session: async_sessionmaker[AsyncSession],
@@ -196,6 +195,61 @@ async def test_user_a_cannot_access_library_b_directly(
         resp = await client.get("/api/v1/books", headers=headers_a)
 
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_foreign_library_header_denied_on_write_endpoints(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """POST /books with a foreign X-Library-Id also returns 403 (not silently routed)."""
+    async with test_session() as session:
+        user_a = await _create_user(session, "writeA@example.com")
+        user_b = await _create_user(session, "writeB@example.com")
+        await _create_library(session, user_a, "Library A")
+        lib_b = await _create_library(session, user_b, "Library B")
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers_a = {**await _login(client, "writeA@example.com"), **_lib_header(lib_b.id)}
+        resp = await client.post("/api/v1/books", json={"title": "Smuggled"}, headers=headers_a)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_no_library_header_falls_back_to_default(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Omitting X-Library-Id still works — default library is used."""
+    async with test_session() as session:
+        user = await _create_user(session, "noheader@example.com")
+        lib = await _create_library(session, user, "Default Library")
+        session.add(Book(library_id=lib.id, title="My Book"))
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        auth = await _login(client, "noheader@example.com")
+        resp = await client.get("/api/v1/books", headers=auth)
+
+    assert resp.status_code == 200
+    assert any(b["title"] == "My Book" for b in resp.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_invalid_uuid_library_header_returns_400(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """X-Library-Id with a non-UUID value returns 400."""
+    async with test_session() as session:
+        user = await _create_user(session, "baduuid@example.com")
+        await _create_library(session, user, "Default Library")
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        auth = await _login(client, "baduuid@example.com")
+        resp = await client.get("/api/v1/books", headers={**auth, "X-Library-Id": "not-a-uuid"})
+
+    assert resp.status_code == 400
 
 
 @pytest.mark.asyncio
