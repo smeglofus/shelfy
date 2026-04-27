@@ -121,6 +121,10 @@ async def _add_member(
 async def _login(client: AsyncClient, email: str, password: str = "secret") -> dict[str, str]:
     resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200, f"Login failed: {resp.text}"
+    # Clear cookies so that when multiple users log in within the same client
+    # instance, the last login's cookie doesn't shadow earlier users' Bearer
+    # tokens (auth dependency prefers cookie over Authorization header).
+    client.cookies.clear()
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
