@@ -7,7 +7,8 @@ Why double-submit and not a session-bound server secret?
   SameSite=Lax + Secure and the comparison is constant-time.
 
 Invariant enforced:
-  For every unsafe (POST/PUT/PATCH/DELETE) request to a protected path:
+  For every unsafe (POST/PUT/PATCH/DELETE) request to a protected path
+  where the client has an active ``access_token`` cookie:
     EITHER
       - the request authenticates via ``Authorization: Bearer …``
         (mobile / CLI client — cross-origin fetch can't attach this
@@ -16,6 +17,10 @@ Invariant enforced:
       - the request carries BOTH a ``csrf_token`` cookie AND a matching
         ``X-CSRF-Token`` header (constant-time compare).
     Otherwise the request is rejected 403.
+
+  Requests with no ``access_token`` cookie are not cookie-authenticated
+  sessions and therefore not CSRF targets. They pass through so the
+  route's auth dependency can return the semantically correct 401.
 
 Whitelist (no CSRF enforced):
   - Unauthenticated endpoints that *establish* a session — login,
@@ -38,7 +43,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME
+from app.core.cookies import ACCESS_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 
 _SAFE_METHODS: Final = frozenset({"GET", "HEAD", "OPTIONS"})
 
@@ -84,6 +89,12 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Bearer clients are immune to CSRF (see module docstring).
         auth_header = request.headers.get("authorization", "")
         if auth_header.lower().startswith("bearer "):
+            return await call_next(request)
+
+        # No active session cookie → request is not cookie-authenticated.
+        # CSRF only protects sessions that exist; let the route's auth
+        # dependency handle the missing credentials and return 401.
+        if not request.cookies.get(ACCESS_COOKIE_NAME):
             return await call_next(request)
 
         # Cookie-bearing clients MUST prove possession of the csrf_token
