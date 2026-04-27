@@ -7,13 +7,11 @@ const H2: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
 const P: CSSProperties = { margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh-text-secondary)' }
 const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }
 const TABLE: CSSProperties = { width: '100%', borderCollapse: 'collapse', margin: '10px 0 16px', fontSize: 14 }
-const TH: CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid var(--sh-border)', fontWeight: 600, fontSize: 13 }
 const TD: CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--sh-border)', verticalAlign: 'top', color: 'var(--sh-text-secondary)' }
 
 const EFFECTIVE_DATE = '8. dubna 2026'
 const VERSION = '2.0'
 const CONTACT_EMAIL = 'info@shelfy.cz'
-const PRIVACY_EMAIL = 'privacy@shelfy.cz'
 
 export function TermsPage() {
   const navigate = useNavigate()

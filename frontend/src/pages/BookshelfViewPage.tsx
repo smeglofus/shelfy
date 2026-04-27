@@ -62,7 +62,7 @@ export function BookshelfViewPage() {
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
   const [bulkMoveTarget, setBulkMoveTarget] = useState<string>('')
   const [bulkInsertPosition, setBulkInsertPosition] = useState('')
-  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [, setActiveDragId] = useState<string | null>(null)
   const [activeDragBook, setActiveDragBook] = useState<Book | null>(null)
   const [dragSnapshot, setDragSnapshot] = useState<Record<string, Book[]> | null>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -279,7 +279,6 @@ export function BookshelfViewPage() {
 
     if (!targetLocationId) { setActiveDragId(null); return }
 
-    const snapshot = dragSnapshot ?? localByLocation
     const next = { ...localByLocation }
 
     if (from.locationId === targetLocationId) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -286,7 +286,7 @@ export function Navigation() {
 
   const isFabActionActive = isActive(ROUTES.addBook) || isActive(ROUTES.scanShelf)
 
-  const mobileTabStyle = (active: boolean): React.CSSProperties => ({
+  const mobileTabStyle = (active: boolean): CSSProperties => ({
     flex: 1,
     display: 'flex',
     flexDirection: 'column',

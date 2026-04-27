@@ -9,7 +9,7 @@
  *         (mode, on_conflict, create_missing_locations).
  *         On success the parent is notified so it can re-fetch the book list.
  */
-import { useRef, useState } from 'react'
+import { type ChangeEvent, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { confirmCsvImport, formatApiError, previewCsvImport } from '../lib/api'
@@ -59,7 +59,7 @@ export function ImportCsvModal({ open, onClose, onImported }: ImportCsvModalProp
     onClose()
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
