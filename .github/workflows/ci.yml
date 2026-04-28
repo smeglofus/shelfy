@@ -144,15 +144,14 @@ jobs:
         run: node scripts/check_bundle_secrets.mjs
 
       - name: Bundle size budget check
-        working-directory: frontend
-        run: node ../scripts/check_bundle_budget.mjs
+        run: node scripts/check_bundle_budget.mjs
 
   # ── Security scan (Trivy CVE scan) ────────────────────────────────────────
   # Trivy is installed via the official APT repository (CDN-backed, more
   # reliable than the GitHub-action binary fetch that was flaky — issue #152).
-  # continue-on-error on individual scan steps ensures SARIF is attempted for
-  # both targets even if one fails. if-no-files-found: ignore on upload
-  # prevents the artifact step from failing when a scan step produced no output.
+  # Scan steps use --exit-code 1 so CRITICAL findings fail the job visibly.
+  # Job-level continue-on-error: true keeps this advisory (non-blocking for merges).
+  # if-no-files-found: ignore on upload handles the case where install fails.
   security-scan:
     name: security-scan
     runs-on: ubuntu-latest
@@ -175,12 +174,10 @@ jobs:
           trivy --version
 
       - name: Trivy scan backend
-        continue-on-error: true
-        run: trivy fs --severity CRITICAL --format sarif --output trivy-backend.sarif backend/
+        run: trivy fs --severity CRITICAL --format sarif --output trivy-backend.sarif --exit-code 1 backend/
 
       - name: Trivy scan worker
-        continue-on-error: true
-        run: trivy fs --severity CRITICAL --format sarif --output trivy-worker.sarif worker/
+        run: trivy fs --severity CRITICAL --format sarif --output trivy-worker.sarif --exit-code 1 worker/
 
       - name: Upload Trivy SARIF artifacts
         if: always()
