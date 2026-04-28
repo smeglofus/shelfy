@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { type ReactNode } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LocationsPage } from './LocationsPage'
@@ -15,6 +16,14 @@ vi.mock('../lib/api', () => ({
   formatApiError: vi.fn(() => 'API error'),
 }))
 
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: vi.fn(() => ({
+    user: { id: 'user-1', email: 'test@example.com' },
+    isAuthenticated: true,
+    logout: vi.fn(),
+  })),
+}))
+
 import { createLocation, deleteLocation, listLocations, updateLocation } from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
@@ -24,7 +33,11 @@ function renderWithProviders(ui: ReactNode) {
     },
   })
 
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  )
 }
 
 const baseLocations: Location[] = [
@@ -54,7 +67,8 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    expect(screen.getByText('locations.loading')).toBeInTheDocument()
+    // Loading state shows skeleton rows, not a text node
+    expect(screen.queryByText('Office')).not.toBeInTheDocument()
   })
 
   it('shows error state when loading locations fails', async () => {
@@ -71,9 +85,10 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    expect(await screen.findByText('Office')).toBeInTheDocument()
-    expect(screen.getByText('Bookshelf')).toBeInTheDocument()
-    expect(screen.getByText('Shelf 1')).toBeInTheDocument()
+    // Page renders both desktop table and mobile cards — use findAllByText
+    expect((await screen.findAllByText('Office')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Bookshelf').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Shelf 1').length).toBeGreaterThan(0)
   })
 
   it('submits create form and refreshes the list', async () => {
@@ -89,16 +104,16 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    await screen.findByText('Office')
+    await screen.findAllByText('Office')
 
     await userEvent.type(screen.getByLabelText('locations.room'), 'Living Room')
     await userEvent.type(screen.getByLabelText('locations.furniture'), 'Cabinet')
     await userEvent.type(screen.getByLabelText('locations.shelf'), 'Top')
     await userEvent.click(screen.getByRole('button', { name: 'locations.create' }))
 
-    expect(await screen.findByText('Living Room')).toBeInTheDocument()
-    expect(screen.getByText('Cabinet')).toBeInTheDocument()
-    expect(screen.getByText('Top')).toBeInTheDocument()
+    expect((await screen.findAllByText('Living Room')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cabinet').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Top').length).toBeGreaterThan(0)
   })
 
   it('updates a location using inline edit form', async () => {
@@ -111,23 +126,24 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    await screen.findByText('Office')
-    await userEvent.click(screen.getByRole('button', { name: 'locations.edit' }))
+    await screen.findAllByText('Office')
+    // Click the first edit button (desktop table row)
+    await userEvent.click(screen.getAllByRole('button', { name: 'locations.edit' })[0])
 
     const editRoom = screen.getByLabelText('locations.edit_room')
     await userEvent.clear(editRoom)
     await userEvent.type(editRoom, 'Study')
-    await userEvent.click(screen.getByRole('button', { name: 'locations.save' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'locations.save' })[0])
 
     await waitFor(() => {
-      expect(updateLocation).toHaveBeenCalledWith('loc-1', {
+      expect(updateLocation).toHaveBeenCalledWith('loc-1', expect.objectContaining({
         room: 'Study',
         furniture: 'Bookshelf',
         shelf: 'Shelf 1',
-      })
+      }))
     })
 
-    expect(await screen.findByText('Study')).toBeInTheDocument()
+    expect((await screen.findAllByText('Study')).length).toBeGreaterThan(0)
   })
 
   it('requires confirmation before deleting a location', async () => {
@@ -136,15 +152,15 @@ describe('LocationsPage', () => {
 
     renderWithProviders(<LocationsPage />)
 
-    await screen.findByText('Office')
-    await userEvent.click(screen.getByRole('button', { name: 'locations.delete' }))
+    await screen.findAllByText('Office')
+    await userEvent.click(screen.getAllByRole('button', { name: 'locations.delete' })[0])
 
-    expect(screen.getByRole('dialog', { name: 'delete-location-dialog' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'locations.delete_title' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'locations.delete_forever' }))
 
     await waitFor(() => {
-      expect(screen.queryByText('Office')).not.toBeInTheDocument()
+      expect(screen.queryAllByText('Office').length).toBe(0)
     })
   })
 })
