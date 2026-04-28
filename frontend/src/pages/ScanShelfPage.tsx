@@ -86,6 +86,7 @@ export function ScanShelfPage() {
   const [scanMode, setScanMode] = useState<ScanMode>('replace')
   const [appendAfterBookId, setAppendAfterBookId] = useState<string | null>(null)
   const [pendingDraft, setPendingDraft] = useState<ScanDraft | null>(null)
+  const [tipsDismissed, setTipsDismissed] = useState(() => localStorage.getItem('shelfy_scan_tips_dismissed') === '1')
 
   const { data: booksAtLocation = [] } = useBooksByLocation(locationId)
   const existingShelfBooks = [...booksAtLocation].sort((a, b) => (a.shelf_position ?? 99999) - (b.shelf_position ?? 99999))
@@ -601,6 +602,37 @@ export function ScanShelfPage() {
               </div>
             )}
           </div>
+
+          {/* Tips panel */}
+          {!tipsDismissed ? (
+            <div className="sh-card-panel" style={{ padding: '12px 16px', marginBottom: 16, background: 'var(--sh-surface-elevated)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>{t('scan.tips_title')}</span>
+                <button
+                  type="button"
+                  onClick={() => { localStorage.setItem('shelfy_scan_tips_dismissed', '1'); setTipsDismissed(true) }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+                  aria-label={t('scan.tips_dismiss')}
+                >
+                  ✕
+                </button>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--sh-text-secondary)', fontSize: 13, lineHeight: 1.7 }}>
+                <li>{t('scan.tip_lighting')}</li>
+                <li>{t('scan.tip_framing')}</li>
+                <li>{t('scan.tip_count')}</li>
+                <li>{t('scan.tip_segments')}</li>
+              </ul>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setTipsDismissed(false)}
+              style={{ background: 'none', border: '1px solid var(--sh-border)', borderRadius: 'var(--sh-radius-sm)', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 12, padding: '2px 10px', marginBottom: 12 }}
+            >
+              {t('scan.tips_show')}
+            </button>
+          )}
 
           {/* Upload area */}
           <div

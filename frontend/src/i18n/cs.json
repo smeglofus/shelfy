@@ -348,7 +348,14 @@
     "move_left": "Posun doleva",
     "move_right": "Posun doprava",
     "positions_saved": "Pozice uloženy",
-    "start_scan_here": "Skenovat odtud"
+    "start_scan_here": "Skenovat odtud",
+    "tips_title": "Tipy pro nejlepší výsledky",
+    "tip_lighting": "Dobré osvětlení — vyhni se stínům nebo odleskům na hřbetech knih.",
+    "tip_framing": "Drž telefon vodorovně a zachyť hřbety v jedné řadě.",
+    "tip_count": "Do jedné fotky 5–10 knih pro nejlepší čitelnost nápisů.",
+    "tip_segments": "Fotografuj zleva doprava po úsecích — pro dlouhé police použij 'Přidat další fotku'.",
+    "tips_dismiss": "Zavřít tipy",
+    "tips_show": "? Tipy"
   },
   "add_book": {
     "page_title": "Přidat knihu",
