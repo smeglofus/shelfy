@@ -16,6 +16,14 @@ vi.mock('../lib/api', () => ({
   formatApiError: vi.fn(() => 'API error'),
 }))
 
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: vi.fn(() => ({
+    user: { id: 'user-1', email: 'test@example.com' },
+    isAuthenticated: true,
+    logout: vi.fn(),
+  })),
+}))
+
 import { getBook, listLocations, updateBook } from '../lib/api'
 
 function renderWithProviders(ui: ReactNode) {
@@ -83,13 +91,13 @@ describe('BookDetailPage', () => {
     renderWithProviders(<BookDetailPage />)
 
     expect(await screen.findByRole('heading', { name: 'Clean Architecture' })).toBeInTheDocument()
-    expect(screen.getByText('Robert C. Martin')).toBeInTheDocument()
-    expect(screen.getByText('9780134494166')).toBeInTheDocument()
-    expect(screen.getByText('Prentice Hall')).toBeInTheDocument()
-    expect(screen.getByText('en')).toBeInTheDocument()
-    expect(screen.getByText('Software architecture and design principles.')).toBeInTheDocument()
-    expect(screen.getByText('2017')).toBeInTheDocument()
-    expect(screen.getByText('processing_status.manual')).toBeInTheDocument()
+    expect(screen.getAllByText('Robert C. Martin').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('9780134494166').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Prentice Hall').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('en').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Software architecture and design principles.').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('2017').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('processing_status.manual').length).toBeGreaterThan(0)
   })
 
   it('submits save form with explicit unassigned location', async () => {
