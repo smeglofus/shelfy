@@ -242,12 +242,12 @@
     "update_button": "Update app"
   },
   "landing": {
-    "hero_title": "Find every book in seconds.",
-    "hero_subtitle": "Take one shelf photo and Shelfy recognizes titles and authors, then organizes your catalog by room and shelf. Search by title, author, or ISBN instantly.",
+    "hero_title": "Your entire book collection, catalogued in minutes.",
+    "hero_subtitle": "For home readers, book clubs, schools, and small libraries. Photograph your shelves and Shelfy's AI reads every spine — building a searchable catalog by title, author, and ISBN.",
     "hero_cta_signup": "Try it free",
     "hero_cta_login": "Sign in",
     "hero_cta_watch_demo": "How it works",
-    "hero_free_limits": "Free plan: up to 200 books, 5 shelf scans/month, 20 metadata enrichments. No card required.",
+    "hero_free_limits": "Free to start · No credit card required · Up to 200 books",
     "how_title": "How it works",
     "how_subtitle": "Three steps. One photo. A complete catalog.",
     "how_step_label": "Step {{count}}",
@@ -284,9 +284,9 @@
     "faq_4_a": "The Free plan covers most home libraries: up to 200 books, 5 shelf scans/month, and 20 metadata enrichments. Upgrade anytime if you need more.",
     "faq_5_q": "Can I share my library with family?",
     "faq_5_a": "Absolutely. You can invite family members to view or help manage your library. Everyone sees the same catalog, so no more asking \"do we already own this one?\"",
-    "final_cta_title": "Your shelves, sorted",
-    "final_cta_subtitle": "One photo and you'll know exactly what you own and where it lives.",
-    "final_cta_button": "Try Shelfy free",
+    "final_cta_title": "Ready to know every book you own?",
+    "final_cta_subtitle": "Home readers, book clubs, schools, and small libraries — finally, a catalog that takes minutes to build and seconds to search.",
+    "final_cta_button": "Create your free library catalog",
     "footer_privacy": "Privacy Policy",
     "footer_terms": "Terms of Service",
     "hero_trust_summary": "Your data stays yours. Export anytime and delete your account whenever you want."

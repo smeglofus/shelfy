@@ -144,13 +144,14 @@ jobs:
         run: node scripts/check_bundle_secrets.mjs
 
       - name: Bundle size budget check
-        working-directory: frontend
-        run: node ../scripts/check_bundle_budget.mjs
+        run: node scripts/check_bundle_budget.mjs
 
   # ── Security scan (Trivy CVE scan) ────────────────────────────────────────
-  # continue-on-error prevents transient Trivy binary-fetch failures from
-  # blocking merges. The SARIF artifacts are still uploaded for review.
-  # See issue #152 for tracking the flaky binary-fetch root cause.
+  # Trivy is installed via the official APT repository (CDN-backed, more
+  # reliable than the GitHub-action binary fetch that was flaky — issue #152).
+  # Scan steps use --exit-code 1 so CRITICAL findings fail the job visibly.
+  # Job-level continue-on-error: true keeps this advisory (non-blocking for merges).
+  # if-no-files-found: ignore on upload handles the case where install fails.
   security-scan:
     name: security-scan
     runs-on: ubuntu-latest
@@ -160,31 +161,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Trivy
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wget gnupg
+          wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -qq
+          sudo apt-get install -y trivy
+          trivy --version
+
       - name: Trivy scan backend
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
-        with:
-          scan-type: fs
-          scan-ref: backend/
-          severity: CRITICAL
-          format: sarif
-          output: trivy-backend.sarif
-          exit-code: 1
+        run: trivy fs --severity CRITICAL --format sarif --output trivy-backend.sarif --exit-code 1 backend/
 
       - name: Trivy scan worker
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
-        with:
-          scan-type: fs
-          scan-ref: worker/
-          severity: CRITICAL
-          format: sarif
-          output: trivy-worker.sarif
-          exit-code: 1
+        run: trivy fs --severity CRITICAL --format sarif --output trivy-worker.sarif --exit-code 1 worker/
 
       - name: Upload Trivy SARIF artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-sarif
+          if-no-files-found: ignore
           path: |
             trivy-backend.sarif
             trivy-worker.sarif

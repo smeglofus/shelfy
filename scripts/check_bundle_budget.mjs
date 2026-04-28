@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 
 const dist = path.resolve(process.cwd(), 'frontend/dist/assets');
 const files = fs.readdirSync(dist).filter((f) => f.endsWith('.js'));
@@ -8,14 +9,18 @@ if (!files.length) {
   process.exit(1);
 }
 
-const limitBytes = 600 * 1024; // 600 KB raw main chunk budget
+// Gzip budget — reflects actual network transfer size, not minified raw size.
+const limitBytes = 220 * 1024; // 220 KB gzip (current main chunk ~180 KB)
 let failed = false;
 for (const f of files) {
-  const p = path.join(dist, f);
-  const size = fs.statSync(p).size;
-  if (size > limitBytes) {
-    console.error(`Bundle ${f} is ${Math.round(size/1024)} KB (> 600 KB budget)`);
+  const raw = fs.readFileSync(path.join(dist, f));
+  const gzipped = zlib.gzipSync(raw);
+  const kb = Math.round(gzipped.length / 1024);
+  if (gzipped.length > limitBytes) {
+    console.error(`Bundle ${f} is ${kb} KB gzip (> ${Math.round(limitBytes / 1024)} KB budget)`);
     failed = true;
+  } else {
+    console.log(`Bundle ${f}: ${kb} KB gzip ✓`);
   }
 }
 if (failed) process.exit(1);

@@ -536,12 +536,12 @@
     "feature_priority_support": "Prioritní podpora"
   },
   "landing": {
-    "hero_title": "Najdi každou knihu během vteřin.",
-    "hero_subtitle": "Vyfoť polici, Shelfy rozpozná názvy i autory a vytvoří přehledný katalog podle místnosti a police. Hledání podle názvu, autora nebo ISBN je otázka chvilky.",
+    "hero_title": "Celá tvoje knihovna, katalogizovaná během minut.",
+    "hero_subtitle": "Pro domácí čtenáře, čtenářské kluby, školy a malé knihovny. Vyfoť police a Shelfy přečte každý hřbet — vytvoří prohledatelný katalog podle názvu, autora i ISBN.",
     "hero_cta_signup": "Vyzkoušet zdarma",
     "hero_cta_login": "Přihlásit se",
     "hero_cta_watch_demo": "Jak to funguje",
-    "hero_free_limits": "Free plán: až 200 knih, 5 skenů polic / měsíc, 20 obohacení metadat. Bez karty.",
+    "hero_free_limits": "Začni zdarma · Bez platební karty · Až 200 knih",
     "how_title": "Jak to funguje",
     "how_subtitle": "Tři kroky. Jedna fotka. Kompletní katalog.",
     "how_step_label": "Krok {{count}}",
@@ -578,9 +578,9 @@
     "faq_4_a": "Free plán pokryje většinu domácích knihoven: až 200 knih, 5 skenů polic měsíčně a 20 obohacení metadat. Pro větší sbírky můžeš kdykoli přejít na placený plán.",
     "faq_5_q": "Můžu knihovnu sdílet s rodinou?",
     "faq_5_a": "Jasně. Pozvi členy rodiny, ať knihovnu prohlížejí nebo spravují společně. Všichni vidí stejný katalog, takže konec otázkám: nemáme to už doma?",
-    "final_cta_title": "Pořádek na policích začíná jednou fotkou",
-    "final_cta_subtitle": "Vyzkoušej to — budeš vědět, co vlastníš a kde to najdeš.",
-    "final_cta_button": "Vyzkoušet Shelfy zdarma",
+    "final_cta_title": "Chceš vědět, co vlastníš na každé polici?",
+    "final_cta_subtitle": "Domácí čtenáři, kluby, školy a malé knihovny — katalog, který sestavíš za minuty a prohledáš za vteřinu.",
+    "final_cta_button": "Vytvořit svůj katalog zdarma",
     "footer_privacy": "Zásady ochrany soukromí",
     "footer_terms": "Podmínky použití",
     "hero_trust_summary": "Tvoje data patří tobě. Kdykoli je exportuješ a účet můžeš jednoduše smazat."
