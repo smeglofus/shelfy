@@ -421,13 +421,16 @@ describe('SettingsPage – library management', () => {
 
   it('calls removeLibraryMember after confirming remove', async () => {
     vi.mocked(removeLibraryMember).mockResolvedValue(undefined)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const user = userEvent.setup()
     renderWithProviders(<SettingsPage />)
     await screen.findByText('editor@example.com')
 
     const removeBtn = screen.getByLabelText('remove-user-editor')
     await user.click(removeBtn)
+
+    // Modal should appear
+    expect(screen.getByRole('dialog', { name: 'library.remove_title' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'library.remove' }))
 
     await waitFor(() => {
       expect(removeLibraryMember).toHaveBeenCalledWith('lib-1', 'user-editor')
@@ -435,7 +438,6 @@ describe('SettingsPage – library management', () => {
   })
 
   it('does not call removeLibraryMember when confirm is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
     renderWithProviders(<SettingsPage />)
     await screen.findByText('editor@example.com')
@@ -443,9 +445,10 @@ describe('SettingsPage – library management', () => {
     const removeBtn = screen.getByLabelText('remove-user-editor')
     await user.click(removeBtn)
 
-    await waitFor(() => {
-      expect(removeLibraryMember).not.toHaveBeenCalled()
-    })
+    expect(screen.getByRole('dialog', { name: 'library.remove_title' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    expect(removeLibraryMember).not.toHaveBeenCalled()
   })
 
   it('shows read-only role badge for non-owner user', async () => {

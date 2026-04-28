@@ -37,6 +37,7 @@
     "moved": "Přesunuto {{count}} knih",
     "status_updated": "Stav upraven pro {{count}} knih",
     "confirm_delete": "Opravdu smazat {{count}} knih? Tato akce je nevratná.",
+    "delete_confirm_title": "Smazat {{count}} knih?",
     "move_to": "Přesunout na…",
     "no_location": "Bez umístění",
     "status_label": "Nový stav",
@@ -355,7 +356,10 @@
     "tip_count": "Do jedné fotky 5–10 knih pro nejlepší čitelnost nápisů.",
     "tip_segments": "Fotografuj zleva doprava po úsecích — pro dlouhé police použij 'Přidat další fotku'.",
     "tips_dismiss": "Zavřít tipy",
-    "tips_show": "? Tipy"
+    "tips_show": "? Tipy",
+    "remove_segment_title": "Odebrat tuto fotku?",
+    "remove_segment_body": "Tím se zahodí všechny knihy rozpoznané v této fotce. Tuto akci nelze vrátit.",
+    "remove_segment_confirm": "Odebrat fotku"
   },
   "add_book": {
     "page_title": "Přidat knihu",
@@ -452,6 +456,8 @@
     "add_error_404": "Uživatel s tímto e-mailem nebyl nalezen.",
     "add_error": "Přidání člena selhalo.",
     "remove": "Odebrat",
+    "remove_title": "Odebrat člena",
+    "remove_body": "Odebrat {{email}} z této knihovny? Přístup ztratí okamžitě. Tuto akci nelze vrátit.",
     "remove_confirm": "Odebrat {{email}} z této knihovny?",
     "remove_success": "Člen odebrán.",
     "remove_error_400": "Nelze odebrat posledního vlastníka.",

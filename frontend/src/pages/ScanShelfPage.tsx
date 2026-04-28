@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { BookshelfInlineIcon, CameraIcon, ProcessingIcon } from '../components/EmptyStateIcons'
+import { Modal } from '../components/Modal'
 import { useLocations, useCreateLocation } from '../hooks/useLocations'
 import { useBooksByLocation, useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
 import { useToastStore } from '../lib/toast-store'
@@ -87,6 +88,7 @@ export function ScanShelfPage() {
   const [appendAfterBookId, setAppendAfterBookId] = useState<string | null>(null)
   const [pendingDraft, setPendingDraft] = useState<ScanDraft | null>(null)
   const [tipsDismissed, setTipsDismissed] = useState(() => localStorage.getItem('shelfy_scan_tips_dismissed') === '1')
+  const [confirmRemoveSegmentIdx, setConfirmRemoveSegmentIdx] = useState<number | null>(null)
 
   const { data: booksAtLocation = [] } = useBooksByLocation(locationId)
   const existingShelfBooks = [...booksAtLocation].sort((a, b) => (a.shelf_position ?? 99999) - (b.shelf_position ?? 99999))
@@ -702,7 +704,7 @@ export function ScanShelfPage() {
                     </div>
                     {seg.status !== 'processing' && (
                       <button
-                        onClick={() => removeSegment(idx)}
+                        onClick={() => setConfirmRemoveSegmentIdx(idx)}
                         aria-label={t('scan.remove_item')}
                         className="sh-touch-target"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-text-muted)', fontSize: 16 }}
@@ -875,6 +877,21 @@ export function ScanShelfPage() {
           <div style={{ height: 32 }} />
         </div>
       )}
+
+      <Modal open={confirmRemoveSegmentIdx !== null} onClose={() => setConfirmRemoveSegmentIdx(null)} label={t('scan.remove_segment_title')} size="sm">
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('scan.remove_segment_title')}</h3>
+        <p className="text-p" style={{ marginBottom: 24 }}>{t('scan.remove_segment_body')}</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button type="button" className="sh-btn-secondary" onClick={() => setConfirmRemoveSegmentIdx(null)}>{t('common.cancel')}</button>
+          <button
+            type="button"
+            className="sh-btn-danger"
+            onClick={() => { if (confirmRemoveSegmentIdx !== null) removeSegment(confirmRemoveSegmentIdx); setConfirmRemoveSegmentIdx(null) }}
+          >
+            {t('scan.remove_segment_confirm')}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
