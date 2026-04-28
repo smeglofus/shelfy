@@ -140,56 +140,25 @@ export function LandingPage() {
             </button>
             <button
               type="button"
-              className="sh-btn-ghost lp-btn-lg"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--sh-text-muted)', fontSize: 14, textDecoration: 'underline',
+                padding: '8px 4px',
+              }}
               onClick={() => {
                 trackSupportingCtaClick(t('landing.hero_cta_watch_demo'), 'hero')
                 howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
             >
-              {t('landing.hero_cta_watch_demo')} &darr;
+              {t('landing.hero_cta_watch_demo')} ↓
             </button>
           </div>
 
           <p
             className="text-small"
-            style={{
-              marginTop: 12,
-              color: 'var(--sh-text-muted)',
-              textAlign: 'center',
-              maxWidth: 760,
-              marginInline: 'auto',
-            }}
+            style={{ marginTop: 10, color: 'var(--sh-text-muted)', textAlign: 'center' }}
           >
             {t('landing.hero_free_limits')}
-          </p>
-          <p
-            className="text-small"
-            style={{
-              marginTop: 8,
-              color: 'var(--sh-text-muted)',
-              textAlign: 'center',
-              maxWidth: 760,
-              marginInline: 'auto',
-            }}
-          >
-            {t('landing.hero_trust_summary')}{' '}
-            <button
-              type="button"
-              className="sh-btn-ghost"
-              onClick={() => navigate(ROUTES.privacy)}
-              style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
-            >
-              {t('landing.footer_privacy')}
-            </button>
-            {' · '}
-            <button
-              type="button"
-              className="sh-btn-ghost"
-              onClick={() => navigate(ROUTES.terms)}
-              style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
-            >
-              {t('landing.footer_terms')}
-            </button>
           </p>
         </section>
 
