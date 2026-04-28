@@ -6,6 +6,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { deleteAccount, exportBooksCsv, exportUserData, formatApiError, purgeLibrary } from '../lib/api'
 import { ImportCsvModal } from '../components/ImportCsvModal'
+import { Modal } from '../components/Modal'
 import { useEnrichAll } from '../hooks/useEnrich'
 import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
 import { useAddMember, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
@@ -48,6 +49,7 @@ function LibraryManagement() {
   const { user } = useAuth()
   const showSuccess = useToastStore((s) => s.showSuccess)
   const showError = useToastStore((s) => s.showError)
+  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
 
   const activeLibraryId = useLibraryStore((s) => s.activeLibraryId)
   const setActiveLibraryId = useLibraryStore((s) => s.setActiveLibraryId)
@@ -111,10 +113,15 @@ function LibraryManagement() {
   }
 
   function handleRemove(userId: string, email: string) {
-    if (!window.confirm(t('library.remove_confirm', { email }))) return
-    removeMemberMutation.mutate(userId, {
-      onSuccess: () => showSuccess(t('library.remove_success')),
+    setConfirmRemove({ userId, email })
+  }
+
+  function confirmRemoveMember() {
+    if (!confirmRemove) return
+    removeMemberMutation.mutate(confirmRemove.userId, {
+      onSuccess: () => { setConfirmRemove(null); showSuccess(t('library.remove_success')) },
       onError: (err) => {
+        setConfirmRemove(null)
         const status = extractStatusCode(err)
         if (status === 400) showError(t('library.remove_error_400'))
         else showError(formatApiError(err) || t('library.remove_error'))
@@ -266,6 +273,15 @@ function LibraryManagement() {
           )}
         </div>
       )}
+
+      <Modal open={!!confirmRemove} onClose={() => setConfirmRemove(null)} label={t('library.remove_title')} size="sm">
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('library.remove_title')}</h3>
+        <p className="text-p" style={{ marginBottom: 24 }}>{t('library.remove_body', { email: confirmRemove?.email ?? '' })}</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button type="button" className="sh-btn-secondary" onClick={() => setConfirmRemove(null)}>{t('common.cancel')}</button>
+          <button type="button" className="sh-btn-danger" onClick={confirmRemoveMember}>{t('library.remove')}</button>
+        </div>
+      </Modal>
     </div>
   )
 }

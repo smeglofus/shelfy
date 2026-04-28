@@ -37,6 +37,7 @@
     "moved": "Moved {{count}} books",
     "status_updated": "Status updated for {{count}} books",
     "confirm_delete": "Really delete {{count}} books? This cannot be undone.",
+    "delete_confirm_title": "Delete {{count}} books?",
     "move_to": "Move to…",
     "no_location": "No location",
     "status_label": "New status",
@@ -405,7 +406,10 @@
     "tip_count": "Fit 5–10 books per photo for the clearest spine detail.",
     "tip_segments": "Photograph in sections from left to right — use 'Add another photo' for long shelves.",
     "tips_dismiss": "Dismiss tips",
-    "tips_show": "? Tips"
+    "tips_show": "? Tips",
+    "remove_segment_title": "Remove this photo?",
+    "remove_segment_body": "This will discard all books detected in this photo. This cannot be undone.",
+    "remove_segment_confirm": "Remove photo"
   },
   "add_book": {
     "page_title": "Add book",
@@ -502,6 +506,8 @@
     "add_error_404": "No user with that email address found.",
     "add_error": "Failed to add member.",
     "remove": "Remove",
+    "remove_title": "Remove member",
+    "remove_body": "Remove {{email}} from this library? They will lose access immediately. This cannot be undone.",
     "remove_confirm": "Remove {{email}} from this library?",
     "remove_success": "Member removed.",
     "remove_error_400": "Cannot remove the last owner.",

@@ -535,8 +535,8 @@ export function BooksPage() {
       )}
 
       {/* ── Bulk delete confirm ── */}
-      <Modal open={bulkDeleteConfirmOpen} onClose={() => setBulkDeleteConfirmOpen(false)} size="sm" label={t('books.delete_confirm_title')}>
-        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('books.delete_confirm_title')}</h3>
+      <Modal open={bulkDeleteConfirmOpen} onClose={() => setBulkDeleteConfirmOpen(false)} size="sm" label={t('bulk.delete_confirm_title', { count: selectedIds.size })}>
+        <h3 className="text-h3" style={{ marginTop: 0 }}>{t('bulk.delete_confirm_title', { count: selectedIds.size })}</h3>
         <p className="text-p" style={{ marginBottom: 24 }}>{t('bulk.confirm_delete', { count: selectedIds.size })}</p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button onClick={() => setBulkDeleteConfirmOpen(false)} className="sh-btn-secondary">{t('books.delete_cancel')}</button>
