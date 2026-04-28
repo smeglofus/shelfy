@@ -398,7 +398,14 @@
     "move_left": "Move left",
     "move_right": "Move right",
     "positions_saved": "Positions saved",
-    "start_scan_here": "Scan from here"
+    "start_scan_here": "Scan from here",
+    "tips_title": "Tips for best results",
+    "tip_lighting": "Good lighting — avoid shadows or glare on book spines.",
+    "tip_framing": "Hold phone horizontally and capture spines in a single row.",
+    "tip_count": "Fit 5–10 books per photo for the clearest spine detail.",
+    "tip_segments": "Photograph in sections from left to right — use 'Add another photo' for long shelves.",
+    "tips_dismiss": "Dismiss tips",
+    "tips_show": "? Tips"
   },
   "add_book": {
     "page_title": "Add book",
