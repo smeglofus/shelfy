@@ -4,7 +4,6 @@ from collections.abc import AsyncIterator
 
 import pytest
 from fastapi import HTTPException
-from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base

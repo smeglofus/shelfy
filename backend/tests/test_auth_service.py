@@ -154,7 +154,7 @@ async def test_register_user_success(test_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_register_user_creates_personal_library(test_session: AsyncSession) -> None:
     from sqlalchemy import select
-    from app.models.library import Library, LibraryMember, LibraryRole
+    from app.models.library import LibraryMember, LibraryRole
 
     user = await register_user(test_session, "libuser@example.com", "password123")
 

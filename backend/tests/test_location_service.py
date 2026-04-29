@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.db.base import Base
 from app.models.book import Book, BookProcessingStatus, ReadingStatus
 from app.models.library import Library, LibraryMember, LibraryRole
-from app.models.location import Location
 from app.models.user import User
 from app.schemas.location import LocationCreateRequest, LocationUpdateRequest
 from app.services.location import (
