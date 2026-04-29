@@ -583,7 +583,8 @@
     "final_cta_button": "Vytvořit svůj katalog zdarma",
     "footer_privacy": "Zásady ochrany soukromí",
     "footer_terms": "Podmínky použití",
-    "hero_trust_summary": "Tvoje data patří tobě. Kdykoli je exportuješ a účet můžeš jednoduše smazat."
+    "hero_trust_summary": "Tvoje data patří tobě. Kdykoli je exportuješ a účet můžeš jednoduše smazat.",
+    "footer_changelog": "Changelog"
   },
   "csv": {
     "import_button": "Importovat CSV",
@@ -651,5 +652,12 @@
     "show_password": "Zobrazit",
     "hide_password": "Skrýt",
     "network_error_try_again": "Chyba připojení. Zkus to prosím znovu."
+  },
+  "changelog": {
+    "title": "Changelog",
+    "subtitle": "Přehled důležitých změn v Shelfy — hlavně věci, které mají dopad na stabilitu, bezpečnost nebo používání aplikace.",
+    "added": "Přidáno",
+    "changed": "Změněno",
+    "fixed": "Opraveno"
   }
 }
