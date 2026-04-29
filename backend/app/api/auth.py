@@ -207,8 +207,8 @@ async def confirm_password_reset(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    user = await consume_reset_token(session, payload.token, payload.new_password)
-    logger.info("password_reset_completed", user_id=str(user.id))
+    user_id = await consume_reset_token(session, payload.token, payload.new_password)
+    logger.info("password_reset_completed", user_id=user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -65,7 +65,7 @@ async def create_reset_token(
 
 async def consume_reset_token(
     session: AsyncSession, plaintext_token: str, new_password: str
-) -> User:
+) -> str:
     """Verify + consume reset token and rotate password atomically.
 
     Uses ``SELECT ... FOR UPDATE`` to serialise concurrent confirms on
@@ -81,16 +81,31 @@ async def consume_reset_token(
     token = result.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
-    if token is None or token.used_at is not None or token.expires_at < now:
+    if token is None or token.used_at is not None:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    expires_at = token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < now:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     user = await session.get(User, token.user_id)
     if user is None or not user.has_local_password:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
+    user_id = str(user.id)
+
+    consume_result = await session.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.id == token.id, PasswordResetToken.used_at.is_(None))
+        .values(used_at=now)
+    )
+    if consume_result.rowcount != 1:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
     user.hashed_password = get_password_hash(new_password)
     user.password_changed_at = now
-    token.used_at = now
 
     # Invalidate any other outstanding reset tokens for this user — once a
     # successful reset happens, older pending links must not keep working.
@@ -105,4 +120,4 @@ async def consume_reset_token(
     )
 
     await session.commit()
-    return user
+    return user_id
