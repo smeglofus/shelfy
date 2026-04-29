@@ -60,23 +60,36 @@ async def test_send_password_reset() -> None:
     )
 
 
+def _make_resend_client_mocks(
+    *, raise_for_status_side_effect: Exception | None = None,
+) -> tuple[AsyncMock, MagicMock, MagicMock]:
+    """Build a (client, response, context-manager) trio for httpx.AsyncClient patching."""
+    response = MagicMock(status_code=202)
+    if raise_for_status_side_effect is not None:
+        response.raise_for_status = MagicMock(side_effect=raise_for_status_side_effect)
+    else:
+        response.raise_for_status = MagicMock()
+
+    client = AsyncMock()
+    client.post.return_value = response
+
+    client_context = MagicMock()
+    client_context.__aenter__ = AsyncMock(return_value=client)
+    client_context.__aexit__ = AsyncMock(return_value=None)
+    return client, response, client_context
+
+
 @pytest.mark.asyncio
-async def test_send_posts_to_resend_when_api_key_configured() -> None:
-    """Configured RESEND_API_KEY: _send posts the expected payload."""
+async def test_send_posts_to_resend_with_branded_sender_and_reply_to() -> None:
+    """Configured RESEND_API_KEY: payload includes shelfy.cz sender + reply_to."""
     from app.core.config import Settings
 
     settings = Settings(
         resend_api_key="re_test_key",
-        email_from_address="Shelfy <noreply@example.com>",
+        email_from_address="Shelfy <noreply@shelfy.cz>",
+        email_reply_to_address="support@shelfy.cz",
     )
-    response = MagicMock(status_code=202)
-    response.raise_for_status = MagicMock()
-
-    client = AsyncMock()
-    client.post.return_value = response
-    client_context = MagicMock()
-    client_context.__aenter__ = AsyncMock(return_value=client)
-    client_context.__aexit__ = AsyncMock(return_value=None)
+    client, response, client_context = _make_resend_client_mocks()
 
     with (
         patch("app.services.email.get_settings", return_value=settings),
@@ -91,13 +104,99 @@ async def test_send_posts_to_resend_when_api_key_configured() -> None:
             "Content-Type": "application/json",
         },
         json={
-            "from": "Shelfy <noreply@example.com>",
+            "from": "Shelfy <noreply@shelfy.cz>",
             "to": ["user@example.com"],
             "subject": "Hello",
             "html": "<p>Hi</p>",
+            "reply_to": "support@shelfy.cz",
         },
     )
     response.raise_for_status.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_send_omits_reply_to_when_unset() -> None:
+    """email_reply_to_address=None → no reply_to key in the JSON payload."""
+    from app.core.config import Settings
+
+    settings = Settings(
+        resend_api_key="re_test_key",
+        email_from_address="Shelfy <noreply@shelfy.cz>",
+        email_reply_to_address=None,
+    )
+    client, _, client_context = _make_resend_client_mocks()
+
+    with (
+        patch("app.services.email.get_settings", return_value=settings),
+        patch("app.services.email.httpx.AsyncClient", return_value=client_context),
+    ):
+        await _send(to="user@example.com", subject="Hi", html="<p>Hi</p>")
+
+    posted = client.post.await_args.kwargs["json"]
+    assert "reply_to" not in posted
+    assert posted["from"] == "Shelfy <noreply@shelfy.cz>"
+
+
+@pytest.mark.asyncio
+async def test_send_password_reset_uses_branded_sender_and_reply_to() -> None:
+    """End-to-end: send_password_reset → _send → Resend payload carries shelfy.cz From + Reply-To."""
+    from app.core.config import Settings
+
+    settings = Settings(
+        resend_api_key="re_test_key",
+        email_from_address="Shelfy <noreply@shelfy.cz>",
+        email_reply_to_address="support@shelfy.cz",
+    )
+    client, _, client_context = _make_resend_client_mocks()
+
+    with (
+        patch("app.services.email.get_settings", return_value=settings),
+        patch("app.services.email.httpx.AsyncClient", return_value=client_context),
+    ):
+        await send_password_reset(
+            "user@example.com",
+            reset_url="https://shelfy.cz/reset/abc123token",
+        )
+
+    posted = client.post.await_args.kwargs["json"]
+    assert posted["from"] == "Shelfy <noreply@shelfy.cz>"
+    assert posted["reply_to"] == "support@shelfy.cz"
+    assert posted["to"] == ["user@example.com"]
+    assert "Reset your Shelfy password" in posted["subject"]
+    # Reset URL is rendered into the HTML so the user can click through.
+    assert "https://shelfy.cz/reset/abc123token" in posted["html"]
+
+
+@pytest.mark.asyncio
+async def test_send_does_not_log_authorization_header_on_failure(caplog) -> None:
+    """When Resend fails, the warning log carries to/subject/error — never the API key.
+
+    Defence-in-depth: a regression that started logging request headers would
+    leak the bearer token.  We assert the secret never appears anywhere in the
+    captured log records.
+    """
+    from app.core.config import Settings
+
+    secret = "re_super_secret_key_ABC123"
+    settings = Settings(resend_api_key=secret, email_from_address="Shelfy <noreply@shelfy.cz>")
+    _, _, client_context = _make_resend_client_mocks(
+        raise_for_status_side_effect=RuntimeError("resend down"),
+    )
+
+    import logging
+    with (
+        patch("app.services.email.get_settings", return_value=settings),
+        patch("app.services.email.httpx.AsyncClient", return_value=client_context),
+        caplog.at_level(logging.WARNING, logger="app.services.email"),
+    ):
+        await _send(to="user@example.com", subject="Boom", html="<p>Hi</p>")
+
+    # Error path was taken (logged a warning) and the API key never appeared.
+    assert any("email.failed" in rec.getMessage() for rec in caplog.records)
+    for rec in caplog.records:
+        assert secret not in rec.getMessage()
+        # Also check structured fields — extra={...} attributes get attached as record attrs.
+        assert secret not in str(rec.__dict__)
 
 
 @pytest.mark.asyncio
@@ -106,14 +205,9 @@ async def test_send_swallows_resend_errors() -> None:
     from app.core.config import Settings
 
     settings = Settings(resend_api_key="re_test_key")
-    response = MagicMock(status_code=500)
-    response.raise_for_status.side_effect = RuntimeError("resend down")
-
-    client = AsyncMock()
-    client.post.return_value = response
-    client_context = MagicMock()
-    client_context.__aenter__ = AsyncMock(return_value=client)
-    client_context.__aexit__ = AsyncMock(return_value=None)
+    _, response, client_context = _make_resend_client_mocks(
+        raise_for_status_side_effect=RuntimeError("resend down"),
+    )
 
     with (
         patch("app.services.email.get_settings", return_value=settings),
@@ -121,5 +215,4 @@ async def test_send_swallows_resend_errors() -> None:
     ):
         await _send(to="user@example.com", subject="Boom", html="<p>Hi</p>")
 
-    client.post.assert_awaited_once()
     response.raise_for_status.assert_called_once_with()

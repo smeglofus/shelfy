@@ -37,8 +37,10 @@ _DATABASE_URL = os.environ.get(
 
 _REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 _RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-_EMAIL_FROM = os.environ.get("EMAIL_FROM_ADDRESS", "Shelfy <noreply@shelfy.app>")
-_APP_URL = os.environ.get("APP_URL", "https://shelfy.app")
+_EMAIL_FROM = os.environ.get("EMAIL_FROM_ADDRESS", "Shelfy <noreply@shelfy.cz>")
+# Reply-To target for transactional mail (set empty to omit the header).
+_EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO_ADDRESS", "support@shelfy.cz") or ""
+_APP_URL = os.environ.get("APP_URL", "https://shelfy.cz")
 
 _LIMIT_THRESHOLD = 0.80   # notify when ≥ 80 % used
 _RESEND_URL = "https://api.resend.com/emails"
@@ -68,10 +70,23 @@ def _mark_sent(r, key: str) -> None:
 
 
 def _send_email(to: str, subject: str, html: str) -> bool:
-    """POST to Resend API. Returns True on success, False otherwise."""
+    """POST to Resend API. Returns True on success, False otherwise.
+
+    Mirrors backend/app/services/email.py — same payload shape, same logging
+    discipline (the API key never enters log records).  ``reply_to`` is
+    omitted when EMAIL_REPLY_TO_ADDRESS is unset.
+    """
     if not _RESEND_API_KEY:
         log.debug("email.skipped_no_api_key", extra={"to": to})
         return False
+    payload: dict[str, object] = {
+        "from": _EMAIL_FROM,
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }
+    if _EMAIL_REPLY_TO:
+        payload["reply_to"] = _EMAIL_REPLY_TO
     try:
         resp = httpx.post(
             _RESEND_URL,
@@ -79,7 +94,7 @@ def _send_email(to: str, subject: str, html: str) -> bool:
                 "Authorization": f"Bearer {_RESEND_API_KEY}",
                 "Content-Type": "application/json",
             },
-            json={"from": _EMAIL_FROM, "to": [to], "subject": subject, "html": html},
+            json=payload,
             timeout=15,
         )
         resp.raise_for_status()
