@@ -19,7 +19,7 @@ Naming rationale:
 from __future__ import annotations
 
 import secrets
-from typing import Final
+from typing import Final, Literal
 
 from fastapi import Response
 
@@ -48,7 +48,7 @@ def _cookie_secure(settings: Settings) -> bool:
     return settings.environment != "development"
 
 
-def _samesite(settings: Settings) -> str:
+def _samesite(settings: Settings) -> Literal["lax", "strict", "none"]:
     # Lax is the right default for a traditional web app: blocks CSRF from
     # cross-site POSTs but allows top-level navigation (e.g. clicking a link
     # from an email lands you logged-in).

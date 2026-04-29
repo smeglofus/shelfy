@@ -17,6 +17,7 @@ from collections.abc import AsyncIterator
 from datetime import date
 
 import pytest
+from typing import cast, Any
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base
@@ -119,9 +120,10 @@ class TestFreeLimit:
         with pytest.raises(HTTPException) as exc_info:
             await entitlements.assert_can_use(session, user.id, UsageMetric.scans)
         assert exc_info.value.status_code == 402
-        assert exc_info.value.detail["code"] == "quota_exceeded"
-        assert exc_info.value.detail["limit"] == 5
-        assert exc_info.value.detail["used"] == 5
+        detail = cast(dict[str, Any], exc_info.value.detail)
+        assert detail["code"] == "quota_exceeded"
+        assert detail["limit"] == 5
+        assert detail["used"] == 5
 
     async def test_enrichment_limit(self, session: AsyncSession) -> None:
         user = await _make_user(session)
@@ -141,7 +143,8 @@ class TestFreeLimit:
         with pytest.raises(HTTPException) as exc_info:
             await entitlements.assert_can_add_member(session, user.id, lib.id)
         assert exc_info.value.status_code == 403
-        assert exc_info.value.detail["code"] == "member_limit_reached"
+        detail = cast(dict[str, Any], exc_info.value.detail)
+        assert detail["code"] == "member_limit_reached"
 
 
 class TestPlanUpgrade:

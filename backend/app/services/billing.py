@@ -35,7 +35,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, cast
 from urllib.parse import urlparse
 
 import stripe as _stripe
@@ -108,7 +108,7 @@ def _stripe_call(fn: Callable[[], _T], *, retries: int = 3, backoff: float = 0.5
     Intended to be used inside anyio.to_thread.run_sync:
         result = await to_thread.run_sync(lambda: _stripe_call(lambda: _stripe.Customer.create(...)))
     """
-    last_exc: Exception | None = None
+    last_exc: BaseException | None = None
     for attempt in range(retries):
         try:
             return fn()
@@ -212,9 +212,10 @@ async def get_or_create_stripe_customer(
         ))
     )
 
-    sub.stripe_customer_id = customer["id"]
+    customer_id = str(customer["id"])
+    sub.stripe_customer_id = customer_id
     await session.commit()
-    return customer["id"]
+    return customer_id
 
 
 # ── Checkout ──────────────────────────────────────────────────────────────────
@@ -265,7 +266,7 @@ async def create_checkout_session(
 
     # Offer a trial only on the very first subscription (no previous Stripe sub ID)
     is_first_time = sub.stripe_subscription_id is None
-    subscription_data: dict = {"metadata": {"user_id": str(user.id)}}
+    subscription_data: dict[str, Any] = {"metadata": {"user_id": str(user.id)}}
     if is_first_time:
         subscription_data["trial_period_days"] = _TRIAL_DAYS
 
@@ -320,7 +321,7 @@ async def create_checkout_session(
         app_url_host=urlparse(settings.app_url).hostname or "unknown",
     )
 
-    return checkout["url"]
+    return str(checkout["url"])
 
 
 # ── Wallet readiness probe ────────────────────────────────────────────────────
@@ -375,7 +376,7 @@ def _list_payment_method_domains() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     page = _stripe.PaymentMethodDomain.list(limit=100)
     for d in page.auto_paging_iter():
-        out.append(d.to_dict() if hasattr(d, "to_dict") else dict(d))
+        out.append(cast(dict[str, Any], d.to_dict() if hasattr(d, "to_dict") else dict(cast(Any, d))))
     return out
 
 
@@ -502,11 +503,11 @@ async def create_portal_session(
     return_url = settings.stripe_portal_return_url or f"{settings.app_url}/settings#billing"
     portal = await to_thread.run_sync(
         lambda: _stripe_call(lambda: _stripe.billing_portal.Session.create(
-            customer=sub.stripe_customer_id,
+            customer=str(sub.stripe_customer_id),
             return_url=return_url,
         ))
     )
-    return portal["url"]
+    return str(portal["url"])
 
 
 # ── Webhook ────────────────────────────────────────────────────────────────────
@@ -560,7 +561,7 @@ async def handle_webhook_event(
     _stripe.api_key = settings.stripe_secret_key
 
     try:
-        event = _stripe.Webhook.construct_event(
+        event = cast(Any, _stripe.Webhook.construct_event)(
             payload, sig_header, settings.stripe_webhook_secret
         )
     except _stripe.error.SignatureVerificationError as exc:

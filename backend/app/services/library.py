@@ -69,7 +69,7 @@ async def list_members(session: AsyncSession, library_id: uuid.UUID) -> list[tup
         .join(User, User.id == LibraryMember.user_id)
         .where(LibraryMember.library_id == library_id)
     )
-    return res.all()
+    return [(member, user) for member, user in res.all()]
 
 
 async def add_member(session: AsyncSession, library_id: uuid.UUID, email: str, role: LibraryRole) -> LibraryMember:

@@ -53,6 +53,10 @@ class FakeRedis:
         pass
 
 
+def _redis(fake: FakeRedis) -> Any:
+    return fake
+
+
 # ── Shared fixtures ────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -120,20 +124,20 @@ def _make_google_claims(
 @pytest.mark.asyncio
 async def test_state_create_and_verify(fake_redis: FakeRedis) -> None:
     """Happy-path: created state can be verified once."""
-    state = await create_oauth_state(fake_redis)
+    state = await create_oauth_state(_redis(fake_redis))
     assert isinstance(state, str) and len(state) > 20
     # First verify succeeds and consumes the nonce
-    await verify_oauth_state(state, fake_redis)  # must not raise
+    await verify_oauth_state(state, _redis(fake_redis))  # must not raise
 
 
 @pytest.mark.asyncio
 async def test_state_cannot_be_verified_twice(fake_redis: FakeRedis) -> None:
     """Anti-replay: second verify of the same state must raise HTTP 400."""
-    state = await create_oauth_state(fake_redis)
-    await verify_oauth_state(state, fake_redis)  # first use — OK
+    state = await create_oauth_state(_redis(fake_redis))
+    await verify_oauth_state(state, _redis(fake_redis))  # first use — OK
 
     with pytest.raises(HTTPException) as exc_info:
-        await verify_oauth_state(state, fake_redis)  # second use — must fail
+        await verify_oauth_state(state, _redis(fake_redis))  # second use — must fail
     assert exc_info.value.status_code == 400
     assert "already been used" in exc_info.value.detail.lower()
 
@@ -142,7 +146,7 @@ async def test_state_cannot_be_verified_twice(fake_redis: FakeRedis) -> None:
 async def test_state_with_tampered_jwt_is_rejected(fake_redis: FakeRedis) -> None:
     """Invalid JWT signature raises HTTP 400."""
     with pytest.raises(Exception):
-        await verify_oauth_state("not.a.valid.jwt", fake_redis)
+        await verify_oauth_state("not.a.valid.jwt", _redis(fake_redis))
 
 
 @pytest.mark.asyncio
@@ -157,7 +161,7 @@ async def test_state_not_stored_in_redis_is_rejected(fake_redis: FakeRedis) -> N
     )
     # Redis has no entry → getdel returns None → must raise
     with pytest.raises(HTTPException) as exc_info:
-        await verify_oauth_state(orphan_state, fake_redis)
+        await verify_oauth_state(orphan_state, _redis(fake_redis))
     assert exc_info.value.status_code == 400
     assert "already been used" in exc_info.value.detail.lower()
 
@@ -174,7 +178,7 @@ async def test_state_wrong_token_type_is_rejected(fake_redis: FakeRedis) -> None
         token_type="access",  # wrong
     )
     with pytest.raises(Exception):
-        await verify_oauth_state(wrong_type_state, fake_redis)
+        await verify_oauth_state(wrong_type_state, _redis(fake_redis))
 
 
 # ── GET /authorize ─────────────────────────────────────────────────────────────
@@ -213,7 +217,7 @@ async def test_authorize_returns_501_when_not_configured() -> None:
 async def test_callback_creates_new_user_and_returns_tokens(
     fake_redis: FakeRedis,
 ) -> None:
-    state = await create_oauth_state(fake_redis)
+    state = await create_oauth_state(_redis(fake_redis))
     claims = _make_google_claims()
 
     with patch("app.api.auth.exchange_code_for_claims", new_callable=AsyncMock) as mock_exchange:
@@ -236,7 +240,7 @@ async def test_callback_state_cannot_be_replayed(
     fake_redis: FakeRedis,
 ) -> None:
     """Using the same state twice: first request succeeds, second is rejected."""
-    state = await create_oauth_state(fake_redis)
+    state = await create_oauth_state(_redis(fake_redis))
     claims = _make_google_claims(sub="sub-replay-test")
 
     with patch("app.api.auth.exchange_code_for_claims", new_callable=AsyncMock) as mock_exchange:
@@ -268,7 +272,7 @@ async def test_callback_links_existing_email_account(
     test_session.add(User(email="oauth@example.com", hashed_password=get_password_hash("pw")))
     await test_session.commit()
 
-    state = await create_oauth_state(fake_redis)
+    state = await create_oauth_state(_redis(fake_redis))
     claims = _make_google_claims(email="oauth@example.com")
 
     with patch("app.api.auth.exchange_code_for_claims", new_callable=AsyncMock) as mock_exchange:
@@ -296,7 +300,7 @@ async def test_callback_invalid_state_returns_400(fake_redis: FakeRedis) -> None
 
 @pytest.mark.asyncio
 async def test_callback_unverified_email_returns_400(fake_redis: FakeRedis) -> None:
-    state = await create_oauth_state(fake_redis)
+    state = await create_oauth_state(_redis(fake_redis))
     claims = _make_google_claims(email_verified=False)
 
     with patch("app.api.auth.exchange_code_for_claims", new_callable=AsyncMock) as mock_exchange:

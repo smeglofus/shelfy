@@ -1,4 +1,6 @@
 import pytest
+from typing import cast
+from starlette.requests import Request
 from pydantic import ValidationError
 
 from app.core.config import Settings
@@ -53,7 +55,7 @@ def test_rate_limit_storage_uri_uses_dedicated_redis_db() -> None:
     assert _rate_limit_storage_uri("redis://localhost:6379") == "redis://localhost:6379/2"
 
 
-def test_limiter_client_ip_prefers_trusted_proxy_headers(monkeypatch) -> None:
+def test_limiter_client_ip_prefers_trusted_proxy_headers(monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from app.core.config import Settings
@@ -69,13 +71,13 @@ def test_limiter_client_ip_prefers_trusted_proxy_headers(monkeypatch) -> None:
         headers={"cf-connecting-ip": " 203.0.113.7 "},
         client=SimpleNamespace(host="10.0.0.5"),
     )
-    assert limiter_module._client_ip_from_headers(request) == "203.0.113.7"
+    assert limiter_module._client_ip_from_headers(cast(Request, request)) == "203.0.113.7"
 
     request.headers = {"x-forwarded-for": "198.51.100.9, 10.0.0.5"}
-    assert limiter_module._client_ip_from_headers(request) == "198.51.100.9"
+    assert limiter_module._client_ip_from_headers(cast(Request, request)) == "198.51.100.9"
 
 
-def test_limiter_client_ip_falls_back_to_direct_client(monkeypatch) -> None:
+def test_limiter_client_ip_falls_back_to_direct_client(monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from app.core.config import Settings
@@ -91,7 +93,7 @@ def test_limiter_client_ip_falls_back_to_direct_client(monkeypatch) -> None:
         headers={"cf-connecting-ip": "203.0.113.7"},
         client=SimpleNamespace(host="10.0.0.5"),
     )
-    assert limiter_module._client_ip_from_headers(request) == "10.0.0.5"
+    assert limiter_module._client_ip_from_headers(cast(Request, request)) == "10.0.0.5"
 
     request.client = None
-    assert limiter_module._client_ip_from_headers(request) == "unknown"
+    assert limiter_module._client_ip_from_headers(cast(Request, request)) == "unknown"

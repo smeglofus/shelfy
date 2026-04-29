@@ -375,7 +375,7 @@ async def export_my_data(
                 "language": book.language,
                 "description": book.description,
                 "publication_year": book.publication_year,
-                "reading_status": book.reading_status.value if hasattr(book.reading_status, "value") else book.reading_status,
+                "reading_status": book.reading_status.value if book.reading_status is not None else None,
                 "processing_status": book.processing_status.value if hasattr(book.processing_status, "value") else book.processing_status,
                 "created_at": book.created_at.isoformat() if book.created_at else None,
                 "loans": [
