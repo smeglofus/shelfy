@@ -34,11 +34,25 @@ async def _send(*, to: str, subject: str, html: str) -> None:
     No-ops silently when RESEND_API_KEY is absent.
     Network / API errors are logged but never re-raised so that email failures
     never crash the main request path.
+
+    The Authorization header is the only place the API key appears; it is
+    never logged (only ``to`` / ``subject`` / ``status`` make it into log
+    records).  ``reply_to`` is included only when ``email_reply_to_address``
+    is set so deployments without a support inbox don't claim one.
     """
     settings = get_settings()
     if not settings.resend_api_key:
         logger.debug("email.skipped (no RESEND_API_KEY)", extra={"to": to, "subject": subject})
         return
+
+    payload: dict[str, object] = {
+        "from": settings.email_from_address,
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }
+    if settings.email_reply_to_address:
+        payload["reply_to"] = settings.email_reply_to_address
 
     # Retry up to 3 times on network-level errors (connection reset, DNS failure, etc.).
     # 5xx responses are not automatically retried here — Resend's own delivery retries
@@ -52,12 +66,7 @@ async def _send(*, to: str, subject: str, html: str) -> None:
                     "Authorization": f"Bearer {settings.resend_api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "from": settings.email_from_address,
-                    "to": [to],
-                    "subject": subject,
-                    "html": html,
-                },
+                json=payload,
             )
             response.raise_for_status()
             logger.info("email.sent", extra={"to": to, "subject": subject, "status": response.status_code})
@@ -87,7 +96,7 @@ def _base(content: str) -> str:
             {content}
             <hr style="border:none;border-top:1px solid #eee;margin:32px 0">
             <p style="color:#888;font-size:12px;margin:0">
-              Shelfy · You're receiving this because you have an account at shelfy.app
+              Shelfy · You're receiving this because you have an account at shelfy.cz
             </p>
           </td></tr>
         </table>

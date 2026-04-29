@@ -38,8 +38,15 @@ class Settings(BaseSettings):
 
     # Transactional email (Resend)
     # Set RESEND_API_KEY in .env to enable email notifications.
+    # The from address must be a verified sender on the Resend account, and the
+    # domain (shelfy.cz) must have SPF/DKIM/DMARC records pointing at Resend
+    # before mail will deliver — see docs/runbooks/email.md.
     resend_api_key: str | None = None
-    email_from_address: str = "Shelfy <noreply@shelfy.app>"
+    email_from_address: str = "Shelfy <noreply@shelfy.cz>"
+    # Reply-To header: where users land when they hit "Reply" on a transactional
+    # email.  Set to a monitored mailbox (we forward shelfy.cz support to a real
+    # inbox).  Set to ``None`` to omit the header entirely.
+    email_reply_to_address: str | None = "support@shelfy.cz"
 
     # Billing / Stripe
     # Set these in .env once you create products in the Stripe dashboard.
