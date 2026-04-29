@@ -21,8 +21,10 @@ from pytest import LogCaptureFixture
 
 from app.services.email import (
     _send,
+    normalize_locale,
     send_limit_approaching,
     send_password_reset,
+    send_welcome,
     send_trial_ending,
 )
 
@@ -78,6 +80,64 @@ def _make_resend_client_mocks(
     client_context.__aenter__ = AsyncMock(return_value=client)
     client_context.__aexit__ = AsyncMock(return_value=None)
     return client, response, client_context
+
+
+def test_normalize_locale_defaults_to_english() -> None:
+    assert normalize_locale(None) == "en"
+    assert normalize_locale("en-US") == "en"
+    assert normalize_locale("cs-CZ") == "cs"
+    assert normalize_locale("de-DE") == "en"
+
+
+@pytest.mark.asyncio
+async def test_send_password_reset_renders_czech_copy() -> None:
+    send_mock = AsyncMock()
+
+    with patch("app.services.email._send", send_mock):
+        await send_password_reset(
+            "user@example.com",
+            reset_url="https://shelfy.cz/reset-password?token=abc123",
+            locale="cs-CZ",
+        )
+
+    assert send_mock.await_args is not None
+    kwargs = send_mock.await_args.kwargs
+    assert kwargs["subject"] == "Reset hesla do Shelfy"
+    assert 'html lang="cs"' in kwargs["html"]
+    assert "Resetovat heslo" in kwargs["html"]
+    assert "https://shelfy.cz/reset-password?token=abc123" in kwargs["html"]
+
+
+@pytest.mark.asyncio
+async def test_send_password_reset_falls_back_to_english_copy() -> None:
+    send_mock = AsyncMock()
+
+    with patch("app.services.email._send", send_mock):
+        await send_password_reset(
+            "user@example.com",
+            reset_url="https://shelfy.cz/reset-password?token=abc123",
+            locale="de-DE",
+        )
+
+    assert send_mock.await_args is not None
+    kwargs = send_mock.await_args.kwargs
+    assert kwargs["subject"] == "Reset your Shelfy password"
+    assert 'html lang="en"' in kwargs["html"]
+    assert "Reset my password" in kwargs["html"]
+
+
+@pytest.mark.asyncio
+async def test_send_welcome_renders_czech_copy() -> None:
+    send_mock = AsyncMock()
+
+    with patch("app.services.email._send", send_mock):
+        await send_welcome("user@example.com", "Alice", locale="cs")
+
+    assert send_mock.await_args is not None
+    kwargs = send_mock.await_args.kwargs
+    assert kwargs["subject"] == "Vítej v Shelfy 📚"
+    assert "Ahoj Alice" in kwargs["html"]
+    assert "Otevřít Shelfy" in kwargs["html"]
 
 
 @pytest.mark.asyncio

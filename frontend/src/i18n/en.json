@@ -434,8 +434,15 @@
     "processing_label": "Processing image…",
     "location_optional": "optional",
     "no_location_option": "No location",
-    "location_help": "Location is optional. You can set it later.",
-    "add_location_cta": "Add location"
+    "location_help": "Missing a room or shelf? Create a new location, then come back here.",
+    "add_location_cta": "Add location",
+    "title_placeholder": "e.g. Dune",
+    "author_placeholder": "e.g. Frank Herbert",
+    "isbn_placeholder": "978-…",
+    "location_optional_hint": "You do not have to pick a location now. The book will save without it and you can place it later from the book detail.",
+    "no_room_option": "No room / place later",
+    "no_furniture_option": "No bookshelf / place later",
+    "no_shelf_option": "No shelf / place later"
   },
   "enrich": {
     "enriching": "Enriching…",

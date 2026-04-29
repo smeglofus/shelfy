@@ -74,7 +74,7 @@ def fake_redis() -> FakeRedis:
 
 
 @pytest.fixture
-def sent_emails() -> list[tuple[str, str]]:
+def sent_emails() -> list[tuple[str, str, str | None]]:
     return []
 
 
@@ -121,7 +121,7 @@ def override_dependencies(
     test_session: async_sessionmaker[AsyncSession],
     test_settings: Settings,
     fake_redis: FakeRedis,
-    sent_emails: list[tuple[str, str]],
+    sent_emails: list[tuple[str, str, str | None]],
 ) -> Iterator[None]:
     async def _get_db() -> AsyncIterator[AsyncSession]:
         async with test_session() as session:
@@ -130,8 +130,8 @@ def override_dependencies(
     async def _get_redis() -> AsyncIterator[FakeRedis]:
         yield fake_redis
 
-    async def _fake_send_password_reset(to: str, reset_url: str) -> None:
-        sent_emails.append((to, reset_url))
+    async def _fake_send_password_reset(to: str, reset_url: str, *, locale: str | None = None) -> None:
+        sent_emails.append((to, reset_url, locale))
 
     monkeypatch.setattr("app.services.email.send_password_reset", _fake_send_password_reset)
     app.dependency_overrides[get_db_session] = _get_db
@@ -176,7 +176,7 @@ def _token_from_reset_url(url: str) -> str:
 @pytest.mark.asyncio
 async def test_request_returns_202_for_all_email_cases(
     test_session: async_sessionmaker[AsyncSession],
-    sent_emails: list[tuple[str, str]],
+    sent_emails: list[tuple[str, str, str | None]],
 ) -> None:
     """5. Request endpoint returns 202 regardless of whether email exists."""
     async with test_session() as session:
@@ -214,9 +214,32 @@ async def test_request_returns_202_for_all_email_cases(
 
 
 @pytest.mark.asyncio
+async def test_password_reset_uses_ui_language_cookie(
+    test_session: async_sessionmaker[AsyncSession],
+    sent_emails: list[tuple[str, str, str | None]],
+) -> None:
+    async with test_session() as session:
+        await _create_user(session, email="locale@example.com")
+
+    headers, cookies = _csrf()
+    cookies = {**cookies, "shelfy_language": "cs"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/password-reset/request",
+            json={"email": "locale@example.com"},
+            headers=headers,
+            cookies=cookies,
+        )
+
+    assert response.status_code == 202
+    assert len(sent_emails) == 1
+    assert sent_emails[0][2] == "cs"
+
+
+@pytest.mark.asyncio
 async def test_token_not_stored_in_plaintext_and_ttl_is_60_minutes(
     test_session: async_sessionmaker[AsyncSession],
-    sent_emails: list[tuple[str, str]],
+    sent_emails: list[tuple[str, str, str | None]],
 ) -> None:
     """1. Token is never stored in plaintext."""
     async with test_session() as session:
@@ -245,7 +268,7 @@ async def test_token_not_stored_in_plaintext_and_ttl_is_60_minutes(
 @pytest.mark.asyncio
 async def test_email_rate_limit_allows_only_three_requests_per_hour(
     test_session: async_sessionmaker[AsyncSession],
-    sent_emails: list[tuple[str, str]],
+    sent_emails: list[tuple[str, str, str | None]],
 ) -> None:
     """7. Request is rate-limited per email via Redis: 3 req/hour."""
     async with test_session() as session:
@@ -295,7 +318,7 @@ async def test_ip_rate_limit_returns_429_on_sixth_call(enabled_limiter: None) ->
 @pytest.mark.asyncio
 async def test_confirm_success_single_use_and_sibling_invalidation(
     test_session: async_sessionmaker[AsyncSession],
-    sent_emails: list[tuple[str, str]],
+    sent_emails: list[tuple[str, str, str | None]],
 ) -> None:
     """10. On successful reset, all other outstanding reset tokens for that user are also consumed."""
     async with test_session() as session:
@@ -418,7 +441,7 @@ async def test_confirm_password_policy_failure_is_400() -> None:
 @pytest.mark.asyncio
 async def test_reset_invalidates_existing_refresh_tokens(
     test_session: async_sessionmaker[AsyncSession],
-    sent_emails: list[tuple[str, str]],
+    sent_emails: list[tuple[str, str, str | None]],
 ) -> None:
     """9. Successful reset invalidates all existing refresh sessions."""
     async with test_session() as session:
