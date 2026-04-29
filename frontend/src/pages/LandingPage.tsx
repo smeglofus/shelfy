@@ -419,6 +419,13 @@ export function LandingPage() {
         >
           {t('landing.footer_terms')}
         </button>
+        <button
+          type="button"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 'inherit' }}
+          onClick={() => navigate(ROUTES.changelog)}
+        >
+          Changelog
+        </button>
       </footer>
     </div>
   )

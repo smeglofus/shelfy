@@ -10,6 +10,7 @@ export const ROUTES = {
   locations: '/locations',
   settings: '/settings',
   pricing: '/pricing',
+  changelog: '/changelog',
   privacy: '/privacy',
   terms: '/terms',
   oauthCallback: '/auth/callback',

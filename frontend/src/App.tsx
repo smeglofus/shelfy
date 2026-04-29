@@ -21,6 +21,7 @@ import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { ChangelogPage } from './pages/ChangelogPage'
 
 import { ROUTES } from './lib/routes'
 
@@ -60,6 +61,7 @@ const PUBLIC_PATHS = new Set([
   ROUTES.forgotPassword,
   ROUTES.resetPassword,
   ROUTES.pricing,
+  ROUTES.changelog,
   ROUTES.privacy,
   ROUTES.terms,
   ROUTES.oauthCallback,
@@ -94,6 +96,7 @@ function AppShell() {
           <Route path={ROUTES.privacy} element={<PrivacyPage />} />
           <Route path={ROUTES.terms} element={<TermsPage />} />
           <Route path={ROUTES.pricing} element={<PricingPage />} />
+          <Route path={ROUTES.changelog} element={<ChangelogPage />} />
 
           {/* ── Protected routes ── */}
           <Route element={<ProtectedRoute />}>
