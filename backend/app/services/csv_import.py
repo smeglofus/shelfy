@@ -382,9 +382,10 @@ async def preview_csv_import(
             errors.append(CsvImportError(row=i, error=err))
             continue
 
-        existing_id = _find_existing_id(cleaned, by_isbn, by_norm)  # type: ignore[arg-type]
+        assert cleaned is not None
+        existing_id = _find_existing_id(cleaned, by_isbn, by_norm)
         if existing_id is not None:
-            cleaned["_existing_id"] = str(existing_id)  # type: ignore[index]
+            cleaned["_existing_id"] = str(existing_id)
             would_update += 1
         else:
             would_create += 1

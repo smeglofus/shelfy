@@ -56,7 +56,7 @@ async def test_session() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
         ]:
             _n, _v = name, values
             await connection.run_sync(
-                lambda c, n=_n, v=_v: sa.Enum(*v, name=n).create(c, checkfirst=True)  # type: ignore[no-untyped-call]
+                lambda c, n=_n, v=_v: sa.Enum(*v, name=n).create(c, checkfirst=True)  # type: ignore[no-untyped-call,misc]
             )
         await connection.run_sync(Base.metadata.drop_all)
         await connection.run_sync(Base.metadata.create_all)

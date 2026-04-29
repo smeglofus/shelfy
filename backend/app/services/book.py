@@ -198,7 +198,7 @@ async def bulk_delete_books(
     stmt = delete(Book).where(Book.id.in_(ids), Book.library_id == library_id)
     result = await session.execute(stmt)
     await session.commit()
-    return result.rowcount  # type: ignore[return-value]
+    return result.rowcount
 
 
 async def bulk_move_books(
@@ -409,7 +409,7 @@ async def bulk_update_status(
     )
     result = await session.execute(stmt)
     await session.commit()
-    return result.rowcount  # type: ignore[return-value]
+    return result.rowcount
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────

@@ -9,24 +9,25 @@ is set to "true" so that unit/integration tests are not affected by rate limits.
 import os
 
 from slowapi import Limiter
+from starlette.requests import Request
 
 from app.core.config import get_settings
 
 
-def _client_ip_from_headers(request) -> str:  # type: ignore[no-untyped-def]
+def _client_ip_from_headers(request: Request) -> str:
     settings = get_settings()
 
     if settings.trust_proxy_headers:
         cf_ip = request.headers.get("cf-connecting-ip")
         if cf_ip:
-            return cf_ip.strip()
+            return str(cf_ip.strip())
 
         xff = request.headers.get("x-forwarded-for")
         if xff:
-            return xff.split(",")[0].strip()
+            return str(xff.split(",")[0].strip())
 
     # Fallback: direct client host as seen by app server
-    return request.client.host if request.client else "unknown"
+    return str(request.client.host) if request.client else "unknown"
 
 
 _testing = os.environ.get("TESTING", "false").lower() == "true"

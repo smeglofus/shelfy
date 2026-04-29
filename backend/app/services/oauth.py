@@ -160,10 +160,10 @@ async def exchange_code_for_claims(code: str, settings: Settings) -> dict[str, A
 
     def _verify_sync() -> dict[str, Any]:
         # Import lazily — only loaded when Google OAuth is actually used.
-        from google.auth.transport import requests as google_requests  # type: ignore[import-untyped]
-        from google.oauth2 import id_token as google_id_token  # type: ignore[import-untyped]
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
 
-        return google_id_token.verify_oauth2_token(  # type: ignore[no-any-return]
+        return google_id_token.verify_oauth2_token(  # type: ignore[no-any-return,no-untyped-call]
             raw_id_token,
             google_requests.Request(),
             audience,

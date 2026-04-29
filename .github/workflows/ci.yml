@@ -42,7 +42,6 @@ jobs:
 
       - name: Mypy (strict)
         working-directory: backend
-        continue-on-error: true  # 51 pre-existing errors; tracked in issue #156 — non-blocking until resolved
         run: mypy app tests
 
       - name: Generate OpenAPI artifact
@@ -215,6 +214,25 @@ jobs:
           echo "Backend did not become healthy in time"
           exit 1
 
+      - name: Wait for frontend
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:5173 >/dev/null; then
+              echo "Frontend ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend did not become ready in time"
+          docker compose -f infra/docker-compose.yml logs frontend
+          exit 1
+
+      - name: Prepare E2E database
+        working-directory: infra
+        run: |
+          docker compose exec -T backend alembic upgrade head
+          docker compose exec -T -e ADMIN_EMAIL=admin@example.com -e ADMIN_PASSWORD=change-me backend python -m app.cli.seed_admin
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -236,7 +254,7 @@ jobs:
           E2E_BASE_URL: http://localhost:5173
           E2E_ADMIN_EMAIL: admin@example.com
           E2E_ADMIN_PASSWORD: change-me
-        run: npx playwright test tests/smoke-regressions.spec.ts
+        run: npx playwright test --project=chromium tests/smoke-regressions.spec.ts
 
       - name: Run E2E P0 gate (chromium)
         working-directory: e2e
@@ -252,7 +270,7 @@ jobs:
           E2E_BASE_URL: http://localhost:5173
           E2E_ADMIN_EMAIL: admin@example.com
           E2E_ADMIN_PASSWORD: change-me
-        run: npm run e2e
+        run: npm run e2e -- --project=chromium
 
       - name: Upload Playwright report
         if: always()

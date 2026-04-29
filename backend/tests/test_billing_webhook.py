@@ -44,8 +44,10 @@ import time
 import uuid
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pytest
+import httpx
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -148,7 +150,7 @@ def _sign(payload: bytes, secret: str = _WEBHOOK_SECRET, ts: int | None = None) 
 
 def _event(
     event_type: str,
-    data_object: dict,
+    data_object: dict[str, Any],
     *,
     event_id: str | None = None,
     created: datetime | None = None,

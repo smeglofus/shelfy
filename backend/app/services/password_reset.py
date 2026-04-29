@@ -38,7 +38,7 @@ async def check_and_bump_email_rate_limit(
     count = await redis_client.incr(key)
     if count == 1:
         await redis_client.expire(key, ttl_seconds)
-    return count <= REQUEST_LIMIT_PER_EMAIL
+    return int(count) <= REQUEST_LIMIT_PER_EMAIL
 
 
 async def create_reset_token(

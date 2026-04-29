@@ -4,9 +4,12 @@ from unittest.mock import Mock
 
 from botocore.exceptions import ClientError
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base
+from app.models.library import LibraryMember
+from app.models.subscription import Subscription
 from app.services import storage
 from app.services.job_queue import get_celery_client
 from app.services.user_seed import seed_admin_user
@@ -72,8 +75,12 @@ async def test_seed_admin_user_creates_and_skips_existing_user() -> None:
     async with session_factory() as session:
         created = await seed_admin_user(session, "admin@example.com", "secret")
         skipped = await seed_admin_user(session, "admin@example.com", "secret")
+        subscription = (await session.execute(select(Subscription))).scalar_one_or_none()
+        library_membership = (await session.execute(select(LibraryMember))).scalar_one_or_none()
 
     await engine.dispose()
 
     assert created is True
     assert skipped is False
+    assert subscription is not None
+    assert library_membership is not None

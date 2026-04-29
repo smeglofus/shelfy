@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator, Iterator
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -55,6 +55,8 @@ from app.main import app
 from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
 from app.models.user import User
 from app.services import billing as billing_svc
+
+stripe_sdk = cast(Any, billing_svc)._stripe
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────────
@@ -148,10 +150,10 @@ async def test_create_checkout_session_omits_payment_method_types(
     fake_customer.__getitem__ = lambda self, key: "cus_test_walletcheck" if key == "id" else None
 
     monkeypatch.setattr(
-        billing_svc._stripe.Customer, "create", lambda **_: fake_customer
+        stripe_sdk.Customer, "create", lambda **_: fake_customer
     )
     monkeypatch.setattr(
-        billing_svc._stripe.checkout.Session, "create", fake_create
+        stripe_sdk.checkout.Session, "create", fake_create
     )
 
     async with test_sessionmaker() as session:
@@ -203,8 +205,8 @@ async def test_create_checkout_session_first_time_includes_trial(
     fake_customer = MagicMock()
     fake_customer.__getitem__ = lambda self, key: "cus_trial" if key == "id" else None
 
-    monkeypatch.setattr(billing_svc._stripe.Customer, "create", lambda **_: fake_customer)
-    monkeypatch.setattr(billing_svc._stripe.checkout.Session, "create", fake_create)
+    monkeypatch.setattr(stripe_sdk.Customer, "create", lambda **_: fake_customer)
+    monkeypatch.setattr(stripe_sdk.checkout.Session, "create", fake_create)
 
     async with test_sessionmaker() as session:
         await billing_svc.create_checkout_session(
@@ -413,7 +415,7 @@ async def test_assess_wallet_readiness_stripe_error_does_not_raise(
     )
 
     def boom() -> list[dict[str, Any]]:
-        raise billing_svc._stripe.error.APIError("Stripe is having a bad day")
+        raise stripe_sdk.error.APIError("Stripe is having a bad day")
 
     monkeypatch.setattr(billing_svc, "_list_payment_method_domains", boom)
 
