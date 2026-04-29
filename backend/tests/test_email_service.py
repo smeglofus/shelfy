@@ -17,6 +17,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pytest import LogCaptureFixture
 
 from app.services.email import (
     _send,
@@ -168,7 +169,7 @@ async def test_send_password_reset_uses_branded_sender_and_reply_to() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_does_not_log_authorization_header_on_failure(caplog) -> None:
+async def test_send_does_not_log_authorization_header_on_failure(caplog: LogCaptureFixture) -> None:
     """When Resend fails, the warning log carries to/subject/error — never the API key.
 
     Defence-in-depth: a regression that started logging request headers would
