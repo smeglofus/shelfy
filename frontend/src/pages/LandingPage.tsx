@@ -424,7 +424,7 @@ export function LandingPage() {
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 'inherit' }}
           onClick={() => navigate(ROUTES.changelog)}
         >
-          Changelog
+          {t('landing.footer_changelog')}
         </button>
       </footer>
     </div>

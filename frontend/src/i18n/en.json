@@ -289,7 +289,8 @@
     "final_cta_button": "Create your free library catalog",
     "footer_privacy": "Privacy Policy",
     "footer_terms": "Terms of Service",
-    "hero_trust_summary": "Your data stays yours. Export anytime and delete your account whenever you want."
+    "hero_trust_summary": "Your data stays yours. Export anytime and delete your account whenever you want.",
+    "footer_changelog": "Changelog"
   },
   "tabs": {
     "all": "All",
@@ -651,5 +652,12 @@
     "show_password": "Show",
     "hide_password": "Hide",
     "network_error_try_again": "Connection error. Please try again."
+  },
+  "changelog": {
+    "title": "Changelog",
+    "subtitle": "A short overview of notable Shelfy changes — especially updates that affect stability, security, or day-to-day use.",
+    "added": "Added",
+    "changed": "Changed",
+    "fixed": "Fixed"
   }
 }

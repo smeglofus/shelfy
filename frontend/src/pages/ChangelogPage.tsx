@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { changelogEntries } from '../content/changelog'
+import { changelogEntries, type ChangelogLocale } from '../content/changelog'
 
 const P: CSSProperties = { margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh-text-secondary)' }
 const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '8px 0 0' }
@@ -15,6 +16,10 @@ const BADGE: CSSProperties = {
   color: 'var(--sh-text-secondary)',
   fontSize: 12,
   fontWeight: 700,
+}
+
+function activeLocale(language: string | undefined): ChangelogLocale {
+  return language?.startsWith('en') ? 'en' : 'cs'
 }
 
 function ChangeGroup({ label, items }: { label: string; items?: string[] }) {
@@ -31,6 +36,8 @@ function ChangeGroup({ label, items }: { label: string; items?: string[] }) {
 
 export function ChangelogPage() {
   const navigate = useNavigate()
+  const { i18n, t } = useTranslation()
+  const locale = activeLocale(i18n.resolvedLanguage ?? i18n.language)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--sh-bg)' }}>
@@ -54,15 +61,15 @@ export function ChangelogPage() {
       </header>
 
       <main style={{ maxWidth: 760, margin: '0 auto', padding: '48px 24px 80px' }}>
-        <h1 style={{ fontSize: 32, fontWeight: 900, margin: '0 0 8px' }}>Changelog</h1>
+        <h1 style={{ fontSize: 32, fontWeight: 900, margin: '0 0 8px' }}>{t('changelog.title')}</h1>
         <p style={{ ...P, fontSize: 16, marginBottom: 28 }}>
-          Přehled důležitých změn v Shelfy — hlavně věci, které mají dopad na stabilitu, bezpečnost nebo používání aplikace.
+          {t('changelog.subtitle')}
         </p>
 
         <div style={{ display: 'grid', gap: 18 }}>
           {changelogEntries.map((entry) => (
             <article
-              key={`${entry.date}-${entry.title}`}
+              key={`${entry.date}-${entry.title.en}`}
               style={{
                 background: 'var(--sh-surface)',
                 border: '1px solid var(--sh-border)',
@@ -72,11 +79,11 @@ export function ChangelogPage() {
               }}
             >
               <span style={BADGE}>{entry.date}</span>
-              <h2 style={{ fontSize: 21, fontWeight: 850, margin: '12px 0 8px' }}>{entry.title}</h2>
-              <p style={P}>{entry.summary}</p>
-              <ChangeGroup label='Přidáno' items={entry.added} />
-              <ChangeGroup label='Změněno' items={entry.changed} />
-              <ChangeGroup label='Opraveno' items={entry.fixed} />
+              <h2 style={{ fontSize: 21, fontWeight: 850, margin: '12px 0 8px' }}>{entry.title[locale]}</h2>
+              <p style={P}>{entry.summary[locale]}</p>
+              <ChangeGroup label={t('changelog.added')} items={entry.added?.[locale]} />
+              <ChangeGroup label={t('changelog.changed')} items={entry.changed?.[locale]} />
+              <ChangeGroup label={t('changelog.fixed')} items={entry.fixed?.[locale]} />
             </article>
           ))}
         </div>
