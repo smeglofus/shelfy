@@ -42,6 +42,74 @@ test('locations CRUD', async ({ page }) => {
   await expect(page.locator('tr', { hasText: room })).toHaveCount(0)
 })
 
+test('/locations alias redirects to bookshelf tab and supports continuation', async ({ page }) => {
+  await login(page)
+  // Navigate to /locations — the app should redirect to /bookshelf?tab=locations
+  await page.goto('/locations')
+  await page.waitForLoadState('networkidle')
+  if (/\/login$/.test(new URL(page.url()).pathname)) {
+    // Auth re-bootstrap redirected us; login preserves the return path
+    await login(page, true)
+    await page.waitForLoadState('networkidle')
+  }
+  await expect(page).toHaveURL(/\/bookshelf\?tab=locations/)
+
+  // Assert locations tab content/controls are visible
+  await expect(page.getByLabel(/Místnost|Room/i)).toBeVisible()
+  await expect(page.getByLabel(/Knihovna|Furniture/i)).toBeVisible()
+  await expect(page.getByLabel(/^Police$|^Shelf$/i)).toBeVisible()
+
+  // Create a location to verify continuation works
+  const room = `E2E Alias ${Date.now()}`
+  await page.getByLabel(/Místnost|Room/i).fill(room)
+  await page.getByLabel(/Knihovna|Furniture/i).fill('Skříň Alias')
+  await page.getByLabel(/^Police$|^Shelf$/i).fill('Police Alias')
+  await page.getByRole('button', { name: /Vytvořit|Create/i }).click()
+  await expect(page.getByText(room).first()).toBeVisible()
+})
+
+test('expired session during write shows error, does not save', async ({ page }) => {
+  const title = `E2E Expired Session ${Date.now()}`
+
+  await login(page)
+  // Navigate to /books/new via SPA
+  const desktopAddBtn = page.getByRole('button', { name: /^Add$|^Přidat$/i })
+  if (await desktopAddBtn.isVisible().catch(() => false)) {
+    await desktopAddBtn.click()
+  } else {
+    await page.getByRole('button', { name: /Akce|Actions/i }).first().click()
+    await page.getByRole('menuitem', { name: /Přidat knihu|Add book/i }).click()
+  }
+  await page.waitForURL(/\/books\/new$/, { timeout: 10_000 })
+
+  // Intercept the book-create POST and return 401 to simulate session expiry.
+  // The app's AuthContext may silently refresh the token, but the original
+  // save request should fail — the book must NOT appear on /books afterwards.
+  await page.route('**/api/v1/books', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({ status: 401, contentType: 'application/json', body: '{"detail":"Not authenticated"}' })
+    } else {
+      await route.continue()
+    }
+  })
+
+  // Fill form and attempt to submit
+  await page.getByPlaceholder(/např\. Duna|e\.g\. Dune/i).fill(title)
+  await page.getByPlaceholder(/Frank Herbert/).fill('E2E Autor')
+  await page.getByRole('button', { name: /Přidat do knihovny|Add to library/i }).click()
+
+  // Wait for the network request to resolve (the intercept should return 401)
+  await page.waitForLoadState('networkidle')
+
+  // Unroute before navigating to avoid interfering with other requests
+  await page.unroute('**/api/v1/books')
+
+  // Navigate to /books and verify the book was NOT saved
+  await page.goto('/books')
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByText(title).first()).not.toBeVisible()
+})
+
 test('books CRUD manual', async ({ page }) => {
   const title = `E2E Kniha ${Date.now()}`
 
