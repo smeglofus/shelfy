@@ -27,7 +27,7 @@ test('locations CRUD', async ({ page }) => {
   await page.getByLabel(/^Police$|^Shelf$/i).fill(shelf)
   await page.getByRole('button', { name: /Vytvořit|Create/i }).click()
 
-  await expect(page.getByText(room)).toBeVisible()
+  await expect(page.getByText(room).first()).toBeVisible()
 
   const row = page.locator('tr', { hasText: room }).first()
   await row.getByRole('button', { name: /Upravit|Edit/i }).click()
