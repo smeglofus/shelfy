@@ -309,6 +309,12 @@ jobs:
           echo "Backend did not become healthy in time"
           exit 1
 
+      - name: Prepare E2E database
+        working-directory: infra
+        run: |
+          docker compose exec -T backend alembic upgrade head
+          docker compose exec -T -e ADMIN_EMAIL=admin@example.com -e ADMIN_PASSWORD=change-me backend python -m app.cli.seed_admin
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
