@@ -17,12 +17,20 @@ export function getE2EAccessToken(page: Page): string | null {
  * After success, LoginPage navigates to "/", then HomeRoute redirects to "/books".
  * We wait for the final "/books" URL before returning.
  */
-export async function login(page: Page): Promise<void> {
+/**
+ * @param alreadyOnLoginPage  Pass true when the page is already at /login
+ *   (e.g. redirected by a ProtectedRoute) to avoid a second page.goto('/login')
+ *   that would wipe out the saved return-path and land the app on /books instead
+ *   of the original destination.
+ */
+export async function login(page: Page, alreadyOnLoginPage = false): Promise<void> {
   const email = process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com'
   const password = process.env.E2E_ADMIN_PASSWORD ?? 'change-me'
 
-  await page.goto('/login')
-  await page.waitForLoadState('domcontentloaded')
+  if (!alreadyOnLoginPage) {
+    await page.goto('/login')
+    await page.waitForLoadState('domcontentloaded')
+  }
 
   await page.locator('input[type=email]').first().fill(email)
   await page.locator('input[type=password]').first().fill(password)
@@ -91,11 +99,12 @@ export async function navigateProtected(page: Page, path: string): Promise<void>
   // complete and potentially redirect to /login before we inspect the URL.
   await page.waitForLoadState('networkidle')
   if (/\/login$/.test(new URL(page.url()).pathname)) {
-    await login(page)
-    // After login the app may already be at the target URL via the return-path
-    // redirect.  A second page.goto would cause another full-page reload whose
-    // auth-refresh call can fail, bouncing us back to /login.  Only reload if
-    // we are not already at the destination.
+    // We are already on /login (auth-redirect).  Pass alreadyOnLoginPage=true so
+    // login() does NOT call page.goto('/login') again — that would overwrite the
+    // saved return-path and cause the app to land on /books after login instead
+    // of the original destination.  With the return-path intact the app navigates
+    // back to `path` via SPA (no reload), and we can skip a second page.goto.
+    await login(page, true)
     if (!new RegExp(`${escapedPath}$`).test(page.url())) {
       await page.goto(path)
       await page.waitForLoadState('networkidle')
