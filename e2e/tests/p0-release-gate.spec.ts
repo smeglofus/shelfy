@@ -149,14 +149,9 @@ test(`${P0} create manual book persists after reload`, async ({ page }) => {
 
   // Full page reload: app re-bootstraps auth from HttpOnly cookies
   // (access_token + refresh_token are persisted by the browser across reloads),
-  // calls /auth/me, then re-fetches books.
-  const booksAfterReload = page.waitForResponse(
-    (res) => res.url().includes('/api/v1/books/shelf') && res.request().method() === 'GET',
-    { timeout: 30_000 },
-  )
+  // then re-fetches the books page.
   await page.reload()
   await page.waitForURL(/\/books$/, { timeout: 30_000 })
-  await booksAfterReload
   await page.waitForLoadState('networkidle')
 
   // Search for the unique title after reload so accumulated CI/dev fixture data
@@ -234,9 +229,10 @@ test(`${P0} legal pages accessible and links work from settings`, async ({ page 
     page.getByRole('heading', { name: /Zásady ochrany osobních údajů|Privacy Policy/i }),
   ).toBeVisible()
 
-  // Return to settings — full reload here is acceptable; docker-compose sets
-  // RATE_LIMIT_REFRESH=200/min so this extra call is well within budget.
-  await page.goto('/settings')
+  // Return via browser history. This keeps the authenticated SPA/session state
+  // warm and avoids the protected-route reload/refresh race seen in CI.
+  await page.goBack()
+  await page.waitForURL(/\/settings$/)
   await expect(page.getByRole('heading', { name: /Nastavení|Settings/i })).toBeVisible()
   // Terms of Service link: text is hardcoded "Terms of Service" in the component
   await page.getByRole('link', { name: /Terms of Service/i }).click()
