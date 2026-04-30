@@ -29,6 +29,14 @@ export async function login(page: Page): Promise<void> {
   await page.waitForURL(/\/books$/, { timeout: 30_000 })
   await page.waitForLoadState('networkidle')
 
+  // Dismiss the onboarding modal if it appears (fresh CI accounts always see it).
+  // The modal uses position:fixed and intercepts pointer events on nav buttons.
+  const onboardingModal = page.getByRole('dialog', { name: /Welcome to Shelfy|Vítejte v Shelfy/i })
+  if (await onboardingModal.isVisible()) {
+    await page.getByRole('button', { name: /Skip all|Přeskočit vše/i }).click()
+    await onboardingModal.waitFor({ state: 'hidden' })
+  }
+
   // "My Library" / "Moje Knihovna" (cs locale) is in a <p>, not a heading
   await expect(page.getByText(/Moje Knihovna|My Library/i).first()).toBeVisible()
 }
