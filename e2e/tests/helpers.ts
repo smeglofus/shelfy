@@ -77,10 +77,23 @@ export async function login(page: Page, alreadyOnLoginPage = false): Promise<voi
  * Caller must already be logged in.
  */
 export async function createManualBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
-  // SPA navigation via sidebar "Add" / "Přidat" button — avoids a full page
-  // reload that re-triggers auth bootstrap and redirects to /login in CI.
-  // Desktop viewport (>=768px): action group renders a direct sidebar button.
-  await page.getByRole('button', { name: /^Add$|^Přidat$/i }).click()
+  // Navigate to /books/new via SPA — triggers a protected-route auth check
+  // without a full page.reload() (which would re-bootstrap auth in CI).
+  //
+  // Desktop (>=768px): sidebar has a direct "Add" / "Přidat" button.
+  // Mobile (<768px):  bottom nav has a FAB button (aria-label="Actions")
+  //   that opens a menu with "Add book" / "Přidat knihu".
+  //
+  // Try desktop sidebar first, fall back to mobile FAB flow.
+  const desktopAddBtn = page.getByRole('button', { name: /^Add$|^Přidat$/i })
+  if (await desktopAddBtn.isVisible().catch(() => false)) {
+    await desktopAddBtn.click()
+  } else {
+    // Mobile: click FAB (aria-label="Actions") to open the action menu,
+    // then pick "Add book" / "Přidat knihu" from the menu items.
+    await page.getByRole('button', { name: /Akce|Actions/i }).first().click()
+    await page.getByRole('menuitem', { name: /Přidat knihu|Add book/i }).click()
+  }
   await page.waitForURL(/\/books\/new$/, { timeout: 10_000 })
 
   // Placeholders and submit button are locale-sensitive — cover both cs and en.
