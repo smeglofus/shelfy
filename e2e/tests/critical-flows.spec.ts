@@ -41,7 +41,8 @@ test('books CRUD manual', async ({ page }) => {
   await login(page)
   await createManualBook(page, title)
 
-  await page.getByLabel(/delete-/).first().click()
+  // Scope to the card that contains our title so we delete the right book.
+  await page.locator('.sh-card-enter').filter({ hasText: title }).getByRole('button', { name: /^delete-/ }).click()
   await page.getByRole('button', { name: /Smazat knihu|Delete book/i }).click()
 
   await expect(page.getByText(title).first()).not.toBeVisible()

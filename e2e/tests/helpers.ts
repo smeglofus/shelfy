@@ -84,13 +84,35 @@ export async function createManualBook(page: Page, title: string, author = 'E2E 
 }
 
 export async function navigateProtected(page: Page, path: string): Promise<void> {
+  const escapedPath = path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   await page.goto(path)
-  await page.waitForLoadState('domcontentloaded')
+  // Wait for networkidle so React's async auth bootstrap (POST /auth/refresh) can
+  // complete and potentially redirect to /login before we inspect the URL.
+  await page.waitForLoadState('networkidle')
   if (/\/login$/.test(new URL(page.url()).pathname)) {
     await login(page)
     await page.goto(path)
-    await page.waitForLoadState('domcontentloaded')
+    await page.waitForLoadState('networkidle')
   }
-  await page.waitForURL(new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), { timeout: 20_000 })
-  await page.waitForLoadState('networkidle')
+  await expect(page).toHaveURL(new RegExp(`${escapedPath}$`))
+}
+
+export async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
+  const token = getE2EAccessToken(page)
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+  const api = process.env.E2E_API_BASE_URL ?? 'http://localhost:8000'
+  const suffix = Date.now()
+
+  const locRes = await page.request.post(`${api}/api/v1/locations`, {
+    headers,
+    data: { room: `E2E Room ${suffix}`, furniture: 'E2E Bookshelf', shelf: 'Shelf 1', display_order: 0 },
+  })
+  if (!locRes.ok()) throw new Error(`location fixture: ${locRes.status()} ${await locRes.text()}`)
+  const { id: locationId } = await locRes.json() as { id: string }
+
+  const bookRes = await page.request.post(`${api}/api/v1/books`, {
+    headers,
+    data: { title, author, location_id: locationId, shelf_position: 0 },
+  })
+  if (!bookRes.ok()) throw new Error(`book fixture: ${bookRes.status()} ${await bookRes.text()}`)
 }
