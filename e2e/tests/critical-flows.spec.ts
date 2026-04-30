@@ -13,8 +13,14 @@ test('locations CRUD', async ({ page }) => {
   const updatedShelf = 'Police 2'
 
   await login(page)
-  // /locations is now a client-side redirect → /bookshelf?tab=locations
-  await navigateProtected(page, '/bookshelf?tab=locations')
+  // page.goto() on protected routes fails in CI (auth-refresh cookie issue).
+  // ProtectedRoute also only saves location.pathname (not search), so
+  // /bookshelf?tab=locations becomes /bookshelf after login redirect.
+  // Use SPA nav: Shelves nav button → Locations tab button.
+  await page.getByRole('button', { name: /Police|Shelves/i }).click()
+  await page.waitForURL(/\/bookshelf$/)
+  await page.getByRole('button', { name: /Správa pozic|Locations management/i }).click()
+  await page.waitForURL(/\/bookshelf\?tab=locations$/)
 
   await page.getByLabel(/Místnost|Room/i).fill(room)
   await page.getByLabel(/Knihovna|Furniture/i).fill(furniture)
