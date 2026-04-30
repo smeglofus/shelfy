@@ -40,9 +40,11 @@ export async function login(page: Page): Promise<void> {
   const tokenBody = await loginResponse.json() as { access_token: string }
   e2eAccessTokens.set(page, tokenBody.access_token)
 
-  // LoginPage navigates to "/" on success; HomeRoute then redirects to /books.
+  // LoginPage normally navigates to "/" on success; HomeRoute then redirects
+  // to /books. If a ProtectedRoute redirected us to login with a saved return
+  // path, the app can legitimately land back on that protected route instead.
   // 30 s budget: WebKit needs more time when the backend is warm from prior runs.
-  await page.waitForURL(/\/books$/, { timeout: 30_000 })
+  await page.waitForURL(/\/(books|settings)$/, { timeout: 30_000 })
   await page.waitForLoadState('networkidle')
 
   // Dismiss the onboarding modal if it appears (fresh CI accounts always see it).
@@ -53,8 +55,12 @@ export async function login(page: Page): Promise<void> {
     await onboardingModal.waitFor({ state: 'hidden' })
   }
 
-  // "My Library" / "Moje Knihovna" (cs locale) is in a <p>, not a heading
-  await expect(page.getByText(/Moje Knihovna|My Library/i).first()).toBeVisible()
+  // "My Library" / "Moje Knihovna" (cs locale) is in a <p>, not a heading.
+  // Only assert it when login landed on /books; return-path logins may land on
+  // another protected route such as /settings.
+  if (/\/books$/.test(new URL(page.url()).pathname)) {
+    await expect(page.getByText(/Moje Knihovna|My Library/i).first()).toBeVisible()
+  }
 }
 
 /**
