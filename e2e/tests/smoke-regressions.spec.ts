@@ -49,8 +49,9 @@ function getApiAuthHeaders(page: Page): Record<string, string> {
 async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
   const headers = getApiAuthHeaders(page)
   const suffix = Date.now()
+  const api = process.env.E2E_API_BASE_URL ?? 'http://localhost:8000'
 
-  const locationResponse = await page.request.post('/api/v1/locations', {
+  const locationResponse = await page.request.post(`${api}/api/v1/locations`, {
     headers,
     data: {
       room: `E2E Room ${suffix}`,
@@ -64,7 +65,7 @@ async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'
   }
   const location = await locationResponse.json() as { id: string }
 
-  const bookResponse = await page.request.post('/api/v1/books', {
+  const bookResponse = await page.request.post(`${api}/api/v1/books`, {
     headers,
     data: {
       title,
