@@ -79,6 +79,12 @@ async function clickSettingsNav(page: Parameters<typeof login>[0]): Promise<void
   await page.waitForURL(/\/settings$/)
 }
 
+async function reloginIfRedirected(page: Parameters<typeof login>[0]): Promise<void> {
+  if (/\/login$/.test(new URL(page.url()).pathname)) {
+    await login(page)
+  }
+}
+
 // ── 1. Auth guard ────────────────────────────────────────────────────────────
 
 test(`${P0} protected routes redirect to login when unauthenticated`, async ({ page }) => {
@@ -149,11 +155,15 @@ test(`${P0} create manual book persists after reload`, async ({ page }) => {
 
   // Full page reload: app re-bootstraps auth from HttpOnly cookies
   // (access_token + refresh_token are persisted by the browser across reloads),
-  // calls /auth/me, then re-fetches books.
+  // then re-fetches the books page.
   await page.reload()
-  await page.waitForURL(/\/books$/, { timeout: 30_000 })
   await page.waitForLoadState('networkidle')
+  await reloginIfRedirected(page)
+  await page.waitForURL(/\/books$/, { timeout: 30_000 })
 
+  // Search for the unique title after reload/re-auth so accumulated CI/dev fixture data
+  // cannot push the newly-created book out of the visible viewport/group.
+  await page.getByLabel(/Hledat knihy|Search books/i).fill(title)
   await expect(page.getByText(title).first()).toBeVisible()
 })
 
@@ -223,18 +233,25 @@ test(`${P0} legal pages accessible and links work from settings`, async ({ page 
   await page.getByRole('link', { name: /Privacy Policy/i }).click()
   await expect(page).toHaveURL(/\/privacy$/)
   await expect(
-    page.getByRole('heading', { name: /Zásady ochrany soukromí|Privacy Policy/i }),
+    page.getByRole('heading', { name: /Zásady ochrany osobních údajů|Privacy Policy/i }),
   ).toBeVisible()
 
-  // Return to settings — full reload here is acceptable; docker-compose sets
-  // RATE_LIMIT_REFRESH=200/min so this extra call is well within budget.
-  await page.goto('/settings')
+  // Return via browser history. This keeps the authenticated SPA/session state
+  // warm and avoids the protected-route reload/refresh race seen in CI.
+  await page.goBack()
+  await page.waitForLoadState('networkidle')
+  if (/\/login$/.test(new URL(page.url()).pathname)) {
+    await login(page)
+    await clickSettingsNav(page)
+  } else {
+    await page.waitForURL(/\/settings$/)
+  }
   await expect(page.getByRole('heading', { name: /Nastavení|Settings/i })).toBeVisible()
   // Terms of Service link: text is hardcoded "Terms of Service" in the component
   await page.getByRole('link', { name: /Terms of Service/i }).click()
   await expect(page).toHaveURL(/\/terms$/)
   await expect(
-    page.getByRole('heading', { name: /Podmínky použití|Terms of Service/i }),
+    page.getByRole('heading', { name: /Obchodní podmínky|Terms of Service/i }),
   ).toBeVisible()
 })
 

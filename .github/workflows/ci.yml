@@ -252,6 +252,7 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:5173
+          E2E_API_BASE_URL: http://localhost:8000
           E2E_ADMIN_EMAIL: admin@example.com
           E2E_ADMIN_PASSWORD: change-me
         run: npx playwright test --project=chromium tests/smoke-regressions.spec.ts
@@ -260,6 +261,7 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:5173
+          E2E_API_BASE_URL: http://localhost:8000
           E2E_ADMIN_EMAIL: admin@example.com
           E2E_ADMIN_PASSWORD: change-me
         run: npx playwright test --project=chromium --grep @p0
@@ -268,6 +270,7 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:5173
+          E2E_API_BASE_URL: http://localhost:8000
           E2E_ADMIN_EMAIL: admin@example.com
           E2E_ADMIN_PASSWORD: change-me
         run: npm run e2e -- --project=chromium
@@ -325,6 +328,7 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:5173
+          E2E_API_BASE_URL: http://localhost:8000
           E2E_ADMIN_EMAIL: admin@example.com
           E2E_ADMIN_PASSWORD: change-me
         run: |

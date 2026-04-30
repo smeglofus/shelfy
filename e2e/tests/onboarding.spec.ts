@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { login } from './helpers'
+import { login, navigateProtected } from './helpers'
 
 /**
  * Onboarding E2E tests.
@@ -18,7 +18,7 @@ import { login } from './helpers'
 test.describe('Onboarding wizard', () => {
   test('settings page shows reset onboarding button', async ({ page }) => {
     await login(page)
-    await page.goto('/settings')
+    await navigateProtected(page, '/settings')
 
     // The onboarding reset section should always be visible in settings
     await expect(page.getByRole('button', { name: /onboarding/i })).toBeVisible()
@@ -26,7 +26,7 @@ test.describe('Onboarding wizard', () => {
 
   test('reset onboarding shows success toast', async ({ page }) => {
     await login(page)
-    await page.goto('/settings')
+    await navigateProtected(page, '/settings')
 
     await page.getByRole('button', { name: /onboarding/i }).click()
 
@@ -38,7 +38,7 @@ test.describe('Onboarding wizard', () => {
     await login(page)
 
     // First reset onboarding via settings
-    await page.goto('/settings')
+    await navigateProtected(page, '/settings')
     await page.getByRole('button', { name: /onboarding/i }).click()
     await expect(page.getByText(/resetován|reset/i)).toBeVisible({ timeout: 5000 })
 
@@ -46,7 +46,7 @@ test.describe('Onboarding wizard', () => {
     await page.evaluate(() => localStorage.removeItem('shelfy_onboarding_dismissed'))
 
     // Navigate to books page
-    await page.goto('/books')
+    await navigateProtected(page, '/books')
 
     // If library is empty, wizard should appear
     // If library has books, wizard won't show (by design)
