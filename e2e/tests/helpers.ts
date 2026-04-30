@@ -1,5 +1,11 @@
 import { expect, type Page } from '@playwright/test'
 
+const e2eAccessTokens = new WeakMap<Page, string>()
+
+export function getE2EAccessToken(page: Page): string | null {
+  return e2eAccessTokens.get(page) ?? null
+}
+
 /**
  * Login helper — authenticates using env-overridable admin credentials.
  *
@@ -21,8 +27,18 @@ export async function login(page: Page): Promise<void> {
   await page.locator('input[type=email]').first().fill(email)
   await page.locator('input[type=password]').first().fill(password)
 
+  const loginResponsePromise = page.waitForResponse((response) => (
+    response.url().includes('/api/v1/auth/login') && response.request().method() === 'POST'
+  ))
+
   // Target the <form>'s submit button, not the "Sign in" tab toggle above the form
   await page.locator('form button[type="submit"]').click()
+  const loginResponse = await loginResponsePromise
+  if (!loginResponse.ok()) {
+    throw new Error(`login failed: ${loginResponse.status()} ${await loginResponse.text()}`)
+  }
+  const tokenBody = await loginResponse.json() as { access_token: string }
+  e2eAccessTokens.set(page, tokenBody.access_token)
 
   // LoginPage navigates to "/" on success; HomeRoute then redirects to /books.
   // 30 s budget: WebKit needs more time when the backend is warm from prior runs.

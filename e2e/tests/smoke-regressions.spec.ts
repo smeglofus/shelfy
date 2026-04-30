@@ -17,7 +17,7 @@
  *   This matches the pattern documented and used in p0-release-gate.spec.ts.
  */
 import { expect, test, type Page } from '@playwright/test'
-import { createManualBook, login } from './helpers'
+import { createManualBook, getE2EAccessToken, login } from './helpers'
 
 // ── SPA navigation helpers ────────────────────────────────────────────────────
 // Click the sidebar/bottom-nav button and wait for the URL to settle.
@@ -37,23 +37,17 @@ async function clickNavScan(page: Page): Promise<void> {
 }
 
 
-async function getApiAuthHeaders(page: Page): Promise<Record<string, string>> {
+function getApiAuthHeaders(page: Page): Record<string, string> {
   // APIRequestContext does not reliably mirror the browser's CSRF double-submit
-  // state in CI. Use the backend's Bearer-token path for test fixture setup;
-  // the browser session created by login() remains the thing under test.
-  const response = await page.request.post('/api/v1/auth/login', {
-    data: {
-      email: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
-      password: process.env.E2E_ADMIN_PASSWORD ?? 'change-me',
-    },
-  })
-  expect(response.ok(), `fixture login failed: ${response.status()} ${await response.text()}`).toBeTruthy()
-  const body = await response.json() as { access_token: string }
-  return { Authorization: `Bearer ${body.access_token}` }
+  // state in CI. Reuse the access token captured by login() and use the
+  // backend's Bearer-token path for test fixture setup.
+  const accessToken = getE2EAccessToken(page)
+  expect(accessToken, 'login() did not capture an access token for fixture setup').toBeTruthy()
+  return { Authorization: `Bearer ${accessToken}` }
 }
 
 async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
-  const headers = await getApiAuthHeaders(page)
+  const headers = getApiAuthHeaders(page)
   const suffix = Date.now()
 
   const locationResponse = await page.request.post('/api/v1/locations', {
@@ -65,7 +59,9 @@ async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'
       display_order: 0,
     },
   })
-  expect(locationResponse.ok(), `location fixture failed: ${locationResponse.status()} ${await locationResponse.text()}`).toBeTruthy()
+  if (!locationResponse.ok()) {
+    throw new Error(`location fixture failed: ${locationResponse.status()} ${await locationResponse.text()}`)
+  }
   const location = await locationResponse.json() as { id: string }
 
   const bookResponse = await page.request.post('/api/v1/books', {
@@ -77,7 +73,9 @@ async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'
       shelf_position: 0,
     },
   })
-  expect(bookResponse.ok(), `book fixture failed: ${bookResponse.status()} ${await bookResponse.text()}`).toBeTruthy()
+  if (!bookResponse.ok()) {
+    throw new Error(`book fixture failed: ${bookResponse.status()} ${await bookResponse.text()}`)
+  }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
