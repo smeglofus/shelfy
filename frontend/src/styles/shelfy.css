@@ -2194,6 +2194,37 @@ html.dark .sh-onboarding-checkmark {
   color: var(--sh-danger);
 }
 
+
+/* ── Audience positioning ── */
+.lp-audience-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 760px;
+}
+
+.lp-audience-card {
+  padding: 18px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-lg);
+  background: var(--sh-surface);
+  box-shadow: var(--sh-shadow-sm);
+}
+
+.lp-audience-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sh-text-main);
+}
+
+.lp-audience-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--sh-text-muted);
+}
+
 /* ── Pricing teaser ── */
 .lp-pricing-body {
   max-width: 560px;
@@ -2213,6 +2244,38 @@ html.dark .sh-onboarding-checkmark {
   margin: 0 0 24px;
   padding-left: 16px;
   border-left: 3px solid var(--sh-primary-bg);
+}
+
+
+/* ── Trust layer ── */
+.lp-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 860px;
+}
+
+.lp-trust-card {
+  padding: 18px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid color-mix(in srgb, var(--sh-primary) 18%, var(--sh-border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sh-primary-bg) 28%, transparent), var(--sh-surface));
+}
+
+.lp-trust-kicker {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--sh-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lp-trust-copy {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--sh-text-muted);
 }
 
 /* ── FAQ ── */
@@ -2342,6 +2405,11 @@ html.dark .sh-onboarding-checkmark {
     display: none;
   }
 
+  .lp-audience-grid,
+  .lp-trust-grid {
+    grid-template-columns: 1fr;
+  }
+
   .lp-lightbox {
     max-width: calc(100vw - 24px);
     max-height: calc(100dvh - 24px);
@@ -2365,6 +2433,10 @@ html.dark .sh-onboarding-checkmark {
   html:not(.light) .lp-pricing-trust {
     border-left-color: rgba(45, 122, 95, 0.2);
   }
+  html:not(.light) .lp-trust-card {
+    background: linear-gradient(180deg, rgba(45, 122, 95, 0.08), var(--sh-surface));
+    border-color: rgba(45, 122, 95, 0.16);
+  }
   html:not(.light) .lp-final-cta {
     background: linear-gradient(
       160deg,
@@ -2379,6 +2451,10 @@ html.dark .lp-step-number {
 }
 html.dark .lp-pricing-trust {
   border-left-color: rgba(45, 122, 95, 0.2);
+}
+html.dark .lp-trust-card {
+  background: linear-gradient(180deg, rgba(45, 122, 95, 0.08), var(--sh-surface));
+  border-color: rgba(45, 122, 95, 0.16);
 }
 html.dark .lp-final-cta {
   background: linear-gradient(

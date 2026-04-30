@@ -17,6 +17,8 @@ interface PlanDef {
   /** CZK prices per interval — match the Stripe test-mode prices. */
   priceCzk: { monthly: number; yearly: number } | null
   featureKeys: string[]
+  audienceKey: string
+  useCaseKey: string
   highlighted?: boolean
   checkoutPlan?: PaidPlan
 }
@@ -30,6 +32,8 @@ const PLANS: PlanDef[] = [
   {
     key: 'free',
     nameKey: 'billing.plan_free',
+    audienceKey: 'billing.plan_free_audience',
+    useCaseKey: 'billing.plan_free_use_case',
     priceCzk: null,
     featureKeys: [
       'billing.feature_free_scans',
@@ -44,6 +48,8 @@ const PLANS: PlanDef[] = [
   {
     key: 'home',
     nameKey: 'billing.plan_home',
+    audienceKey: 'billing.plan_home_audience',
+    useCaseKey: 'billing.plan_home_use_case',
     priceCzk: { monthly: 59, yearly: 590 },
     featureKeys: [
       'billing.feature_home_scans',
@@ -58,6 +64,8 @@ const PLANS: PlanDef[] = [
   {
     key: 'pro',
     nameKey: 'billing.plan_pro',
+    audienceKey: 'billing.plan_pro_audience',
+    useCaseKey: 'billing.plan_pro_use_case',
     priceCzk: { monthly: 129, yearly: 1290 },
     featureKeys: [
       'billing.feature_pro_scans',
@@ -73,6 +81,8 @@ const PLANS: PlanDef[] = [
   {
     key: 'library',
     nameKey: 'billing.plan_library',
+    audienceKey: 'billing.plan_library_audience',
+    useCaseKey: 'billing.plan_library_use_case',
     priceCzk: { monthly: 299, yearly: 2990 },
     featureKeys: [
       'billing.feature_library_scans',
@@ -304,7 +314,13 @@ export function PricingPage() {
 
               <div>
                 <h3 className='text-h3' style={{ margin: 0 }}>{t(plan.nameKey)}</h3>
-                <p style={{ margin: '6px 0 0', fontWeight: 700, fontSize: 24, color: 'var(--sh-primary)' }}>
+                <p className='text-small' style={{ margin: '4px 0 0', color: 'var(--sh-text-secondary)' }}>
+                  {t(plan.audienceKey)}
+                </p>
+                <p className='text-small' style={{ margin: '6px 0 0', color: 'var(--sh-text-muted)', lineHeight: 1.45 }}>
+                  {t(plan.useCaseKey)}
+                </p>
+                <p style={{ margin: '10px 0 0', fontWeight: 700, fontSize: 24, color: 'var(--sh-primary)' }}>
                   {priceDisplay.amount}
                   <span style={{
                     display: 'block', fontSize: 12, fontWeight: 400,

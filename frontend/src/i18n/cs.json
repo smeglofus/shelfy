@@ -544,7 +544,15 @@
     "feature_library_members": "15 členů na knihovnu",
     "feature_library_books": "30 000 knih na knihovnu",
     "feature_includes_pro": "Vše z plánu Pro",
-    "feature_priority_support": "Prioritní podpora"
+    "feature_priority_support": "Prioritní podpora",
+    "plan_free_audience": "Pro jednotlivce a menší domácí sbírky",
+    "plan_free_use_case": "Vyzkoušej skenování polic a získej přehled o knihách doma bez platební karty.",
+    "plan_home_audience": "Pro rodiny a sdílenou domácí knihovnu",
+    "plan_home_use_case": "Vhodné, když katalog spravuje víc lidí a sbírka roste přes základní limit.",
+    "plan_pro_audience": "Pro sběratele, kluby a malé týmy",
+    "plan_pro_use_case": "Více knihoven, větší katalogy a dost skenů pro pravidelné přidávání nových polic.",
+    "plan_library_audience": "Pro školy, spolky a malé knihovny",
+    "plan_library_use_case": "Pro třídní, klubové nebo místní knihovny, kde katalog spravuje více členů."
   },
   "landing": {
     "hero_title": "Celá tvoje knihovna, katalogizovaná během minut.",
@@ -595,7 +603,25 @@
     "footer_privacy": "Zásady ochrany soukromí",
     "footer_terms": "Podmínky použití",
     "hero_trust_summary": "Tvoje data patří tobě. Kdykoli je exportuješ a účet můžeš jednoduše smazat.",
-    "footer_changelog": "Changelog"
+    "footer_changelog": "Changelog",
+    "audience_title": "Najdi plán podle toho, kdo knihovnu používá",
+    "audience_subtitle": "Shelfy není jen pro jednu sbírku doma. Stejný workflow funguje pro rodinu, klub, školní kabinet i malou veřejnou knihovnu.",
+    "audience_home_title": "Domácnost a rodina",
+    "audience_home_desc": "Rychle zjistíš, co už máte doma, a sdílíš katalog s partnerem nebo dětmi.",
+    "audience_club_title": "Čtenářský klub nebo spolek",
+    "audience_club_desc": "Jedna sdílená evidence pro komunitní polici, zápůjčky a společné spravování knih.",
+    "audience_school_title": "Škola nebo třída",
+    "audience_school_desc": "Přehled učebních a třídních knih bez tabulek, které po měsíci nikdo neaktualizuje.",
+    "audience_library_title": "Malá knihovna",
+    "audience_library_desc": "Katalog pro místní knihovnu, klubovnu nebo firemní bookshelf, kde je důležitý jednoduchý provoz.",
+    "trust_title": "Důvěra bez marketingové mlhy",
+    "trust_subtitle": "Shelfy zatím nestaví na vymyšlených logách ani nafouknutých číslech. Staví na jasných pravidlech, transparentnosti a praktickém použití.",
+    "trust_data_kicker": "Data máš pod kontrolou",
+    "trust_data_copy": "Export, smazání účtu a soukromí jsou přímo v produktu. Katalog knih neprodáváme třetím stranám.",
+    "trust_builder_kicker": "Postavené v Česku",
+    "trust_builder_copy": "Projekt vzniká otevřeně a průběžně se ladí podle reálné domácí, klubové a školní knihovní praxe.",
+    "trust_pilot_kicker": "Pravdivý social proof",
+    "trust_pilot_copy": "První uživatelé a pilotní knihovny pomáhají ověřit workflow skenování polic — bez falešných testimonialů."
   },
   "csv": {
     "import_button": "Importovat CSV",
