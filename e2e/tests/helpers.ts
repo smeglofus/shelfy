@@ -46,8 +46,11 @@ export async function login(page: Page): Promise<void> {
  * Caller must already be logged in.
  */
 export async function createManualBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
-  await page.goto('/books/new')
-  await page.waitForLoadState('domcontentloaded')
+  // SPA navigation via sidebar "Add" / "Přidat" button — avoids a full page
+  // reload that re-triggers auth bootstrap and redirects to /login in CI.
+  // Desktop viewport (>=768px): action group renders a direct sidebar button.
+  await page.getByRole('button', { name: /^Add$|^Přidat$/i }).click()
+  await page.waitForURL(/\/books\/new$/, { timeout: 10_000 })
 
   await page.getByPlaceholder('např. Duna').fill(title)
   await page.getByPlaceholder('např. Frank Herbert').fill(author)

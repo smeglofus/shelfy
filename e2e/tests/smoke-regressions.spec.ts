@@ -59,7 +59,7 @@ test('bookshelf route renders (no blank screen)', async ({ page }) => {
   await login(page)
   // SPA nav — no page reload, auth state stays intact.
   await clickNavBookshelf(page)
-  await expect(page.getByRole('heading', { name: /Moje knihovny|My Libraries/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Moje knihovny|My bookshelves/i })).toBeVisible()
   expect(errors).toEqual([])
 })
 
