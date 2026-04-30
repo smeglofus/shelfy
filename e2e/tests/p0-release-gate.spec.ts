@@ -150,10 +150,18 @@ test(`${P0} create manual book persists after reload`, async ({ page }) => {
   // Full page reload: app re-bootstraps auth from HttpOnly cookies
   // (access_token + refresh_token are persisted by the browser across reloads),
   // calls /auth/me, then re-fetches books.
+  const booksAfterReload = page.waitForResponse(
+    (res) => res.url().includes('/api/v1/books/shelf') && res.request().method() === 'GET',
+    { timeout: 30_000 },
+  )
   await page.reload()
   await page.waitForURL(/\/books$/, { timeout: 30_000 })
+  await booksAfterReload
   await page.waitForLoadState('networkidle')
 
+  // Search for the unique title after reload so accumulated CI/dev fixture data
+  // cannot push the newly-created book out of the visible viewport/group.
+  await page.getByLabel(/Hledat knihy|Search books/i).fill(title)
   await expect(page.getByText(title).first()).toBeVisible()
 })
 
@@ -223,7 +231,7 @@ test(`${P0} legal pages accessible and links work from settings`, async ({ page 
   await page.getByRole('link', { name: /Privacy Policy/i }).click()
   await expect(page).toHaveURL(/\/privacy$/)
   await expect(
-    page.getByRole('heading', { name: /Zásady ochrany soukromí|Privacy Policy/i }),
+    page.getByRole('heading', { name: /Zásady ochrany osobních údajů|Privacy Policy/i }),
   ).toBeVisible()
 
   // Return to settings — full reload here is acceptable; docker-compose sets
@@ -234,7 +242,7 @@ test(`${P0} legal pages accessible and links work from settings`, async ({ page 
   await page.getByRole('link', { name: /Terms of Service/i }).click()
   await expect(page).toHaveURL(/\/terms$/)
   await expect(
-    page.getByRole('heading', { name: /Podmínky použití|Terms of Service/i }),
+    page.getByRole('heading', { name: /Obchodní podmínky|Terms of Service/i }),
   ).toBeVisible()
 })
 
