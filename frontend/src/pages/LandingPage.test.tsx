@@ -31,8 +31,25 @@ describe('LandingPage', () => {
     expect(screen.getByText('landing.how_title')).toBeInTheDocument()
     expect(screen.getByText('landing.visual_proof_title')).toBeInTheDocument()
     expect(screen.getByText('landing.pricing_teaser_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.audience_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.trust_title')).toBeInTheDocument()
     expect(screen.getByText('landing.faq_title')).toBeInTheDocument()
     expect(screen.getByText('landing.final_cta_title')).toBeInTheDocument()
+  })
+
+  it('renders audience positioning and trust blocks', () => {
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('audience-positioning')).toBeInTheDocument()
+    expect(screen.getByText('landing.audience_school_title')).toBeInTheDocument()
+    expect(screen.getByText('landing.audience_library_title')).toBeInTheDocument()
+    expect(screen.getByTestId('trust-layer')).toBeInTheDocument()
+    expect(screen.getByText('landing.trust_data_kicker')).toBeInTheDocument()
+    expect(screen.getByText('landing.trust_pilot_kicker')).toBeInTheDocument()
   })
 
   it('renders visual proof showcase with poster image', () => {

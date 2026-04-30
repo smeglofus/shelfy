@@ -31,6 +31,10 @@ import { ROUTES } from '../lib/routes'
 /** Set to a real URL (e.g. YouTube embed) when demo video is ready. */
 const DEMO_VIDEO_URL = ''
 
+const AUDIENCE_ITEMS = ['home', 'club', 'school', 'library'] as const
+
+const TRUST_ITEMS = ['data', 'builder', 'pilot'] as const
+
 const FAQ_ITEMS = [
   { id: 'scanning', topic: 'how_scanning_works' },
   { id: 'privacy', topic: 'data_privacy' },
@@ -323,6 +327,20 @@ export function LandingPage() {
           </div>
         )}
 
+        {/* ── Audience positioning ── */}
+        <section className="lp-section" data-testid="audience-positioning">
+          <h2 className="lp-section-title">{t('landing.audience_title')}</h2>
+          <p className="lp-section-subtitle">{t('landing.audience_subtitle')}</p>
+          <div className="lp-audience-grid">
+            {AUDIENCE_ITEMS.map((item) => (
+              <article key={item} className="lp-audience-card">
+                <h3 className="lp-audience-title">{t(`landing.audience_${item}_title`)}</h3>
+                <p className="lp-audience-desc">{t(`landing.audience_${item}_desc`)}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         {/* ── Pricing teaser ── */}
         <section className="lp-section">
           <h2 className="lp-section-title">{t('landing.pricing_teaser_title')}</h2>
@@ -339,6 +357,20 @@ export function LandingPage() {
             >
               {t('landing.pricing_teaser_cta')}
             </button>
+          </div>
+        </section>
+
+        {/* ── Trust layer ── */}
+        <section className="lp-section" data-testid="trust-layer">
+          <h2 className="lp-section-title">{t('landing.trust_title')}</h2>
+          <p className="lp-section-subtitle">{t('landing.trust_subtitle')}</p>
+          <div className="lp-trust-grid">
+            {TRUST_ITEMS.map((item) => (
+              <article key={item} className="lp-trust-card">
+                <strong className="lp-trust-kicker">{t(`landing.trust_${item}_kicker`)}</strong>
+                <p className="lp-trust-copy">{t(`landing.trust_${item}_copy`)}</p>
+              </article>
+            ))}
           </div>
         </section>
 

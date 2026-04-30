@@ -81,6 +81,20 @@ async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+test('public landing communicates audience and trust positioning', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: /Najdi plán podle toho, kdo knihovnu používá|Pick the plan by who shares the shelves/i })).toBeVisible()
+  await expect(page.getByText(/škola|classroom|school/i).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Důvěra bez marketingové mlhy|Trust without marketing fog/i })).toBeVisible()
+  await expect(page.getByText(/Export|account deletion|smazání účtu/i).first()).toBeVisible()
+})
+
+test('public pricing communicates intended audience per plan', async ({ page }) => {
+  await page.goto('/pricing')
+  await expect(page.getByTestId('plan-card-free')).toContainText(/menší domácí sbírky|small home collections/i)
+  await expect(page.getByTestId('plan-card-library')).toContainText(/školy, spolky a malé knihovny|schools, associations, and small libraries/i)
+})
+
 test('books route renders (no blank screen)', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(String(e)))

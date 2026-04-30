@@ -290,7 +290,25 @@
     "footer_privacy": "Privacy Policy",
     "footer_terms": "Terms of Service",
     "hero_trust_summary": "Your data stays yours. Export anytime and delete your account whenever you want.",
-    "footer_changelog": "Changelog"
+    "footer_changelog": "Changelog",
+    "audience_title": "Pick the plan by who shares the shelves",
+    "audience_subtitle": "Shelfy is not only for one home collection. The same workflow fits families, clubs, classrooms, and small community libraries.",
+    "audience_home_title": "Home and family",
+    "audience_home_desc": "Know what you already own and share the catalog with your partner, kids, or housemates.",
+    "audience_club_title": "Book club or association",
+    "audience_club_desc": "One shared record for a community shelf, lending, and collaborative book management.",
+    "audience_school_title": "School or classroom",
+    "audience_school_desc": "Track classroom and teaching books without spreadsheets nobody updates after a month.",
+    "audience_library_title": "Small library",
+    "audience_library_desc": "A catalog for a local library, club room, or office bookshelf where simple operations matter.",
+    "trust_title": "Trust without marketing fog",
+    "trust_subtitle": "Shelfy does not rely on invented logos or inflated numbers. It relies on clear controls, transparency, and practical use.",
+    "trust_data_kicker": "You control your data",
+    "trust_data_copy": "Export, account deletion, and privacy controls are built into the product. We do not sell your book catalog to third parties.",
+    "trust_builder_kicker": "Built in Czechia",
+    "trust_builder_copy": "The project is being shaped openly around real home, club, and school library workflows.",
+    "trust_pilot_kicker": "Honest social proof",
+    "trust_pilot_copy": "Early users and pilot libraries help validate the shelf-scanning workflow — no fake testimonials."
   },
   "tabs": {
     "all": "All",
@@ -595,7 +613,15 @@
     "feature_library_members": "15 members per library",
     "feature_library_books": "30,000 books per library",
     "feature_includes_pro": "Everything in Pro",
-    "feature_priority_support": "Priority support"
+    "feature_priority_support": "Priority support",
+    "plan_free_audience": "For individuals and small home collections",
+    "plan_free_use_case": "Try shelf scanning and catalog your books at home without a credit card.",
+    "plan_home_audience": "For families and shared home libraries",
+    "plan_home_use_case": "Best when several people manage one growing collection beyond the free limits.",
+    "plan_pro_audience": "For collectors, clubs, and small teams",
+    "plan_pro_use_case": "More libraries, larger catalogs, and enough scans for regularly adding new shelves.",
+    "plan_library_audience": "For schools, associations, and small libraries",
+    "plan_library_use_case": "For classroom, club, or local libraries managed by multiple members."
   },
   "csv": {
     "import_button": "Import CSV",

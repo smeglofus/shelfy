@@ -151,6 +151,11 @@ describe('PricingPage — unauthenticated visitor', () => {
     expect(screen.getByTestId('plan-card-home')).toBeInTheDocument()
     expect(screen.getByTestId('plan-card-pro')).toBeInTheDocument()
     expect(screen.getByTestId('plan-card-library')).toBeInTheDocument()
+    expect(screen.getByText('billing.plan_free_audience')).toBeInTheDocument()
+    expect(screen.getByText('billing.plan_home_audience')).toBeInTheDocument()
+    expect(screen.getByText('billing.plan_pro_audience')).toBeInTheDocument()
+    expect(screen.getByText('billing.plan_library_audience')).toBeInTheDocument()
+    expect(screen.getByText('billing.plan_library_use_case')).toBeInTheDocument()
 
     // Non-negotiable outcome: logged-out users browse without the app
     // pretending they're signed in. Concretely that means we do NOT fire
