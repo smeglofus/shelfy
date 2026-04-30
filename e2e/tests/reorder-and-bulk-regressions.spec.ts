@@ -27,9 +27,12 @@ test('books bulk move modal exposes insert-position helper', async ({ page }) =>
   // createManualBook ends on /books.
   await expect(page).toHaveURL(/\/books$/)
 
-  await page.getByRole('button', { name: /Vybrat|Bulk select/i }).first().click()
-  await page.getByRole('button', { name: /Vybrat vše|Select all/i }).first().click()
-  await page.getByRole('button', { name: /Přesunout|Move/i }).first().click()
+  await page.getByRole('button', { name: /Hromadný výběr|Bulk select/i }).first().click()
+  // Select the specific book by clicking its card (select mode intercepts the click via
+  // toggleSelect — avoids relying on `books` array being populated at the right moment).
+  await page.locator('.sh-card-enter').filter({ hasText: title }).click()
+  // Scope to the toolbar so we don't accidentally match "Move left"/"Move right" buttons.
+  await page.locator('[role="toolbar"][aria-label="Bulk actions"]').getByRole('button', { name: /Přesunout|Move/i }).click()
 
   await expect(page.getByText(/Vložit na pozici|Insert at position/i)).toBeVisible()
   await expect(page.getByText(/max index|Aktuální max index/i)).toBeVisible()

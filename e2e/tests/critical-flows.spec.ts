@@ -13,7 +13,8 @@ test('locations CRUD', async ({ page }) => {
   const updatedShelf = 'Police 2'
 
   await login(page)
-  await navigateProtected(page, '/locations')
+  // /locations is now a client-side redirect → /bookshelf?tab=locations
+  await navigateProtected(page, '/bookshelf?tab=locations')
 
   await page.getByLabel(/Místnost|Room/i).fill(room)
   await page.getByLabel(/Knihovna|Furniture/i).fill(furniture)
