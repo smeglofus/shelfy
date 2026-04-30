@@ -82,3 +82,15 @@ export async function createManualBook(page: Page, title: string, author = 'E2E 
   await page.waitForURL(/\/books$/, { timeout: 20_000 })
   await expect(page.getByText(title).first()).toBeVisible()
 }
+
+export async function navigateProtected(page: Page, path: string): Promise<void> {
+  await page.goto(path)
+  await page.waitForLoadState('domcontentloaded')
+  if (/\/login$/.test(new URL(page.url()).pathname)) {
+    await login(page)
+    await page.goto(path)
+    await page.waitForLoadState('domcontentloaded')
+  }
+  await page.waitForURL(new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), { timeout: 20_000 })
+  await page.waitForLoadState('networkidle')
+}

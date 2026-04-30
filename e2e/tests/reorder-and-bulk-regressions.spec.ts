@@ -1,20 +1,20 @@
 import { expect, test } from '@playwright/test'
-import { createManualBook, login } from './helpers'
+import { createManualBook, login, navigateProtected } from './helpers'
 
 test('books select mode can be entered and exited without runtime crash', async ({ page }) => {
   const title = `E2E Select ${Date.now()}`
   await login(page)
   await createManualBook(page, title)
 
-  await page.goto('/books')
+  await navigateProtected(page, '/books')
   await page.getByRole('button', { name: /Vybrat|Select/i }).first().click()
   await expect(page.getByText(/vybráno|selected/i)).toBeVisible()
-  await page.getByRole('button', { name: /Zrušit výběr|deselect/i }).first().click()
+  await page.getByRole('button', { name: /Zrušit výběr|Cancel selection|Deselect/i }).first().click()
 })
 
 test('books bulk move modal exposes insert-position helper', async ({ page }) => {
   await login(page)
-  await page.goto('/books')
+  await navigateProtected(page, '/books')
 
   await page.getByRole('button', { name: /Vybrat|Select/i }).first().click()
   await page.getByRole('button', { name: /Vybrat vše|Select all/i }).first().click()
@@ -26,10 +26,10 @@ test('books bulk move modal exposes insert-position helper', async ({ page }) =>
 
 test('bookshelf route and reorder toggle render on mobile', async ({ page }) => {
   await login(page)
-  await page.goto('/bookshelf')
-  await expect(page.getByRole('heading', { name: /Digitální Dvojče/i })).toBeVisible()
+  await navigateProtected(page, '/bookshelf')
+  await expect(page.getByRole('heading', { name: /Digitální Dvojče|My bookshelves/i })).toBeVisible()
 
-  const reorderButton = page.getByRole('button', { name: /Reorder|Done reordering/i }).first()
+  const reorderButton = page.getByRole('button', { name: /Přeskládat knihy|Reorder books|Uložit pořadí|Save order/i }).first()
   await reorderButton.click()
   await expect(page.getByText(/Drag books to reorder|long-press/i)).toBeVisible()
 })
