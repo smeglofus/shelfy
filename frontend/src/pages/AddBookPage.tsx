@@ -141,18 +141,19 @@ export function AddBookPage() {
         <div className="md-grid-2">
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.title_label')} <span style={{ color: 'var(--sh-red)' }}>*</span></label>
-            <input className="sh-input" placeholder="např. Duna" value={title} onChange={e => setTitle(e.target.value)} required />
+            <input className="sh-input" placeholder={t('add_book.title_placeholder')} value={title} onChange={e => setTitle(e.target.value)} required />
           </div>
 
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.author_label')}</label>
-            <input className="sh-input" placeholder="např. Frank Herbert" value={author} onChange={e => setAuthor(e.target.value)} />
+            <input className="sh-input" placeholder={t('add_book.author_placeholder')} value={author} onChange={e => setAuthor(e.target.value)} />
           </div>
         </div>
 
         {/* 3-level location */}
         <div style={{ background: 'var(--sh-surface)', padding: 16, borderRadius: 'var(--sh-radius-md)', border: '1px solid var(--sh-border)' }}>
           <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 12 }}>{t('add_book.location_label')} <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>({t('add_book.location_optional')})</span></label>
+          <p style={{ margin: '-4px 0 12px', fontSize: 12, color: 'var(--sh-text-muted)' }}>{t('add_book.location_optional_hint')}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('add_book.room_label')}</label>
@@ -162,7 +163,7 @@ export function AddBookPage() {
                 value={selRoom}
                 onChange={e => { setSelRoom(e.target.value); setSelFurniture(''); setSelShelf('') }}
               >
-                <option value="">{t('add_book.no_location_option')}</option>
+                <option value="">{t('add_book.no_room_option')}</option>
                 {rooms.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
@@ -175,7 +176,7 @@ export function AddBookPage() {
                 disabled={!selRoom}
                 onChange={e => { setSelFurniture(e.target.value); setSelShelf('') }}
               >
-                <option value="">{t('add_book.no_location_option')}</option>
+                <option value="">{t('add_book.no_furniture_option')}</option>
                 {furnitures.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
@@ -188,7 +189,7 @@ export function AddBookPage() {
                 disabled={!selFurniture}
                 onChange={e => setSelShelf(e.target.value)}
               >
-                <option value="">{t('add_book.no_location_option')}</option>
+                <option value="">{t('add_book.no_shelf_option')}</option>
                 {shelves.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -226,7 +227,7 @@ export function AddBookPage() {
 
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.isbn_label')} <span style={{ color: 'var(--sh-text-muted)', fontWeight: 400 }}>{t('add_book.isbn_optional')}</span></label>
-            <input className="sh-input" placeholder="978-80-…" value={isbn} onChange={e => setIsbn(e.target.value)} />
+            <input className="sh-input" placeholder={t('add_book.isbn_placeholder')} value={isbn} onChange={e => setIsbn(e.target.value)} />
           </div>
         </div>
 

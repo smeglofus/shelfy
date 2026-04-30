@@ -59,6 +59,17 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 SETTINGS = get_settings()
 
 
+def _email_locale_from_request(request: Request) -> str:
+    """Best-effort email locale from the SPA language cookie or browser headers."""
+    cookie_locale = request.cookies.get("shelfy_language")
+    if cookie_locale:
+        return email_svc.normalize_locale(cookie_locale)
+
+    accept_language = request.headers.get("accept-language", "")
+    first_language = accept_language.split(",", maxsplit=1)[0].strip()
+    return email_svc.normalize_locale(first_language)
+
+
 # ── Standard auth ──────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=UserResponse, status_code=201)
@@ -72,7 +83,7 @@ async def register(
     user = await register_user(session, str(payload.email), payload.password)
     # Fire-and-forget welcome email — never blocks the response
     name = user.email.split("@")[0]
-    background_tasks.add_task(email_svc.send_welcome, user.email, name)
+    background_tasks.add_task(email_svc.send_welcome, user.email, name, locale=_email_locale_from_request(request))
     return UserResponse.model_validate(user)
 
 
@@ -185,7 +196,7 @@ async def request_password_reset(
         requested_user_agent=request.headers.get("user-agent"),
     )
     reset_url = f"{settings.app_url}/reset-password?token={plaintext_token}"
-    background_tasks.add_task(email_svc.send_password_reset, user.email, reset_url)
+    background_tasks.add_task(email_svc.send_password_reset, user.email, reset_url, locale=_email_locale_from_request(request))
     await session.commit()
     logger.info("password_reset_request", email_hash=email_hash, outcome="token_created")
     return {"status": "ok"}

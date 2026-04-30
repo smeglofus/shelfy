@@ -383,8 +383,15 @@
     "processing_label": "Zpracovávám obrázek…",
     "location_optional": "volitelné",
     "no_location_option": "Bez umístění",
-    "location_help": "Umístění je volitelné. Můžeš ho přidat i později.",
-    "add_location_cta": "Přidat umístění"
+    "location_help": "Chybí ti místnost nebo police? Vytvoř nové umístění a vrať se zpět.",
+    "add_location_cta": "Přidat umístění",
+    "title_placeholder": "např. Duna",
+    "author_placeholder": "např. Frank Herbert",
+    "isbn_placeholder": "978-80-…",
+    "location_optional_hint": "Nemusíš vybírat umístění hned. Kniha se uloží i bez něj a můžeš ji zařadit později v detailu knihy.",
+    "no_room_option": "Bez místnosti / zařadit později",
+    "no_furniture_option": "Bez knihovny / zařadit později",
+    "no_shelf_option": "Bez police / zařadit později"
   },
   "enrich": {
     "enriching": "Obohacuji…",
