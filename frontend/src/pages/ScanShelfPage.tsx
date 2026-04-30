@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -18,6 +18,7 @@ interface ReviewBookItem extends ConfirmBookItem {
   localId: string
   observedText: string | null
   confidence: ScannedBookItem['confidence'] | null
+  isManual?: boolean
 }
 
 interface ScanSegment {
@@ -305,6 +306,50 @@ export function ScanShelfPage() {
       .map((b, i) => ({ ...b, position: i })))
   }
 
+  function insertBook(afterLocalId: string | null) {
+    const newBook: ReviewBookItem = {
+      localId: `manual:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+      position: 0,
+      title: '',
+      author: null,
+      isbn: null,
+      observedText: null,
+      confidence: null,
+      isManual: true,
+    }
+    setEditableBooks(prev => {
+      let next: ReviewBookItem[]
+      if (afterLocalId === null) {
+        next = [newBook, ...prev]
+      } else {
+        const idx = prev.findIndex(b => b.localId === afterLocalId)
+        next = idx === -1
+          ? [...prev, newBook]
+          : [...prev.slice(0, idx + 1), newBook, ...prev.slice(idx + 1)]
+      }
+      return next.map((b, i) => ({ ...b, position: i }))
+    })
+  }
+
+  function moveBookUp(localId: string) {
+    setEditableBooks(prev => {
+      const idx = prev.findIndex(b => b.localId === localId)
+      if (idx <= 0) return prev
+      const next = [...prev]
+      ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+      return next.map((b, i) => ({ ...b, position: i }))
+    })
+  }
+
+  function moveBookDown(localId: string) {
+    setEditableBooks(prev => {
+      const idx = prev.findIndex(b => b.localId === localId)
+      if (idx === -1 || idx >= prev.length - 1) return prev
+      const next = [...prev]
+      ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+      return next.map((b, i) => ({ ...b, position: i }))
+    })
+  }
 
   function clearDraft() {
     localStorage.removeItem(SCAN_DRAFT_KEY)
@@ -337,7 +382,7 @@ export function ScanShelfPage() {
     }
     const validBooks = editableBooks
       .filter(b => b.title.trim())
-      .map(({ position, title, author, isbn }) => ({ position, title, author, isbn }))
+      .map(({ title, author, isbn }, i) => ({ position: i, title, author, isbn }))
     if (validBooks.length === 0) {
       showError(t('scan.no_books'))
       return
@@ -765,86 +810,160 @@ export function ScanShelfPage() {
             {t('scan.step_review_desc', { count: editableBooks.length })}
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 24 }}>
+            {/* Insert at top */}
+            <button
+              type="button"
+              aria-label={t('scan.add_book_here')}
+              onClick={() => insertBook(null)}
+              style={{
+                width: '100%', padding: '5px 8px',
+                background: 'none', border: '1px dashed var(--sh-border)',
+                borderRadius: 'var(--sh-radius-sm)', cursor: 'pointer',
+                color: 'var(--sh-teal)', fontSize: 12, fontWeight: 500,
+                marginBottom: 4,
+              }}
+            >
+              + {t('scan.add_book_here')}
+            </button>
+
+            {editableBooks.length === 0 && (
+              <div className="sh-empty-state" style={{ padding: 40 }}>
+                <p>{t('scan.no_books_found')}</p>
+              </div>
+            )}
+
             {editableBooks.map((book) => {
-              const isLowConfidence = book.confidence === 'needs_review' || book.confidence === 'low' || !book.title
+              const isLowConfidence = !book.isManual && (book.confidence === 'needs_review' || !book.title)
 
               return (
-                <div
-                  key={book.localId}
-                  className={`sh-review-card${isLowConfidence ? ' sh-review-card--warn' : ''}`}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
-                        color: isLowConfidence ? 'var(--sh-amber-text)' : 'var(--sh-teal)',
-                        background: isLowConfidence ? 'var(--sh-amber-bg)' : 'var(--sh-teal-bg)',
-                        padding: '2px 8px', borderRadius: 'var(--sh-radius-sm)',
-                      }}>
-                        #{book.position + 1}
-                      </span>
-                      {isLowConfidence && (
-                        <span style={{ fontSize: 11, color: 'var(--sh-amber-text)', fontWeight: 500 }}>
-                          {t('scan.needs_review')}
+                <Fragment key={book.localId}>
+                  <div
+                    className={`sh-review-card${isLowConfidence ? ' sh-review-card--warn' : ''}`}
+                    style={{ marginBottom: 4 }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+                          color: isLowConfidence ? 'var(--sh-amber-text)' : 'var(--sh-teal)',
+                          background: isLowConfidence ? 'var(--sh-amber-bg)' : 'var(--sh-teal-bg)',
+                          padding: '2px 8px', borderRadius: 'var(--sh-radius-sm)',
+                        }}>
+                          #{book.position + 1}
                         </span>
-                      )}
-                      {book.observedText && book.observedText !== book.title && (
-                        <span style={{ fontSize: 10, color: 'var(--sh-text-muted)', fontStyle: 'italic' }}>
-                          {t('scan.observed')}: &ldquo;{book.observedText.slice(0, 40)}{book.observedText.length > 40 ? '…' : ''}&rdquo;
-                        </span>
-                      )}
+                        {book.isManual && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+                            color: 'var(--sh-teal)', background: 'var(--sh-teal-bg)',
+                            padding: '2px 8px', borderRadius: 'var(--sh-radius-sm)',
+                          }}>
+                            {t('scan.added_manually')}
+                          </span>
+                        )}
+                        {!book.isManual && isLowConfidence && (
+                          <span style={{ fontSize: 11, color: 'var(--sh-amber-text)', fontWeight: 500 }}>
+                            {t('scan.needs_review')}
+                          </span>
+                        )}
+                        {!book.isManual && book.observedText && book.observedText !== book.title && (
+                          <span style={{ fontSize: 10, color: 'var(--sh-text-muted)', fontStyle: 'italic' }}>
+                            {t('scan.observed')}: &ldquo;{book.observedText.slice(0, 40)}{book.observedText.length > 40 ? '…' : ''}&rdquo;
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 2, alignItems: 'center', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          aria-label={t('scan.move_up')}
+                          title={t('scan.move_up')}
+                          onClick={() => moveBookUp(book.localId)}
+                          disabled={book.position === 0}
+                          className="sh-touch-target"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--sh-text-muted)', fontSize: 14,
+                            opacity: book.position === 0 ? 0.3 : 1,
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t('scan.move_down')}
+                          title={t('scan.move_down')}
+                          onClick={() => moveBookDown(book.localId)}
+                          disabled={book.position === editableBooks.length - 1}
+                          className="sh-touch-target"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--sh-text-muted)', fontSize: 14,
+                            opacity: book.position === editableBooks.length - 1 ? 0.3 : 1,
+                          }}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t('scan.remove_item')}
+                          title={t('scan.remove_item')}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            removeBook(book.localId)
+                          }}
+                          className="sh-touch-target"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-red)', fontSize: 16 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={t('scan.remove_item')}
-                      title={t('scan.remove_item')}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        removeBook(book.localId)
-                      }}
-                      className="sh-touch-target"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sh-red)', fontSize: 16 }}
-                    >
-                      ✕
-                    </button>
+                    <div className="sh-review-fields">
+                      <div>
+                        <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_title')}</label>
+                        <input
+                          className="sh-input"
+                          value={book.title}
+                          onChange={e => updateBook(book.localId, 'title', e.target.value)}
+                          placeholder={t('scan.book_title_placeholder')}
+                          style={{
+                            fontSize: 14,
+                            borderColor: isLowConfidence ? 'var(--sh-amber-text)' : undefined,
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_author')}</label>
+                        <input
+                          className="sh-input"
+                          value={book.author ?? ''}
+                          onChange={e => updateBook(book.localId, 'author', e.target.value || null)}
+                          placeholder={t('scan.book_author_placeholder')}
+                          style={{ fontSize: 14 }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="sh-review-fields">
-                    <div>
-                      <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_title')}</label>
-                      <input
-                        className="sh-input"
-                        value={book.title}
-                        onChange={e => updateBook(book.localId, 'title', e.target.value)}
-                        placeholder={t('scan.book_title_placeholder')}
-                        style={{
-                          fontSize: 14,
-                          borderColor: isLowConfidence ? 'var(--sh-amber-text)' : undefined,
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_author')}</label>
-                      <input
-                        className="sh-input"
-                        value={book.author ?? ''}
-                        onChange={e => updateBook(book.localId, 'author', e.target.value || null)}
-                        placeholder={t('scan.book_author_placeholder')}
-                        style={{ fontSize: 14 }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                  {/* Insert after this card */}
+                  <button
+                    type="button"
+                    aria-label={t('scan.add_book_here')}
+                    onClick={() => insertBook(book.localId)}
+                    style={{
+                      width: '100%', padding: '5px 8px',
+                      background: 'none', border: '1px dashed var(--sh-border)',
+                      borderRadius: 'var(--sh-radius-sm)', cursor: 'pointer',
+                      color: 'var(--sh-teal)', fontSize: 12, fontWeight: 500,
+                      marginBottom: 4,
+                    }}
+                  >
+                    + {t('scan.add_book_here')}
+                  </button>
+                </Fragment>
               )
             })}
           </div>
-
-          {editableBooks.length === 0 && (
-            <div className="sh-empty-state" style={{ padding: 40 }}>
-              <p>{t('scan.no_books_found')}</p>
-            </div>
-          )}
 
           <div style={{ display: 'flex', gap: 12 }}>
             <button

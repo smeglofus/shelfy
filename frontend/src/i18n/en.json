@@ -408,6 +408,10 @@
     "tip_segments": "Photograph in sections from left to right — use 'Add another photo' for long shelves.",
     "tips_dismiss": "Dismiss tips",
     "tips_show": "? Tips",
+    "move_up": "Move up",
+    "move_down": "Move down",
+    "add_book_here": "Add book here",
+    "added_manually": "Manual",
     "remove_segment_title": "Remove this photo?",
     "remove_segment_body": "This will discard all books detected in this photo. This cannot be undone.",
     "remove_segment_confirm": "Remove photo"
