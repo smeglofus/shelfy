@@ -36,6 +36,40 @@ async function clickNavScan(page: Page): Promise<void> {
   await page.waitForURL(/\/scan$/)
 }
 
+
+async function getCsrfHeader(page: Page): Promise<Record<string, string>> {
+  const csrfCookie = (await page.context().cookies()).find(cookie => cookie.name === 'csrf_token')
+  return csrfCookie ? { 'X-CSRF-Token': csrfCookie.value } : {}
+}
+
+async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
+  const headers = await getCsrfHeader(page)
+  const suffix = Date.now()
+
+  const locationResponse = await page.request.post('/api/v1/locations', {
+    headers,
+    data: {
+      room: `E2E Room ${suffix}`,
+      furniture: 'E2E Bookshelf',
+      shelf: 'Shelf 1',
+      display_order: 0,
+    },
+  })
+  expect(locationResponse.ok()).toBeTruthy()
+  const location = await locationResponse.json() as { id: string }
+
+  const bookResponse = await page.request.post('/api/v1/books', {
+    headers,
+    data: {
+      title,
+      author,
+      location_id: location.id,
+      shelf_position: 0,
+    },
+  })
+  expect(bookResponse.ok()).toBeTruthy()
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test('books route renders (no blank screen)', async ({ page }) => {
@@ -77,14 +111,16 @@ test('books select mode toggle renders and exits cleanly', async ({ page }) => {
 
 test('bookshelf reorder mode toggle renders and exits cleanly', async ({ page }) => {
   await login(page)
-  await createManualBook(page, `E2E Smoke Reorder ${Date.now()}`)
-  // createManualBook ends on /books — use SPA nav to reach bookshelf.
+  // Bookshelf only renders reorder controls when at least one visible book is
+  // assigned to a shelf/location. A plain manual book is unassigned and appears
+  // only in /books, so create this fixture directly with a location.
+  await createLocatedBook(page, `E2E Smoke Reorder ${Date.now()}`)
   await clickNavBookshelf(page)
 
-  const reorderBtn = page.getByRole('button', { name: /Přeskládat knihy|Reorder books|Reorder/i }).first()
+  const reorderBtn = page.getByRole('button', { name: /Přeskládat knihy|Reorder books/i }).first()
   await reorderBtn.click()
-  await expect(page.getByText(/Přetáhni knihy|Drag books to reorder|long-press/i)).toBeVisible()
-  await page.getByRole('button', { name: /Uložit pořadí|Save order|Done reordering/i }).first().click()
+  await expect(page.getByText(/Přetáhni knihy pro změnu pořadí|Drag books to reorder|long-press/i)).toBeVisible()
+  await page.getByRole('button', { name: /Uložit pořadí|Save order/i }).first().click()
 })
 
 test('scan page renders main sections', async ({ page }) => {
