@@ -52,9 +52,10 @@ export async function createManualBook(page: Page, title: string, author = 'E2E 
   await page.getByRole('button', { name: /^Add$|^Přidat$/i }).click()
   await page.waitForURL(/\/books\/new$/, { timeout: 10_000 })
 
-  await page.getByPlaceholder('např. Duna').fill(title)
-  await page.getByPlaceholder('např. Frank Herbert').fill(author)
-  await page.getByRole('button', { name: 'Přidat do knihovny' }).click()
+  // Placeholders and submit button are locale-sensitive — cover both cs and en.
+  await page.getByPlaceholder(/např\. Duna|e\.g\. Dune/i).fill(title)
+  await page.getByPlaceholder(/Frank Herbert/).fill(author)
+  await page.getByRole('button', { name: /Přidat do knihovny|Add to library/i }).click()
 
   await page.waitForURL(/\/books$/, { timeout: 20_000 })
   await expect(page.getByText(title).first()).toBeVisible()
