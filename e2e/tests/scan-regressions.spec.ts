@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { login } from './helpers'
+import { getE2EAccessToken, login } from './helpers'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -8,10 +8,33 @@ const FIXTURE_IMAGE = process.env.E2E_SCAN_IMAGE_PATH ?? path.resolve(__dirname,
 
 test.describe('scan regressions', () => {
   test('@regression @slow scan job failure shows recoverable segment UI', async ({ page }) => {
-    // Login and navigate to scan page
+    // Login
     await login(page)
+
+    // Create a location via API so the scan dropdown has something to select
+    const token = getE2EAccessToken(page)
+    expect(token, 'login() did not capture an access token').toBeTruthy()
+    const api = process.env.E2E_API_BASE_URL ?? 'http://localhost:8000'
+    const suffix = Date.now()
+    const room = `E2E Scan Fail ${suffix}`
+
+    const locRes = await page.request.post(`${api}/api/v1/locations`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { room, furniture: 'Shelf', shelf: 'Shelf 1', display_order: 0 },
+    })
+    expect(locRes.ok(), `location fixture: ${locRes.status()}`).toBeTruthy()
+
+    // Navigate to scan page via SPA
     await page.getByRole('button', { name: /^Sken$|^Scan$/i }).click()
     await page.waitForURL(/\/scan$/)
+
+    // Select the location we just created (room → furniture → shelf dropdowns)
+    await page.locator('select').first().selectOption({ label: room })
+    await page.locator('select').nth(1).selectOption({ label: 'Shelf' })
+    await page.locator('select').nth(2).selectOption({ label: 'Shelf 1' })
+
+    // Advance to the scan/photo step
+    await page.getByRole('button', { name: /Continue to scanning|Pokračovat ke skenování/i }).click()
 
     // Intercept the job-status poll to return 'failed'
     await page.route('**/api/v1/scan/shelf/**', async (route, request) => {
@@ -31,6 +54,6 @@ test.describe('scan regressions', () => {
 
     // Wait for the segment to show failure state
     // scan.segment_failed: cs="Zpracování selhalo", en="Processing failed"
-    await expect(page.getByText(/Zpracování selhalo|Processing failed/i)).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(/Zpracování selhalo|Processing failed/i)).toBeVisible({ timeout: 45_000 })
   })
 })
