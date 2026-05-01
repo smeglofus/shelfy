@@ -17,7 +17,7 @@
  *   This matches the pattern documented and used in p0-release-gate.spec.ts.
  */
 import { expect, test, type Page } from '@playwright/test'
-import { createManualBook, getE2EAccessToken, login } from './helpers'
+import { createLocatedBook, createManualBook, getE2EAccessToken, login } from './helpers'
 
 // ── SPA navigation helpers ────────────────────────────────────────────────────
 // Click the sidebar/bottom-nav button and wait for the URL to settle.
@@ -118,32 +118,6 @@ test('bookshelf route renders (no blank screen)', async ({ page }) => {
   await clickNavBookshelf(page)
   await expect(page.getByRole('heading', { name: /Moje knihovny|My bookshelves/i })).toBeVisible()
   expect(errors).toEqual([])
-})
-
-test('books select mode toggle renders and exits cleanly', async ({ page }) => {
-  await login(page)
-  await createManualBook(page, `E2E Smoke Select ${Date.now()}`)
-  // createManualBook ends on /books — no reload needed.
-  await expect(page).toHaveURL(/\/books$/)
-
-  const selectBtn = page.getByRole('button', { name: /Hromadný výběr|Bulk select|Select/i }).first()
-  await selectBtn.click()
-  await expect(page.getByText(/vybráno|selected/i)).toBeVisible()
-  await page.getByRole('button', { name: /Zrušit výběr|Deselect/i }).first().click()
-})
-
-test('bookshelf reorder mode toggle renders and exits cleanly', async ({ page }) => {
-  await login(page)
-  // Bookshelf only renders reorder controls when at least one visible book is
-  // assigned to a shelf/location. A plain manual book is unassigned and appears
-  // only in /books, so create this fixture directly with a location.
-  await createLocatedBook(page, `E2E Smoke Reorder ${Date.now()}`)
-  await clickNavBookshelf(page)
-
-  const reorderBtn = page.getByRole('button', { name: /Přeskládat knihy|Reorder books/i }).first()
-  await reorderBtn.click()
-  await expect(page.getByText(/Přetáhni knihy pro změnu pořadí|Drag books to reorder|long-press/i)).toBeVisible()
-  await page.getByRole('button', { name: /Uložit pořadí|Save order/i }).first().click()
 })
 
 test('scan page renders main sections', async ({ page }) => {

@@ -288,3 +288,43 @@ test(`${P0} library members owner/non-owner role UX`, async ({ page, browser }) 
   await expect(page2.getByLabel('add-member-form')).toHaveCount(0)
   await ctx2.close()
 })
+
+// ── 9. Member forbidden owner-only API actions ────────────────────────────────
+
+test(`${P0} member forbidden owner-only actions return 403`, async ({ page }) => {
+  test.skip(
+    !editorEmail || !editorPassword,
+    'Set E2E_EDITOR_EMAIL and E2E_EDITOR_PASSWORD to enable role-flow test',
+  )
+
+  const api = process.env.E2E_API_BASE_URL ?? 'http://localhost:8000'
+
+  // 1. Login as the owner (admin) to get the owner token and a library ID.
+  await login(page)
+  // Get the owner's access token captured by login()
+  const { getE2EAccessToken } = await import('./helpers')
+  const ownerToken = getE2EAccessToken(page)
+  expect(ownerToken).toBeTruthy()
+
+  // Retrieve the first library's ID
+  const libsRes = await page.request.get(`${api}/api/v1/libraries`, {
+    headers: { Authorization: `Bearer ${ownerToken}` },
+  })
+  expect(libsRes.ok()).toBeTruthy()
+  const libsBody = await libsRes.json() as { items: Array<{ id: string }> }
+  const libraryId = libsBody.items[0].id
+
+  // 2. Login as the editor/member and obtain their token via a direct API call.
+  const editorLoginRes = await page.request.post(`${api}/api/v1/auth/login`, {
+    data: { email: editorEmail!, password: editorPassword! },
+  })
+  expect(editorLoginRes.ok()).toBeTruthy()
+  const editorAuth = await editorLoginRes.json() as { access_token: string }
+  const editorToken = editorAuth.access_token
+
+  // 3. Try an owner-only action (DELETE /api/v1/libraries/{id}) as the editor — expect 403.
+  const delRes = await page.request.delete(`${api}/api/v1/libraries/${libraryId}`, {
+    headers: { Authorization: `Bearer ${editorToken}` },
+  })
+  expect(delRes.status()).toBe(403)
+})
