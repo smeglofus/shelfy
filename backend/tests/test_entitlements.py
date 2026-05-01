@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from typing import cast, Any
