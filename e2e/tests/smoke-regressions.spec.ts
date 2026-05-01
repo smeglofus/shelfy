@@ -17,7 +17,7 @@
  *   This matches the pattern documented and used in p0-release-gate.spec.ts.
  */
 import { expect, test, type Page } from '@playwright/test'
-import { createLocatedBook, createManualBook, getE2EAccessToken, login } from './helpers'
+import { login } from './helpers'
 
 // ── SPA navigation helpers ────────────────────────────────────────────────────
 // Click the sidebar/bottom-nav button and wait for the URL to settle.
@@ -34,49 +34,6 @@ async function clickNavScan(page: Page): Promise<void> {
   // nav.scan i18n: en='Scan', cs='Sken'
   await page.getByRole('button', { name: /^Sken$|^Scan$/i }).click()
   await page.waitForURL(/\/scan$/)
-}
-
-
-function getApiAuthHeaders(page: Page): Record<string, string> {
-  // APIRequestContext does not reliably mirror the browser's CSRF double-submit
-  // state in CI. Reuse the access token captured by login() and use the
-  // backend's Bearer-token path for test fixture setup.
-  const accessToken = getE2EAccessToken(page)
-  expect(accessToken, 'login() did not capture an access token for fixture setup').toBeTruthy()
-  return { Authorization: `Bearer ${accessToken}` }
-}
-
-async function createLocatedBook(page: Page, title: string, author = 'E2E Autor'): Promise<void> {
-  const headers = getApiAuthHeaders(page)
-  const suffix = Date.now()
-  const api = process.env.E2E_API_BASE_URL ?? 'http://localhost:8000'
-
-  const locationResponse = await page.request.post(`${api}/api/v1/locations`, {
-    headers,
-    data: {
-      room: `E2E Room ${suffix}`,
-      furniture: 'E2E Bookshelf',
-      shelf: 'Shelf 1',
-      display_order: 0,
-    },
-  })
-  if (!locationResponse.ok()) {
-    throw new Error(`location fixture failed: ${locationResponse.status()} ${await locationResponse.text()}`)
-  }
-  const location = await locationResponse.json() as { id: string }
-
-  const bookResponse = await page.request.post(`${api}/api/v1/books`, {
-    headers,
-    data: {
-      title,
-      author,
-      location_id: location.id,
-      shelf_position: 0,
-    },
-  })
-  if (!bookResponse.ok()) {
-    throw new Error(`book fixture failed: ${bookResponse.status()} ${await bookResponse.text()}`)
-  }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
