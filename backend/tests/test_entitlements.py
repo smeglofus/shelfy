@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from datetime import date
+from datetime import timedelta
 
 import pytest
 from typing import cast, Any
@@ -194,16 +194,16 @@ class TestPlanDowngrade:
 class TestMonthRollover:
     async def test_new_period_starts_at_zero(self, session: AsyncSession) -> None:
         user = await _make_user(session)
-        last_month = date(2026, 3, 1)
-        this_month = date(2026, 4, 1)
-        # Exhaust scans in last month
+        this_month = entitlements.current_period_start()
+        last_month = (this_month - timedelta(days=1)).replace(day=1)
+        # Exhaust scans this month
         for _ in range(5):
             await entitlements.consume(session, user.id, UsageMetric.scans, )
         # Directly check a different period — should be 0
         usage = await entitlements.get_current_usage(
             session, user.id, UsageMetric.scans, period_start=last_month
         )
-        assert usage == 0  # nothing was counted for last_month
+        assert usage == 0  # nothing counted for a different period
         current = await entitlements.get_current_usage(
             session, user.id, UsageMetric.scans, period_start=this_month
         )
