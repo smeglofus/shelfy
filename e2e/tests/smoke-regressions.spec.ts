@@ -126,3 +126,8 @@ test('scan page renders main sections', async ({ page }) => {
   await clickNavScan(page)
   await expect(page.getByRole('heading', { name: /Skenovat polici|Scan shelf/i })).toBeVisible()
 })
+test('auth callback with missing parameters shows safe fallback', async ({ page }) => {
+  await page.goto('/auth/callback')
+  await expect(page.getByText(/Missing OAuth parameters/i)).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('button', { name: /Back to sign in/i })).toBeVisible()
+})
