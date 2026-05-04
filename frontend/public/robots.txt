@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /changelog
+Allow: /privacy
+Allow: /terms
+
+# Protected app routes — no crawl value, require login
+Disallow: /books
+Disallow: /scan
+Disallow: /bookshelf
+Disallow: /locations
+Disallow: /settings
+Disallow: /auth/
+
+# Auth pages — crawlable but no indexing value; keep login discoverable
+# (leave /login and /forgot-password unconstrained)
+
+Sitemap: https://shelfy.cz/sitemap.xml
