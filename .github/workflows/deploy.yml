@@ -9,10 +9,13 @@ on:
 
 jobs:
   deploy:
-    if: ${{ github.event_name == "workflow_dispatch" || github.event.workflow_run.conclusion == "success" }}
+    # Only proceed if CI succeeded (workflow_run) or manual trigger (workflow_dispatch)
+    if: github.event_name == "workflow_dispatch" || github.event.workflow_run.conclusion == "success"
     runs-on: ubuntu-latest
+    # Full Docker image rebuild + health polling fits within 15 min
+    timeout-minutes: 15
     steps:
-      - name: Deploy to production
+      - name: SSH deploy
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -25,6 +28,7 @@ jobs:
             git pull origin main
             cd infra
 
+            # Start dependencies before migrations (DB must be up)
             docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build postgres redis minio
 
             docker compose --env-file .env.prod.local -f docker-compose.prod.yml run --rm \
@@ -32,6 +36,7 @@ jobs:
 
             docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build backend worker beat frontend
 
+            # Poll health for up to 90 s (30 × 3 s)
             for i in $(seq 1 30); do
               if curl -fsS http://127.0.0.1:8000/health && curl -fsS http://127.0.0.1:8000/health/ready; then
                 echo "Deploy healthy"
@@ -39,11 +44,19 @@ jobs:
               fi
               sleep 3
             done
-            echo "Health check failed" >&2
+            echo "Health check failed after 90 s" >&2
             exit 1
 
+      # Fire on success or failure; silently no-op when secrets are not set
+      - name: Notify Telegram
+        if: always() && vars.TELEGRAM_BOT_TOKEN && vars.TELEGRAM_CHAT_ID
+        run: |
+          STATUS="${{ job.status }}"
+          curl -fsS -X POST "https://api.telegram.org/bot${{ vars.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ vars.TELEGRAM_CHAT_ID }}" \
+            -d text="Shelfy deploy: ${STATUS}%0A%0ACommit: ${{ github.event.workflow_run.head_commit.message || github.event.head_commit.message }}%0AWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
 # Rollback (manual):
-# If this workflow fails after docker compose up, revert the bad commit on the
-# server and push it:
+# If this workflow fails after docker compose up, revert the bad commit and
+# re-run via Actions → Deploy → Run workflow (workflow_dispatch):
 #   ssh homelab2 "cd ~/shelfy && git revert HEAD --no-edit && git push origin main"
-# Then re-run this workflow via Actions → Deploy → Run workflow (workflow_dispatch).
