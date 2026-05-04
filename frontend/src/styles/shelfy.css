@@ -1574,6 +1574,34 @@ html.dark .sh-onboarding-checkmark {
   z-index: 10;
 }
 
+.lp-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lp-header-nav-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sh-text-muted);
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.lp-header-nav-link:hover {
+  color: var(--sh-text);
+  background: var(--sh-hover);
+}
+
+@media (max-width: 480px) {
+  .lp-header-nav-link {
+    display: none;
+  }
+}
+
 .lp-section {
   max-width: 720px;
   margin: 0 auto;
