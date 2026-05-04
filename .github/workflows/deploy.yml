@@ -14,7 +14,7 @@ concurrency:
 jobs:
   deploy:
     # Only proceed if CI succeeded (workflow_run) or manual trigger (workflow_dispatch)
-    if: github.event_name == "workflow_dispatch" || github.event.workflow_run.conclusion == "success"
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, shelfy-prod]
     timeout-minutes: 15
     steps:
