@@ -2,18 +2,23 @@
 
 Tasks registered with Celery beat via celery_beat.py:
 
-  backup.pg_dump          02:00 UTC daily  — pg_dump → gzip → MinIO
+  backup.pg_dump          02:00 UTC daily  — pg_dump → gzip → R2/MinIO
   backup.verify_restore   03:00 UTC weekly — download latest backup, restore to
                                              temp DB, verify row counts, drop DB
   cleanup.stripe_events   04:00 UTC weekly — prune stripe_events rows > 90 days
 
 Environment variables (all optional, sensible defaults for docker-compose):
   DATABASE_URL           — postgresql+psycopg2://shelfy:shelfy@postgres/shelfy
-  MINIO_ENDPOINT         — http://minio:9000
-  MINIO_ACCESS_KEY       — minioadmin
-  MINIO_SECRET_KEY       — minioadmin
-  MINIO_BACKUP_BUCKET    — shelfy-backups
-  MINIO_REGION           — us-east-1
+  R2_ENDPOINT            — https://<account>.r2.cloudflarestorage.com  (prod)
+  R2_ACCESS_KEY          — Cloudflare R2 access key ID
+  R2_SECRET_KEY          — Cloudflare R2 secret access key
+  R2_BACKUP_BUCKET       — shelfy
+  R2_REGION              — auto
+  MINIO_ENDPOINT         — http://minio:9000  (dev fallback when R2_* unset)
+  MINIO_ACCESS_KEY       — minioadmin         (dev fallback)
+  MINIO_SECRET_KEY       — minioadmin         (dev fallback)
+  MINIO_BACKUP_BUCKET    — shelfy-backups     (dev fallback)
+  MINIO_REGION           — us-east-1          (dev fallback)
   BACKUP_KEEP_DAYS       — 30
   STRIPE_EVENTS_KEEP_DAYS— 90
 """
@@ -33,7 +38,7 @@ from celery.schedules import crontab
 
 from celery_app import celery_app
 
-_BACKUP_BUCKET = os.environ.get("MINIO_BACKUP_BUCKET", "shelfy-backups")
+_BACKUP_BUCKET = os.environ.get("R2_BACKUP_BUCKET") or os.environ.get("MINIO_BACKUP_BUCKET", "shelfy-backups")
 _KEEP_DAYS = int(os.environ.get("BACKUP_KEEP_DAYS", "30"))
 _STRIPE_EVENTS_KEEP_DAYS = int(os.environ.get("STRIPE_EVENTS_KEEP_DAYS", "90"))
 
@@ -43,10 +48,10 @@ _STRIPE_EVENTS_KEEP_DAYS = int(os.environ.get("STRIPE_EVENTS_KEEP_DAYS", "90"))
 def _s3_client():
     return boto3.client(
         "s3",
-        endpoint_url=os.environ.get("MINIO_ENDPOINT", "http://minio:9000"),
-        aws_access_key_id=os.environ.get("MINIO_ACCESS_KEY", "minioadmin"),
-        aws_secret_access_key=os.environ.get("MINIO_SECRET_KEY", "minioadmin"),
-        region_name=os.environ.get("MINIO_REGION", "us-east-1"),
+        endpoint_url=os.environ.get("R2_ENDPOINT") or os.environ.get("MINIO_ENDPOINT", "http://minio:9000"),
+        aws_access_key_id=os.environ.get("R2_ACCESS_KEY") or os.environ.get("MINIO_ACCESS_KEY", "minioadmin"),
+        aws_secret_access_key=os.environ.get("R2_SECRET_KEY") or os.environ.get("MINIO_SECRET_KEY", "minioadmin"),
+        region_name=os.environ.get("R2_REGION") or os.environ.get("MINIO_REGION", "us-east-1"),
     )
 
 
