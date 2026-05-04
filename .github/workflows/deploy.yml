@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == "workflow_dispatch" || github.event.workflow_run.conclusion == "success" }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd ~/shelfy
+            git pull origin main
+            cd infra
+
+            docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build postgres redis minio
+
+            docker compose --env-file .env.prod.local -f docker-compose.prod.yml run --rm \
+              backend bash -lc "cd /app && alembic upgrade head"
+
+            docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build backend worker beat frontend
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:8000/health && curl -fsS http://127.0.0.1:8000/health/ready; then
+                echo "Deploy healthy"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "Health check failed" >&2
+            exit 1
+
+# Rollback (manual):
+# If this workflow fails after docker compose up, revert the bad commit on the
+# server and push it:
+#   ssh homelab2 "cd ~/shelfy && git revert HEAD --no-edit && git push origin main"
+# Then re-run this workflow via Actions → Deploy → Run workflow (workflow_dispatch).
