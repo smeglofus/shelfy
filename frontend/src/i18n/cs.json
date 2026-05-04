@@ -557,6 +557,8 @@
   "landing": {
     "hero_title": "Celá tvoje knihovna, katalogizovaná během minut.",
     "hero_subtitle": "Pro domácí čtenáře, čtenářské kluby, školy a malé knihovny. Vyfoť police a Shelfy přečte každý hřbet — vytvoří prohledatelný katalog podle názvu, autora i ISBN.",
+    "nav_features": "Funkce",
+    "nav_pricing": "Ceník",
     "hero_cta_signup": "Vyzkoušet zdarma",
     "hero_cta_login": "Přihlásit se",
     "hero_cta_watch_demo": "Jak to funguje",

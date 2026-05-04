@@ -112,17 +112,33 @@ export function LandingPage() {
       {/* ── Header ── */}
       <header className="lp-header">
         <span style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em' }}>Shelfy</span>
-        <button
-          type="button"
-          className="sh-btn-ghost"
-          style={{ fontSize: 14 }}
-          onClick={() => {
-            trackSupportingCtaClick(t('landing.hero_cta_login'), 'header')
-            navigate(ROUTES.login)
-          }}
-        >
-          {t('landing.hero_cta_login')}
-        </button>
+        <nav className="lp-header-nav">
+          <button
+            type="button"
+            className="lp-header-nav-link"
+            onClick={() => howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            {t('landing.nav_features')}
+          </button>
+          <button
+            type="button"
+            className="lp-header-nav-link"
+            onClick={() => navigate(ROUTES.pricing)}
+          >
+            {t('landing.nav_pricing')}
+          </button>
+          <button
+            type="button"
+            className="sh-btn-ghost"
+            style={{ fontSize: 14 }}
+            onClick={() => {
+              trackSupportingCtaClick(t('landing.hero_cta_login'), 'header')
+              navigate(ROUTES.login)
+            }}
+          >
+            {t('landing.hero_cta_login')}
+          </button>
+        </nav>
       </header>
 
       <main style={{ flex: 1 }}>

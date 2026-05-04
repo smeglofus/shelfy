@@ -244,6 +244,8 @@
   "landing": {
     "hero_title": "Your entire book collection, catalogued in minutes.",
     "hero_subtitle": "For home readers, book clubs, schools, and small libraries. Photograph your shelves and Shelfy's AI reads every spine — building a searchable catalog by title, author, and ISBN.",
+    "nav_features": "Features",
+    "nav_pricing": "Pricing",
     "hero_cta_signup": "Try it free",
     "hero_cta_login": "Sign in",
     "hero_cta_watch_demo": "How it works",
