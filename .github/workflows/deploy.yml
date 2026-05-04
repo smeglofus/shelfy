@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false  # queue concurrent deploys, never kill a running migration
+
 jobs:
   deploy:
     # Only proceed if CI succeeded (workflow_run) or manual trigger (workflow_dispatch)
