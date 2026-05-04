@@ -15,43 +15,36 @@ jobs:
   deploy:
     # Only proceed if CI succeeded (workflow_run) or manual trigger (workflow_dispatch)
     if: github.event_name == "workflow_dispatch" || github.event.workflow_run.conclusion == "success"
-    runs-on: ubuntu-latest
-    # Full Docker image rebuild + health polling fits within 15 min
+    runs-on: [self-hosted, shelfy-prod]
     timeout-minutes: 15
     steps:
-      - name: SSH deploy
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script_stop: true
-          script: |
-            set -euo pipefail
-            cd ~/shelfy
-            git pull origin main
-            cd infra
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          cd ~/shelfy
+          git pull origin main
+          cd infra
 
-            # Start dependencies before migrations (DB must be up)
-            docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build postgres redis minio
+          # Start dependencies before migrations (DB must be up)
+          docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build postgres redis minio
 
-            docker compose --env-file .env.prod.local -f docker-compose.prod.yml run --rm \
-              backend bash -lc "cd /app && alembic upgrade head"
+          docker compose --env-file .env.prod.local -f docker-compose.prod.yml run --rm \
+            backend bash -lc "cd /app && alembic upgrade head"
 
-            docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build backend worker beat frontend
+          docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build backend worker beat frontend
 
-            # Poll health for up to 90 s (30 × 3 s)
-            for i in $(seq 1 30); do
-              if curl -fsS http://127.0.0.1:8000/health && curl -fsS http://127.0.0.1:8000/health/ready; then
-                echo "Deploy healthy"
-                exit 0
-              fi
-              sleep 3
-            done
-            echo "Health check failed after 90 s" >&2
-            exit 1
+          # Poll health for up to 90 s (30 × 3 s)
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health && curl -fsS http://127.0.0.1:8000/health/ready; then
+              echo "Deploy healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Health check failed after 90 s" >&2
+          exit 1
 
-      # Fire on success or failure; silently no-op when secrets are not set
+      # Fire on success or failure; silently no-op when variables are not configured
       - name: Notify Telegram
         if: always() && vars.TELEGRAM_BOT_TOKEN && vars.TELEGRAM_CHAT_ID
         run: |
@@ -63,4 +56,4 @@ jobs:
 # Rollback (manual):
 # If this workflow fails after docker compose up, revert the bad commit and
 # re-run via Actions → Deploy → Run workflow (workflow_dispatch):
-#   ssh homelab2 "cd ~/shelfy && git revert HEAD --no-edit && git push origin main"
+#   cd ~/shelfy && git revert HEAD --no-edit && git push origin main
