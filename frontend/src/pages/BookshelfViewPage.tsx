@@ -152,9 +152,25 @@ export function BookshelfViewPage() {
 
   useEffect(() => {
     if (!highlightBookId || activeTab !== 'shelves') return
-    const timer = setTimeout(() => {
-      highlightSpineRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-    }, 80)
+    // The highlighted shelf gets ``content-visibility: visible`` above, but
+    // the spine DOM (dnd-kit wrappers + 55 spines) needs layout time.
+    // ``inline: nearest`` avoids the edge case where ``center`` fails for
+    // books at position 0 (nothing to scroll left of the first spine).
+    let attempts = 0
+    const maxAttempts = 4
+    const tryScroll = () => {
+      attempts += 1
+      if (highlightSpineRef.current) {
+        highlightSpineRef.current.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'nearest',
+          block: 'center',
+        })
+      } else if (attempts < maxAttempts) {
+        setTimeout(tryScroll, 150)
+      }
+    }
+    const timer = setTimeout(tryScroll, 100)
     return () => clearTimeout(timer)
   }, [highlightBookId, activeTab, filteredTree])
 
