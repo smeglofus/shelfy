@@ -43,7 +43,7 @@ async function dismissOnboardingModal(page: Page): Promise<void> {
 async function clickNavBookshelf(page: Page): Promise<void> {
   // nav.bookshelf i18n: en='Shelves', cs='Police'
   await dismissOnboardingModal(page)
-  await page.getByRole('button', { name: /Police|Shelves/i }).click()
+  await page.locator('nav').getByRole('button', { name: /Police|Shelves/i }).click()
   await page.waitForURL(/\/bookshelf$/)
 }
 
