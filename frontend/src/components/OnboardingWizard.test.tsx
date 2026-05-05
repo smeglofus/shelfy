@@ -5,7 +5,7 @@ import { type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { OnboardingWizard } from './OnboardingWizard'
+import { FirstBookOnboardingModal } from './OnboardingWizard'
 
 vi.mock('../lib/api', () => ({
   getOnboardingStatus: vi.fn(),
@@ -14,7 +14,12 @@ vi.mock('../lib/api', () => ({
   resetOnboarding: vi.fn(),
 }))
 
+vi.mock('../lib/analytics', () => ({
+  trackEvent: vi.fn(),
+}))
+
 import { completeOnboarding, skipOnboarding } from '../lib/api'
+import { trackEvent } from '../lib/analytics'
 
 function renderWithProviders(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -31,7 +36,7 @@ function renderWithProviders(ui: ReactNode) {
   )
 }
 
-describe('OnboardingWizard', () => {
+describe('FirstBookOnboardingModal', () => {
   const onDone = vi.fn()
 
   beforeEach(() => {
@@ -46,50 +51,23 @@ describe('OnboardingWizard', () => {
   })
 
   it('does not render when open=false', () => {
-    renderWithProviders(<OnboardingWizard open={false} onDone={onDone} />)
+    renderWithProviders(<FirstBookOnboardingModal open={false} onDone={onDone} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('renders step 1 when open', () => {
-    renderWithProviders(<OnboardingWizard open={true} onDone={onDone} />)
+  it('renders action picker when open', () => {
+    renderWithProviders(<FirstBookOnboardingModal open={true} onDone={onDone} />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('onboarding.step1_title')).toBeInTheDocument()
+    expect(screen.getByText('onboarding.title')).toBeInTheDocument()
+    expect(screen.getByText('onboarding.action_scan_title')).toBeInTheDocument()
+    expect(screen.getByText('onboarding.action_manual_title')).toBeInTheDocument()
+    expect(screen.getByText('onboarding.action_locations_title')).toBeInTheDocument()
   })
 
-  it('navigates between steps with next/back', async () => {
-    renderWithProviders(<OnboardingWizard open={true} onDone={onDone} />)
+  it('calls skip mutation and onDone on skip click', async () => {
+    renderWithProviders(<FirstBookOnboardingModal open={true} onDone={onDone} />)
 
-    // Step 1
-    expect(screen.getByText('onboarding.step1_title')).toBeInTheDocument()
-
-    // Go to step 2
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.next' }))
-    expect(screen.getByText('onboarding.step2_title')).toBeInTheDocument()
-
-    // Go back to step 1
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.back' }))
-    expect(screen.getByText('onboarding.step1_title')).toBeInTheDocument()
-  })
-
-  it('shows success screen after last step', async () => {
-    renderWithProviders(<OnboardingWizard open={true} onDone={onDone} />)
-
-    // Navigate to step 3
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.next' }))
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.next' }))
-
-    // Step 3 should show "finish" button
-    expect(screen.getByText('onboarding.step3_title')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.finish' }))
-
-    // Success screen
-    expect(screen.getByText('onboarding.success_title')).toBeInTheDocument()
-  })
-
-  it('calls skip mutation and onDone on skip all', async () => {
-    renderWithProviders(<OnboardingWizard open={true} onDone={onDone} />)
-
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.skip_all' }))
+    await userEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }))
 
     await waitFor(() => {
       expect(skipOnboarding).toHaveBeenCalledTimes(1)
@@ -97,13 +75,13 @@ describe('OnboardingWizard', () => {
     })
 
     expect(localStorage.getItem('shelfy_onboarding_dismissed')).toBe('1')
+    expect(trackEvent).toHaveBeenCalledWith('onboarding_skipped')
   })
 
-  it('calls complete mutation on step CTA click', async () => {
-    renderWithProviders(<OnboardingWizard open={true} onDone={onDone} />)
+  it('calls complete mutation and tracks event when scan action chosen', async () => {
+    renderWithProviders(<FirstBookOnboardingModal open={true} onDone={onDone} />)
 
-    // Click CTA on step 1
-    await userEvent.click(screen.getByRole('button', { name: 'onboarding.step1_cta' }))
+    await userEvent.click(screen.getByText('onboarding.action_scan_title'))
 
     await waitFor(() => {
       expect(completeOnboarding).toHaveBeenCalledTimes(1)
@@ -111,5 +89,20 @@ describe('OnboardingWizard', () => {
     })
 
     expect(localStorage.getItem('shelfy_onboarding_dismissed')).toBe('1')
+    expect(trackEvent).toHaveBeenCalledWith('onboarding_action_selected', { action: 'scan' })
+  })
+
+  it('calls complete mutation and tracks event when add book action chosen', async () => {
+    renderWithProviders(<FirstBookOnboardingModal open={true} onDone={onDone} />)
+
+    await userEvent.click(screen.getByText('onboarding.action_manual_title'))
+
+    await waitFor(() => {
+      expect(completeOnboarding).toHaveBeenCalledTimes(1)
+      expect(onDone).toHaveBeenCalledTimes(1)
+    })
+
+    expect(localStorage.getItem('shelfy_onboarding_dismissed')).toBe('1')
+    expect(trackEvent).toHaveBeenCalledWith('onboarding_action_selected', { action: 'manual' })
   })
 })

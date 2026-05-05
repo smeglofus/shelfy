@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { BookCard } from '../components/BookCard'
 import { EmptyLibraryIcon, NoResultsIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
-import { OnboardingWizard } from '../components/OnboardingWizard'
+import { FirstBookOnboardingModal } from '../components/OnboardingWizard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
@@ -653,8 +653,8 @@ export function BooksPage() {
         </div>
       </Modal>
 
-      {/* Onboarding wizard — show when library is empty + server says should_show */}
-      <OnboardingWizard
+      {/* Onboarding — show when library is empty + server says should_show */}
+      <FirstBookOnboardingModal
         open={
           !onboardingDismissed
           && !booksQuery.isLoading
