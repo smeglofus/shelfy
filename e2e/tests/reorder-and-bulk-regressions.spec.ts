@@ -53,13 +53,30 @@ test('bookshelf route and reorder toggle render on mobile', async ({ page }) => 
 })
 
 test('"show on shelf" highlights book at shelf position 0', async ({ page }) => {
+  // Use createManualBook for proper SPA nav that lands on /books.
+  // Then assign a location via the API and navigate to show-on-shelf.
   await login(page)
   const title = `E2E Shelf Highlight ${Date.now()}`
-  await createLocatedBook(page, title)
-  // createLocatedBook ends on /books — no extra navigation needed.
+  await createManualBook(page, title)
+  await expect(page).toHaveURL(/\/books$/)
 
-  // Navigate to the book detail page by clicking the book card
-  await page.locator('.sh-card-enter').filter({ hasText: title }).click()
+  // Find the book card and extract its ID
+  await page.locator('.sh-card-enter').filter({ hasText: title }).first().click()
+  await page.waitForURL(/\/books\//)
+  const bookId = page.url().split('/').pop()!
+
+  // Create a location and assign the book to position 0
+  const locRes = await page.request.post('/api/v1/locations', {
+    data: { room: 'E2E Room', furniture: 'Bookshelf', shelf: 'Shelf 1', display_order: 0 },
+  })
+  const { id: locationId } = await locRes.json() as { id: string }
+  await page.request.patch('/api/v1/books/' + bookId, {
+    data: { location_id: locationId, shelf_position: 0 },
+  })
+
+  // Refresh the detail page to see the location, then click Show on shelf
+  await page.reload()
+  await page.waitForURL(/\/books\//)
   await page.waitForURL(/\/books\//)
 
   // Click "Show on shelf" / "Ukázat v polici"
