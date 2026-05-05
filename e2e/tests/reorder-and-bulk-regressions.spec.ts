@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createLocatedBook, createManualBook, login, navigateProtected } from './helpers'
+import { createLocatedBook, createManualBook, getE2EAccessToken, login, navigateProtected } from './helpers'
 
 // SPA nav to bookshelf — no page reload, auth state stays intact.
 async function clickNavBookshelf(page: Page): Promise<void> {
@@ -65,17 +65,25 @@ test('"show on shelf" highlights book at shelf position 0', async ({ page }) => 
   await page.waitForURL(/\/books\//)
   const bookId = page.url().split('/').pop()!
 
-  // Create a location and assign the book to position 0
-  const locRes = await page.request.post('/api/v1/locations', {
+  // Create a location and assign the book to position 0 via API
+  const token = getE2EAccessToken(page)
+  const headers = token ? { Authorization: 'Bearer ' + token } : {}
+  const apiBase = process.env.E2E_API_BASE_URL ?? 'http://localhost:8000'
+  const locRes = await page.request.post(apiBase + '/api/v1/locations', {
+    headers,
     data: { room: 'E2E Room', furniture: 'Bookshelf', shelf: 'Shelf 1', display_order: 0 },
   })
   const { id: locationId } = await locRes.json() as { id: string }
-  await page.request.patch('/api/v1/books/' + bookId, {
+  await page.request.patch(apiBase + '/api/v1/books/' + bookId, {
+    headers,
     data: { location_id: locationId, shelf_position: 0 },
   })
 
-  // Refresh the detail page to see the location, then click Show on shelf
-  await page.reload()
+  // Go back to /books then re-enter the detail page to see the location.
+  // (Avoids page.reload which re-bootstraps auth in CI.)
+  await page.goBack()
+  await page.waitForURL(/\/books$/)
+  await page.locator('.sh-card-enter').filter({ hasText: title }).first().click()
   await page.waitForURL(/\/books\//)
   await page.waitForURL(/\/books\//)
 
