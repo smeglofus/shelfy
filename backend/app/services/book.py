@@ -84,6 +84,41 @@ async def list_books(
     return books, total
 
 
+async def get_shelf_etag_metadata(
+    session: AsyncSession,
+    *,
+    library_id: uuid.UUID,
+) -> tuple[int, float, int, float]:
+    """Lightweight query for shelf ETag — runs before loading all books.
+
+    Returns (book_count, max_book_updated, location_count, max_location_updated)
+    so the endpoint can build a weak ETag and return 304 without touching
+    the full 2+ MB book payload.
+    """
+    book_row = (
+        await session.execute(
+            select(
+                func.count(Book.id),
+                func.coalesce(func.max(Book.updated_at), func.now()),
+            ).where(Book.library_id == library_id)
+        )
+    ).one()
+    loc_row = (
+        await session.execute(
+            select(
+                func.count(Location.id),
+                func.coalesce(func.max(Location.updated_at), func.now()),
+            ).where(Location.library_id == library_id)
+        )
+    ).one()
+    return (
+        int(book_row[0]),
+        float(book_row[1].timestamp()),
+        int(loc_row[0]),
+        float(loc_row[1].timestamp()),
+    )
+
+
 async def list_all_books_for_shelf(
     session: AsyncSession,
     *,

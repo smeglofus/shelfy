@@ -527,6 +527,137 @@ async def test_shelf_endpoint_requires_authentication() -> None:
         assert (await client.get("/api/v1/books/shelf")).status_code == 401
 
 
+# ── Shelf ETag / If-None-Match ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_shelf_etag_200_includes_etag_header(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """First request to /books/shelf returns 200 with ETag header."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get("/api/v1/books/shelf", headers=headers)
+        assert response.status_code == 200
+        assert "etag" in response.headers
+        assert response.headers["etag"].startswith('W/')
+        assert "Cache-Control" in response.headers
+
+
+@pytest.mark.asyncio
+async def test_shelf_etag_304_on_unchanged_data(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Second request with If-None-Match returns 304 when data is unchanged."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response1 = await client.get("/api/v1/books/shelf", headers=headers)
+        assert response1.status_code == 200
+        etag = response1.headers["etag"]
+
+        # Second request with matching ETag
+        headers["If-None-Match"] = etag
+        response2 = await client.get("/api/v1/books/shelf", headers=headers)
+        assert response2.status_code == 304
+
+
+@pytest.mark.asyncio
+async def test_shelf_etag_changes_on_book_create(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Creating a book changes the ETag — old ETag no longer returns 304."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+            user, library = await _seed_user_with_library(session)
+
+        response1 = await client.get("/api/v1/books/shelf", headers=headers)
+        assert response1.status_code == 200
+        old_etag = response1.headers["etag"]
+
+        # Create a book — must change the ETag
+        await client.post(
+            "/api/v1/books",
+            json={"title": "New Book"},
+            headers=headers,
+        )
+
+        response2 = await client.get(
+            "/api/v1/books/shelf",
+            headers={**headers, "If-None-Match": old_etag},
+        )
+        assert response2.status_code == 200, (
+            f"Expected 200 (ETag should have changed), got {response2.status_code}"
+        )
+        assert response2.headers["etag"] != old_etag
+
+
+@pytest.mark.asyncio
+async def test_shelf_etag_changes_on_book_delete(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Deleting a book changes the ETag — count is part of the ETag."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+            user, library = await _seed_user_with_library(session)
+
+        # Create a book first
+        create = await client.post(
+            "/api/v1/books",
+            json={"title": "To Delete"},
+            headers=headers,
+        )
+        book_id = create.json()["id"]
+
+        response1 = await client.get("/api/v1/books/shelf", headers=headers)
+        old_etag = response1.headers["etag"]
+
+        # Delete it
+        await client.delete(f"/api/v1/books/{book_id}", headers=headers)
+
+        response2 = await client.get(
+            "/api/v1/books/shelf",
+            headers={**headers, "If-None-Match": old_etag},
+        )
+        assert response2.status_code == 200, (
+            f"Expected 200 (ETag should have changed after delete), got {response2.status_code}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_shelf_etag_changes_on_location_change(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Creating a location changes the ETag — location metadata is included."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+            user, library = await _seed_user_with_library(session)
+
+        response1 = await client.get("/api/v1/books/shelf", headers=headers)
+        old_etag = response1.headers["etag"]
+
+        # Create a location — should change ETag because location count is included
+        await client.post(
+            "/api/v1/locations",
+            json={"room": "office", "furniture": "desk", "shelf": "top"},
+            headers=headers,
+        )
+
+        response2 = await client.get(
+            "/api/v1/books/shelf",
+            headers={**headers, "If-None-Match": old_etag},
+        )
+        assert response2.status_code == 200, (
+            f"Expected 200 (ETag should have changed after location create), got {response2.status_code}"
+        )
+
+
 @pytest.mark.asyncio
 async def test_bulk_reorder_rejects_partial_payload_with_409(
     test_session: async_sessionmaker[AsyncSession],
