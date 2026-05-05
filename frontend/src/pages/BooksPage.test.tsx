@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BooksPage } from './BooksPage'
 import { useToastStore } from '../lib/toast-store'
-import type { Book, BookListResponse, Location } from '../lib/types'
+import type { Book, BookListParams, BookListResponse, Location } from '../lib/types'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -106,8 +106,6 @@ function renderWithProviders(ui: ReactNode) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('BooksPage', () => {
-  const onDone = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     useToastStore.setState({ message: null })
@@ -202,6 +200,21 @@ describe('BooksPage — empty library state', () => {
     renderWithProviders(<BooksPage />)
 
     await screen.findByText('Clean Code')
+    expect(screen.queryByTestId('empty-library-state')).not.toBeInTheDocument()
+  })
+
+  it('shows no-results state when the library has books but active filters return zero results', async () => {
+    vi.mocked(listBooks).mockImplementation(async (params: BookListParams = {}) => {
+      if (params.pageSize === 1) {
+        return makeResponse([makeBook()], 3)
+      }
+      return makeResponse([], 0)
+    })
+    vi.mocked(listLocations).mockResolvedValue(locations)
+
+    renderWithProviders(<BooksPage />)
+
+    expect(await screen.findByText('books.empty_category')).toBeInTheDocument()
     expect(screen.queryByTestId('empty-library-state')).not.toBeInTheDocument()
   })
 })
