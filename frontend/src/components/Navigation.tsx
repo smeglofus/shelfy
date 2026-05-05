@@ -213,6 +213,7 @@ export function Navigation() {
           padding: '32px 16px',
           display: 'flex',
           flexDirection: 'column',
+          overflowY: 'auto',
           gap: 4,
           zIndex: 100,
         }}

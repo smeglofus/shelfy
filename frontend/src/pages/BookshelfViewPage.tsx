@@ -419,10 +419,46 @@ export function BookshelfViewPage() {
         )}
 
         {Object.keys(filteredTree).length === 0 && (
-          <div className="sh-empty-state" style={{ padding: 60 }}>
+          <div className="sh-empty-state" data-testid="bookshelf-no-locations-state" style={{ padding: 60 }}>
             <div className="sh-empty-state__icon"><EmptyShelfIcon size={56} /></div>
             <h3 className="text-h3">{t('bookshelf.empty_title')}</h3>
-            <p className="text-small">{t('bookshelf.empty_desc')}</p>
+            <p className="text-small" style={{ maxWidth: 320, textAlign: 'center' }}>{t('bookshelf.empty_desc')}</p>
+            <p style={{ fontSize: 13, color: 'var(--sh-text-muted)', textAlign: 'center', marginBottom: 0 }}>
+              {t('bookshelf.empty_model_hint')}
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 20 }}>
+              <button
+                type="button"
+                className="sh-btn-primary"
+                onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}
+              >
+                {t('bookshelf.empty_cta_locations')}
+              </button>
+              <button
+                type="button"
+                className="sh-btn-secondary"
+                onClick={() => navigate(ROUTES.scanShelf)}
+              >
+                {t('bookshelf.empty_cta_scan')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {locations.length > 0 && !allBooks.some((b) => b.location_id) && (
+          <div
+            data-testid="bookshelf-no-books-hint"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+              padding: '12px 16px', marginBottom: 20,
+              background: 'var(--sh-teal-bg)', border: '1px solid var(--sh-border)',
+              borderRadius: 'var(--sh-radius-md)', fontSize: 14, color: 'var(--sh-text-muted)',
+            }}
+          >
+            <span style={{ flex: 1 }}>{t('bookshelf.no_books_hint')}</span>
+            <button type="button" className="sh-btn-secondary" onClick={() => navigate(ROUTES.scanShelf)} style={{ flexShrink: 0 }}>
+              {t('bookshelf.no_books_cta_scan')}
+            </button>
           </div>
         )}
 

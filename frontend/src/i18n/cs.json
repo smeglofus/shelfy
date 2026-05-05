@@ -99,7 +99,7 @@
     "saving": "Ukládám…",
     "empty_cta_add": "Přidat knihu",
     "empty_cta_scan": "Naskenovat polici",
-    "empty_cta_location": "Vytvořit umístění"
+    "empty_cta_location": "Nastavit police"
   },
   "book_detail": {
     "title": "Detail knihy",
@@ -176,6 +176,8 @@
     "retry": "Zkusit znovu",
     "empty_title": "Zatím žádná umístění",
     "empty_body": "Vytvořte své první umístění výše, ať víte, kde své knihy najít.",
+    "empty_example": "Příklad: Obývací pokoj / Knihovna / Police 1",
+    "empty_cta": "Přidat první umístění",
     "actions": "Akce",
     "saving": "Ukládám…",
     "save": "Uložit",
@@ -363,7 +365,9 @@
     "added_manually": "Ručně přidána",
     "remove_segment_title": "Odebrat tuto fotku?",
     "remove_segment_body": "Tím se zahodí všechny knihy rozpoznané v této fotce. Tuto akci nelze vrátit.",
-    "remove_segment_confirm": "Odebrat fotku"
+    "remove_segment_confirm": "Odebrat fotku",
+    "no_locations_title": "Zatím žádné police",
+    "no_locations_body": "Vytvořte svou první polici, aby naskenované knihy měly hned domov."
   },
   "add_book": {
     "page_title": "Přidat knihu",
@@ -437,8 +441,13 @@
     "title": "Moje knihovny",
     "scan_shelf": "Skenovat polici",
     "books_count": "knih",
-    "empty_title": "Žádné knihovny",
-    "empty_desc": "Naskenujte svou první polici a vytvořte digitální dvojče knihovny.",
+    "empty_title": "Vytvořte svou první polici",
+    "empty_desc": "Organizujte knihy podle místnosti, skříně a police.",
+    "empty_model_hint": "např. Obývací pokoj → Knihovna → Police 1",
+    "empty_cta_locations": "Vytvořit první polici",
+    "empty_cta_scan": "Naskenovat polici",
+    "no_books_hint": "Všechny police jsou prázdné. Naskenujte polici nebo přidejte knihy a přiřaďte je k umístění.",
+    "no_books_cta_scan": "Naskenovat polici",
     "empty_shelf": "Prázdná police",
     "tab_shelves": "Policový pohled",
     "tab_locations": "Správa pozic"

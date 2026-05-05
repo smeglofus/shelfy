@@ -4,7 +4,7 @@ import { createLocatedBook, createManualBook, getE2EAccessToken, login, navigate
 // SPA nav to bookshelf — no page reload, auth state stays intact.
 async function clickNavBookshelf(page: Page): Promise<void> {
   // nav.bookshelf i18n: en='Shelves', cs='Police'
-  await page.getByRole('button', { name: /Police|Shelves/i }).click()
+  await page.locator('nav').getByRole('button', { name: /Police|Shelves/i }).click()
   await page.waitForURL(/\/bookshelf$/)
 }
 

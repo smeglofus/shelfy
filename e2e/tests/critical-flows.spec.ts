@@ -17,7 +17,7 @@ test('locations CRUD', async ({ page }) => {
   // ProtectedRoute also only saves location.pathname (not search), so
   // /bookshelf?tab=locations becomes /bookshelf after login redirect.
   // Use SPA nav: Shelves nav button → Locations tab button.
-  await page.getByRole('button', { name: /Police|Shelves/i }).click()
+  await page.locator('nav').getByRole('button', { name: /Police|Shelves/i }).click()
   await page.waitForURL(/\/bookshelf$/)
   await page.getByRole('button', { name: /Správa pozic|Locations management/i }).click()
   await page.waitForURL(/\/bookshelf\?tab=locations$/)

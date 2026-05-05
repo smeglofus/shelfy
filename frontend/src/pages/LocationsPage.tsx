@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
 import { LocationPinIcon } from '../components/EmptyStateIcons'
@@ -31,6 +31,7 @@ export function LocationsPage() {
   const deleteMutation = useDeleteLocation()
   const showError = useToastStore((state) => state.showError)
 
+  const roomInputRef = useRef<HTMLInputElement>(null)
   const [createForm, setCreateForm] = useState<LocationFormValues>(EMPTY_FORM)
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<LocationFormValues>(EMPTY_FORM)
@@ -83,6 +84,7 @@ export function LocationsPage() {
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', display: 'block', marginBottom: 6 }}>{t('locations.room')}</label>
             <input
+              ref={roomInputRef}
               className="sh-input"
               aria-label={t('locations.room')}
               required
@@ -180,12 +182,29 @@ export function LocationsPage() {
       )}
 
       {!locationsQuery.isLoading && !locationsQuery.isError && sortedLocations.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '64px 24px', background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-lg)', border: '1px dashed var(--sh-border-2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, color: 'var(--sh-border-2)' }}><LocationPinIcon size={56} /></div>
+        <div
+          data-testid="locations-empty-state"
+          className="sh-empty-state"
+          style={{ padding: '48px 24px', background: 'var(--sh-surface)', borderRadius: 'var(--sh-radius-lg)', border: '1px dashed var(--sh-border-2)' }}
+        >
+          <div className="sh-empty-state__icon" style={{ color: 'var(--sh-border-2)' }}><LocationPinIcon size={56} /></div>
           <p className="text-h3" style={{ marginBottom: 8, color: 'var(--sh-text-main)' }}>
             {t('locations.empty_title')}
           </p>
-          <p className="text-p" style={{ color: 'var(--sh-text-muted)' }}>{t('locations.empty_body')}</p>
+          <p className="text-p" style={{ color: 'var(--sh-text-muted)', marginBottom: 4 }}>{t('locations.empty_body')}</p>
+          <p style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontStyle: 'italic', marginBottom: 20 }}>
+            {t('locations.empty_example')}
+          </p>
+          <button
+            type="button"
+            className="sh-btn-primary"
+            onClick={() => {
+              roomInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              setTimeout(() => roomInputRef.current?.focus(), 300)
+            }}
+          >
+            {t('locations.empty_cta')}
+          </button>
         </div>
       )}
 

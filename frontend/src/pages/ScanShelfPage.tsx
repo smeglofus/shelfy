@@ -54,7 +54,7 @@ export function ScanShelfPage() {
   const [searchParams] = useSearchParams()
   const showError = useToastStore(s => s.showError)
 
-  const { data: locations = [] } = useLocations()
+  const { data: locations = [], isLoading: locationsLoading } = useLocations()
   const createLocationMutation = useCreateLocation()
   const scanMutation = useScanShelf()
   const confirmMutation = useConfirmShelfScan()
@@ -132,6 +132,14 @@ export function ScanShelfPage() {
       localStorage.removeItem(SCAN_DRAFT_KEY)
     }
   }, [])
+
+  const hasAutoExpandedNewLocationRef = useRef(false)
+  useEffect(() => {
+    if (!locationsLoading && locations.length === 0 && !hasAutoExpandedNewLocationRef.current) {
+      setShowNewLocation(true)
+      hasAutoExpandedNewLocationRef.current = true
+    }
+  }, [locationsLoading, locations.length])
 
   useEffect(() => {
     const hasDraftData =
@@ -503,6 +511,20 @@ export function ScanShelfPage() {
         <div>
           <h3 className="text-h3" style={{ marginBottom: 8 }}>{t('scan.step_location')}</h3>
           <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 24 }}>{t('scan.step_location_desc')}</p>
+
+          {!locationsLoading && locations.length === 0 && (
+            <div
+              data-testid="scan-no-locations-hint"
+              style={{
+                padding: '12px 16px', marginBottom: 20,
+                background: 'var(--sh-teal-bg)', border: '1px solid var(--sh-border)',
+                borderRadius: 'var(--sh-radius-md)', fontSize: 14,
+              }}
+            >
+              <p style={{ margin: 0, fontWeight: 600, color: 'var(--sh-text-main)' }}>{t('scan.no_locations_title')}</p>
+              <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>{t('scan.no_locations_body')}</p>
+            </div>
+          )}
 
           <div className="sh-card-panel" style={{ padding: 16, marginBottom: 16 }}>
             <div className="sh-location-grid">
