@@ -152,26 +152,43 @@ export function BookshelfViewPage() {
 
   useEffect(() => {
     if (!highlightBookId || activeTab !== 'shelves') return
-    // The highlighted shelf gets ``content-visibility: visible`` above, but
-    // the spine DOM (dnd-kit wrappers + 55 spines) needs layout time.
-    // ``inline: nearest`` avoids the edge case where ``center`` fails for
-    // books at position 0 (nothing to scroll left of the first spine).
-    let attempts = 0
-    const maxAttempts = 4
-    const tryScroll = () => {
-      attempts += 1
-      if (highlightSpineRef.current) {
-        highlightSpineRef.current.scrollIntoView({
-          behavior: 'smooth',
-          inline: 'nearest',
-          block: 'center',
-        })
-      } else if (attempts < maxAttempts) {
-        setTimeout(tryScroll, 150)
+    let cancelled = false
+
+    // Two-phase scroll because ``content-visibility: auto`` shelves are not
+    // laid out when the effect fires.  Smooth scrolling during active layout
+    // causes the browser to target wrong positions.
+    //
+    // Phase 1 — wait for layout (3 × requestAnimationFrame ≈ 3 frames).
+    // Phase 2 — instant jump to the shelf, then smooth-scroll the book spine.
+    const run = async () => {
+      for (let i = 0; i < 3; i++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+        if (cancelled) return
       }
+
+      if (cancelled || !highlightSpineRef.current) return
+
+      // Jump the shelf into view first (instant — no smooth drift).
+      highlightSpineRef.current.scrollIntoView({
+        behavior: 'instant',
+        block: 'start',
+        inline: 'nearest',
+      })
+
+      // One more frame for the instant scroll to settle.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      if (cancelled || !highlightSpineRef.current) return
+
+      // Now smooth-scroll the book spine to center.
+      highlightSpineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      })
     }
-    const timer = setTimeout(tryScroll, 100)
-    return () => clearTimeout(timer)
+
+    run()
+    return () => { cancelled = true }
   }, [highlightBookId, activeTab, filteredTree])
 
   function findBookObject(id: string): Book | null {
