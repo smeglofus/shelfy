@@ -45,7 +45,7 @@
     "insert_position_label": "Insert at position",
     "insert_position_placeholder": "leave empty = append to end",
     "select_mode_hint": "Bulk select mode is active — click books to select them",
-    "insert_position_max": "Max index for this shelf right now: {{max}} (higher values append to end)",
+    "insert_position_max": "Current max index is validated by the server. Leave empty to append to the end.",
     "select_mode_tooltip": "Select multiple books for bulk actions"
   },
   "books": {
@@ -491,6 +491,11 @@
     "settings_reset_title": "Onboarding",
     "settings_reset_desc": "Show the first-time setup wizard again.",
     "reset_done": "Onboarding has been reset."
+  },
+  "pagination": {
+    "prev": "← Prev",
+    "next": "Next →",
+    "info": "{{page}} / {{total}}"
   },
   "bookshelf": {
     "title": "My bookshelves",

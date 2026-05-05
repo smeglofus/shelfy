@@ -45,7 +45,7 @@
     "insert_position_label": "Vložit na pozici",
     "insert_position_placeholder": "prázdné = přidat na konec",
     "select_mode_hint": "Režim výběru je aktivní — kliknutím označ knihy",
-    "insert_position_max": "Aktuální max index pro polici: {{max}} (vyšší hodnota přidá na konec)",
+    "insert_position_max": "Aktuální max index ověřuje server. Prázdné pole přidá knihy na konec.",
     "select_mode_tooltip": "Označ více knih najednou pro hromadné akce"
   },
   "books": {
@@ -420,6 +420,11 @@
     "settings_reset_title": "Onboarding",
     "settings_reset_desc": "Znovu zobrazit průvodce prvním nastavením.",
     "reset_done": "Onboarding resetován."
+  },
+  "pagination": {
+    "prev": "← Předchozí",
+    "next": "Další →",
+    "info": "{{page}} / {{total}}"
   },
   "bookshelf": {
     "title": "Moje knihovny",
