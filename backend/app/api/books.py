@@ -2,7 +2,7 @@ import asyncio
 import uuid
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,8 +23,8 @@ from app.schemas.book import (
 from app.schemas.job import UploadResponse
 from app.services.book import (
     bulk_delete_books, bulk_move_books, bulk_reorder_books, bulk_update_status,
-    create_book, delete_book, get_book_or_404, list_all_books_for_shelf,
-    list_books, update_book,
+    create_book, delete_book, get_book_or_404, get_shelf_etag_metadata,
+    list_all_books_for_shelf, list_books, update_book,
 )
 from app.services.csv_import import build_books_export_csv, confirm_csv_import, preview_csv_import
 from app.services.job import create_upload_job
@@ -73,6 +73,8 @@ async def read_books(
 
 @router.get("/shelf", response_model=list[BookResponse])
 async def read_books_for_shelf(
+    request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
 ) -> list[BookResponse]:
@@ -86,7 +88,27 @@ async def read_books_for_shelf(
     NOTE: This route MUST be registered before the ``/{book_id}`` dynamic
     path (FastAPI matches in declaration order — otherwise "shelf" would be
     parsed as a book id).
+
+    Supports ETag / If-None-Match: a lightweight metadata query runs first
+    (book count + location count + max updated timestamps).  If the client's
+    ``If-None-Match`` matches, the endpoint returns 304 *without* loading the
+    full 2+ MB book payload.
     """
+    # ── Lightweight ETag from metadata (no book payload yet) ──────────────
+    book_cnt, max_book_ts, loc_cnt, max_loc_ts = await get_shelf_etag_metadata(
+        session, library_id=library_id
+    )
+    etag = f'W/"{library_id}-{book_cnt}-{max_book_ts:.6f}-{loc_cnt}-{max_loc_ts:.6f}"'
+
+    response.headers["ETag"] = etag
+    response.headers["Cache-Control"] = "private, no-cache"
+
+    if_none_match = request.headers.get("If-None-Match", "")
+    if if_none_match == etag:
+        response.status_code = 304
+        return []  # FastAPI discards body on 304
+
+    # ── ETag didn't match → load full payload ────────────────────────────
     books = await list_all_books_for_shelf(session, library_id=library_id)
     return [BookResponse.model_validate(book) for book in books]
 

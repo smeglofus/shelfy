@@ -1003,7 +1003,7 @@
           "books"
         ],
         "summary": "Read Books For Shelf",
-        "description": "Return every book in the library, ordered for bookshelf rendering.\n\nThe bookshelf UI needs a complete per-location dataset or its reorder\nflow builds payloads that collide with books hidden by pagination (see\nissue #128). This endpoint returns the full library without pagination;\ncallers should not use it for generic browsing.\n\nNOTE: This route MUST be registered before the ``/{book_id}`` dynamic\npath (FastAPI matches in declaration order — otherwise \"shelf\" would be\nparsed as a book id).",
+        "description": "Return every book in the library, ordered for bookshelf rendering.\n\nThe bookshelf UI needs a complete per-location dataset or its reorder\nflow builds payloads that collide with books hidden by pagination (see\nissue #128). This endpoint returns the full library without pagination;\ncallers should not use it for generic browsing.\n\nNOTE: This route MUST be registered before the ``/{book_id}`` dynamic\npath (FastAPI matches in declaration order — otherwise \"shelf\" would be\nparsed as a book id).\n\nSupports ETag / If-None-Match: a lightweight metadata query runs first\n(book count + location count + max updated timestamps).  If the client's\n``If-None-Match`` matches, the endpoint returns 304 *without* loading the\nfull 2+ MB book payload.",
         "operationId": "read_books_for_shelf_api_v1_books_shelf_get",
         "security": [
           {

@@ -366,8 +366,43 @@ export async function deleteLocation(id: string): Promise<void> {
  * hidden by pagination (issue #128). Do not use this for generic browsing;
  * the payload can be large for sizable libraries.
  */
+// ── ETag cache for /books/shelf ────────────────────────────────────────────
+// Keyed by libraryId so multi-library users get correct isolation.
+const _shelfEtagCache = new Map<string, { etag: string; data: Book[] }>()
+
 export async function listBooksForShelf(): Promise<Book[]> {
-  const response = await apiClient.get<Book[]>('/api/v1/books/shelf')
+  const libraryId = getActiveLibraryId()
+  const cached = libraryId ? _shelfEtagCache.get(libraryId) : undefined
+
+  const headers: Record<string, string> = {}
+  if (cached?.etag) {
+    headers['If-None-Match'] = cached.etag
+  }
+
+  const response = await apiClient.get<Book[]>('/api/v1/books/shelf', {
+    headers,
+    // Axios throws on 304 by default; allow it so we can handle cache hits
+    validateStatus: (status) => status === 200 || status === 304,
+  })
+
+  if (response.status === 304) {
+    if (cached) {
+      return cached.data
+    }
+    // No cached payload and a 304 — should not happen, but refetch safely
+    const refetch = await apiClient.get<Book[]>('/api/v1/books/shelf')
+    const etag = refetch.headers['etag'] ?? ''
+    if (libraryId && etag) {
+      _shelfEtagCache.set(libraryId, { etag, data: refetch.data })
+    }
+    return refetch.data
+  }
+
+  // 200 — store or update cache
+  const etag = response.headers['etag'] ?? ''
+  if (libraryId && etag) {
+    _shelfEtagCache.set(libraryId, { etag, data: response.data })
+  }
   return response.data
 }
 
