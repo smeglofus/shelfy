@@ -598,6 +598,7 @@ export function BooksPage() {
           style={{ marginBottom: 8 }}
         />
         <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
+          {t('bulk.insert_position_max')}
         </p>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -637,6 +638,7 @@ export function BooksPage() {
           style={{ marginBottom: 8 }}
         />
         <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
+          {t('bulk.insert_position_max')}
         </p>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
