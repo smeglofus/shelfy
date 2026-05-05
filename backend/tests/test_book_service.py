@@ -20,6 +20,7 @@ from app.services.book import (
     create_book,
     delete_book,
     get_book_or_404,
+    get_shelf_etag_metadata,
     list_all_books_for_shelf,
     list_books,
     update_book,
@@ -657,3 +658,38 @@ async def test_bulk_reorder_partial_coverage_raises_409(test_session: AsyncSessi
         )
     assert exc.value.status_code == 409
     _ = outsider  # prevent unused-variable warning
+
+
+# ── Shelf ETag metadata ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_shelf_etag_metadata_empty_library(test_session: AsyncSession) -> None:
+    """Empty library returns all zeros and 0.0 timestamps."""
+    _, lib_id = await _make_library(test_session)
+    book_cnt, max_book_ts, loc_cnt, max_loc_ts = await get_shelf_etag_metadata(
+        test_session, library_id=lib_id
+    )
+    assert book_cnt == 0
+    assert max_book_ts == 0.0
+    assert loc_cnt == 0
+    assert max_loc_ts == 0.0
+
+
+@pytest.mark.asyncio
+async def test_get_shelf_etag_metadata_with_data(test_session: AsyncSession) -> None:
+    """Library with books and locations returns counts > 0 and real timestamps."""
+    _, lib_id = await _make_library(test_session)
+    await _make_location(test_session, lib_id)
+    await _make_location(test_session, lib_id)
+    await _make_book(test_session, lib_id, title="Book 1")
+    await _make_book(test_session, lib_id, title="Book 2")
+    await _make_book(test_session, lib_id, title="Book 3")
+
+    book_cnt, max_book_ts, loc_cnt, max_loc_ts = await get_shelf_etag_metadata(
+        test_session, library_id=lib_id
+    )
+    assert book_cnt == 3
+    assert max_book_ts > 0.0
+    assert loc_cnt == 2
+    assert max_loc_ts > 0.0
