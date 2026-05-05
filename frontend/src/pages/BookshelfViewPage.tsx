@@ -403,9 +403,11 @@ export function BookshelfViewPage() {
                   {shelfLocations.map((loc) => {
                     const shelfBooks = localByLocation[loc.id] ?? []
                     const isHighlighted = preselectedLocationId === loc.id
+                    const hasHighlightBook = highlightBookId ? shelfBooks.some((b) => b.id === highlightBookId) : false
+                    const needsRender = isHighlighted || hasHighlightBook
 
                     return (
-                      <div key={loc.id} style={{ borderBottom: '1px solid var(--sh-border)', padding: isMobile ? '10px 12px' : '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s', contentVisibility: 'auto', containIntrinsicSize: 'auto 80px' }}>
+                      <div key={loc.id} style={{ borderBottom: '1px solid var(--sh-border)', padding: isMobile ? '10px 12px' : '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s', contentVisibility: needsRender ? 'visible' : 'auto', containIntrinsicSize: 'auto 80px' }}>
                         <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', marginBottom: 8 }}>{loc.shelf}</div>
 
                         {shelfBooks.length === 0 ? (
