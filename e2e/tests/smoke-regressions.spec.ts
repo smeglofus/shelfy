@@ -24,14 +24,32 @@ import { login } from './helpers'
 // These avoid a full page reload and therefore avoid re-running the auth
 // bootstrap — the same technique used by clickSettingsNav in p0-release-gate.
 
+/**
+ * Dismiss the post-signup onboarding modal if it is visible.
+ *
+ * PR #203 added a "How would you like to start?" / "Jak chcete začít?"
+ * modal that appears when a new user's library is empty.  E2E tests that
+ * navigate away from /books via sidebar clicks will have their clicks
+ * intercepted by the modal overlay unless it is dismissed first.
+ */
+async function dismissOnboardingModal(page: Page): Promise<void> {
+  const modal = page.getByRole('dialog', { name: /Jak chcete začít\?|How would you like to start\?/i })
+  if (await modal.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await page.getByRole('button', { name: /Přeskočit|Skip for now/i }).click()
+    await modal.waitFor({ state: 'hidden', timeout: 5000 })
+  }
+}
+
 async function clickNavBookshelf(page: Page): Promise<void> {
   // nav.bookshelf i18n: en='Shelves', cs='Police'
+  await dismissOnboardingModal(page)
   await page.getByRole('button', { name: /Police|Shelves/i }).click()
   await page.waitForURL(/\/bookshelf$/)
 }
 
 async function clickNavScan(page: Page): Promise<void> {
   // nav.scan i18n: en='Scan', cs='Sken'
+  await dismissOnboardingModal(page)
   await page.getByRole('button', { name: /^Sken$|^Scan$/i }).click()
   await page.waitForURL(/\/scan$/)
 }
