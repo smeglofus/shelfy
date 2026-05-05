@@ -99,7 +99,7 @@
     "saving": "Saving...",
     "empty_cta_add": "Add book",
     "empty_cta_scan": "Scan shelf",
-    "empty_cta_location": "Create a location"
+    "empty_cta_location": "Set up shelves"
   },
   "book_detail": {
     "title": "Book details",
@@ -176,6 +176,8 @@
     "retry": "Try again",
     "empty_title": "No locations yet",
     "empty_body": "Create your first location above so you always know where your books are.",
+    "empty_example": "Example: Living room / Bookcase / Shelf 1",
+    "empty_cta": "Add your first location",
     "actions": "Actions",
     "saving": "Saving…",
     "save": "Save",
@@ -434,7 +436,9 @@
     "added_manually": "Manual",
     "remove_segment_title": "Remove this photo?",
     "remove_segment_body": "This will discard all books detected in this photo. This cannot be undone.",
-    "remove_segment_confirm": "Remove photo"
+    "remove_segment_confirm": "Remove photo",
+    "no_locations_title": "No shelves yet",
+    "no_locations_body": "Create your first shelf so scanned books have a home right away."
   },
   "add_book": {
     "page_title": "Add book",
@@ -508,8 +512,13 @@
     "title": "My bookshelves",
     "scan_shelf": "Scan shelf",
     "books_count": "books",
-    "empty_title": "No bookshelves",
-    "empty_desc": "Scan your first shelf to create a digital twin of your bookshelf.",
+    "empty_title": "Create your first shelf",
+    "empty_desc": "Organize books by room, bookcase, and shelf.",
+    "empty_model_hint": "e.g. Living room → Bookcase → Shelf 1",
+    "empty_cta_locations": "Create first shelf",
+    "empty_cta_scan": "Scan a shelf",
+    "no_books_hint": "All shelves are empty. Scan a shelf or add books, then assign them to a location.",
+    "no_books_cta_scan": "Scan a shelf",
     "empty_shelf": "Empty shelf",
     "tab_shelves": "Shelf view",
     "tab_locations": "Locations management"

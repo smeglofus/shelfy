@@ -60,6 +60,16 @@ describe('LocationsPage', () => {
     cleanup()
   })
 
+  it('shows empty state with example and CTA when no locations exist', async () => {
+    vi.mocked(listLocations).mockResolvedValue([])
+
+    renderWithProviders(<LocationsPage />)
+
+    expect(await screen.findByTestId('locations-empty-state')).toBeInTheDocument()
+    expect(screen.getByText('locations.empty_example')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'locations.empty_cta' })).toBeInTheDocument()
+  })
+
   it('shows loading state while locations are being fetched', () => {
     vi.mocked(listLocations).mockImplementation(
       () => new Promise<Location[]>(() => undefined),
