@@ -482,7 +482,7 @@ export function BooksPage() {
         )}
 
         {/* ── Has books but search / filter produced no results ── */}
-        {!booksQuery.isLoading && !booksQuery.isError && rawCount > 0 && rawCount === 0 && (
+        {!booksQuery.isLoading && !booksQuery.isError && rawCount > 0 && total === 0 && (
           <div className="sh-empty-state">
             <div className="sh-empty-state__icon">
               <NoResultsIcon size={56} />
