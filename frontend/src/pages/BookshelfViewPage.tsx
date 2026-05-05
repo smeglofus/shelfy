@@ -53,6 +53,7 @@ export function BookshelfViewPage() {
   const highlightBookId = searchParams.get('highlight_book_id')
   const activeTab = searchParams.get('tab') === 'locations' ? 'locations' : 'shelves'
   const highlightSpineRef = useRef<HTMLButtonElement | null>(null)
+  const shelfRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const [selectedRoom, setSelectedRoom] = useState<string>('')
   const [selectMode, setSelectMode] = useState(false)
@@ -154,42 +155,46 @@ export function BookshelfViewPage() {
     if (!highlightBookId || activeTab !== 'shelves') return
     let cancelled = false
 
-    // Two-phase scroll because ``content-visibility: auto`` shelves are not
-    // laid out when the effect fires.  Smooth scrolling during active layout
-    // causes the browser to target wrong positions.
+    // Two-phase deterministic scroll.
     //
-    // Phase 1 — wait for layout (3 × requestAnimationFrame ≈ 3 frames).
-    // Phase 2 — instant jump to the shelf, then smooth-scroll the book spine.
+    // Phase 1 — wait for layout (3 × requestAnimationFrame ≈ 3 frames),
+    // then scroll the shelf container vertically into view (instant, no
+    // smooth drift from unstable content-visibility estimates).
+    //
+    // Phase 2 — after 2 more rAF cycles, scroll the highlighted book
+    // horizontally within its shelf row using row.scrollTo, avoiding
+    // the imprecision of book.scrollIntoView for horizontal axis.
     const run = async () => {
+      // Wait for content-visibility shelves to lay out.
       for (let i = 0; i < 3; i++) {
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
         if (cancelled) return
       }
 
-      if (cancelled || !highlightSpineRef.current) return
+      if (cancelled || !preselectedLocationId) return
+      const shelfContainer = shelfRefs.current.get(preselectedLocationId)
+      if (!shelfContainer) return
 
-      // Jump the shelf into view first (instant — no smooth drift).
-      highlightSpineRef.current.scrollIntoView({
-        behavior: 'instant',
-        block: 'start',
-        inline: 'nearest',
-      })
+      // Phase 1: scroll shelf container vertically into view.
+      shelfContainer.scrollIntoView({ block: 'center', behavior: 'auto' })
 
-      // One more frame for the instant scroll to settle.
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-      if (cancelled || !highlightSpineRef.current) return
+      // Wait 2 frames for the instant scroll to settle + layout.
+      for (let i = 0; i < 2; i++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+        if (cancelled) return
+      }
 
-      // Now smooth-scroll the book spine to center.
-      highlightSpineRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'nearest',
-      })
+      // Phase 2: scroll the book horizontally within the shelf row.
+      const row = shelfContainer.querySelector('[data-shelf-row]') as HTMLElement | null
+      const spine = highlightSpineRef.current
+      if (!row || !spine || cancelled) return
+
+      row.scrollTo({ left: spine.offsetLeft - 24, behavior: 'smooth' })
     }
 
     run()
     return () => { cancelled = true }
-  }, [highlightBookId, activeTab, filteredTree])
+  }, [highlightBookId, activeTab, preselectedLocationId])
 
   function findBookObject(id: string): Book | null {
     for (const books of Object.values(localByLocation)) {
@@ -440,7 +445,7 @@ export function BookshelfViewPage() {
                     const needsRender = isHighlighted || hasHighlightBook
 
                     return (
-                      <div key={loc.id} style={{ borderBottom: '1px solid var(--sh-border)', padding: isMobile ? '10px 12px' : '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s', contentVisibility: needsRender ? 'visible' : 'auto', containIntrinsicSize: 'auto 80px' }}>
+                      <div key={loc.id} ref={(el) => { if (el) shelfRefs.current.set(loc.id, el as HTMLDivElement); else shelfRefs.current.delete(loc.id) }} style={{ borderBottom: '1px solid var(--sh-border)', padding: isMobile ? '10px 12px' : '12px 16px', background: isHighlighted ? 'var(--sh-teal-bg)' : undefined, transition: 'background 0.3s', contentVisibility: needsRender ? 'visible' : 'auto', containIntrinsicSize: 'auto 200px' }}>
                         <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--sh-text-muted)', marginBottom: 8 }}>{loc.shelf}</div>
 
                         {shelfBooks.length === 0 ? (
@@ -546,6 +551,7 @@ function DroppableShelfRow({ shelfId, children, compact = false }: { shelfId: st
   return (
     <div
       ref={setNodeRef}
+      data-shelf-row={shelfId}
       style={{
         display: 'flex',
         gap: compact ? 4 : 5,

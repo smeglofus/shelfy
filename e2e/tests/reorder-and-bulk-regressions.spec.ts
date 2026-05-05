@@ -97,8 +97,12 @@ test('"show on shelf" highlights book at shelf position 0', async ({ page }) => 
   expect(url).toContain('highlight_book_id=')
 
   // Verify the book spine is highlighted (data-highlighted attribute present)
-  await expect(page.locator('[data-highlighted]').first()).toBeVisible({ timeout: 8000 })
+  const highlightedSpine = page.locator('[data-highlighted]').first()
+  await expect(highlightedSpine).toBeVisible({ timeout: 8000 })
+
+  // Verify the highlighted spine is actually within the viewport (not just in DOM).
+  await expect(highlightedSpine).toBeInViewport()
 
   // Verify the highlighted spine has the correct book title
-  await expect(page.locator('[data-highlighted]').first()).toContainText(title.substring(0, 10), { ignoreCase: true })
+  await expect(highlightedSpine).toContainText(title.substring(0, 10), { ignoreCase: true })
 })
