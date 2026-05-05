@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
 import { BookshelfInlineIcon } from './EmptyStateIcons'
+import { UsageMeterCard } from './UsageMeterCard'
 
 /* ── SVG Icons (Lucide-inspired, 24×24 viewBox) ──────────────────── */
 
@@ -254,6 +255,7 @@ export function Navigation() {
         })}
 
         <div className="sh-sidebar-divider" style={{ marginTop: 'auto' }} />
+        <UsageMeterCard />
         {settingsGroup.map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon]
