@@ -2,7 +2,7 @@ import asyncio
 import uuid
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,6 +73,8 @@ async def read_books(
 
 @router.get("/shelf", response_model=list[BookResponse])
 async def read_books_for_shelf(
+    request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
 ) -> list[BookResponse]:
@@ -86,8 +88,27 @@ async def read_books_for_shelf(
     NOTE: This route MUST be registered before the ``/{book_id}`` dynamic
     path (FastAPI matches in declaration order — otherwise "shelf" would be
     parsed as a book id).
+
+    Supports ETag / If-None-Match: the ETag is derived from the library's
+    latest book ``updated_at`` so clients can skip the 2+ MB download when
+    nothing changed.
     """
     books = await list_all_books_for_shelf(session, library_id=library_id)
+
+    # ── ETag from max(updated_at) ─────────────────────────────────────────
+    if books:
+        max_updated = max(b.updated_at for b in books).timestamp()
+    else:
+        max_updated = 0.0
+    etag = f'W/"{library_id}-{max_updated:.6f}"'
+    response.headers["ETag"] = etag
+    response.headers["Cache-Control"] = "private, no-cache"
+
+    if_none_match = request.headers.get("If-None-Match", "")
+    if if_none_match == etag:
+        response.status_code = 304
+        return []  # FastAPI discards body on 304
+
     return [BookResponse.model_validate(book) for book in books]
 
 
