@@ -9,7 +9,7 @@ import { FirstBookOnboardingModal } from '../components/OnboardingWizard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
-import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBooksForShelf, useDeleteBook, useJobStatus } from '../hooks/useBooks'
+import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBookCounts, useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
@@ -18,6 +18,8 @@ import { ROUTES } from '../lib/routes'
 import type { Book, Location, ReadingStatus } from '../lib/types'
 
 type StatFilter = 'total' | 'read' | 'reading' | 'lent'
+
+const PAGE_SIZE = 20
 
 export function BooksPage() {
   const { t } = useTranslation()
@@ -29,6 +31,7 @@ export function BooksPage() {
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [statFilter, setStatFilter] = useState<StatFilter>('total')
+  const [page, setPage] = useState(1)
 
   // Onboarding
   const onboardingQuery = useOnboardingStatus()
@@ -82,7 +85,21 @@ export function BooksPage() {
   const selectAll = () => { setSelectMode(true); setSelectedIds(new Set(books.map((b) => b.id))) }
   const clearSelection = () => { setSelectedIds(new Set()); setSelectMode(false) }
 
-  const booksQuery = useBooksForShelf()
+  const apiParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    locationId: locationFilter !== 'all' && locationFilter !== 'unassigned' ? locationFilter : undefined,
+    unassignedOnly: locationFilter === 'unassigned' ? true : undefined,
+    readingStatus: statFilter === 'lent' ? ('lent' as const) : (readingFilter ?? undefined),
+    language: debouncedLanguage || undefined,
+    publisher: debouncedPublisher || undefined,
+    yearFrom: yearFromInput ? Number(yearFromInput) : undefined,
+    yearTo: yearToInput ? Number(yearToInput) : undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  }), [debouncedSearch, locationFilter, statFilter, readingFilter, debouncedLanguage, debouncedPublisher, yearFromInput, yearToInput, page])
+
+  const booksQuery = useBooks(apiParams)
+  const bookCounts = useBookCounts()
   const locationsQuery = useLocations()
 
   const deleteMutation = useDeleteBook()
@@ -99,7 +116,7 @@ export function BooksPage() {
   }, [locationsQuery.data])
 
   useEffect(() => {
-    const failed = (booksQuery.data ?? []).filter(
+    const failed = (booksQuery.data?.items ?? []).filter(
       (b) => b.processing_status === 'failed' && !toastedFailedIdsRef.current.has(b.id),
     )
     if (!failed.length) return
@@ -131,30 +148,28 @@ export function BooksPage() {
     uploadJobStatusQuery.isError,
   ])
 
-  const books = useMemo(() => {
-    const all = booksQuery.data ?? []
-    const q = debouncedSearch.toLowerCase()
+  // Reset to page 1 when any filter changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, readingFilter, locationFilter, debouncedLanguage, debouncedPublisher, yearFromInput, yearToInput, statFilter])
 
-    let raw = all.filter((b) => {
-      if (readingFilter && b.reading_status !== readingFilter) return false
-      if (locationFilter === 'unassigned' && b.location_id !== null) return false
-      if (locationFilter !== 'all' && locationFilter !== 'unassigned' && b.location_id !== locationFilter) return false
-      if (debouncedLanguage && (b.language ?? '').toLowerCase() !== debouncedLanguage.toLowerCase()) return false
-      if (debouncedPublisher && !(b.publisher ?? '').toLowerCase().includes(debouncedPublisher.toLowerCase())) return false
-      if (yearFromInput && (b.published_year ?? 0) < Number(yearFromInput)) return false
-      if (yearToInput && (b.published_year ?? 9999) > Number(yearToInput)) return false
-      if (q) {
-        const hay = `${b.title} ${b.author ?? ''} ${b.isbn ?? ''}`.toLowerCase()
-        if (!hay.includes(q)) return false
-      }
-      return true
-    })
-
-    if (statFilter === 'lent') {
-      raw = raw.filter((book) => !!book.is_currently_lent)
+  // If a mutation leaves the current page empty (e.g. deleted last item on page 3), go back
+  useEffect(() => {
+    if (booksQuery.data && page > 1 && booksQuery.data.items.length === 0) {
+      setPage((p) => p - 1)
     }
+  }, [booksQuery.data, page])
 
-    raw.sort((a, b) => {
+  // Clear selection when navigating pages — selected IDs from another page are invisible
+  useEffect(() => {
+    clearSelection()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
+
+  // Sort the current page (≤20 items) by location + shelf_position for grouped display
+  const books = useMemo(() => {
+    const items = booksQuery.data?.items ?? []
+    return [...items].sort((a, b) => {
       const la = a.location_id ? locationById.get(a.location_id) : null
       const lb = b.location_id ? locationById.get(b.location_id) : null
       const ka = la ? `${la.room}${la.furniture}${la.shelf}` : '￿'
@@ -166,25 +181,7 @@ export function BooksPage() {
       if (pa !== pb) return pa - pb
       return a.title.localeCompare(b.title)
     })
-
-    return raw
-  }, [
-    booksQuery.data,
-    debouncedSearch,
-    readingFilter,
-    locationFilter,
-    debouncedLanguage,
-    debouncedPublisher,
-    yearFromInput,
-    yearToInput,
-    statFilter,
-    locationById,
-  ])
-
-  const moveTargetMaxPosition = useMemo(() => {
-    if (!bulkMoveTarget) return books.length
-    return books.filter((b) => b.location_id === bulkMoveTarget && !selectedIds.has(b.id)).length
-  }, [bulkMoveTarget, books, selectedIds])
+  }, [booksQuery.data?.items, locationById])
 
   const allVisibleSelected = books.length > 0 && selectedIds.size === books.length
 
@@ -198,10 +195,11 @@ export function BooksPage() {
     return map
   }, [books])
 
-  const total = books.length
-  // rawCount is the unfiltered library size — used to distinguish "library is
-  // truly empty" (rawCount === 0) from "filters produced no results" (total === 0).
-  const rawCount = (booksQuery.data ?? []).length
+  // total = server-side count matching current filters (shown in header + drives pagination)
+  const total = booksQuery.data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  // rawCount = unfiltered library size — distinguishes "truly empty" from "no filter results"
+  const rawCount = bookCounts.total
 
   const booksCountLabel = t('books.books_count')
 
@@ -239,8 +237,10 @@ export function BooksPage() {
 
       <div style={{ padding: '0 8px' }}>
         <StatBar
-          books={books}
-          total={total}
+          total={bookCounts.total}
+          readCount={bookCounts.read}
+          readingCount={bookCounts.reading}
+          lentCount={bookCounts.lent}
           active={statFilter}
           onSelect={(key) => {
             setStatFilter(key)
@@ -482,7 +482,7 @@ export function BooksPage() {
         )}
 
         {/* ── Has books but search / filter produced no results ── */}
-        {!booksQuery.isLoading && !booksQuery.isError && rawCount > 0 && total === 0 && (
+        {!booksQuery.isLoading && !booksQuery.isError && rawCount > 0 && rawCount === 0 && (
           <div className="sh-empty-state">
             <div className="sh-empty-state__icon">
               <NoResultsIcon size={56} />
@@ -521,6 +521,29 @@ export function BooksPage() {
           )
         })}
       </div>
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, padding: '24px 24px 8px' }}>
+          <button
+            className="sh-btn-secondary"
+            onClick={() => { setPage((p) => p - 1); clearSelection() }}
+            disabled={page === 1}
+          >
+            {t('pagination.prev', '← Prev')}
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', minWidth: 70, textAlign: 'center' }}>
+            {t('pagination.info', '{{page}} / {{total}}', { page, total: totalPages })}
+          </span>
+          <button
+            className="sh-btn-secondary"
+            onClick={() => { setPage((p) => p + 1); clearSelection() }}
+            disabled={page >= totalPages}
+          >
+            {t('pagination.next', 'Next →')}
+          </button>
+        </div>
+      )}
 
       {/* ── Bulk actions toolbar ── */}
       {isSelectMode && (
@@ -575,7 +598,6 @@ export function BooksPage() {
           style={{ marginBottom: 8 }}
         />
         <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
-          {t('bulk.insert_position_max', { max: moveTargetMaxPosition })}
         </p>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -615,7 +637,6 @@ export function BooksPage() {
           style={{ marginBottom: 8 }}
         />
         <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--sh-text-muted)' }}>
-          {t('bulk.insert_position_max', { max: moveTargetMaxPosition })}
         </p>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -658,7 +679,7 @@ export function BooksPage() {
         open={
           !onboardingDismissed
           && !booksQuery.isLoading
-          && total === 0
+          && rawCount === 0
           && onboardingQuery.data?.should_show === true
         }
         onDone={() => setOnboardingDismissed(true)}

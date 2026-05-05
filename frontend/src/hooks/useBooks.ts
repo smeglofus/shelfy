@@ -177,6 +177,22 @@ export function useBulkUpdateStatus() {
   })
 }
 
+export function useBookCounts() {
+  const { isAuthenticated } = useAuth()
+  const opts = { retry: false, enabled: isAuthenticated, staleTime: 30_000 } as const
+  const total = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count'], queryFn: () => listBooks({ pageSize: 1 }), ...opts })
+  const read = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count', 'read'], queryFn: () => listBooks({ readingStatus: 'read', pageSize: 1 }), ...opts })
+  const reading = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count', 'reading'], queryFn: () => listBooks({ readingStatus: 'reading', pageSize: 1 }), ...opts })
+  const lent = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count', 'lent'], queryFn: () => listBooks({ readingStatus: 'lent', pageSize: 1 }), ...opts })
+  return {
+    total: total.data?.total ?? 0,
+    read: read.data?.total ?? 0,
+    reading: reading.data?.total ?? 0,
+    lent: lent.data?.total ?? 0,
+    isLoading: total.isLoading,
+  }
+}
+
 export function useJobStatus(jobId: string | null) {
   const { isAuthenticated } = useAuth()
   return useQuery({

@@ -421,6 +421,11 @@
     "settings_reset_desc": "Znovu zobrazit průvodce prvním nastavením.",
     "reset_done": "Onboarding resetován."
   },
+  "pagination": {
+    "prev": "← Předchozí",
+    "next": "Další →",
+    "info": "{{page}} / {{total}}"
+  },
   "bookshelf": {
     "title": "Moje knihovny",
     "scan_shelf": "Skenovat polici",

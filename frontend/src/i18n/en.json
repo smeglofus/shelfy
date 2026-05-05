@@ -492,6 +492,11 @@
     "settings_reset_desc": "Show the first-time setup wizard again.",
     "reset_done": "Onboarding has been reset."
   },
+  "pagination": {
+    "prev": "← Prev",
+    "next": "Next →",
+    "info": "{{page}} / {{total}}"
+  },
   "bookshelf": {
     "title": "My bookshelves",
     "scan_shelf": "Scan shelf",

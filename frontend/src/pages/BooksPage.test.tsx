@@ -7,13 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BooksPage } from './BooksPage'
 import { useToastStore } from '../lib/toast-store'
-import type { Book, Location } from '../lib/types'
+import type { Book, BookListResponse, Location } from '../lib/types'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 vi.mock('../lib/api', () => ({
-  listBooksForShelf: vi.fn(),
-  listBooks: vi.fn(),        // kept for hook compatibility
+  listBooksForShelf: vi.fn(),  // still needed for BookshelfViewPage hook
+  listBooks: vi.fn(),
   createBook: vi.fn(),
   updateBook: vi.fn(),
   deleteBook: vi.fn(),
@@ -41,7 +41,7 @@ vi.mock('../contexts/AuthContext', () => ({
 import {
   deleteBook,
   getOnboardingStatus,
-  listBooksForShelf,
+  listBooks,
   listLocations,
 } from '../lib/api'
 
@@ -67,12 +67,20 @@ const makeBook = (overrides: Partial<Book> = {}): Book => ({
   ...overrides,
 })
 
+const makeResponse = (items: Book[], total?: number): BookListResponse => ({
+  total: total ?? items.length,
+  page: 1,
+  page_size: 20,
+  items,
+})
+
 const locations: Location[] = [
   {
     id: 'loc-1',
     room: 'Office',
     furniture: 'Bookshelf',
     shelf: 'Shelf 1',
+    display_order: 0,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   },
@@ -98,10 +106,12 @@ function renderWithProviders(ui: ReactNode) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('BooksPage', () => {
+  const onDone = vi.fn()
+
   beforeEach(() => {
     vi.clearAllMocks()
     useToastStore.setState({ message: null })
-    vi.mocked(listBooksForShelf).mockResolvedValue([makeBook()])
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([makeBook()]))
     vi.mocked(listLocations).mockResolvedValue(locations)
     vi.mocked(deleteBook).mockResolvedValue(undefined)
     vi.mocked(getOnboardingStatus).mockResolvedValue({
@@ -128,7 +138,6 @@ describe('BooksPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /delete-book-1/ }))
 
-    // Modal label is the translated delete_confirm_title key
     expect(screen.getByRole('dialog', { name: 'books.delete_confirm_title' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'books.delete_confirm' }))
@@ -139,18 +148,16 @@ describe('BooksPage', () => {
   })
 
   it('shows aggregated toast for failed books', async () => {
-    vi.mocked(listBooksForShelf).mockResolvedValue([
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([
       makeBook({ id: 'book-f1', title: 'Book Failed 1', processing_status: 'failed' }),
       makeBook({ id: 'book-f2', title: 'Book Failed 2', processing_status: 'failed' }),
-    ])
+    ]))
 
     renderWithProviders(<BooksPage />)
 
-    // Both books render (failed books are still listed)
     const deleteButtons = await screen.findAllByRole('button', { name: /delete-book-/ })
     expect(deleteButtons.length).toBe(2)
 
-    // The toast store should have received an error about failed processing
     await waitFor(() => {
       const { toasts } = useToastStore.getState()
       expect(toasts.some((t) => t.message === 'books.processing_failed_bulk' && t.variant === 'error')).toBe(true)
@@ -164,7 +171,8 @@ describe('BooksPage — empty library state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useToastStore.setState({ message: null })
-    vi.mocked(listBooksForShelf).mockResolvedValue([])
+    // All listBooks calls return empty — covers both the main query and useBookCounts sub-queries
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([]))
     vi.mocked(listLocations).mockResolvedValue([])
     vi.mocked(getOnboardingStatus).mockResolvedValue({
       should_show: false,
@@ -188,7 +196,7 @@ describe('BooksPage — empty library state', () => {
   })
 
   it('does not show rich empty state when library has books', async () => {
-    vi.mocked(listBooksForShelf).mockResolvedValue([makeBook()])
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([makeBook()]))
     vi.mocked(listLocations).mockResolvedValue(locations)
 
     renderWithProviders(<BooksPage />)
