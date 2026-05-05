@@ -426,6 +426,13 @@
     "next": "Další →",
     "info": "{{page}} / {{total}}"
   },
+  "usage_meter": {
+    "scans": "Skenování",
+    "enrichments": "Obohacení",
+    "cta_default": "Zobrazit plány",
+    "cta_warning": "Upgradujte, než vám dojde limit",
+    "cta_over": "Upgradujte pro pokračování"
+  },
   "bookshelf": {
     "title": "Moje knihovny",
     "scan_shelf": "Skenovat polici",

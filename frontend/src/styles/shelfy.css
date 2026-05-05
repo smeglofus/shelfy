@@ -2585,3 +2585,104 @@ html.dark .lp-final-cta {
   );
   border-color: rgba(45, 122, 95, 0.15);
 }
+
+/* ── Usage Meter Card ────────────────────────────────────────── */
+
+.sh-usage-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sh-space-2);
+  padding: var(--sh-space-3) var(--sh-space-3);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  background: var(--sh-surface-elevated);
+  margin: var(--sh-space-2) 0;
+}
+
+.sh-usage-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sh-usage-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--sh-primary-bg);
+  color: var(--sh-primary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sh-usage-meter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sh-usage-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sh-space-2);
+}
+
+.sh-usage-meter-label {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+}
+
+.sh-usage-meter-value {
+  font-size: 12px;
+  color: var(--sh-text-main);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sh-usage-meter-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--sh-border);
+  overflow: hidden;
+}
+
+.sh-usage-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.sh-usage-cta {
+  margin-top: var(--sh-space-1);
+  width: 100%;
+  padding: 5px 0;
+  background: var(--sh-primary-bg);
+  color: var(--sh-primary);
+  border: 1px solid var(--sh-primary);
+  border-radius: var(--sh-radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sh-duration-fast) var(--sh-ease-default);
+}
+
+.sh-usage-cta:hover {
+  background: var(--sh-primary);
+  color: #fff;
+}
+
+.sh-usage-cta--urgent {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--sh-red);
+  border-color: var(--sh-red);
+}
+
+.sh-usage-cta--urgent:hover {
+  background: var(--sh-red);
+  color: #fff;
+}

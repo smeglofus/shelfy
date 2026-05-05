@@ -497,6 +497,13 @@
     "next": "Next →",
     "info": "{{page}} / {{total}}"
   },
+  "usage_meter": {
+    "scans": "Scans",
+    "enrichments": "Enrichments",
+    "cta_default": "View plans",
+    "cta_warning": "Upgrade before you run out",
+    "cta_over": "Upgrade to continue"
+  },
   "bookshelf": {
     "title": "My bookshelves",
     "scan_shelf": "Scan shelf",
