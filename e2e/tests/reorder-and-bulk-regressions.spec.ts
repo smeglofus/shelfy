@@ -51,3 +51,29 @@ test('bookshelf route and reorder toggle render on mobile', async ({ page }) => 
   await reorderButton.click()
   await expect(page.getByText(/Drag books to reorder|long-press/i)).toBeVisible()
 })
+
+test('"show on shelf" highlights book at shelf position 0', async ({ page }) => {
+  await login(page)
+  const title = `E2E Shelf Highlight ${Date.now()}`
+  await createLocatedBook(page, title)
+  // createLocatedBook ends on /books — no extra navigation needed.
+
+  // Navigate to the book detail page by clicking the book card
+  await page.locator('.sh-card-enter').filter({ hasText: title }).click()
+  await page.waitForURL(/\/books\//)
+
+  // Click "Show on shelf" / "Ukázat v polici"
+  await page.getByRole('button', { name: /Ukázat v polici|Show on shelf/i }).click()
+  await page.waitForURL(/\/bookshelf\?/)
+
+  // Verify URL params
+  const url = page.url()
+  expect(url).toContain('location_id=')
+  expect(url).toContain('highlight_book_id=')
+
+  // Verify the book spine is highlighted (data-highlighted attribute present)
+  await expect(page.locator('[data-highlighted]').first()).toBeVisible({ timeout: 8000 })
+
+  // Verify the highlighted spine has the correct book title
+  await expect(page.locator('[data-highlighted]').first()).toContainText(title.substring(0, 10), { ignoreCase: true })
+})
