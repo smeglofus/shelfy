@@ -1,3 +1,4 @@
+{"environment": "production", "event": "sentry_initialized", "service": "backend", "level": "info", "timestamp": "2026-05-05T10:15:58.066572Z"}
 {
   "openapi": "3.1.0",
   "info": {

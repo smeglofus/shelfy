@@ -94,12 +94,15 @@ async def get_shelf_etag_metadata(
     Returns (book_count, max_book_updated, location_count, max_location_updated)
     so the endpoint can build a weak ETag and return 304 without touching
     the full 2+ MB book payload.
+
+    For empty libraries max(updated_at) is NULL — we use 0.0 in Python so
+    the ETag is stable across requests (``func.now()`` would drift).
     """
     book_row = (
         await session.execute(
             select(
                 func.count(Book.id),
-                func.coalesce(func.max(Book.updated_at), func.now()),
+                func.max(Book.updated_at),
             ).where(Book.library_id == library_id)
         )
     ).one()
@@ -107,15 +110,18 @@ async def get_shelf_etag_metadata(
         await session.execute(
             select(
                 func.count(Location.id),
-                func.coalesce(func.max(Location.updated_at), func.now()),
+                func.max(Location.updated_at),
             ).where(Location.library_id == library_id)
         )
     ).one()
+
+    max_book_ts = book_row[1]
+    max_loc_ts = loc_row[1]
     return (
         int(book_row[0]),
-        float(book_row[1].timestamp()),
+        max_book_ts.timestamp() if max_book_ts is not None else 0.0,
         int(loc_row[0]),
-        float(loc_row[1].timestamp()),
+        max_loc_ts.timestamp() if max_loc_ts is not None else 0.0,
     )
 
 
