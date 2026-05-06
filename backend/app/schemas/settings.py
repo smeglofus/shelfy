@@ -17,3 +17,8 @@ class OnboardingStatusResponse(BaseModel):
     should_show: bool
     completed_at: datetime | None = None
     skipped_at: datetime | None = None
+
+
+class ClearSampleLibraryResponse(BaseModel):
+    deleted_books: int
+    deleted_locations: int

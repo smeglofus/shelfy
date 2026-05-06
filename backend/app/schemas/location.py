@@ -33,5 +33,6 @@ class LocationResponse(BaseModel):
     furniture: str
     shelf: str
     display_order: int
+    is_sample: bool
     created_at: datetime
     updated_at: datetime

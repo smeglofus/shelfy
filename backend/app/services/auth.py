@@ -11,7 +11,7 @@ from app.core.config import Settings
 from app.core.security import create_token, decode_token, get_password_hash, verify_password
 from app.models.user import User
 from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
-from app.services.library import create_personal_library
+from app.services.library import create_personal_library, seed_sample_library
 
 logger = structlog.get_logger()
 
@@ -82,7 +82,8 @@ async def register_user(session: AsyncSession, email: str, password: str) -> Use
         )
     )
 
-    await create_personal_library(session, user)
+    lib = await create_personal_library(session, user)
+    await seed_sample_library(session, lib)
     await session.commit()
     await session.refresh(user)
     logger.info("registration_success", user_id=str(user.id))

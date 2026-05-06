@@ -49,7 +49,7 @@ async def read_books(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
 ) -> BookListResponse:
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         session,
         library_id=library_id,
         search=search,
@@ -67,6 +67,7 @@ async def read_books(
         total=total,
         page=page,
         page_size=page_size,
+        has_sample_books=has_sample_books,
         items=[BookResponse.model_validate(book) for book in books],
     )
 

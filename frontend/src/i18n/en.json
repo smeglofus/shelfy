@@ -99,7 +99,10 @@
     "saving": "Saving...",
     "empty_cta_add": "Add book",
     "empty_cta_scan": "Scan shelf",
-    "empty_cta_location": "Set up shelves"
+    "empty_cta_location": "Set up shelves",
+    "sample_banner": "This is a sample library — explore the app, then clear the sample data when you're ready.",
+    "sample_clear_cta": "Clear sample data",
+    "sample_cleared": "Sample data cleared."
   },
   "book_detail": {
     "title": "Book details",

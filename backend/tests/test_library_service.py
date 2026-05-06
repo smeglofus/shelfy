@@ -4,12 +4,14 @@ from collections.abc import AsyncIterator
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base
 from app.models.library import Library, LibraryMember, LibraryRole
 from app.models.user import User
+from app.models.book import Book
+from app.models.location import Location
 from app.services.library import (
     add_member,
     create_personal_library,
@@ -18,6 +20,7 @@ from app.services.library import (
     list_user_libraries,
     remove_member,
     require_library_role,
+    seed_sample_library,
     update_member_role,
 )
 
@@ -281,3 +284,41 @@ async def test_remove_member_400_last_owner(test_session: AsyncSession) -> None:
     with pytest.raises(HTTPException) as exc:
         await remove_member(test_session, lib.id, owner.id)
     assert exc.value.status_code == 400
+
+
+# ── seed_sample_library ───────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_seed_sample_library_creates_expected_counts(test_session: AsyncSession) -> None:
+    user = await _make_user(test_session)
+    lib = await create_personal_library(test_session, user)
+    await seed_sample_library(test_session, lib)
+    await test_session.commit()
+
+    book_count = (await test_session.execute(
+        select(func.count()).select_from(Book).where(Book.library_id == lib.id)
+    )).scalar_one()
+    loc_count = (await test_session.execute(
+        select(func.count()).select_from(Location).where(Location.library_id == lib.id)
+    )).scalar_one()
+
+    assert book_count == 16
+    assert loc_count == 3
+
+
+@pytest.mark.asyncio
+async def test_seed_sample_library_marks_is_sample(test_session: AsyncSession) -> None:
+    user = await _make_user(test_session)
+    lib = await create_personal_library(test_session, user)
+    await seed_sample_library(test_session, lib)
+    await test_session.commit()
+
+    non_sample_books = (await test_session.execute(
+        select(func.count()).select_from(Book).where(Book.library_id == lib.id, Book.is_sample.is_(False))
+    )).scalar_one()
+    non_sample_locs = (await test_session.execute(
+        select(func.count()).select_from(Location).where(Location.library_id == lib.id, Location.is_sample.is_(False))
+    )).scalar_one()
+
+    assert non_sample_books == 0
+    assert non_sample_locs == 0

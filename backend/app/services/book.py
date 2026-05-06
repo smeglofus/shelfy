@@ -32,7 +32,7 @@ async def list_books(
     year_to: int | None = None,
     page: int,
     page_size: int,
-) -> tuple[list[Book], int]:
+) -> tuple[list[Book], int, bool]:
     filters: list[ColumnElement[bool]] = [Book.library_id == library_id]
 
     if unassigned_only:
@@ -79,9 +79,13 @@ async def list_books(
         .limit(page_size)
     )
 
+    sample_count_query = select(func.count()).select_from(Book).where(
+        Book.library_id == library_id, Book.is_sample.is_(True)
+    )
     total = int((await session.execute(count_query)).scalar_one())
+    has_sample_books = int((await session.execute(sample_count_query)).scalar_one()) > 0
     books = list((await session.execute(query)).scalars().all())
-    return books, total
+    return books, total, has_sample_books
 
 
 async def get_shelf_etag_metadata(

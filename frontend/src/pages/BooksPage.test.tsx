@@ -20,6 +20,7 @@ vi.mock('../lib/api', () => ({
   bulkDeleteBooks: vi.fn(),
   bulkMoveBooks: vi.fn(),
   bulkUpdateStatus: vi.fn(),
+  clearSampleLibrary: vi.fn(),
   listLocations: vi.fn(),
   uploadBookImage: vi.fn(),
   getJobStatus: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock('../contexts/AuthContext', () => ({
 }))
 
 import {
+  clearSampleLibrary,
   deleteBook,
   getOnboardingStatus,
   listBooks,
@@ -62,15 +64,17 @@ const makeBook = (overrides: Partial<Book> = {}): Book => ({
   reading_status: 'unread',
   processing_status: 'manual',
   is_currently_lent: false,
+  is_sample: false,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   ...overrides,
 })
 
-const makeResponse = (items: Book[], total?: number): BookListResponse => ({
+const makeResponse = (items: Book[], total?: number, hasSample = false): BookListResponse => ({
   total: total ?? items.length,
   page: 1,
   page_size: 20,
+  has_sample_books: hasSample,
   items,
 })
 
@@ -81,6 +85,7 @@ const locations: Location[] = [
     furniture: 'Bookshelf',
     shelf: 'Shelf 1',
     display_order: 0,
+    is_sample: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   },
@@ -216,5 +221,55 @@ describe('BooksPage — empty library state', () => {
 
     expect(await screen.findByText('books.empty_category')).toBeInTheDocument()
     expect(screen.queryByTestId('empty-library-state')).not.toBeInTheDocument()
+  })
+})
+
+// ── Sample library banner tests (issue #202) ──────────────────────────────────
+
+describe('BooksPage — sample library banner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useToastStore.setState({ message: null })
+    vi.mocked(listLocations).mockResolvedValue(locations)
+    vi.mocked(getOnboardingStatus).mockResolvedValue({
+      should_show: false,
+      completed_at: '2024-01-01T00:00:00Z',
+      skipped_at: null,
+    })
+    vi.mocked(clearSampleLibrary).mockResolvedValue({ deleted_books: 16, deleted_locations: 3 })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows sample banner when has_sample_books is true', async () => {
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([makeBook({ is_sample: true })], 1, true))
+
+    renderWithProviders(<BooksPage />)
+
+    expect(await screen.findByTestId('sample-library-banner')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'books.sample_clear_cta' })).toBeInTheDocument()
+  })
+
+  it('hides sample banner when has_sample_books is false', async () => {
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([makeBook()], 1, false))
+
+    renderWithProviders(<BooksPage />)
+
+    await screen.findByText('Clean Code')
+    expect(screen.queryByTestId('sample-library-banner')).not.toBeInTheDocument()
+  })
+
+  it('calls clearSampleLibrary when the CTA is clicked', async () => {
+    vi.mocked(listBooks).mockResolvedValue(makeResponse([makeBook({ is_sample: true })], 1, true))
+
+    renderWithProviders(<BooksPage />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'books.sample_clear_cta' }))
+
+    await waitFor(() => {
+      expect(clearSampleLibrary).toHaveBeenCalledTimes(1)
+    })
   })
 })
