@@ -2601,6 +2601,60 @@
         }
       }
     },
+    "/api/v1/settings/sample-library": {
+      "delete": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Clear Sample Library",
+        "operationId": "clear_sample_library_api_v1_settings_sample_library_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearSampleLibraryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/onboarding": {
       "get": {
         "tags": [
@@ -3568,6 +3622,10 @@
             "type": "integer",
             "title": "Page Size"
           },
+          "has_sample_books": {
+            "type": "boolean",
+            "title": "Has Sample Books"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/BookResponse"
@@ -3581,6 +3639,7 @@
           "total",
           "page",
           "page_size",
+          "has_sample_books",
           "items"
         ],
         "title": "BookListResponse"
@@ -3734,6 +3793,10 @@
               }
             ]
           },
+          "is_sample": {
+            "type": "boolean",
+            "title": "Is Sample"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3762,6 +3825,7 @@
           "processing_status",
           "is_currently_lent",
           "active_loan",
+          "is_sample",
           "created_at",
           "updated_at"
         ],
@@ -4111,6 +4175,24 @@
           "url"
         ],
         "title": "CheckoutResponse"
+      },
+      "ClearSampleLibraryResponse": {
+        "properties": {
+          "deleted_books": {
+            "type": "integer",
+            "title": "Deleted Books"
+          },
+          "deleted_locations": {
+            "type": "integer",
+            "title": "Deleted Locations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted_books",
+          "deleted_locations"
+        ],
+        "title": "ClearSampleLibraryResponse"
       },
       "ConfirmBookItem": {
         "properties": {
@@ -5006,6 +5088,10 @@
             "type": "integer",
             "title": "Display Order"
           },
+          "is_sample": {
+            "type": "boolean",
+            "title": "Is Sample"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5024,6 +5110,7 @@
           "furniture",
           "shelf",
           "display_order",
+          "is_sample",
           "created_at",
           "updated_at"
         ],
