@@ -62,12 +62,6 @@ export function BookshelfViewPage() {
 
   const targetLocationId = preselectedLocationId ?? highlightedBook?.location_id ?? null
 
-  const highlightedBookReady = Boolean(
-    highlightBookId &&
-    targetLocationId &&
-    localByLocation[targetLocationId]?.some((b) => b.id === highlightBookId),
-  )
-
   const [selectedRoom, setSelectedRoom] = useState<string>('')
   const [selectMode, setSelectMode] = useState(false)
   const [reorderMode, setReorderMode] = useState(false)
@@ -128,6 +122,12 @@ export function BookshelfViewPage() {
 
   const [localByLocation, setLocalByLocation] = useState<Record<string, Book[]>>({})
   useEffect(() => setLocalByLocation(booksByLocation), [booksByLocation])
+
+  const highlightedBookReady = Boolean(
+    highlightBookId &&
+    targetLocationId &&
+    booksByLocation[targetLocationId]?.some((b) => b.id === highlightBookId),
+  )
 
   const originalBookById = useMemo(() => {
     const map = new Map<string, { location_id: string | null; shelf_position: number | null }>()
@@ -202,7 +202,9 @@ export function BookshelfViewPage() {
       const spine = highlightSpineRef.current
       if (!row || !spine || cancelled) return
 
-      row.scrollTo({ left: Math.max(0, spine.offsetLeft - 24), behavior: 'smooth' })
+      const spineRect = spine.getBoundingClientRect()
+      const rowRect = row.getBoundingClientRect()
+      row.scrollTo({ left: Math.max(0, row.scrollLeft + spineRect.left - rowRect.left - 24), behavior: 'smooth' })
     }
 
     run()
