@@ -55,6 +55,19 @@ export function BookshelfViewPage() {
   const highlightSpineRef = useRef<HTMLButtonElement | null>(null)
   const shelfRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
+  const highlightedBook = useMemo(
+    () => allBooks.find((b) => b.id === highlightBookId) ?? null,
+    [allBooks, highlightBookId],
+  )
+
+  const targetLocationId = preselectedLocationId ?? highlightedBook?.location_id ?? null
+
+  const highlightedBookReady = Boolean(
+    highlightBookId &&
+    targetLocationId &&
+    localByLocation[targetLocationId]?.some((b) => b.id === highlightBookId),
+  )
+
   const [selectedRoom, setSelectedRoom] = useState<string>('')
   const [selectMode, setSelectMode] = useState(false)
   const [reorderMode, setReorderMode] = useState(false)
@@ -152,7 +165,7 @@ export function BookshelfViewPage() {
   const selectAllVisible = () => { setSelectMode(true); setSelectedIds(new Set(visibleBooks.map((b) => b.id))) }
 
   useEffect(() => {
-    if (!highlightBookId || activeTab !== 'shelves') return
+    if (!highlightBookId || activeTab !== 'shelves' || !targetLocationId || !highlightedBookReady) return
     let cancelled = false
 
     // Two-phase deterministic scroll.
@@ -171,8 +184,8 @@ export function BookshelfViewPage() {
         if (cancelled) return
       }
 
-      if (cancelled || !preselectedLocationId) return
-      const shelfContainer = shelfRefs.current.get(preselectedLocationId)
+      if (cancelled) return
+      const shelfContainer = shelfRefs.current.get(targetLocationId)
       if (!shelfContainer) return
 
       // Phase 1: scroll shelf container vertically into view.
@@ -189,12 +202,12 @@ export function BookshelfViewPage() {
       const spine = highlightSpineRef.current
       if (!row || !spine || cancelled) return
 
-      row.scrollTo({ left: spine.offsetLeft - 24, behavior: 'smooth' })
+      row.scrollTo({ left: Math.max(0, spine.offsetLeft - 24), behavior: 'smooth' })
     }
 
     run()
     return () => { cancelled = true }
-  }, [highlightBookId, activeTab, preselectedLocationId])
+  }, [highlightBookId, activeTab, targetLocationId, highlightedBookReady])
 
   function findBookObject(id: string): Book | null {
     for (const books of Object.values(localByLocation)) {
@@ -476,7 +489,7 @@ export function BookshelfViewPage() {
 
                   {shelfLocations.map((loc) => {
                     const shelfBooks = localByLocation[loc.id] ?? []
-                    const isHighlighted = preselectedLocationId === loc.id
+                    const isHighlighted = targetLocationId === loc.id
                     const hasHighlightBook = highlightBookId ? shelfBooks.some((b) => b.id === highlightBookId) : false
                     const needsRender = isHighlighted || hasHighlightBook
 
