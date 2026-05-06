@@ -74,6 +74,7 @@ async def _make_book(
     publication_year: int | None = None,
     language: str | None = None,
     publisher: str | None = None,
+    is_sample: bool = False,
 ) -> Book:
     book = Book(
         library_id=library_id,
@@ -87,6 +88,7 @@ async def _make_book(
         publication_year=publication_year,
         language=language,
         publisher=publisher,
+        is_sample=is_sample,
     )
     session.add(book)
     await session.commit()
@@ -99,12 +101,13 @@ async def _make_book(
 @pytest.mark.asyncio
 async def test_list_books_empty(test_session: AsyncSession) -> None:
     _, lib_id = await _make_library(test_session)
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status=None, page=1, page_size=20,
     )
     assert books == []
     assert total == 0
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -112,12 +115,13 @@ async def test_list_books_returns_all(test_session: AsyncSession) -> None:
     _, lib_id = await _make_library(test_session)
     await _make_book(test_session, lib_id, title="Alpha")
     await _make_book(test_session, lib_id, title="Beta")
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status=None, page=1, page_size=20,
     )
     assert total == 2
     assert len(books) == 2
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -125,12 +129,13 @@ async def test_list_books_search_by_title(test_session: AsyncSession) -> None:
     _, lib_id = await _make_library(test_session)
     await _make_book(test_session, lib_id, title="Clean Code")
     await _make_book(test_session, lib_id, title="Design Patterns")
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search="Clean", location_id=None,
         unassigned_only=False, reading_status=None, page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "Clean Code"
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -138,12 +143,13 @@ async def test_list_books_filter_by_reading_status(test_session: AsyncSession) -
     _, lib_id = await _make_library(test_session)
     await _make_book(test_session, lib_id, title="Unread", reading_status=ReadingStatus.UNREAD)
     await _make_book(test_session, lib_id, title="Read", reading_status=ReadingStatus.READ)
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status="read", page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "Read"
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -152,12 +158,13 @@ async def test_list_books_filter_unassigned_only(test_session: AsyncSession) -> 
     loc = await _make_location(test_session, lib_id)
     await _make_book(test_session, lib_id, title="Unassigned")
     await _make_book(test_session, lib_id, title="Placed", location_id=loc.id, shelf_position=0)
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=True, reading_status=None, page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "Unassigned"
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -166,12 +173,13 @@ async def test_list_books_filter_by_location(test_session: AsyncSession) -> None
     loc = await _make_location(test_session, lib_id)
     await _make_book(test_session, lib_id, title="In Location", location_id=loc.id, shelf_position=0)
     await _make_book(test_session, lib_id, title="No Location")
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=loc.id,
         unassigned_only=False, reading_status=None, page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "In Location"
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -179,12 +187,13 @@ async def test_list_books_pagination(test_session: AsyncSession) -> None:
     _, lib_id = await _make_library(test_session)
     for i in range(5):
         await _make_book(test_session, lib_id, title=f"Book {i}")
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status=None, page=1, page_size=3,
     )
     assert total == 5
     assert len(books) == 3
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -192,12 +201,13 @@ async def test_list_books_filter_by_language(test_session: AsyncSession) -> None
     _, lib_id = await _make_library(test_session)
     await _make_book(test_session, lib_id, title="Czech Book", language="cs")
     await _make_book(test_session, lib_id, title="English Book", language="en")
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status=None, language="cs", page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "Czech Book"
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
@@ -205,13 +215,53 @@ async def test_list_books_filter_by_year_range(test_session: AsyncSession) -> No
     _, lib_id = await _make_library(test_session)
     await _make_book(test_session, lib_id, title="Old", publication_year=1990)
     await _make_book(test_session, lib_id, title="New", publication_year=2020)
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status=None, year_from=2000, year_to=2025,
         page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "New"
+    assert has_sample_books is False
+
+
+# ── has_sample_books flag (issue #202) ────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_has_sample_books_true_when_sample_exists(test_session: AsyncSession) -> None:
+    _, lib_id = await _make_library(test_session)
+    await _make_book(test_session, lib_id, title="Sample Book", is_sample=True)
+    _, _, has_sample_books = await list_books(
+        test_session, library_id=lib_id, search=None, location_id=None,
+        unassigned_only=False, reading_status=None, page=1, page_size=20,
+    )
+    assert has_sample_books is True
+
+
+@pytest.mark.asyncio
+async def test_has_sample_books_false_when_only_real_books(test_session: AsyncSession) -> None:
+    _, lib_id = await _make_library(test_session)
+    await _make_book(test_session, lib_id, title="Real Book", is_sample=False)
+    _, _, has_sample_books = await list_books(
+        test_session, library_id=lib_id, search=None, location_id=None,
+        unassigned_only=False, reading_status=None, page=1, page_size=20,
+    )
+    assert has_sample_books is False
+
+
+@pytest.mark.asyncio
+async def test_has_sample_books_independent_of_active_filters(test_session: AsyncSession) -> None:
+    """has_sample_books reflects library-wide state, not the current page/filter results."""
+    _, lib_id = await _make_library(test_session)
+    # Only a sample book exists — it won't match the search term below
+    await _make_book(test_session, lib_id, title="Sample Only", is_sample=True)
+    books, total, has_sample_books = await list_books(
+        test_session, library_id=lib_id, search="NOTHING_MATCHES", location_id=None,
+        unassigned_only=False, reading_status=None, page=1, page_size=20,
+    )
+    assert books == []
+    assert total == 0
+    assert has_sample_books is True  # still True even though 0 items returned
 
 
 # ── list_all_books_for_shelf ──────────────────────────────────────────────────
@@ -551,12 +601,13 @@ async def test_list_books_filter_by_publisher(test_session: AsyncSession) -> Non
     _, lib_id = await _make_library(test_session)
     await _make_book(test_session, lib_id, title="OReilly Book", publisher="O'Reilly Media")
     await _make_book(test_session, lib_id, title="Other Book", publisher="Penguin")
-    books, total = await list_books(
+    books, total, has_sample_books = await list_books(
         test_session, library_id=lib_id, search=None, location_id=None,
         unassigned_only=False, reading_status=None, publisher="O'Reilly", page=1, page_size=20,
     )
     assert total == 1
     assert books[0].title == "OReilly Book"
+    assert has_sample_books is False
 
 
 @pytest.mark.asyncio
