@@ -133,6 +133,7 @@ class BookResponse(BaseModel):
     processing_status: BookProcessingStatus
     is_currently_lent: bool
     active_loan: LoanResponse | None
+    is_sample: bool
     created_at: datetime
     updated_at: datetime
 
@@ -141,6 +142,7 @@ class BookListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+    has_sample_books: bool
     items: list[BookResponse]
 
 

@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator, Iterator
 
 from httpx import ASGITransport, AsyncClient
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings, get_settings
@@ -9,6 +10,10 @@ from app.core.security import get_password_hash
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
+from app.models.book import Book, BookProcessingStatus, ReadingStatus
+from app.models.library import Library, LibraryMember, LibraryRole
+from app.models.loan import Loan
+from app.models.location import Location
 from app.models.user import User
 
 
@@ -215,3 +220,123 @@ async def test_full_cycle_show_skip_reset_complete(test_session: AsyncSession) -
         r = await client.post("/api/v1/settings/onboarding/complete", headers=headers)
         assert r.json()["should_show"] is False
         assert r.json()["completed_at"] is not None
+
+
+# ── DELETE /api/v1/settings/sample-library (issue #202) ──────────────────────
+
+async def _seed_user_with_library(session: AsyncSession, email: str = "sample@example.com") -> tuple[User, Library]:
+    """Create a user + personal library, return both."""
+    user = User(email=email, hashed_password=get_password_hash("secret"))
+    session.add(user)
+    await session.flush()
+    lib = Library(name="Test Library", created_by_user_id=user.id)
+    session.add(lib)
+    await session.flush()
+    session.add(LibraryMember(library_id=lib.id, user_id=user.id, role=LibraryRole.OWNER))
+    await session.commit()
+    await session.refresh(lib)
+    return user, lib
+
+
+async def _login(client: AsyncClient, email: str = "sample@example.com") -> dict[str, str]:
+    r = await client.post("/api/v1/auth/login", json={"email": email, "password": "secret"})
+    assert r.status_code == 200
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+@pytest.mark.asyncio
+async def test_clear_sample_library_requires_auth() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.delete("/api/v1/settings/sample-library")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_clear_sample_library_removes_only_sample_data(test_session: AsyncSession) -> None:
+    user, lib = await _seed_user_with_library(test_session)
+
+    # Sample location + book
+    sample_loc = Location(library_id=lib.id, room="R", furniture="F", shelf="S", is_sample=True)
+    test_session.add(sample_loc)
+    await test_session.flush()
+    sample_book = Book(
+        library_id=lib.id, title="Sample", processing_status=BookProcessingStatus.MANUAL,
+        reading_status=ReadingStatus.UNREAD, location_id=sample_loc.id, is_sample=True,
+    )
+    test_session.add(sample_book)
+
+    # Real location + book
+    real_loc = Location(library_id=lib.id, room="R2", furniture="F2", shelf="S2", is_sample=False)
+    test_session.add(real_loc)
+    await test_session.flush()
+    real_book = Book(
+        library_id=lib.id, title="Real", processing_status=BookProcessingStatus.MANUAL,
+        reading_status=ReadingStatus.UNREAD, location_id=real_loc.id, is_sample=False,
+    )
+    test_session.add(real_book)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, user.email)
+        r = await client.delete("/api/v1/settings/sample-library", headers=headers)
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["deleted_books"] == 1
+    assert body["deleted_locations"] == 1
+
+    # Verify DB state: sample gone, real remains
+    remaining_books = (await test_session.execute(select(Book).where(Book.library_id == lib.id))).scalars().all()
+    remaining_locs = (await test_session.execute(select(Location).where(Location.library_id == lib.id))).scalars().all()
+    assert len(remaining_books) == 1
+    assert remaining_books[0].title == "Real"
+    assert len(remaining_locs) == 1
+    assert remaining_locs[0].shelf == "S2"
+
+
+@pytest.mark.asyncio
+async def test_clear_sample_library_also_deletes_loans_on_sample_books(test_session: AsyncSession) -> None:
+    """Verifies the loan-deletion branch runs when a sample book has an active loan."""
+    from datetime import date
+    user, lib = await _seed_user_with_library(test_session, email="loansample@example.com")
+
+    sample_loc = Location(library_id=lib.id, room="R", furniture="F", shelf="S", is_sample=True)
+    test_session.add(sample_loc)
+    await test_session.flush()
+    sample_book = Book(
+        library_id=lib.id, title="Sample with Loan", processing_status=BookProcessingStatus.MANUAL,
+        reading_status=ReadingStatus.LENT, location_id=sample_loc.id, is_sample=True,
+    )
+    test_session.add(sample_book)
+    await test_session.flush()
+    loan = Loan(
+        library_id=lib.id,
+        book_id=sample_book.id,
+        borrower_name="Test Borrower",
+        lent_date=date.today(),
+    )
+    test_session.add(loan)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, user.email)
+        r = await client.delete("/api/v1/settings/sample-library", headers=headers)
+
+    assert r.status_code == 200
+    assert r.json()["deleted_books"] == 1
+    remaining = (await test_session.execute(
+        select(Loan).where(Loan.library_id == lib.id)
+    )).scalars().all()
+    assert remaining == []
+
+
+@pytest.mark.asyncio
+async def test_clear_sample_library_idempotent_when_no_sample_data(test_session: AsyncSession) -> None:
+    user, _ = await _seed_user_with_library(test_session, email="nosample@example.com")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, user.email)
+        r = await client.delete("/api/v1/settings/sample-library", headers=headers)
+
+    assert r.status_code == 200
+    assert r.json()["deleted_books"] == 0
+    assert r.json()["deleted_locations"] == 0

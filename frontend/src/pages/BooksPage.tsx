@@ -9,7 +9,7 @@ import { FirstBookOnboardingModal } from '../components/OnboardingWizard'
 import { ShelfBreadcrumb } from '../components/ShelfBreadcrumb'
 import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
-import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBookCounts, useBooks, useDeleteBook, useJobStatus } from '../hooks/useBooks'
+import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBookCounts, useBooks, useClearSampleLibrary, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
@@ -106,6 +106,7 @@ export function BooksPage() {
   const bulkDeleteMutation = useBulkDeleteBooks()
   const bulkMoveMutation = useBulkMoveBooks()
   const bulkStatusMutation = useBulkUpdateStatus()
+  const clearSampleMutation = useClearSampleLibrary()
   const uploadJobStatusQuery = useJobStatus(uploadJobId)
   const showError = useToastStore((s) => s.showError)
 
@@ -416,6 +417,37 @@ export function BooksPage() {
         <p style={{ margin: '16px 24px', fontSize: 14, color: 'var(--sh-amber)', fontWeight: 500, background: 'var(--sh-amber-bg)', padding: '12px 16px', borderRadius: 'var(--sh-radius-md)' }}>
           {t('books.processing_banner', { status: uploadJobStatusQuery.data?.status ?? 'pending' })}
         </p>
+      )}
+
+      {booksQuery.data?.has_sample_books && (
+        <div
+          data-testid="sample-library-banner"
+          style={{
+            margin: '16px 24px 0',
+            padding: '12px 16px',
+            background: 'var(--sh-surface-elevated)',
+            border: '1px solid var(--sh-border)',
+            borderRadius: 'var(--sh-radius-md)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: 13, color: 'var(--sh-text-muted)' }}>
+            {t('books.sample_banner')}
+          </span>
+          <button
+            type="button"
+            className="sh-btn-secondary"
+            style={{ fontSize: 13, whiteSpace: 'nowrap' }}
+            onClick={() => clearSampleMutation.mutate()}
+            disabled={clearSampleMutation.isPending}
+          >
+            {clearSampleMutation.isPending ? '…' : t('books.sample_clear_cta')}
+          </button>
+        </div>
       )}
 
       <div style={{ padding: '24px 24px 0' }}>

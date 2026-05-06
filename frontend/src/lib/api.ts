@@ -525,6 +525,16 @@ export async function purgeLibrary(password = ""): Promise<PurgeLibraryResponse>
   return response.data
 }
 
+export interface ClearSampleLibraryResponse {
+  deleted_books: number
+  deleted_locations: number
+}
+
+export async function clearSampleLibrary(): Promise<ClearSampleLibraryResponse> {
+  const response = await apiClient.delete<ClearSampleLibraryResponse>('/api/v1/settings/sample-library')
+  return response.data
+}
+
 // Shelf scanning
 export async function scanShelf(file: File, locationId?: string): Promise<ShelfScanResponse> {
   const formData = new FormData()

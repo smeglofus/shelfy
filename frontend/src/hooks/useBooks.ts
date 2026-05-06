@@ -4,6 +4,7 @@ import {
   bulkDeleteBooks,
   bulkMoveBooks,
   bulkUpdateStatus,
+  clearSampleLibrary,
   createBook,
   deleteBook,
   formatApiError,
@@ -191,6 +192,21 @@ export function useBookCounts() {
     lent: lent.data?.total ?? 0,
     isLoading: total.isLoading,
   }
+}
+
+export function useClearSampleLibrary() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const { t } = useTranslation()
+  return useMutation({
+    mutationFn: clearSampleLibrary,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      showSuccess(t('books.sample_cleared'))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
+  })
 }
 
 export function useJobStatus(jobId: string | null) {

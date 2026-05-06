@@ -14,7 +14,7 @@ from app.models.book import Book
 from app.models.location import Location
 from app.models.loan import Loan
 from app.models.user import User
-from app.schemas.settings import OnboardingStatusResponse, PurgeLibraryRequest, PurgeLibraryResponse
+from app.schemas.settings import ClearSampleLibraryResponse, OnboardingStatusResponse, PurgeLibraryRequest, PurgeLibraryResponse
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
@@ -40,6 +40,32 @@ async def purge_library(
         deleted_locations=deleted_locations,
         deleted_loans=deleted_loans,
     )
+
+
+# ── Sample library ──────────────────────────────────────────
+
+@router.delete("/sample-library", response_model=ClearSampleLibraryResponse)
+async def clear_sample_library(
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+    library_id: uuid.UUID = Depends(get_library_id),
+) -> ClearSampleLibraryResponse:
+    from sqlalchemy import select as sa_select
+    sample_book_ids = list(
+        (await session.execute(
+            sa_select(Book.id).where(Book.library_id == library_id, Book.is_sample.is_(True))
+        )).scalars().all()
+    )
+    if sample_book_ids:
+        await session.execute(delete(Loan).where(Loan.book_id.in_(sample_book_ids)))
+    deleted_books = (await session.execute(
+        delete(Book).where(Book.library_id == library_id, Book.is_sample.is_(True))
+    )).rowcount or 0
+    deleted_locations = (await session.execute(
+        delete(Location).where(Location.library_id == library_id, Location.is_sample.is_(True))
+    )).rowcount or 0
+    await session.commit()
+    return ClearSampleLibraryResponse(deleted_books=deleted_books, deleted_locations=deleted_locations)
 
 
 # ── Onboarding ──────────────────────────────────────────────

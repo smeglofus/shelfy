@@ -99,7 +99,10 @@
     "saving": "Ukládám…",
     "empty_cta_add": "Přidat knihu",
     "empty_cta_scan": "Naskenovat polici",
-    "empty_cta_location": "Nastavit police"
+    "empty_cta_location": "Nastavit police",
+    "sample_banner": "Toto je ukázková knihovna — prozkoumej aplikaci a až budeš připraven, ukázková data smaž.",
+    "sample_clear_cta": "Smazat ukázková data",
+    "sample_cleared": "Ukázková data smazána."
   },
   "book_detail": {
     "title": "Detail knihy",

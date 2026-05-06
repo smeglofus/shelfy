@@ -4,6 +4,7 @@ export interface Location {
   furniture: string
   shelf: string
   display_order: number
+  is_sample: boolean
   created_at: string
   updated_at: string
 }
@@ -63,6 +64,7 @@ export interface Book {
   reading_status?: ReadingStatus   // optional until backend migration applied
   is_currently_lent?: boolean
   active_loan?: Loan | null
+  is_sample: boolean
   created_at: string
   updated_at: string
 }
@@ -86,6 +88,7 @@ export interface BookListResponse {
   total: number
   page: number
   page_size: number
+  has_sample_books: boolean
   items: Book[]
 }
 
