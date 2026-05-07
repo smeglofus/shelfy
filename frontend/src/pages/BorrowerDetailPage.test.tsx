@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -10,9 +11,16 @@ vi.mock('../contexts/AuthContext', () => ({
 vi.mock('../lib/api', () => ({
   getBorrower: vi.fn(),
   listBorrowerLoans: vi.fn(),
+  anonymizeBorrower: vi.fn(),
+  formatApiError: (e: unknown) => String(e),
 }))
 
-import { getBorrower, listBorrowerLoans } from '../lib/api'
+vi.mock('../lib/toast-store', () => ({
+  useToastStore: (selector: (s: { showError: () => void; showSuccess: () => void }) => unknown) =>
+    selector({ showError: vi.fn(), showSuccess: vi.fn() }),
+}))
+
+import { anonymizeBorrower, getBorrower, listBorrowerLoans } from '../lib/api'
 import type { Borrower, BorrowerLoanItem } from '../lib/types'
 import { BorrowerDetailPage } from './BorrowerDetailPage'
 
@@ -143,5 +151,71 @@ describe('BorrowerDetailPage', () => {
     renderPage()
 
     expect(await screen.findByTestId('borrower-detail-error')).toBeInTheDocument()
+  })
+
+  it('shows the localized "Deleted borrower" label and a hint when anonymized', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        name: 'Deleted borrower',
+        contact: null,
+        notes: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByText('borrowers.anonymized_label')).toBeInTheDocument()
+    expect(screen.getByTestId('borrower-anonymized-badge')).toBeInTheDocument()
+    expect(screen.queryByTestId('anonymize-button')).not.toBeInTheDocument()
+  })
+
+  it('shows the Anonymize button only when the borrower is not yet anonymized', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByTestId('anonymize-button')).toBeInTheDocument()
+  })
+
+  it('opens the confirmation modal and calls the anonymize API on confirm', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    vi.mocked(anonymizeBorrower).mockResolvedValue(
+      makeBorrower({
+        name: 'Deleted borrower',
+        contact: null,
+        notes: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+      }),
+    )
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('anonymize-button'))
+
+    // Confirmation modal includes the irreversible warning
+    expect(await screen.findByText('borrowers.anonymize_irreversible')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('anonymize-confirm'))
+
+    await waitFor(() => expect(anonymizeBorrower).toHaveBeenCalledWith('b-alice'))
+  })
+
+  it('cancel button closes the confirmation modal without calling the API', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('anonymize-button'))
+    expect(await screen.findByText('borrowers.anonymize_irreversible')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('borrowers.anonymize_irreversible')).not.toBeInTheDocument()
+    })
+    expect(anonymizeBorrower).not.toHaveBeenCalled()
   })
 })

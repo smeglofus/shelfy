@@ -13,6 +13,7 @@ from app.schemas.borrower import (
     BorrowerUpdate,
 )
 from app.services.borrower import (
+    anonymize_borrower,
     create_borrower,
     get_borrower_or_404,
     list_borrowers_with_stats,
@@ -79,3 +80,13 @@ async def read_borrower_loans(
 ) -> list[BorrowerLoanItem]:
     rows = await list_loans_for_borrower(session, borrower_id, library_id)
     return [BorrowerLoanItem.model_validate(row) for row in rows]
+
+
+@router.post("/{borrower_id}/anonymize", response_model=BorrowerResponse)
+async def anonymize_borrower_endpoint(
+    borrower_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerResponse:
+    borrower = await anonymize_borrower(session, borrower_id, library_id)
+    return BorrowerResponse.model_validate(borrower)

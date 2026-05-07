@@ -25,7 +25,8 @@
     "location_saved": "Umístění uloženo.",
     "location_deleted": "Umístění smazáno.",
     "scan_confirmed": "Knihy uloženy do knihovny!",
-    "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují."
+    "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují.",
+    "borrower_anonymized": "Dlužník anonymizován."
   },
   "bulk": {
     "selected": "{{count}} vybráno",
@@ -735,6 +736,14 @@
     "section_returned_loans": "Vráceno",
     "empty_active_loans": "Aktuálně nemá vypůjčené žádné knihy.",
     "empty_returned_loans": "V historii nejsou žádné vrácené knihy.",
-    "detail_not_found": "Dlužník nenalezen."
+    "detail_not_found": "Dlužník nenalezen.",
+    "anonymized_label": "Smazaný dlužník",
+    "anonymized_hint": "Osobní údaje tohoto dlužníka byly smazány. Historie půjček zůstává.",
+    "anonymize_button": "Anonymizovat",
+    "anonymize_confirm_title": "Anonymizovat dlužníka?",
+    "anonymize_confirm_body": "Smaže jméno, kontakt i poznámky u {{name}} — a vyčistí tyto údaje u všech souvisejících půjček. Historie půjček (knihy, data, stav při vrácení) zůstává.",
+    "anonymize_irreversible": "Tento krok nelze vrátit.",
+    "anonymize_confirm": "Anonymizovat",
+    "anonymizing": "Anonymizuji…"
   }
 }

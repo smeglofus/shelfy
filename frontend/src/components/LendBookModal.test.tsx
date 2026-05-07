@@ -19,10 +19,10 @@ vi.mock('../lib/toast-store', () => ({
 }))
 
 import { createLoan, listBorrowers } from '../lib/api'
-import type { Borrower, Loan } from '../lib/types'
+import type { BorrowerListItem, Loan } from '../lib/types'
 import { LendBookModal } from './LendBookModal'
 
-function makeBorrower(overrides: Partial<Borrower> = {}): Borrower {
+function makeBorrower(overrides: Partial<BorrowerListItem> = {}): BorrowerListItem {
   return {
     id: 'borrower-1',
     name: 'Alice Liddell',
@@ -31,6 +31,9 @@ function makeBorrower(overrides: Partial<Borrower> = {}): Borrower {
     anonymized_at: null,
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-01T00:00:00Z',
+    active_loans: 0,
+    total_loans: 0,
+    last_activity_at: null,
     ...overrides,
   }
 }
@@ -191,6 +194,27 @@ describe('LendBookModal', () => {
     const payload = vi.mocked(createLoan).mock.calls[0][1]
     expect(payload).toMatchObject({ borrower_name: 'Eve First' })
     expect(payload.borrower_id).toBeUndefined()
+  })
+
+  it('excludes anonymized borrowers from the picker', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue([
+      makeBorrower({ id: 'b-alice', name: 'Alice', anonymized_at: null }),
+      makeBorrower({
+        id: 'b-deleted',
+        name: 'Deleted borrower',
+        contact: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+      }),
+    ])
+    renderModal()
+    await waitFor(() => {
+      const list = document.querySelector('[data-testid="borrower-suggestions"]') as HTMLDataListElement | null
+      expect(list).not.toBeNull()
+      expect(list!.querySelectorAll('option')).toHaveLength(1)
+    })
+    const list = document.querySelector('[data-testid="borrower-suggestions"]') as HTMLDataListElement
+    const values = Array.from(list.querySelectorAll('option')).map((o) => o.getAttribute('value'))
+    expect(values).toEqual(['Alice'])
   })
 
   it('shows an inline error when submit happens with an empty name', async () => {

@@ -29,7 +29,13 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
   const createLoan = useCreateLoan(bookId)
   const { t } = useTranslation()
   const borrowersQuery = useBorrowers()
-  const borrowers = useMemo(() => borrowersQuery.data ?? [], [borrowersQuery.data])
+  // Anonymized borrowers are excluded from the picker — there's no sensible
+  // reason to lend a new book to one (and they all carry the same sentinel
+  // name, which would clutter the suggestions).
+  const borrowers = useMemo(
+    () => (borrowersQuery.data ?? []).filter((b) => b.anonymized_at === null),
+    [borrowersQuery.data],
+  )
 
   const matchedBorrower = useMemo(
     () => findExactMatch(borrowers, borrowerName),
