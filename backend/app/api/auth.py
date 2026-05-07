@@ -19,6 +19,7 @@ from app.core.password_policy import validate_password_strength
 from app.core.security import decode_token, verify_password
 from app.db.session import get_db_session
 from app.models.book import Book
+from app.models.borrower import Borrower
 from app.models.library import Library, LibraryMember
 from app.models.loan import Loan
 from app.models.subscription import UsageCounter
@@ -404,12 +405,39 @@ async def export_my_data(
                 ],
             })
 
+        # Standalone borrower records — these are part of the library's data
+        # and may carry contact / notes that aren't reachable via any loan
+        # row (e.g. a borrower added through the API but never lent to).
+        # Anonymized records ship as the sentinel + null contact, matching
+        # what the API itself returns.
+        borrowers_rows = (
+            await session.execute(
+                select(Borrower)
+                .where(Borrower.library_id == lib.id)
+                .order_by(Borrower.created_at.asc())
+            )
+        ).scalars().all()
+
+        borrowers_out = [
+            {
+                "id": str(borrower.id),
+                "name": borrower.name,
+                "contact": borrower.contact,
+                "notes": borrower.notes,
+                "anonymized_at": borrower.anonymized_at.isoformat() if borrower.anonymized_at else None,
+                "created_at": borrower.created_at.isoformat() if borrower.created_at else None,
+                "updated_at": borrower.updated_at.isoformat() if borrower.updated_at else None,
+            }
+            for borrower in borrowers_rows
+        ]
+
         libraries_out.append({
             "id": str(lib.id),
             "name": lib.name,
             "role": role if isinstance(role, str) else role.value,
             "created_at": lib.created_at.isoformat() if lib.created_at else None,
             "books": books_out,
+            "borrowers": borrowers_out,
         })
 
     export_data = {
