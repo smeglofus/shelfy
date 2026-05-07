@@ -206,7 +206,7 @@ export function BorrowerDetailPage() {
       )}
 
       {mergeOpen && (
-        <MergeBorrowerModal target={borrower} onClose={() => setMergeOpen(false)} />
+        <MergeBorrowerModal borrower={borrower} onClose={() => setMergeOpen(false)} />
       )}
 
       {/* Active loans */}
