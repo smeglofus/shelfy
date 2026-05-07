@@ -1868,7 +1868,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/BorrowerResponse"
+                    "$ref": "#/components/schemas/BorrowerListItem"
                   },
                   "title": "Response Read Borrowers Api V1 Borrowers Get"
                 }
@@ -2069,6 +2069,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BorrowerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/borrowers/{borrower_id}/loans": {
+      "get": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Read Borrower Loans",
+        "operationId": "read_borrower_loans_api_v1_borrowers__borrower_id__loans_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "borrower_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Borrower Id"
+            }
+          },
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BorrowerLoanItem"
+                  },
+                  "title": "Response Read Borrower Loans Api V1 Borrowers  Borrower Id  Loans Get"
                 }
               }
             }
@@ -4275,6 +4343,192 @@
           "name"
         ],
         "title": "BorrowerCreate"
+      },
+      "BorrowerListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "anonymized_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "active_loans": {
+            "type": "integer",
+            "title": "Active Loans"
+          },
+          "total_loans": {
+            "type": "integer",
+            "title": "Total Loans"
+          },
+          "last_activity_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "contact",
+          "notes",
+          "anonymized_at",
+          "created_at",
+          "updated_at",
+          "active_loans",
+          "total_loans",
+          "last_activity_at"
+        ],
+        "title": "BorrowerListItem",
+        "description": "Borrower record enriched with lending-activity stats for the overview page."
+      },
+      "BorrowerLoanItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "book_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Book Id"
+          },
+          "book_title": {
+            "type": "string",
+            "title": "Book Title"
+          },
+          "book_author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Author"
+          },
+          "lent_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Lent Date"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "returned_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned Date"
+          },
+          "return_condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Condition"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "book_id",
+          "book_title",
+          "book_author",
+          "lent_date",
+          "due_date",
+          "returned_date",
+          "return_condition",
+          "notes"
+        ],
+        "title": "BorrowerLoanItem",
+        "description": "A loan as seen from the borrower-detail page — denormalized with book info."
       },
       "BorrowerResponse": {
         "properties": {
