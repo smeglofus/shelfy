@@ -6,10 +6,14 @@ The public page at `/changelog` is generated from `frontend/src/content/changelo
 
 ## 2026-05-07 — Dlužníci jako samostatná entita
 
-- Přibyla evidence dlužníků (`/borrowers`) s vyhledáváním a statistikami počtu půjček (#225).
+- Přibyla evidence dlužníků (`/borrowers`) s vyhledáváním a statistikami počtu půjček. Hledání i stránkování běží na serveru a fungují i ve velkých knihovnách (#225, #237).
 - Detail dlužníka ukazuje aktuální půjčky i historii včetně stavu při vrácení (#225).
-- Půjčování knihy umí vybrat existujícího dlužníka i ručně napsat nového (#224).
+- Půjčování knihy umí vybrat existujícího dlužníka z našeptávače i ručně napsat nového (#224).
+- Údaje dlužníka (jméno, kontakt, poznámky) jdou upravit přímo z detailu (#236).
 - Anonymizace dlužníka bezpečně smaže osobní údaje napříč knihovnou i historií půjček (#226).
+- Sloučení dvou duplicitních záznamů dlužníka do jednoho — historie půjček se konsoliduje (#238).
+- GDPR export osobních dat zahrnuje záznamy dlužníků z každé knihovny (#235).
+- Záložka Dlužníci v mobilní spodní navigaci.
 - Loan history na stránce knihy zobrazí lokalizovaný štítek „Smazaný dlužník" / "Deleted borrower" pro anonymizované záznamy (#227).
 
 ## 2026-04-29 — Spolehlivější backend a přísnější CI

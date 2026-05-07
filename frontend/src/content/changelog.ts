@@ -25,23 +25,31 @@ export const changelogEntries: ChangelogEntry[] = [
     },
     added: {
       cs: [
-        'Stránka /borrowers s vyhledáváním a statistikami (počet aktivních, celkem, poslední aktivita) (#225).',
+        'Stránka /borrowers s vyhledáváním a statistikami (počet aktivních, celkem, poslední aktivita); hledání i stránkování běží na serveru (#225, #237).',
         'Detail dlužníka se sekcemi Aktuálně půjčeno a Vráceno, včetně stavu při vrácení (#225).',
         'Picker existujících dlužníků ve formuláři půjčení knihy s nepovinným ručním zápisem (#224).',
+        'Úprava údajů dlužníka (jméno, kontakt, poznámky) z detailu (#236).',
         'Anonymizace dlužníka — smaže jméno/kontakt/poznámky a všechny identifikující údaje na jeho půjčkách, historie zůstává (#226).',
+        'Sloučení dvou duplicitních záznamů dlužníka do jednoho — historie půjček se konsoliduje (#238).',
+        'Záložka Dlužníci v mobilní spodní navigaci (#236).',
       ],
       en: [
-        '/borrowers page with search and per-row stats (active, total, last activity) (#225).',
+        '/borrowers page with search and per-row stats (active, total, last activity); search and pagination run server-side (#225, #237).',
         'Borrower detail page with Currently borrowed and Returned sections, including return condition (#225).',
         'Existing-borrower picker in the lend modal with a typed-name fallback (#224).',
+        'Edit borrower (name, contact, notes) directly from the detail page (#236).',
         'Anonymize action — wipes name/contact/notes and clears identifying data on the borrower\'s loans while keeping history (#226).',
+        'Merge two duplicate borrower records into one — lending history is consolidated (#238).',
+        'Borrowers tab in the mobile bottom navigation (#236).',
       ],
     },
     changed: {
       cs: [
+        'GDPR export osobních dat zahrnuje záznamy dlužníků z každé knihovny (#235).',
         'Historie půjček u knihy zobrazí lokalizovaný štítek „Smazaný dlužník" pro anonymizované záznamy (#227).',
       ],
       en: [
+        'GDPR data export now includes the standalone borrower list per library (#235).',
         'Loan history on book pages shows a localized "Deleted borrower" label for anonymized records (#227).',
       ],
     },
