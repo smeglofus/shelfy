@@ -508,3 +508,39 @@ async def test_create_loan_without_borrower_info_returns_422(
         )
 
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_loan_against_anonymized_borrower_returns_422(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Backend defense: a hand-crafted request that picks an anonymized
+    borrower must be rejected, even though the frontend filters them out
+    of the picker."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        borrower_resp = await client.post(
+            "/api/v1/borrowers",
+            json={"name": "Erica"},
+            headers=headers,
+        )
+        assert borrower_resp.status_code == 201
+        borrower_id = borrower_resp.json()["id"]
+
+        anon_resp = await client.post(
+            f"/api/v1/borrowers/{borrower_id}/anonymize",
+            headers=headers,
+        )
+        assert anon_resp.status_code == 200
+
+        book_id = await _create_book(client, headers)
+        response = await client.post(
+            f"/api/v1/books/{book_id}/loans",
+            json={"borrower_id": borrower_id},
+            headers=headers,
+        )
+
+    assert response.status_code == 422
+    assert "anonymized" in response.json()["detail"].lower()
