@@ -6,6 +6,8 @@ import type {
   AddMemberRequest,
   BillingInterval,
   BillingStatus,
+  Borrower,
+  BorrowerCreateRequest,
   CheckoutResponse,
   CsvImportConfirmRequest,
   CsvImportConfirmResponse,
@@ -476,6 +478,16 @@ export async function createLoan(bookId: string, payload: LoanCreateRequest): Pr
 
 export async function returnLoan(bookId: string, loanId: string, payload: LoanReturnRequest): Promise<Loan> {
   const response = await apiClient.patch<Loan>(`/api/v1/books/${bookId}/loans/${loanId}/return`, payload)
+  return response.data
+}
+
+export async function listBorrowers(): Promise<Borrower[]> {
+  const response = await apiClient.get<Borrower[]>('/api/v1/borrowers')
+  return response.data
+}
+
+export async function createBorrower(payload: BorrowerCreateRequest): Promise<Borrower> {
+  const response = await apiClient.post<Borrower>('/api/v1/borrowers', payload)
   return response.data
 }
 

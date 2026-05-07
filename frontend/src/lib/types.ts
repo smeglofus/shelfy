@@ -32,11 +32,35 @@ export interface LocationUpdateRequest {
 
 export type ReadingStatus = 'unread' | 'reading' | 'read' | 'lent'
 
+export interface Borrower {
+  id: string
+  name: string
+  contact: string | null
+  notes: string | null
+  anonymized_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BorrowerCreateRequest {
+  name: string
+  contact?: string | null
+  notes?: string | null
+}
+
+export interface BorrowerUpdateRequest {
+  name?: string
+  contact?: string | null
+  notes?: string | null
+}
+
 export interface Loan {
   id: string
   book_id: string
+  borrower_id: string | null
   borrower_name: string
   borrower_contact: string | null
+  borrower: Borrower | null
   lent_date: string
   due_date: string | null
   returned_date: string | null
@@ -71,7 +95,8 @@ export interface Book {
 
 
 export interface LoanCreateRequest {
-  borrower_name: string
+  borrower_id?: string | null
+  borrower_name?: string | null
   borrower_contact?: string | null
   lent_date: string
   due_date?: string | null
