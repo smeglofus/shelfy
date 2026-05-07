@@ -238,18 +238,20 @@ describe('BorrowerDetailPage', () => {
     })
   })
 
-  it('opens the merge modal, picks a source, confirms, and calls mergeBorrowers', async () => {
-    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice Liddell' }))
+  it('opens the merge modal, picks a target, confirms, and calls mergeBorrowers with the right direction', async () => {
+    // Current page borrower is the SOURCE (gets deleted). Picker chooses the
+    // TARGET (survives). After merge, navigate to the target.
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-source', name: 'Alice (duplicate)' }))
     vi.mocked(listBorrowerLoans).mockResolvedValue([])
     vi.mocked(listBorrowers).mockResolvedValue({
       total: 1,
       page: 1,
-      page_size: 20,
+      page_size: 100,
       items: [
         {
-          id: 'b-source',
-          name: 'Alice',
-          contact: 'old@x.com',
+          id: 'b-target',
+          name: 'Alice Liddell',
+          contact: 'alice@x.com',
           notes: null,
           anonymized_at: null,
           created_at: '2026-05-01T00:00:00Z',
@@ -261,35 +263,36 @@ describe('BorrowerDetailPage', () => {
       ],
     })
     vi.mocked(mergeBorrowers).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice Liddell' }))
-    renderPage('b-target')
+    renderPage('b-source')
 
     const user = userEvent.setup()
     await user.click(await screen.findByTestId('merge-button'))
 
-    // Pick the source from the candidate list.
-    await user.click(await screen.findByTestId('merge-source-b-source'))
+    // Pick the target from the candidate list.
+    await user.click(await screen.findByTestId('merge-source-b-target'))
 
     // Confirm step shows the irreversible warning.
     expect(await screen.findByText('borrowers.merge_irreversible')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('merge-confirm'))
 
+    // mergeBorrowers(targetId, sourceId): current page is source, picked is target
     await waitFor(() =>
       expect(mergeBorrowers).toHaveBeenCalledWith('b-target', 'b-source'),
     )
   })
 
-  it('merge picker excludes the target itself and anonymized borrowers', async () => {
-    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice' }))
+  it('merge picker excludes the current borrower and anonymized borrowers', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-current', name: 'Alice' }))
     vi.mocked(listBorrowerLoans).mockResolvedValue([])
     vi.mocked(listBorrowers).mockResolvedValue({
       total: 3,
       page: 1,
-      page_size: 20,
+      page_size: 100,
       items: [
-        // The target row — must be filtered out.
+        // The current borrower — must be filtered out.
         {
-          id: 'b-target',
+          id: 'b-current',
           name: 'Alice',
           contact: null,
           notes: null,
@@ -328,14 +331,44 @@ describe('BorrowerDetailPage', () => {
         },
       ],
     })
-    renderPage('b-target')
+    renderPage('b-current')
 
     const user = userEvent.setup()
     await user.click(await screen.findByTestId('merge-button'))
 
     expect(await screen.findByTestId('merge-source-b-other')).toBeInTheDocument()
-    expect(screen.queryByTestId('merge-source-b-target')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-source-b-current')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-source-b-anon')).not.toBeInTheDocument()
+  })
+
+  it('shows a "showing X of Y" hint when more candidates exist than the picker can display', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-current', name: 'Current' }))
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    // Backend says total=150, but the page only returned 100 items (the
+    // PICKER_PAGE_SIZE cap). The truncated hint should tell the user.
+    vi.mocked(listBorrowers).mockResolvedValue({
+      total: 150,
+      page: 1,
+      page_size: 100,
+      items: Array.from({ length: 100 }, (_, i) => ({
+        id: `b-${i}`,
+        name: `Borrower ${i}`,
+        contact: null,
+        notes: null,
+        anonymized_at: null,
+        created_at: '2026-05-01T00:00:00Z',
+        updated_at: '2026-05-01T00:00:00Z',
+        active_loans: 0,
+        total_loans: 0,
+        last_activity_at: null,
+      })),
+    })
+    renderPage('b-current')
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('merge-button'))
+
+    expect(await screen.findByTestId('merge-truncated-hint')).toBeInTheDocument()
   })
 
   it('does not show the merge button when the borrower is already anonymized', async () => {
