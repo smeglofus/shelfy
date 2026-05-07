@@ -11,6 +11,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.book import Book
+    from app.models.borrower import Borrower
 
 
 class Loan(Base):
@@ -27,6 +28,12 @@ class Loan(Base):
         Uuid(as_uuid=True),
         ForeignKey("books.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    borrower_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("borrowers.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     borrower_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -51,3 +58,4 @@ class Loan(Base):
     )
 
     book: Mapped[Book] = relationship(back_populates="loans")
+    borrower: Mapped[Borrower | None] = relationship(back_populates="loans")

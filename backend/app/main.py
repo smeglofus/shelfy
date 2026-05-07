@@ -17,6 +17,7 @@ import structlog
 from app.api.auth import router as auth_router
 from app.api.billing import router as billing_router
 from app.api.books import router as books_router
+from app.api.borrowers import router as borrowers_router
 from app.api.health import router as health_router
 from app.api.jobs import router as jobs_router
 from app.api.libraries import router as libraries_router
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(locations_router)
     app.include_router(books_router)
+    app.include_router(borrowers_router)
     app.include_router(loans_router)
     app.include_router(enrich_router)
     app.include_router(scan_router)
