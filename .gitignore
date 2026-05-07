@@ -4,7 +4,8 @@ __pycache__/
 node_modules/
 frontend/dist/
 .env
-backend/test_*.db
+backend/test*.db
+backend/.coverage
 frontend/.env
 infra/.env
 .env.local
