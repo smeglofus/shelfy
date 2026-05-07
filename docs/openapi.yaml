@@ -1844,6 +1844,46 @@
         ],
         "parameters": [
           {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          },
+          {
             "name": "X-Library-Id",
             "in": "header",
             "required": false,
@@ -1866,11 +1906,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/BorrowerListItem"
-                  },
-                  "title": "Response Read Borrowers Api V1 Borrowers Get"
+                  "$ref": "#/components/schemas/BorrowerListResponse"
                 }
               }
             }
@@ -4499,6 +4535,38 @@
         ],
         "title": "BorrowerListItem",
         "description": "Borrower record enriched with lending-activity stats for the overview page."
+      },
+      "BorrowerListResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BorrowerListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "title": "BorrowerListResponse",
+        "description": "Paginated wrapper around BorrowerListItem rows.\n\nMatches the shape used by `BookListResponse` so the frontend paginator\ncomponent is trivially reusable."
       },
       "BorrowerLoanItem": {
         "properties": {
