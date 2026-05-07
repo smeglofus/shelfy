@@ -15,6 +15,8 @@ import { ScanShelfPage } from './pages/ScanShelfPage'
 import { BookshelfViewPage } from './pages/BookshelfViewPage'
 import { PricingPage } from './pages/PricingPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { BorrowersPage } from './pages/BorrowersPage'
+import { BorrowerDetailPage } from './pages/BorrowerDetailPage'
 import { LandingPage } from './pages/LandingPage'
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
 import { PrivacyPage } from './pages/PrivacyPage'
@@ -106,6 +108,8 @@ function AppShell() {
             <Route path={ROUTES.bookshelfView} element={<BookshelfViewPage />} />
             <Route path={ROUTES.bookDetail} element={<BookDetailPage />} />
             <Route path={ROUTES.locations} element={<Navigate to={`${ROUTES.bookshelfView}?tab=locations`} replace />} />
+            <Route path={ROUTES.borrowers} element={<BorrowersPage />} />
+            <Route path={ROUTES.borrowerDetail} element={<BorrowerDetailPage />} />
             <Route path={ROUTES.settings} element={<SettingsPage />} />
           </Route>
         </Routes>

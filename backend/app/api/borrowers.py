@@ -5,24 +5,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
-from app.schemas.borrower import BorrowerCreate, BorrowerResponse, BorrowerUpdate
+from app.schemas.borrower import (
+    BorrowerCreate,
+    BorrowerListItem,
+    BorrowerLoanItem,
+    BorrowerResponse,
+    BorrowerUpdate,
+)
 from app.services.borrower import (
     create_borrower,
     get_borrower_or_404,
-    list_borrowers,
+    list_borrowers_with_stats,
+    list_loans_for_borrower,
     update_borrower,
 )
 
 router = APIRouter(prefix="/api/v1/borrowers", tags=["borrowers"])
 
 
-@router.get("", response_model=list[BorrowerResponse])
+@router.get("", response_model=list[BorrowerListItem])
 async def read_borrowers(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
-) -> list[BorrowerResponse]:
-    borrowers = await list_borrowers(session, library_id)
-    return [BorrowerResponse.model_validate(b) for b in borrowers]
+) -> list[BorrowerListItem]:
+    rows = await list_borrowers_with_stats(session, library_id)
+    return [
+        BorrowerListItem(
+            **BorrowerResponse.model_validate(row.borrower).model_dump(),
+            active_loans=row.active_loans,
+            total_loans=row.total_loans,
+            last_activity_at=row.last_activity_at,
+        )
+        for row in rows
+    ]
 
 
 @router.post("", response_model=BorrowerResponse, status_code=status.HTTP_201_CREATED)
@@ -54,3 +69,13 @@ async def update_borrower_endpoint(
 ) -> BorrowerResponse:
     borrower = await update_borrower(session, borrower_id, payload, library_id)
     return BorrowerResponse.model_validate(borrower)
+
+
+@router.get("/{borrower_id}/loans", response_model=list[BorrowerLoanItem])
+async def read_borrower_loans(
+    borrower_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(get_library_id),
+) -> list[BorrowerLoanItem]:
+    rows = await list_loans_for_borrower(session, borrower_id, library_id)
+    return [BorrowerLoanItem.model_validate(row) for row in rows]

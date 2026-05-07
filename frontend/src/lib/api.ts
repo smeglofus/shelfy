@@ -8,6 +8,8 @@ import type {
   BillingStatus,
   Borrower,
   BorrowerCreateRequest,
+  BorrowerListItem,
+  BorrowerLoanItem,
   CheckoutResponse,
   CsvImportConfirmRequest,
   CsvImportConfirmResponse,
@@ -481,8 +483,18 @@ export async function returnLoan(bookId: string, loanId: string, payload: LoanRe
   return response.data
 }
 
-export async function listBorrowers(): Promise<Borrower[]> {
-  const response = await apiClient.get<Borrower[]>('/api/v1/borrowers')
+export async function listBorrowers(): Promise<BorrowerListItem[]> {
+  const response = await apiClient.get<BorrowerListItem[]>('/api/v1/borrowers')
+  return response.data
+}
+
+export async function getBorrower(id: string): Promise<Borrower> {
+  const response = await apiClient.get<Borrower>(`/api/v1/borrowers/${id}`)
+  return response.data
+}
+
+export async function listBorrowerLoans(id: string): Promise<BorrowerLoanItem[]> {
+  const response = await apiClient.get<BorrowerLoanItem[]>(`/api/v1/borrowers/${id}/loans`)
   return response.data
 }
 
