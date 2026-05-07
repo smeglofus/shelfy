@@ -27,6 +27,15 @@ async def create_loan(session: AsyncSession, book_id: UUID, data: LoanCreate, li
 
     if data.borrower_id is not None:
         borrower = await get_borrower_or_404(session, data.borrower_id, library_id)
+        if borrower.anonymized_at is not None:
+            # The frontend filters anonymized borrowers out of the picker, but
+            # the backend has to enforce this too — otherwise a hand-crafted
+            # request would attach a fresh loan to a borrower whose personal
+            # data the librarian explicitly chose to delete.
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Cannot lend a book to an anonymized borrower",
+            )
         borrower_id = borrower.id
         borrower_name = borrower.name
         borrower_contact = borrower.contact
