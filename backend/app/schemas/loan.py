@@ -2,15 +2,24 @@ from datetime import date, datetime
 from typing import Literal
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+
+from app.schemas.borrower import BorrowerResponse
 
 
 class LoanCreate(BaseModel):
-    borrower_name: str = Field(..., min_length=1, max_length=255)
+    borrower_id: uuid.UUID | None = None
+    borrower_name: str | None = Field(None, min_length=1, max_length=255)
     borrower_contact: str | None = Field(None, max_length=255)
     lent_date: date = Field(default_factory=date.today)
     due_date: date | None = None
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def require_borrower_name_without_id(self) -> "LoanCreate":
+        if self.borrower_id is None and not self.borrower_name:
+            raise ValueError("borrower_name is required when borrower_id is not provided")
+        return self
 
 
 class LoanReturn(BaseModel):
@@ -24,8 +33,10 @@ class LoanResponse(BaseModel):
 
     id: uuid.UUID
     book_id: uuid.UUID
+    borrower_id: uuid.UUID | None
     borrower_name: str
     borrower_contact: str | None
+    borrower: BorrowerResponse | None
     lent_date: date
     due_date: date | None
     returned_date: date | None

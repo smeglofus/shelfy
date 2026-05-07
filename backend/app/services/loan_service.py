@@ -1,12 +1,15 @@
+from typing import cast
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.book import Book
 from app.models.loan import Loan
 from app.schemas.loan import LoanCreate, LoanReturn
+from app.services.borrower import get_borrower_or_404
 
 _ALLOWED_RETURN_CONDITIONS = {"perfect", "good", "fair", "damaged", "lost"}
 
@@ -18,19 +21,32 @@ async def create_loan(session: AsyncSession, book_id: UUID, data: LoanCreate, li
     if active_loan is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Book already has an active loan")
 
+    borrower_id: UUID | None = None
+    borrower_name: str
+    borrower_contact: str | None = data.borrower_contact
+
+    if data.borrower_id is not None:
+        borrower = await get_borrower_or_404(session, data.borrower_id, library_id)
+        borrower_id = borrower.id
+        borrower_name = borrower.name
+        borrower_contact = borrower.contact
+    else:
+        # Schema validator guarantees borrower_name is set when borrower_id is None
+        borrower_name = cast(str, data.borrower_name)
+
     loan = Loan(
         library_id=library_id,
         book_id=book_id,
-        borrower_name=data.borrower_name,
-        borrower_contact=data.borrower_contact,
+        borrower_id=borrower_id,
+        borrower_name=borrower_name,
+        borrower_contact=borrower_contact,
         lent_date=data.lent_date,
         due_date=data.due_date,
         notes=data.notes,
     )
     session.add(loan)
     await session.commit()
-    await session.refresh(loan)
-    return loan
+    return await _reload_loan(session, loan.id)
 
 
 async def list_loans(session: AsyncSession, book_id: UUID, library_id: UUID) -> list[Loan]:
@@ -38,6 +54,7 @@ async def list_loans(session: AsyncSession, book_id: UUID, library_id: UUID) -> 
     result = await session.execute(
         select(Loan)
         .where(Loan.book_id == book_id, Loan.library_id == library_id)
+        .options(selectinload(Loan.borrower))
         .order_by(Loan.lent_date.desc(), Loan.created_at.desc(), Loan.id.desc())
     )
     return list(result.scalars().all())
@@ -62,8 +79,7 @@ async def return_loan(
     loan.notes = data.notes
 
     await session.commit()
-    await session.refresh(loan)
-    return loan
+    return await _reload_loan(session, loan.id)
 
 
 async def delete_loan(session: AsyncSession, book_id: UUID, loan_id: UUID, library_id: UUID) -> None:
@@ -109,3 +125,11 @@ async def _get_active_loan(session: AsyncSession, book_id: UUID) -> Loan | None:
             .limit(1)
         )
     ).scalar_one_or_none()
+
+
+async def _reload_loan(session: AsyncSession, loan_id: UUID) -> Loan:
+    """Re-fetch a loan with its borrower relationship eagerly loaded."""
+    result = await session.execute(
+        select(Loan).where(Loan.id == loan_id).options(selectinload(Loan.borrower))
+    )
+    return result.scalar_one()

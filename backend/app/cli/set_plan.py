@@ -21,7 +21,7 @@ from sqlalchemy import select
 
 from app.core.logging import configure_structlog
 from app.db.session import SessionLocal
-from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
+from app.models.subscription import SubscriptionPlan, SubscriptionStatus
 from app.models.user import User
 from app.services.entitlements import get_or_create_subscription
 

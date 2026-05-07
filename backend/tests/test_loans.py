@@ -415,3 +415,96 @@ async def test_delete_loan_wrong_book_returns_404(test_session: async_sessionmak
         )
 
     assert response.status_code == 404
+
+
+# ── Borrower-id compat tests ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_loan_with_borrower_id(test_session: async_sessionmaker[AsyncSession]) -> None:
+    """Create loan via borrower_id — response must include nested borrower."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        # Create a borrower first
+        borrower_resp = await client.post(
+            "/api/v1/borrowers",
+            json={"name": "Diana", "contact": "diana@example.com"},
+            headers=headers,
+        )
+        assert borrower_resp.status_code == 201
+        borrower_id = borrower_resp.json()["id"]
+
+        book_id = await _create_book(client, headers)
+        loan_resp = await client.post(
+            f"/api/v1/books/{book_id}/loans",
+            json={"borrower_id": borrower_id},
+            headers=headers,
+        )
+
+    assert loan_resp.status_code == 201
+    body = loan_resp.json()
+    assert body["borrower_id"] == borrower_id
+    assert body["borrower_name"] == "Diana"
+    assert body["borrower_contact"] == "diana@example.com"
+    assert body["borrower"] is not None
+    assert body["borrower"]["id"] == borrower_id
+    assert body["borrower"]["name"] == "Diana"
+
+
+@pytest.mark.asyncio
+async def test_create_loan_with_borrower_id_from_other_library_returns_404(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        book_id = await _create_book(client, headers)
+        response = await client.post(
+            f"/api/v1/books/{book_id}/loans",
+            json={"borrower_id": str(uuid.uuid4())},
+            headers=headers,
+        )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_loan_legacy_borrower_name_only(test_session: async_sessionmaker[AsyncSession]) -> None:
+    """Legacy flow: borrower_name without borrower_id must still work."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        book_id = await _create_book(client, headers)
+        response = await client.post(
+            f"/api/v1/books/{book_id}/loans",
+            json={"borrower_name": "Legacy Borrower"},
+            headers=headers,
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["borrower_name"] == "Legacy Borrower"
+    assert body["borrower_id"] is None
+    assert body["borrower"] is None
+
+
+@pytest.mark.asyncio
+async def test_create_loan_without_borrower_info_returns_422(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Neither borrower_id nor borrower_name provided → 422."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        book_id = await _create_book(client, headers)
+        response = await client.post(
+            f"/api/v1/books/{book_id}/loans",
+            json={"notes": "No borrower specified"},
+            headers=headers,
+        )
+
+    assert response.status_code == 422
