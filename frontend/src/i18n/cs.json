@@ -26,7 +26,8 @@
     "location_deleted": "Umístění smazáno.",
     "scan_confirmed": "Knihy uloženy do knihovny!",
     "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují.",
-    "borrower_anonymized": "Dlužník anonymizován."
+    "borrower_anonymized": "Dlužník anonymizován.",
+    "borrower_saved": "Dlužník uložen."
   },
   "bulk": {
     "selected": "{{count}} vybráno",
@@ -739,6 +740,15 @@
     "detail_not_found": "Dlužník nenalezen.",
     "anonymized_label": "Smazaný dlužník",
     "anonymized_hint": "Osobní údaje tohoto dlužníka byly smazány. Historie půjček zůstává.",
+    "edit_button": "Upravit",
+    "edit_modal_title": "Upravit dlužníka",
+    "edit_history_hint": "Změny se projeví pouze na záznamu dlužníka. Historické půjčky si ponechávají údaje, které měly v okamžiku půjčení.",
+    "edit_error": "Nepodařilo se uložit změny.",
+    "field_name": "Jméno",
+    "field_contact": "Kontakt",
+    "field_notes": "Poznámky",
+    "save": "Uložit",
+    "saving": "Ukládám…",
     "anonymize_button": "Anonymizovat",
     "anonymize_confirm_title": "Anonymizovat dlužníka?",
     "anonymize_confirm_body": "Smaže jméno, kontakt i poznámky u {{name}} — a vyčistí tyto údaje u všech souvisejících půjček. Historie půjček (knihy, data, stav při vrácení) zůstává.",

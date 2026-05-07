@@ -12,6 +12,7 @@ vi.mock('../lib/api', () => ({
   getBorrower: vi.fn(),
   listBorrowerLoans: vi.fn(),
   anonymizeBorrower: vi.fn(),
+  updateBorrower: vi.fn(),
   formatApiError: (e: unknown) => String(e),
 }))
 
@@ -20,7 +21,7 @@ vi.mock('../lib/toast-store', () => ({
     selector({ showError: vi.fn(), showSuccess: vi.fn() }),
 }))
 
-import { anonymizeBorrower, getBorrower, listBorrowerLoans } from '../lib/api'
+import { anonymizeBorrower, getBorrower, listBorrowerLoans, updateBorrower } from '../lib/api'
 import type { Borrower, BorrowerLoanItem } from '../lib/types'
 import { BorrowerDetailPage } from './BorrowerDetailPage'
 
@@ -200,6 +201,55 @@ describe('BorrowerDetailPage', () => {
     await user.click(screen.getByTestId('anonymize-confirm'))
 
     await waitFor(() => expect(anonymizeBorrower).toHaveBeenCalledWith('b-alice'))
+  })
+
+  it('opens the edit modal and PATCHes via updateBorrower on save', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    vi.mocked(updateBorrower).mockResolvedValue(
+      makeBorrower({ name: 'Alice (Renamed)', contact: 'new@x.com' }),
+    )
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('edit-button'))
+
+    // The history-doesn't-propagate hint is shown.
+    expect(await screen.findByTestId('edit-borrower-history-hint')).toBeInTheDocument()
+
+    const nameInput = screen.getByTestId('edit-borrower-name')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Alice (Renamed)')
+
+    const contactInput = screen.getByTestId('edit-borrower-contact')
+    await user.clear(contactInput)
+    await user.type(contactInput, 'new@x.com')
+
+    await user.click(screen.getByTestId('edit-borrower-save'))
+
+    await waitFor(() => {
+      expect(updateBorrower).toHaveBeenCalledWith('b-alice', {
+        name: 'Alice (Renamed)',
+        contact: 'new@x.com',
+        notes: null,
+      })
+    })
+  })
+
+  it('does not show the edit button when the borrower is already anonymized', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        name: 'Deleted borrower',
+        contact: null,
+        notes: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByText('borrowers.anonymized_label')).toBeInTheDocument()
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument()
   })
 
   it('cancel button closes the confirmation modal without calling the API', async () => {

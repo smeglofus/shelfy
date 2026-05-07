@@ -10,6 +10,7 @@ import type {
   BorrowerCreateRequest,
   BorrowerListItem,
   BorrowerLoanItem,
+  BorrowerUpdateRequest,
   CheckoutResponse,
   CsvImportConfirmRequest,
   CsvImportConfirmResponse,
@@ -500,6 +501,11 @@ export async function listBorrowerLoans(id: string): Promise<BorrowerLoanItem[]>
 
 export async function createBorrower(payload: BorrowerCreateRequest): Promise<Borrower> {
   const response = await apiClient.post<Borrower>('/api/v1/borrowers', payload)
+  return response.data
+}
+
+export async function updateBorrower(id: string, payload: BorrowerUpdateRequest): Promise<Borrower> {
+  const response = await apiClient.patch<Borrower>(`/api/v1/borrowers/${id}`, payload)
   return response.data
 }
 

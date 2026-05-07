@@ -162,11 +162,13 @@ export function Navigation() {
     [t],
   )
 
-  /* Mobile bottom nav: 3 tabs + center FAB */
+  /* Mobile bottom nav: 4 tabs split around the center FAB.
+     Layout: [library] [bookshelf] [FAB] [borrowers] [settings] */
   const mobileTabs = useMemo(
     () => [
       { label: t('nav.library'), icon: 'library', path: ROUTES.books },
       { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
+      { label: t('nav.borrowers'), icon: 'borrowers', path: ROUTES.borrowers },
       { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
     ],
     [t],
@@ -364,8 +366,8 @@ export function Navigation() {
       {/* ── Tab row ── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around' }}>
 
-        {/* First tab */}
-        {mobileTabs.slice(0, 1).map((tab) => {
+        {/* Two tabs to the left of the FAB */}
+        {mobileTabs.slice(0, 2).map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon as NavIcon]
           return (
@@ -490,8 +492,8 @@ export function Navigation() {
           )}
         </div>
 
-        {/* Last two tabs */}
-        {mobileTabs.slice(1).map((tab) => {
+        {/* Two tabs to the right of the FAB */}
+        {mobileTabs.slice(2).map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon as NavIcon]
           return (

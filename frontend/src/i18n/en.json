@@ -26,7 +26,8 @@
     "location_deleted": "Location deleted.",
     "scan_confirmed": "Books saved to your library!",
     "enrich_started": "Enrichment started. Data will update shortly.",
-    "borrower_anonymized": "Borrower anonymized."
+    "borrower_anonymized": "Borrower anonymized.",
+    "borrower_saved": "Borrower saved."
   },
   "bulk": {
     "selected": "{{count}} selected",
@@ -737,6 +738,15 @@
     "detail_not_found": "Borrower not found.",
     "anonymized_label": "Deleted borrower",
     "anonymized_hint": "This borrower's personal data has been deleted. Lending history is kept.",
+    "edit_button": "Edit",
+    "edit_modal_title": "Edit borrower",
+    "edit_history_hint": "Changes apply to the borrower record only. Past loan rows keep the borrower text from when they were lent.",
+    "edit_error": "Could not save changes.",
+    "field_name": "Name",
+    "field_contact": "Contact",
+    "field_notes": "Notes",
+    "save": "Save",
+    "saving": "Saving…",
     "anonymize_button": "Anonymize",
     "anonymize_confirm_title": "Anonymize borrower?",
     "anonymize_confirm_body": "This removes {{name}}'s name, contact, and notes — and clears those fields on every related loan record. The lending history (books, dates, return condition) is kept.",

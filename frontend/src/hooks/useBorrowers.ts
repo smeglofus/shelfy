@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers } from '../lib/api'
+import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, updateBorrower } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToastStore } from '../lib/toast-store'
+import type { BorrowerUpdateRequest } from '../lib/types'
 
 export const BORROWERS_QUERY_KEY = ['borrowers']
 const borrowerKey = (id: string) => ['borrower', id]
@@ -36,6 +37,28 @@ export function useBorrowerLoans(id: string) {
     queryFn: () => listBorrowerLoans(id),
     retry: false,
     enabled: isAuthenticated && Boolean(id),
+  })
+}
+
+export function useUpdateBorrower() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: BorrowerUpdateRequest }) =>
+      updateBorrower(id, payload),
+    onSuccess: async (updated) => {
+      // ADR 008: edits do NOT propagate to historical loan rows. Only the
+      // borrower-level caches need invalidating.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: borrowerKey(updated.id) }),
+      ])
+      showSuccess(t('toast.borrower_saved', 'Borrower saved.'))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
   })
 }
 
