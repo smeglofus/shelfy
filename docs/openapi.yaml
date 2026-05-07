@@ -2254,6 +2254,80 @@
         }
       }
     },
+    "/api/v1/borrowers/{target_id}/merge": {
+      "post": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Merge Borrower Endpoint",
+        "operationId": "merge_borrower_endpoint_api_v1_borrowers__target_id__merge_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowerMergeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/books/{book_id}/loans": {
       "post": {
         "tags": [
@@ -4661,6 +4735,21 @@
         ],
         "title": "BorrowerLoanItem",
         "description": "A loan as seen from the borrower-detail page — denormalized with book info."
+      },
+      "BorrowerMergeRequest": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id"
+        ],
+        "title": "BorrowerMergeRequest",
+        "description": "Body for POST /api/v1/borrowers/{target_id}/merge."
       },
       "BorrowerResponse": {
         "properties": {

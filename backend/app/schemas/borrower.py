@@ -42,6 +42,12 @@ class BorrowerListItem(BorrowerResponse):
     last_activity_at: date | None
 
 
+class BorrowerMergeRequest(BaseModel):
+    """Body for POST /api/v1/borrowers/{target_id}/merge."""
+
+    source_id: uuid.UUID
+
+
 class BorrowerListResponse(BaseModel):
     """Paginated wrapper around BorrowerListItem rows.
 

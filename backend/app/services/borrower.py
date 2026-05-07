@@ -284,6 +284,63 @@ async def link_loans_to_borrowers(session: AsyncSession, library_id: uuid.UUID) 
     return linked
 
 
+async def merge_borrowers(
+    session: AsyncSession,
+    source_id: uuid.UUID,
+    target_id: uuid.UUID,
+    library_id: uuid.UUID,
+) -> Borrower:
+    """Merge ``source`` into ``target`` and delete the source row.
+
+    - Both rows must be in ``library_id`` (404 otherwise).
+    - ``source_id == target_id`` is rejected (422).
+    - Anonymized rows on either side are rejected (422). For source, an
+      anonymized record carries no useful identity to consolidate; for
+      target, see #234 — we don't attach fresh data to a record whose
+      personal data was explicitly deleted.
+    - All ``loans.borrower_id == source`` rows are re-pointed to
+      ``target``. ADR 008's archival semantic applies: ``loan.borrower_name``
+      and ``loan.borrower_contact`` are NOT updated — they're a snapshot of
+      who the borrower was *at the time of lending*. Display code reads
+      ``loan.borrower.name`` via the relationship, so the merged loans show
+      the target's name automatically.
+    - The source row is then deleted.
+
+    Returns the target borrower (post-merge state, unchanged identity).
+    """
+    if source_id == target_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot merge a borrower into itself",
+        )
+
+    source = await get_borrower_or_404(session, source_id, library_id)
+    target = await get_borrower_or_404(session, target_id, library_id)
+
+    if source.anonymized_at is not None or target.anonymized_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot merge anonymized borrowers",
+        )
+
+    await session.execute(
+        update(Loan)
+        .where(Loan.borrower_id == source_id, Loan.library_id == library_id)
+        .values(borrower_id=target_id)
+    )
+
+    await session.delete(source)
+    await session.commit()
+    await session.refresh(target)
+    logger.info(
+        "borrowers_merged",
+        source_id=str(source_id),
+        target_id=str(target_id),
+        library_id=str(library_id),
+    )
+    return target
+
+
 async def anonymize_borrower(
     session: AsyncSession, borrower_id: uuid.UUID, library_id: uuid.UUID
 ) -> Borrower:

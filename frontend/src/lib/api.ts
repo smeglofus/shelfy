@@ -516,6 +516,14 @@ export async function updateBorrower(id: string, payload: BorrowerUpdateRequest)
   return response.data
 }
 
+export async function mergeBorrowers(targetId: string, sourceId: string): Promise<Borrower> {
+  const response = await apiClient.post<Borrower>(
+    `/api/v1/borrowers/${targetId}/merge`,
+    { source_id: sourceId },
+  )
+  return response.data
+}
+
 export async function anonymizeBorrower(id: string): Promise<Borrower> {
   const response = await apiClient.post<Borrower>(`/api/v1/borrowers/${id}/anonymize`)
   return response.data

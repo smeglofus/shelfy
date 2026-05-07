@@ -27,7 +27,8 @@
     "scan_confirmed": "Books saved to your library!",
     "enrich_started": "Enrichment started. Data will update shortly.",
     "borrower_anonymized": "Borrower anonymized.",
-    "borrower_saved": "Borrower saved."
+    "borrower_saved": "Borrower saved.",
+    "borrowers_merged": "Borrowers merged."
   },
   "bulk": {
     "selected": "{{count}} selected",
@@ -758,6 +759,15 @@
     "anonymize_confirm_body": "This removes {{name}}'s name, contact, and notes — and clears those fields on every related loan record. The lending history (books, dates, return condition) is kept.",
     "anonymize_irreversible": "This cannot be undone.",
     "anonymize_confirm": "Anonymize",
-    "anonymizing": "Anonymizing…"
+    "anonymizing": "Anonymizing…",
+    "merge_button": "Merge…",
+    "merge_modal_title": "Merge another borrower into this one",
+    "merge_picker_hint": "Pick a borrower to merge into {{target}}. Their loans will move over and the picked record will be deleted.",
+    "merge_no_candidates": "No other borrowers to merge in.",
+    "merge_confirm_body": "Move every loan from {{source}} to {{target}}, then delete {{source}}.",
+    "merge_irreversible": "This cannot be undone.",
+    "merge_back": "Back",
+    "merge_confirm": "Merge",
+    "merging": "Merging…"
   }
 }
