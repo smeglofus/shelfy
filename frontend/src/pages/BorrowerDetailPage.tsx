@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 
 import { EmptyShelfIcon, NoResultsIcon } from '../components/EmptyStateIcons'
-import { useBorrower, useBorrowerLoans } from '../hooks/useBorrowers'
+import { Modal } from '../components/Modal'
+import { useAnonymizeBorrower, useBorrower, useBorrowerLoans } from '../hooks/useBorrowers'
+import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
 import type { BorrowerLoanItem } from '../lib/types'
 
@@ -82,6 +84,8 @@ export function BorrowerDetailPage() {
   const { t, i18n } = useTranslation()
   const borrowerQuery = useBorrower(borrowerId ?? '')
   const loansQuery = useBorrowerLoans(borrowerId ?? '')
+  const anonymize = useAnonymizeBorrower()
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const { active, returned } = useMemo(() => {
     const all = loansQuery.data ?? []
@@ -113,6 +117,8 @@ export function BorrowerDetailPage() {
   }
 
   const borrower = borrowerQuery.data
+  const isAnonymized = borrower.anonymized_at !== null
+  const displayName = displayBorrowerName(borrower, t)
 
   return (
     <main className="sh-main" style={{ padding: 24, maxWidth: 760, margin: '0 auto' }}>
@@ -125,13 +131,51 @@ export function BorrowerDetailPage() {
         </Link>
       </div>
 
-      <header style={{ marginBottom: 24 }}>
-        <h1 className="text-h2" style={{ margin: 0 }}>{borrower.name}</h1>
-        {borrower.contact && (
-          <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>{borrower.contact}</p>
-        )}
-        {borrower.notes && (
-          <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{borrower.notes}</p>
+      <header
+        style={{
+          marginBottom: 24,
+          display: 'flex',
+          gap: 16,
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1
+            className="text-h2"
+            style={{
+              margin: 0,
+              fontStyle: isAnonymized ? 'italic' : undefined,
+              color: isAnonymized ? 'var(--sh-text-muted)' : undefined,
+            }}
+          >
+            {displayName}
+          </h1>
+          {isAnonymized && (
+            <p
+              data-testid="borrower-anonymized-badge"
+              style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sh-text-muted)' }}
+            >
+              {t('borrowers.anonymized_hint')}
+            </p>
+          )}
+          {!isAnonymized && borrower.contact && (
+            <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>{borrower.contact}</p>
+          )}
+          {!isAnonymized && borrower.notes && (
+            <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{borrower.notes}</p>
+          )}
+        </div>
+        {!isAnonymized && (
+          <button
+            type="button"
+            data-testid="anonymize-button"
+            className="sh-btn-secondary"
+            onClick={() => setConfirmOpen(true)}
+          >
+            {t('borrowers.anonymize_button')}
+          </button>
         )}
       </header>
 
@@ -188,6 +232,52 @@ export function BorrowerDetailPage() {
           </ul>
         )}
       </section>
+
+      {confirmOpen && (
+        <Modal
+          open
+          onClose={() => setConfirmOpen(false)}
+          label={t('borrowers.anonymize_confirm_title')}
+          maxWidth={440}
+        >
+          <div style={{ display: 'grid', gap: 12 }}>
+            <h3 style={{ margin: 0 }}>{t('borrowers.anonymize_confirm_title')}</h3>
+            <p style={{ margin: 0 }}>
+              {t('borrowers.anonymize_confirm_body', { name: displayName })}
+            </p>
+            <p style={{ margin: 0, color: 'var(--sh-red)', fontWeight: 500 }}>
+              {t('borrowers.anonymize_irreversible')}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+              <button
+                type="button"
+                className="sh-btn-secondary"
+                onClick={() => setConfirmOpen(false)}
+                disabled={anonymize.isPending}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                data-testid="anonymize-confirm"
+                className="sh-btn-primary"
+                style={{ background: 'var(--sh-red)' }}
+                disabled={anonymize.isPending}
+                onClick={() => {
+                  if (!borrower) return
+                  anonymize.mutate(borrower.id, {
+                    onSuccess: () => setConfirmOpen(false),
+                  })
+                }}
+              >
+                {anonymize.isPending
+                  ? t('borrowers.anonymizing')
+                  : t('borrowers.anonymize_confirm')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </main>
   )
 }

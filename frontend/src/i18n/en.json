@@ -25,7 +25,8 @@
     "location_saved": "Location saved.",
     "location_deleted": "Location deleted.",
     "scan_confirmed": "Books saved to your library!",
-    "enrich_started": "Enrichment started. Data will update shortly."
+    "enrich_started": "Enrichment started. Data will update shortly.",
+    "borrower_anonymized": "Borrower anonymized."
   },
   "bulk": {
     "selected": "{{count}} selected",
@@ -733,6 +734,14 @@
     "section_returned_loans": "Returned",
     "empty_active_loans": "No books currently borrowed.",
     "empty_returned_loans": "No returned books in history.",
-    "detail_not_found": "Borrower not found."
+    "detail_not_found": "Borrower not found.",
+    "anonymized_label": "Deleted borrower",
+    "anonymized_hint": "This borrower's personal data has been deleted. Lending history is kept.",
+    "anonymize_button": "Anonymize",
+    "anonymize_confirm_title": "Anonymize borrower?",
+    "anonymize_confirm_body": "This removes {{name}}'s name, contact, and notes — and clears those fields on every related loan record. The lending history (books, dates, return condition) is kept.",
+    "anonymize_irreversible": "This cannot be undone.",
+    "anonymize_confirm": "Anonymize",
+    "anonymizing": "Anonymizing…"
   }
 }

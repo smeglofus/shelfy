@@ -503,6 +503,11 @@ export async function createBorrower(payload: BorrowerCreateRequest): Promise<Bo
   return response.data
 }
 
+export async function anonymizeBorrower(id: string): Promise<Borrower> {
+  const response = await apiClient.post<Borrower>(`/api/v1/borrowers/${id}/anonymize`)
+  return response.data
+}
+
 export async function uploadBookImage(file: File): Promise<UploadJobResponse> {
   const formData = new FormData()
   formData.append('image', file)

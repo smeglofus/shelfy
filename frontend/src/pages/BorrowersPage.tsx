@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { NoResultsIcon } from '../components/EmptyStateIcons'
 import { useBorrowers } from '../hooks/useBorrowers'
+import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { getBorrowerDetailRoute } from '../lib/routes'
 import type { BorrowerListItem } from '../lib/types'
 
@@ -16,10 +17,12 @@ function formatDate(value: string | null, locale: string): string {
   }
 }
 
-function matchesSearch(borrower: BorrowerListItem, query: string): boolean {
+function matchesSearch(borrower: BorrowerListItem, query: string, displayName: string): boolean {
   if (!query.trim()) return true
   const target = query.trim().toLowerCase()
-  return borrower.name.toLowerCase().includes(target)
+  // Match against the displayed (possibly localized) label so users searching
+  // for "smazaný" / "deleted" find anonymized records.
+  return displayName.toLowerCase().includes(target)
 }
 
 export function BorrowersPage() {
@@ -29,8 +32,8 @@ export function BorrowersPage() {
 
   const filtered = useMemo(() => {
     const all = borrowersQuery.data ?? []
-    return all.filter((b) => matchesSearch(b, search))
-  }, [borrowersQuery.data, search])
+    return all.filter((b) => matchesSearch(b, search, displayBorrowerName(b, t)))
+  }, [borrowersQuery.data, search, t])
 
   const isLoading = borrowersQuery.isLoading
   const total = borrowersQuery.data?.length ?? 0
@@ -107,7 +110,16 @@ export function BorrowersPage() {
                 }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>{borrower.name}</div>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 15,
+                      fontStyle: borrower.anonymized_at ? 'italic' : undefined,
+                      color: borrower.anonymized_at ? 'var(--sh-text-muted)' : undefined,
+                    }}
+                  >
+                    {displayBorrowerName(borrower, t)}
+                  </div>
                   {borrower.contact && (
                     <div
                       style={{

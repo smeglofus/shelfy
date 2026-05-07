@@ -128,4 +128,20 @@ describe('BorrowersPage', () => {
     expect(screen.getByTestId('borrowers-no-results')).toBeInTheDocument()
     expect(screen.queryByTestId('borrowers-empty')).not.toBeInTheDocument()
   })
+
+  it('renders the localized label for an anonymized borrower instead of the DB name', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue([
+      makeBorrower({
+        id: 'b-anon',
+        name: 'Deleted borrower',
+        contact: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+      }),
+    ])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByTestId('borrowers-list')).toBeInTheDocument())
+    const row = screen.getByTestId('borrower-row-b-anon')
+    expect(row).toHaveTextContent('borrowers.anonymized_label')
+  })
 })

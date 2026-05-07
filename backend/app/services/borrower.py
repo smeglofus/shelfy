@@ -1,9 +1,9 @@
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -13,6 +13,12 @@ from app.models.loan import Loan
 from app.schemas.borrower import BorrowerCreate, BorrowerUpdate
 
 logger = structlog.get_logger()
+
+# Sentinel name written to anonymized borrower rows AND to the denormalized
+# ``loan.borrower_name`` column for any loan attached to that borrower. Frontend
+# detects ``anonymized_at`` to render a localized label; the DB string is
+# whatever is robust and never empty.
+ANONYMIZED_BORROWER_NAME = "Deleted borrower"
 
 
 @dataclass(frozen=True)
@@ -242,3 +248,45 @@ async def link_loans_to_borrowers(session: AsyncSession, library_id: uuid.UUID) 
             borrowers_total=len(bucket),
         )
     return linked
+
+
+async def anonymize_borrower(
+    session: AsyncSession, borrower_id: uuid.UUID, library_id: uuid.UUID
+) -> Borrower:
+    """Strip identifying data from a borrower and from their loan history.
+
+    Idempotent: calling this on an already-anonymized borrower is a no-op
+    that returns the existing row unchanged. Cross-library access raises
+    404 via ``get_borrower_or_404``.
+
+    Loan rows are updated alongside the borrower because ``Loan.borrower_name``
+    and ``Loan.borrower_contact`` carry a denormalized copy of the borrower
+    text. Leaving those untouched would defeat the anonymization.
+    """
+    borrower = await get_borrower_or_404(session, borrower_id, library_id)
+
+    if borrower.anonymized_at is not None:
+        return borrower
+
+    borrower.name = ANONYMIZED_BORROWER_NAME
+    borrower.contact = None
+    borrower.notes = None
+    borrower.anonymized_at = datetime.now(timezone.utc)
+
+    # Cascade-clear denormalized borrower text on loan rows. Loan history
+    # remains (book_id, lent/due/returned dates, return_condition) so the
+    # library still knows who borrowed what — minus the personal data.
+    await session.execute(
+        update(Loan)
+        .where(Loan.borrower_id == borrower_id, Loan.library_id == library_id)
+        .values(borrower_name=ANONYMIZED_BORROWER_NAME, borrower_contact=None)
+    )
+
+    await session.commit()
+    await session.refresh(borrower)
+    logger.info(
+        "borrower_anonymized",
+        borrower_id=str(borrower.id),
+        library_id=str(library_id),
+    )
+    return borrower
