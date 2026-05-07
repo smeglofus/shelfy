@@ -27,7 +27,8 @@
     "scan_confirmed": "Knihy uloženy do knihovny!",
     "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují.",
     "borrower_anonymized": "Dlužník anonymizován.",
-    "borrower_saved": "Dlužník uložen."
+    "borrower_saved": "Dlužník uložen.",
+    "borrowers_merged": "Dlužníci sloučeni."
   },
   "bulk": {
     "selected": "{{count}} vybráno",
@@ -761,6 +762,15 @@
     "anonymize_confirm_body": "Smaže jméno, kontakt i poznámky u {{name}} — a vyčistí tyto údaje u všech souvisejících půjček. Historie půjček (knihy, data, stav při vrácení) zůstává.",
     "anonymize_irreversible": "Tento krok nelze vrátit.",
     "anonymize_confirm": "Anonymizovat",
-    "anonymizing": "Anonymizuji…"
+    "anonymizing": "Anonymizuji…",
+    "merge_button": "Sloučit…",
+    "merge_modal_title": "Sloučit jiného dlužníka do tohoto",
+    "merge_picker_hint": "Vyber dlužníka, kterého chceš sloučit do {{target}}. Jeho půjčky se přesunou sem a vybraný záznam bude smazán.",
+    "merge_no_candidates": "Žádní další dlužníci ke sloučení.",
+    "merge_confirm_body": "Přesunout všechny půjčky od {{source}} k {{target}} a smazat {{source}}.",
+    "merge_irreversible": "Tento krok nelze vrátit.",
+    "merge_back": "Zpět",
+    "merge_confirm": "Sloučit",
+    "merging": "Slučuji…"
   }
 }

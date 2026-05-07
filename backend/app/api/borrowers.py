@@ -10,6 +10,7 @@ from app.schemas.borrower import (
     BorrowerListItem,
     BorrowerListResponse,
     BorrowerLoanItem,
+    BorrowerMergeRequest,
     BorrowerResponse,
     BorrowerUpdate,
 )
@@ -19,6 +20,7 @@ from app.services.borrower import (
     get_borrower_or_404,
     list_borrowers_with_stats,
     list_loans_for_borrower,
+    merge_borrowers,
     update_borrower,
 )
 
@@ -102,3 +104,14 @@ async def anonymize_borrower_endpoint(
 ) -> BorrowerResponse:
     borrower = await anonymize_borrower(session, borrower_id, library_id)
     return BorrowerResponse.model_validate(borrower)
+
+
+@router.post("/{target_id}/merge", response_model=BorrowerResponse)
+async def merge_borrower_endpoint(
+    target_id: uuid.UUID,
+    payload: BorrowerMergeRequest,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerResponse:
+    target = await merge_borrowers(session, payload.source_id, target_id, library_id)
+    return BorrowerResponse.model_validate(target)

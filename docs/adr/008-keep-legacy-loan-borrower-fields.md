@@ -156,3 +156,32 @@ is covered by the existing borrower-anonymization tests (`#226`,
   value.
 - Falls back to `loan.borrower_name` when `loan.borrower` is `null` (legacy
   loan that #223 couldn't backfill).
+
+## 2026-05-07 — Amendment: borrower merge keeps loan snapshots untouched
+
+Phase 6 (#238) introduced a "merge two duplicate borrowers" action. The
+implementation question was whether merging the source borrower into the
+target should also rewrite `loan.borrower_name` / `loan.borrower_contact`
+on the moved loan rows to match the target's identity.
+
+**Decision:** No. Loan snapshots are *not* rewritten on merge. The merge
+re-points `Loan.borrower_id` from source to target and deletes the source
+row; the snapshot columns keep recording who the borrower was *at lend
+time*, which may differ from the post-merge identity.
+
+This is the same archival semantic as the rest of this ADR. The display
+layer already prefers `loan.borrower.name` via the relationship (see the
+`LoanHistory` refactor above), so a Czech user looking at the merged
+loan history sees the target's current name on every row, even though
+the underlying snapshot column records the older variant. We get
+correct UX *and* a faithful archival record, with no DB rewrite.
+
+The exception that proves the rule is anonymization (#226), which
+*does* cascade to the snapshot columns — because anonymization's whole
+point is to erase the personal data those columns hold. Merge does not
+have that requirement, so the simpler "leave snapshots alone" rule is
+the right default here.
+
+Implementation lives in `backend/app/services/borrower.merge_borrowers`;
+the cascade-vs-snapshot behavior is asserted in
+`tests/test_borrower_merge.py::test_merge_does_not_update_loan_snapshots`.

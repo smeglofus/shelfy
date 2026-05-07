@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { EditBorrowerModal } from '../components/EditBorrowerModal'
 import { EmptyShelfIcon, NoResultsIcon } from '../components/EmptyStateIcons'
+import { MergeBorrowerModal } from '../components/MergeBorrowerModal'
 import { Modal } from '../components/Modal'
 import { useAnonymizeBorrower, useBorrower, useBorrowerLoans } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
@@ -88,6 +89,7 @@ export function BorrowerDetailPage() {
   const anonymize = useAnonymizeBorrower()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
 
   const { active, returned } = useMemo(() => {
     const all = loansQuery.data ?? []
@@ -170,7 +172,7 @@ export function BorrowerDetailPage() {
           )}
         </div>
         {!isAnonymized && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
               data-testid="edit-button"
@@ -178,6 +180,14 @@ export function BorrowerDetailPage() {
               onClick={() => setEditOpen(true)}
             >
               {t('borrowers.edit_button')}
+            </button>
+            <button
+              type="button"
+              data-testid="merge-button"
+              className="sh-btn-secondary"
+              onClick={() => setMergeOpen(true)}
+            >
+              {t('borrowers.merge_button')}
             </button>
             <button
               type="button"
@@ -193,6 +203,10 @@ export function BorrowerDetailPage() {
 
       {editOpen && (
         <EditBorrowerModal borrower={borrower} onClose={() => setEditOpen(false)} />
+      )}
+
+      {mergeOpen && (
+        <MergeBorrowerModal target={borrower} onClose={() => setMergeOpen(false)} />
       )}
 
       {/* Active loans */}

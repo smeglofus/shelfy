@@ -11,8 +11,10 @@ vi.mock('../contexts/AuthContext', () => ({
 vi.mock('../lib/api', () => ({
   getBorrower: vi.fn(),
   listBorrowerLoans: vi.fn(),
+  listBorrowers: vi.fn(),
   anonymizeBorrower: vi.fn(),
   updateBorrower: vi.fn(),
+  mergeBorrowers: vi.fn(),
   formatApiError: (e: unknown) => String(e),
 }))
 
@@ -21,7 +23,7 @@ vi.mock('../lib/toast-store', () => ({
     selector({ showError: vi.fn(), showSuccess: vi.fn() }),
 }))
 
-import { anonymizeBorrower, getBorrower, listBorrowerLoans, updateBorrower } from '../lib/api'
+import { anonymizeBorrower, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, updateBorrower } from '../lib/api'
 import type { Borrower, BorrowerLoanItem } from '../lib/types'
 import { BorrowerDetailPage } from './BorrowerDetailPage'
 
@@ -234,6 +236,122 @@ describe('BorrowerDetailPage', () => {
         notes: null,
       })
     })
+  })
+
+  it('opens the merge modal, picks a source, confirms, and calls mergeBorrowers', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice Liddell' }))
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    vi.mocked(listBorrowers).mockResolvedValue({
+      total: 1,
+      page: 1,
+      page_size: 20,
+      items: [
+        {
+          id: 'b-source',
+          name: 'Alice',
+          contact: 'old@x.com',
+          notes: null,
+          anonymized_at: null,
+          created_at: '2026-05-01T00:00:00Z',
+          updated_at: '2026-05-01T00:00:00Z',
+          active_loans: 1,
+          total_loans: 2,
+          last_activity_at: null,
+        },
+      ],
+    })
+    vi.mocked(mergeBorrowers).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice Liddell' }))
+    renderPage('b-target')
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('merge-button'))
+
+    // Pick the source from the candidate list.
+    await user.click(await screen.findByTestId('merge-source-b-source'))
+
+    // Confirm step shows the irreversible warning.
+    expect(await screen.findByText('borrowers.merge_irreversible')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('merge-confirm'))
+
+    await waitFor(() =>
+      expect(mergeBorrowers).toHaveBeenCalledWith('b-target', 'b-source'),
+    )
+  })
+
+  it('merge picker excludes the target itself and anonymized borrowers', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice' }))
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    vi.mocked(listBorrowers).mockResolvedValue({
+      total: 3,
+      page: 1,
+      page_size: 20,
+      items: [
+        // The target row — must be filtered out.
+        {
+          id: 'b-target',
+          name: 'Alice',
+          contact: null,
+          notes: null,
+          anonymized_at: null,
+          created_at: '2026-05-01T00:00:00Z',
+          updated_at: '2026-05-01T00:00:00Z',
+          active_loans: 0,
+          total_loans: 0,
+          last_activity_at: null,
+        },
+        // Anonymized — must be filtered out.
+        {
+          id: 'b-anon',
+          name: 'Deleted borrower',
+          contact: null,
+          notes: null,
+          anonymized_at: '2026-05-07T00:00:00Z',
+          created_at: '2026-05-01T00:00:00Z',
+          updated_at: '2026-05-01T00:00:00Z',
+          active_loans: 0,
+          total_loans: 0,
+          last_activity_at: null,
+        },
+        // Valid candidate.
+        {
+          id: 'b-other',
+          name: 'Alice (other)',
+          contact: null,
+          notes: null,
+          anonymized_at: null,
+          created_at: '2026-05-01T00:00:00Z',
+          updated_at: '2026-05-01T00:00:00Z',
+          active_loans: 0,
+          total_loans: 0,
+          last_activity_at: null,
+        },
+      ],
+    })
+    renderPage('b-target')
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('merge-button'))
+
+    expect(await screen.findByTestId('merge-source-b-other')).toBeInTheDocument()
+    expect(screen.queryByTestId('merge-source-b-target')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-source-b-anon')).not.toBeInTheDocument()
+  })
+
+  it('does not show the merge button when the borrower is already anonymized', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        name: 'Deleted borrower',
+        contact: null,
+        notes: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByText('borrowers.anonymized_label')).toBeInTheDocument()
+    expect(screen.queryByTestId('merge-button')).not.toBeInTheDocument()
   })
 
   it('does not show the edit button when the borrower is already anonymized', async () => {
