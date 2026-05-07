@@ -8,6 +8,7 @@
     "add": "Přidat",
     "scan": "Sken",
     "locations": "Lokace",
+    "borrowers": "Dlužníci",
     "settings": "Nastavení",
     "bookshelf": "Police",
     "add_book": "Přidat knihu",
@@ -712,5 +713,28 @@
     "added": "Přidáno",
     "changed": "Změněno",
     "fixed": "Opraveno"
+  },
+  "borrowers": {
+    "title": "Dlužníci",
+    "subtitle": "Lidé, kteří si půjčili knihy z této knihovny.",
+    "search_placeholder": "Hledat podle jména…",
+    "loading": "Načítám…",
+    "empty_title": "Zatím žádní dlužníci.",
+    "empty_description": "Dlužníci se vytvoří, jakmile někomu půjčíš knihu.",
+    "no_results": "Žádný dlužník neodpovídá „{{query}}\".",
+    "active_count_one": "{{count}} aktivní půjčka",
+    "active_count_few": "{{count}} aktivní půjčky",
+    "active_count_other": "{{count}} aktivních půjček",
+    "total_count_one": "{{count}} půjčka celkem",
+    "total_count_few": "{{count}} půjčky celkem",
+    "total_count_other": "{{count}} půjček celkem",
+    "last_activity": "Poslední aktivita {{date}}",
+    "no_activity": "Zatím žádná aktivita",
+    "back_to_overview": "Zpět na seznam",
+    "section_active_loans": "Aktuálně půjčeno",
+    "section_returned_loans": "Vráceno",
+    "empty_active_loans": "Aktuálně nemá vypůjčené žádné knihy.",
+    "empty_returned_loans": "V historii nejsou žádné vrácené knihy.",
+    "detail_not_found": "Dlužník nenalezen."
   }
 }

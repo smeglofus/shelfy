@@ -42,6 +42,24 @@ export interface Borrower {
   updated_at: string
 }
 
+export interface BorrowerListItem extends Borrower {
+  active_loans: number
+  total_loans: number
+  last_activity_at: string | null
+}
+
+export interface BorrowerLoanItem {
+  id: string
+  book_id: string
+  book_title: string
+  book_author: string | null
+  lent_date: string
+  due_date: string | null
+  returned_date: string | null
+  return_condition: 'perfect' | 'good' | 'fair' | 'damaged' | 'lost' | null
+  notes: string | null
+}
+
 export interface BorrowerCreateRequest {
   name: string
   contact?: string | null

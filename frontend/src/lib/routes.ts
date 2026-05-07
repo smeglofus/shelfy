@@ -8,6 +8,8 @@ export const ROUTES = {
   scanShelf: '/scan',
   bookshelfView: '/bookshelf',
   locations: '/locations',
+  borrowers: '/borrowers',
+  borrowerDetail: '/borrowers/:borrowerId',
   settings: '/settings',
   pricing: '/pricing',
   changelog: '/changelog',
@@ -18,4 +20,8 @@ export const ROUTES = {
 
 export function getBookDetailRoute(bookId: string): string {
   return `/books/${bookId}`
+}
+
+export function getBorrowerDetailRoute(borrowerId: string): string {
+  return `/borrowers/${borrowerId}`
 }

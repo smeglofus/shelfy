@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -32,3 +32,27 @@ class BorrowerResponse(BaseModel):
     anonymized_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class BorrowerListItem(BorrowerResponse):
+    """Borrower record enriched with lending-activity stats for the overview page."""
+
+    active_loans: int
+    total_loans: int
+    last_activity_at: date | None
+
+
+class BorrowerLoanItem(BaseModel):
+    """A loan as seen from the borrower-detail page — denormalized with book info."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    book_id: uuid.UUID
+    book_title: str
+    book_author: str | None
+    lent_date: date
+    due_date: date | None
+    returned_date: date | None
+    return_condition: str | None
+    notes: str | None

@@ -8,6 +8,7 @@
     "add": "Add",
     "scan": "Scan",
     "locations": "Locations",
+    "borrowers": "Borrowers",
     "settings": "Settings",
     "bookshelf": "Shelves",
     "add_book": "Add book",
@@ -712,5 +713,26 @@
     "added": "Added",
     "changed": "Changed",
     "fixed": "Fixed"
+  },
+  "borrowers": {
+    "title": "Borrowers",
+    "subtitle": "People who have borrowed books from this library.",
+    "search_placeholder": "Search by name…",
+    "loading": "Loading…",
+    "empty_title": "No borrowers yet.",
+    "empty_description": "Borrowers are created when you lend a book.",
+    "no_results": "No borrowers match \"{{query}}\".",
+    "active_count_one": "{{count}} active loan",
+    "active_count_other": "{{count}} active loans",
+    "total_count_one": "{{count}} loan total",
+    "total_count_other": "{{count}} loans total",
+    "last_activity": "Last activity {{date}}",
+    "no_activity": "No activity yet",
+    "back_to_overview": "Back to borrowers",
+    "section_active_loans": "Currently borrowed",
+    "section_returned_loans": "Returned",
+    "empty_active_loans": "No books currently borrowed.",
+    "empty_returned_loans": "No returned books in history.",
+    "detail_not_found": "Borrower not found."
   }
 }
