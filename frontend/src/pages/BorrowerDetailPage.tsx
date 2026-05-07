@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 
+import { EditBorrowerModal } from '../components/EditBorrowerModal'
 import { EmptyShelfIcon, NoResultsIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
 import { useAnonymizeBorrower, useBorrower, useBorrowerLoans } from '../hooks/useBorrowers'
@@ -86,6 +87,7 @@ export function BorrowerDetailPage() {
   const loansQuery = useBorrowerLoans(borrowerId ?? '')
   const anonymize = useAnonymizeBorrower()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
 
   const { active, returned } = useMemo(() => {
     const all = loansQuery.data ?? []
@@ -168,16 +170,30 @@ export function BorrowerDetailPage() {
           )}
         </div>
         {!isAnonymized && (
-          <button
-            type="button"
-            data-testid="anonymize-button"
-            className="sh-btn-secondary"
-            onClick={() => setConfirmOpen(true)}
-          >
-            {t('borrowers.anonymize_button')}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              data-testid="edit-button"
+              className="sh-btn-secondary"
+              onClick={() => setEditOpen(true)}
+            >
+              {t('borrowers.edit_button')}
+            </button>
+            <button
+              type="button"
+              data-testid="anonymize-button"
+              className="sh-btn-secondary"
+              onClick={() => setConfirmOpen(true)}
+            >
+              {t('borrowers.anonymize_button')}
+            </button>
+          </div>
         )}
       </header>
+
+      {editOpen && (
+        <EditBorrowerModal borrower={borrower} onClose={() => setEditOpen(false)} />
+      )}
 
       {/* Active loans */}
       <section style={{ marginBottom: 24 }}>
