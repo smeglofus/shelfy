@@ -343,6 +343,7 @@
     "lend_modal_title": "Lend book",
     "borrower_name": "Borrower name",
     "borrower_name_required": "Borrower name is required.",
+    "borrower_existing_match": "Existing borrower",
     "borrower_contact": "email or phone",
     "lent_date": "Lent date",
     "due_date": "Due date",

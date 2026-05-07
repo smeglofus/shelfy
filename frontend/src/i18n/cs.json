@@ -272,6 +272,7 @@
     "lend_modal_title": "Půjčit knihu",
     "borrower_name": "Jméno dlužníka",
     "borrower_name_required": "Jméno dlužníka je povinné.",
+    "borrower_existing_match": "Existující dlužník",
     "borrower_contact": "E-mail nebo telefon",
     "lent_date": "Datum půjčení",
     "due_date": "Datum vrácení",
