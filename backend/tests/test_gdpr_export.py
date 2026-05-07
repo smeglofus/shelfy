@@ -65,6 +65,14 @@ async def _seed_user_with_library(
         user = User(email=email, hashed_password=get_password_hash("secret"))
         session.add(user)
         await session.flush()
+    existing_lib = (await session.execute(
+        select(Library)
+        .join(LibraryMember, LibraryMember.library_id == Library.id)
+        .where(LibraryMember.user_id == user.id)
+        .limit(1)
+    )).scalar_one_or_none()
+    if existing_lib is not None:
+        return user, existing_lib
     lib = Library(name=f"Library of {email}", created_by_user_id=user.id)
     session.add(lib)
     await session.flush()
