@@ -38,6 +38,15 @@ function makeBorrower(overrides: Partial<BorrowerListItem> = {}): BorrowerListIt
   }
 }
 
+function mockBorrowersList(items: BorrowerListItem[]): void {
+  vi.mocked(listBorrowers).mockResolvedValue({
+    total: items.length,
+    page: 1,
+    page_size: 100,
+    items,
+  })
+}
+
 function makeLoan(): Loan {
   return {
     id: 'loan-1',
@@ -72,7 +81,7 @@ afterEach(() => {
 
 describe('LendBookModal', () => {
   it('lists existing borrowers as datalist options', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([
+    mockBorrowersList([
       makeBorrower({ id: 'b1', name: 'Alice Liddell' }),
       makeBorrower({ id: 'b2', name: 'Bob Builder', contact: null }),
     ])
@@ -88,7 +97,7 @@ describe('LendBookModal', () => {
   })
 
   it('submits with borrower_id when typed name exactly matches an existing borrower', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([
+    mockBorrowersList([
       makeBorrower({ id: 'borrower-42', name: 'Alice Liddell', contact: 'alice@x.com' }),
     ])
     vi.mocked(createLoan).mockResolvedValue(makeLoan())
@@ -116,7 +125,7 @@ describe('LendBookModal', () => {
   })
 
   it('matches on a normalized name (trimmed, case-insensitive, collapsed whitespace)', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([
+    mockBorrowersList([
       makeBorrower({ id: 'borrower-99', name: 'Alice Liddell' }),
     ])
     vi.mocked(createLoan).mockResolvedValue(makeLoan())
@@ -137,7 +146,7 @@ describe('LendBookModal', () => {
   })
 
   it('falls back to legacy borrower_name + borrower_contact for a new borrower', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([
+    mockBorrowersList([
       makeBorrower({ id: 'b1', name: 'Alice Liddell' }),
     ])
     vi.mocked(createLoan).mockResolvedValue(makeLoan())
@@ -159,7 +168,7 @@ describe('LendBookModal', () => {
   })
 
   it('ambiguous name (two borrowers, same name) falls back to legacy flow', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([
+    mockBorrowersList([
       makeBorrower({ id: 'b1', name: 'John Smith', contact: 'a@x.com' }),
       makeBorrower({ id: 'b2', name: 'John Smith', contact: 'b@x.com' }),
     ])
@@ -181,7 +190,7 @@ describe('LendBookModal', () => {
   })
 
   it('still works when there are no existing borrowers (preserves prior UX)', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([])
+    mockBorrowersList([])
     vi.mocked(createLoan).mockResolvedValue(makeLoan())
     renderModal()
     await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
@@ -197,7 +206,7 @@ describe('LendBookModal', () => {
   })
 
   it('excludes anonymized borrowers from the picker', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([
+    mockBorrowersList([
       makeBorrower({ id: 'b-alice', name: 'Alice', anonymized_at: null }),
       makeBorrower({
         id: 'b-deleted',
@@ -218,7 +227,7 @@ describe('LendBookModal', () => {
   })
 
   it('shows an inline error when submit happens with an empty name', async () => {
-    vi.mocked(listBorrowers).mockResolvedValue([])
+    mockBorrowersList([])
     renderModal()
     await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
 

@@ -138,7 +138,7 @@ async def test_create_and_list_borrower(test_session: AsyncSession) -> None:
 
         listed = await client.get("/api/v1/borrowers", headers=headers)
         assert listed.status_code == 200
-        names = [b["name"] for b in listed.json()]
+        names = [b["name"] for b in listed.json()["items"]]
         assert "Alice" in names
 
         fetched = await client.get(f"/api/v1/borrowers/{borrower_id}", headers=headers)
@@ -207,7 +207,7 @@ async def test_list_borrowers_isolated_between_libraries(test_session: AsyncSess
         # The API should only return borrowers from the authenticated user's library
         listed = await client.get("/api/v1/borrowers", headers=headers)
         assert listed.status_code == 200
-        names = [b["name"] for b in listed.json()]
+        names = [b["name"] for b in listed.json()["items"]]
         assert "Own Borrower" in names
         assert "Foreign Borrower" not in names
 
@@ -269,5 +269,5 @@ async def test_borrower_list_sorted_by_name(test_session: AsyncSession) -> None:
             assert r.status_code == 201
 
         listed = await client.get("/api/v1/borrowers", headers=headers)
-        names = [b["name"] for b in listed.json()]
+        names = [b["name"] for b in listed.json()["items"]]
         assert names == sorted(names)

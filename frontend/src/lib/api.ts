@@ -8,7 +8,8 @@ import type {
   BillingStatus,
   Borrower,
   BorrowerCreateRequest,
-  BorrowerListItem,
+  BorrowerListParams,
+  BorrowerListResponse,
   BorrowerLoanItem,
   BorrowerUpdateRequest,
   CheckoutResponse,
@@ -484,8 +485,14 @@ export async function returnLoan(bookId: string, loanId: string, payload: LoanRe
   return response.data
 }
 
-export async function listBorrowers(): Promise<BorrowerListItem[]> {
-  const response = await apiClient.get<BorrowerListItem[]>('/api/v1/borrowers')
+export async function listBorrowers(params: BorrowerListParams = {}): Promise<BorrowerListResponse> {
+  const response = await apiClient.get<BorrowerListResponse>('/api/v1/borrowers', {
+    params: {
+      search: params.search?.trim() ? params.search.trim() : undefined,
+      page: params.page ?? 1,
+      page_size: params.pageSize ?? 20,
+    },
+  })
   return response.data
 }
 

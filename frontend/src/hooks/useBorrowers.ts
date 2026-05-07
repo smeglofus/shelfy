@@ -4,19 +4,22 @@ import { useTranslation } from 'react-i18next'
 import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, updateBorrower } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToastStore } from '../lib/toast-store'
-import type { BorrowerUpdateRequest } from '../lib/types'
+import type { BorrowerListParams, BorrowerUpdateRequest } from '../lib/types'
 
 export const BORROWERS_QUERY_KEY = ['borrowers']
+const borrowersListKey = (params: BorrowerListParams) =>
+  ['borrowers', params.search ?? '', params.page ?? 1, params.pageSize ?? 20] as const
 const borrowerKey = (id: string) => ['borrower', id]
 const borrowerLoansKey = (id: string) => ['borrower', id, 'loans']
 
-export function useBorrowers() {
+export function useBorrowers(params: BorrowerListParams = {}) {
   const { isAuthenticated } = useAuth()
   return useQuery({
-    queryKey: BORROWERS_QUERY_KEY,
-    queryFn: listBorrowers,
+    queryKey: borrowersListKey(params),
+    queryFn: () => listBorrowers(params),
     retry: false,
     enabled: isAuthenticated,
+    placeholderData: (previous) => previous,
   })
 }
 
@@ -52,6 +55,8 @@ export function useUpdateBorrower() {
     onSuccess: async (updated) => {
       // ADR 008: edits do NOT propagate to historical loan rows. Only the
       // borrower-level caches need invalidating.
+      // Invalidate every page/search variant of the borrowers list under
+      // BORROWERS_QUERY_KEY (TanStack invalidates by prefix).
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: borrowerKey(updated.id) }),

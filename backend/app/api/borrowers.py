@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.library import get_library_id, require_editor_library
@@ -8,6 +8,7 @@ from app.db.session import get_db_session
 from app.schemas.borrower import (
     BorrowerCreate,
     BorrowerListItem,
+    BorrowerListResponse,
     BorrowerLoanItem,
     BorrowerResponse,
     BorrowerUpdate,
@@ -24,21 +25,32 @@ from app.services.borrower import (
 router = APIRouter(prefix="/api/v1/borrowers", tags=["borrowers"])
 
 
-@router.get("", response_model=list[BorrowerListItem])
+@router.get("", response_model=BorrowerListResponse)
 async def read_borrowers(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
-) -> list[BorrowerListItem]:
-    rows = await list_borrowers_with_stats(session, library_id)
-    return [
+    search: str | None = Query(default=None, min_length=1),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> BorrowerListResponse:
+    page_data = await list_borrowers_with_stats(
+        session, library_id, search=search, page=page, page_size=page_size
+    )
+    items = [
         BorrowerListItem(
             **BorrowerResponse.model_validate(row.borrower).model_dump(),
             active_loans=row.active_loans,
             total_loans=row.total_loans,
             last_activity_at=row.last_activity_at,
         )
-        for row in rows
+        for row in page_data.items
     ]
+    return BorrowerListResponse(
+        total=page_data.total,
+        page=page_data.page,
+        page_size=page_data.page_size,
+        items=items,
+    )
 
 
 @router.post("", response_model=BorrowerResponse, status_code=status.HTTP_201_CREATED)
