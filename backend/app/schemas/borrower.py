@@ -42,6 +42,19 @@ class BorrowerListItem(BorrowerResponse):
     last_activity_at: date | None
 
 
+class BorrowerListResponse(BaseModel):
+    """Paginated wrapper around BorrowerListItem rows.
+
+    Matches the shape used by `BookListResponse` so the frontend paginator
+    component is trivially reusable.
+    """
+
+    total: int
+    page: int
+    page_size: int
+    items: list[BorrowerListItem]
+
+
 class BorrowerLoanItem(BaseModel):
     """A loan as seen from the borrower-detail page — denormalized with book info."""
 

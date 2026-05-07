@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { NoResultsIcon } from '../components/EmptyStateIcons'
+import { useDebounce } from '../hooks/useDebounce'
 import { useBorrowers } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { getBorrowerDetailRoute } from '../lib/routes'
 import type { BorrowerListItem } from '../lib/types'
+
+const PAGE_SIZE = 20
 
 function formatDate(value: string | null, locale: string): string {
   if (!value) return '—'
@@ -17,26 +20,43 @@ function formatDate(value: string | null, locale: string): string {
   }
 }
 
-function matchesSearch(borrower: BorrowerListItem, query: string, displayName: string): boolean {
-  if (!query.trim()) return true
-  const target = query.trim().toLowerCase()
-  // Match against the displayed (possibly localized) label so users searching
-  // for "smazaný" / "deleted" find anonymized records.
-  return displayName.toLowerCase().includes(target)
-}
-
 export function BorrowersPage() {
   const { t, i18n } = useTranslation()
-  const borrowersQuery = useBorrowers()
-  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [page, setPage] = useState(1)
 
-  const filtered = useMemo(() => {
-    const all = borrowersQuery.data ?? []
-    return all.filter((b) => matchesSearch(b, search, displayBorrowerName(b, t)))
-  }, [borrowersQuery.data, search, t])
+  // Server-side search means the input has to settle before we re-fetch.
+  // 250ms is the standard "felt instant but not a query per keystroke" range.
+  const debouncedSearch = useDebounce(searchInput, 250)
 
-  const isLoading = borrowersQuery.isLoading
-  const total = borrowersQuery.data?.length ?? 0
+  // Reset to page 1 whenever the search query changes — otherwise typing on
+  // page 4 could leave the user on an empty page that doesn't exist for the
+  // narrowed result set.
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
+  const borrowersQuery = useBorrowers({
+    search: debouncedSearch,
+    page,
+    pageSize: PAGE_SIZE,
+  })
+
+  const data = borrowersQuery.data
+  const items: BorrowerListItem[] = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const isInitialLoading = borrowersQuery.isLoading
+  const hasAnyData = data !== undefined
+  const hasResults = items.length > 0
+
+  const headerCounts = useMemo(() => {
+    if (!hasAnyData) return null
+    return total === 0 && !debouncedSearch
+      ? null
+      : t('borrowers.result_counter', { count: total })
+  }, [hasAnyData, total, debouncedSearch, t])
 
   return (
     <main className="sh-main" style={{ padding: 24, maxWidth: 960, margin: '0 auto' }}>
@@ -47,24 +67,33 @@ export function BorrowersPage() {
         </p>
       </header>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
         <input
           type="search"
           className="sh-input"
           placeholder={t('borrowers.search_placeholder')}
           aria-label={t('borrowers.search_placeholder')}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          style={{ flex: 1 }}
         />
+        {headerCounts && (
+          <span
+            data-testid="borrowers-result-counter"
+            style={{ color: 'var(--sh-text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}
+          >
+            {headerCounts}
+          </span>
+        )}
       </div>
 
-      {isLoading && (
+      {isInitialLoading && (
         <p data-testid="borrowers-loading" style={{ color: 'var(--sh-text-muted)' }}>
           {t('borrowers.loading')}
         </p>
       )}
 
-      {!isLoading && total === 0 && (
+      {hasAnyData && total === 0 && !debouncedSearch && (
         <div
           data-testid="borrowers-empty"
           style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--sh-text-muted)' }}
@@ -77,21 +106,21 @@ export function BorrowersPage() {
         </div>
       )}
 
-      {!isLoading && total > 0 && filtered.length === 0 && (
+      {hasAnyData && total === 0 && debouncedSearch && (
         <div
           data-testid="borrowers-no-results"
           style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--sh-text-muted)' }}
         >
-          {t('borrowers.no_results', { query: search.trim() })}
+          {t('borrowers.no_results', { query: debouncedSearch })}
         </div>
       )}
 
-      {!isLoading && filtered.length > 0 && (
+      {hasResults && (
         <ul
           data-testid="borrowers-list"
           style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 8 }}
         >
-          {filtered.map((borrower) => (
+          {items.map((borrower) => (
             <li key={borrower.id}>
               <Link
                 to={getBorrowerDetailRoute(borrower.id)}
@@ -163,6 +192,42 @@ export function BorrowersPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {hasResults && totalPages > 1 && (
+        <nav
+          aria-label={t('borrowers.pagination_label')}
+          data-testid="borrowers-paginator"
+          style={{
+            marginTop: 16,
+            display: 'flex',
+            gap: 8,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <button
+            type="button"
+            className="sh-btn-secondary"
+            data-testid="borrowers-prev-page"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            {t('borrowers.prev_page')}
+          </button>
+          <span style={{ color: 'var(--sh-text-muted)', fontSize: 13 }}>
+            {t('borrowers.page_indicator', { page, total: totalPages })}
+          </span>
+          <button
+            type="button"
+            className="sh-btn-secondary"
+            data-testid="borrowers-next-page"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            {t('borrowers.next_page')}
+          </button>
+        </nav>
       )}
     </main>
   )

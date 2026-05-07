@@ -167,14 +167,16 @@ async def test_list_returns_stats_for_each_borrower(test_session: AsyncSession) 
         listed = await client.get("/api/v1/borrowers", headers=headers)
         assert listed.status_code == 200
         body = listed.json()
-        assert [b["name"] for b in body] == ["Alice", "Bob"]
+        assert body["total"] == 2
+        assert body["page"] == 1
+        assert [b["name"] for b in body["items"]] == ["Alice", "Bob"]
 
-        alice_row = body[0]
+        alice_row = body["items"][0]
         assert alice_row["active_loans"] == 1
         assert alice_row["total_loans"] == 2
         assert alice_row["last_activity_at"] == today.isoformat()
 
-        bob_row = body[1]
+        bob_row = body["items"][1]
         assert bob_row["active_loans"] == 1
         assert bob_row["total_loans"] == 1
 
@@ -192,10 +194,11 @@ async def test_list_returns_zero_stats_for_borrower_without_loans(
         resp = await client.get("/api/v1/borrowers", headers=headers)
         assert resp.status_code == 200
         body = resp.json()
-        assert len(body) == 1
-        assert body[0]["active_loans"] == 0
-        assert body[0]["total_loans"] == 0
-        assert body[0]["last_activity_at"] is None
+        assert body["total"] == 1
+        assert len(body["items"]) == 1
+        assert body["items"][0]["active_loans"] == 0
+        assert body["items"][0]["total_loans"] == 0
+        assert body["items"][0]["last_activity_at"] is None
 
 
 @pytest.mark.asyncio
@@ -239,9 +242,109 @@ async def test_list_stats_does_not_count_cross_library_loans(
         resp = await client.get("/api/v1/borrowers", headers=headers)
         assert resp.status_code == 200
         body = resp.json()
-        assert len(body) == 1
-        assert body[0]["total_loans"] == 1
-        assert body[0]["active_loans"] == 1
+        assert body["total"] == 1
+        assert body["items"][0]["total_loans"] == 1
+        assert body["items"][0]["active_loans"] == 1
+
+
+# ── Pagination + search ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_list_paginates_with_page_and_page_size(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    for name in ["Alice", "Bob", "Carol", "Dan", "Eve"]:
+        test_session.add(Borrower(library_id=lib.id, name=name))
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+
+        first = await client.get(
+            "/api/v1/borrowers", headers=headers, params={"page": 1, "page_size": 2}
+        )
+        assert first.status_code == 200
+        body = first.json()
+        assert body["total"] == 5
+        assert body["page"] == 1
+        assert body["page_size"] == 2
+        assert [b["name"] for b in body["items"]] == ["Alice", "Bob"]
+
+        second = await client.get(
+            "/api/v1/borrowers", headers=headers, params={"page": 2, "page_size": 2}
+        )
+        assert [b["name"] for b in second.json()["items"]] == ["Carol", "Dan"]
+
+        third = await client.get(
+            "/api/v1/borrowers", headers=headers, params={"page": 3, "page_size": 2}
+        )
+        assert [b["name"] for b in third.json()["items"]] == ["Eve"]
+
+
+@pytest.mark.asyncio
+async def test_list_search_filters_by_name_substring(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    for name in ["Alice Liddell", "Bob Builder", "Alicia Keys"]:
+        test_session.add(Borrower(library_id=lib.id, name=name))
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.get("/api/v1/borrowers", headers=headers, params={"search": "Ali"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+        names = sorted(b["name"] for b in body["items"])
+        assert names == ["Alice Liddell", "Alicia Keys"]
+
+
+@pytest.mark.asyncio
+async def test_list_search_is_case_insensitive(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    test_session.add(Borrower(library_id=lib.id, name="Alice"))
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.get("/api/v1/borrowers", headers=headers, params={"search": "ALICE"})
+        assert resp.status_code == 200
+        assert resp.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_search_combined_with_pagination(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    for name in ["Alice", "Alicia", "Alibaba", "Bob"]:
+        test_session.add(Borrower(library_id=lib.id, name=name))
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.get(
+            "/api/v1/borrowers",
+            headers=headers,
+            params={"search": "Ali", "page": 1, "page_size": 2},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 3  # all three "Ali*" rows count, not just the page slice
+        assert len(body["items"]) == 2
+        assert [b["name"] for b in body["items"]] == ["Alibaba", "Alice"]
+
+
+@pytest.mark.asyncio
+async def test_list_pagination_validates_params(test_session: AsyncSession) -> None:
+    await _seed_user_with_library(test_session)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        # page must be >= 1
+        bad_page = await client.get("/api/v1/borrowers", headers=headers, params={"page": 0})
+        assert bad_page.status_code == 422
+        # page_size capped at 100
+        too_big = await client.get(
+            "/api/v1/borrowers", headers=headers, params={"page_size": 101}
+        )
+        assert too_big.status_code == 422
 
 
 # ── Borrower loans endpoint ───────────────────────────────────────────────────

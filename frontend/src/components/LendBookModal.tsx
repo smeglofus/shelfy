@@ -28,12 +28,18 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
   const [error, setError] = useState<string | null>(null)
   const createLoan = useCreateLoan(bookId)
   const { t } = useTranslation()
-  const borrowersQuery = useBorrowers()
+  // The picker grabs up to the page-size cap (100) of borrowers in one shot.
+  // This is a deliberate trade-off vs. live server-side search: the typed-name
+  // fallback in `create_loan` still produces a correct loan even when the
+  // exact match isn't on the first page, so the only downside in a >100-row
+  // library is occasional duplicate Borrower creation. If that turns out to
+  // matter, swap this for a debounced ``search`` query.
+  const borrowersQuery = useBorrowers({ pageSize: 100 })
   // Anonymized borrowers are excluded from the picker — there's no sensible
   // reason to lend a new book to one (and they all carry the same sentinel
   // name, which would clutter the suggestions).
   const borrowers = useMemo(
-    () => (borrowersQuery.data ?? []).filter((b) => b.anonymized_at === null),
+    () => (borrowersQuery.data?.items ?? []).filter((b) => b.anonymized_at === null),
     [borrowersQuery.data],
   )
 

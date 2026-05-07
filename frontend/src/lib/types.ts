@@ -48,6 +48,19 @@ export interface BorrowerListItem extends Borrower {
   last_activity_at: string | null
 }
 
+export interface BorrowerListParams {
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface BorrowerListResponse {
+  total: number
+  page: number
+  page_size: number
+  items: BorrowerListItem[]
+}
+
 export interface BorrowerLoanItem {
   id: string
   book_id: string

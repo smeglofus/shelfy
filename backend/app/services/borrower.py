@@ -30,6 +30,14 @@ class BorrowerWithStats:
 
 
 @dataclass(frozen=True)
+class BorrowerStatsPage:
+    items: list[BorrowerWithStats]
+    total: int
+    page: int
+    page_size: int
+
+
+@dataclass(frozen=True)
 class BorrowerLoanRow:
     id: uuid.UUID
     book_id: uuid.UUID
@@ -65,16 +73,39 @@ async def list_borrowers(session: AsyncSession, library_id: uuid.UUID) -> list[B
 
 
 async def list_borrowers_with_stats(
-    session: AsyncSession, library_id: uuid.UUID
-) -> list[BorrowerWithStats]:
-    """List a library's borrowers with aggregated lending stats."""
+    session: AsyncSession,
+    library_id: uuid.UUID,
+    *,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> BorrowerStatsPage:
+    """List a library's borrowers with aggregated lending stats, paginated.
+
+    ``search`` is a case-insensitive substring match on the borrower name.
+    The match runs on the *stored* name; for anonymized rows that means
+    matching against the sentinel ("Deleted borrower"). Localized labels
+    are a frontend concern (see ``displayBorrowerName``).
+    """
     active_count = func.count(Loan.id).filter(Loan.returned_date.is_(None))
     total_count = func.count(Loan.id)
+
+    where_clauses = [Borrower.library_id == library_id]
+    if search:
+        # ``ilike`` keeps the search case-insensitive on Postgres; SQLite's
+        # default LIKE is already case-insensitive for ASCII so this is fine
+        # for tests too.
+        where_clauses.append(Borrower.name.ilike(f"%{search}%"))
+
+    # Count BEFORE applying limit/offset so the paginator knows the true
+    # total. Cheap because there are no joins on the count query.
+    total_stmt = select(func.count()).select_from(Borrower).where(*where_clauses)
+    total = int((await session.execute(total_stmt)).scalar_one())
 
     # The library-id check on Loan is defensive: in normal operation a loan's
     # library_id always matches its borrower's, but pinning it here prevents a
     # malformed cross-library row from being counted into stats.
-    stmt = (
+    page_stmt = (
         select(
             Borrower,
             active_count.label("active_loans"),
@@ -85,12 +116,14 @@ async def list_borrowers_with_stats(
             Loan,
             and_(Loan.borrower_id == Borrower.id, Loan.library_id == library_id),
         )
-        .where(Borrower.library_id == library_id)
+        .where(*where_clauses)
         .group_by(Borrower.id)
         .order_by(Borrower.name)
+        .limit(page_size)
+        .offset((page - 1) * page_size)
     )
-    result = await session.execute(stmt)
-    return [
+    result = await session.execute(page_stmt)
+    items = [
         BorrowerWithStats(
             borrower=row[0],
             active_loans=int(row[1] or 0),
@@ -99,6 +132,7 @@ async def list_borrowers_with_stats(
         )
         for row in result.all()
     ]
+    return BorrowerStatsPage(items=items, total=total, page=page, page_size=page_size)
 
 
 async def list_loans_for_borrower(
