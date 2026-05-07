@@ -14,6 +14,39 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    date: '2026-05-07',
+    title: {
+      cs: 'Dlužníci jako samostatná entita',
+      en: 'Borrowers as first-class objects',
+    },
+    summary: {
+      cs: 'Půjčování má teď evidenci dlužníků s historií napříč knihami a bezpečnou anonymizací osobních údajů.',
+      en: 'Lending now has a real borrower record with cross-book history and a safe way to wipe personal data.',
+    },
+    added: {
+      cs: [
+        'Stránka /borrowers s vyhledáváním a statistikami (počet aktivních, celkem, poslední aktivita) (#225).',
+        'Detail dlužníka se sekcemi Aktuálně půjčeno a Vráceno, včetně stavu při vrácení (#225).',
+        'Picker existujících dlužníků ve formuláři půjčení knihy s nepovinným ručním zápisem (#224).',
+        'Anonymizace dlužníka — smaže jméno/kontakt/poznámky a všechny identifikující údaje na jeho půjčkách, historie zůstává (#226).',
+      ],
+      en: [
+        '/borrowers page with search and per-row stats (active, total, last activity) (#225).',
+        'Borrower detail page with Currently borrowed and Returned sections, including return condition (#225).',
+        'Existing-borrower picker in the lend modal with a typed-name fallback (#224).',
+        'Anonymize action — wipes name/contact/notes and clears identifying data on the borrower\'s loans while keeping history (#226).',
+      ],
+    },
+    changed: {
+      cs: [
+        'Historie půjček u knihy zobrazí lokalizovaný štítek „Smazaný dlužník" pro anonymizované záznamy (#227).',
+      ],
+      en: [
+        'Loan history on book pages shows a localized "Deleted borrower" label for anonymized records (#227).',
+      ],
+    },
+  },
+  {
     date: '2026-05-06',
     title: {
       cs: 'Knihovna ukázek, onboarding a sidebar',

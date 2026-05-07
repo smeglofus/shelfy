@@ -3,8 +3,24 @@ import { formatDateDDMMYYYY } from '../lib/date'
 import { useTranslation } from 'react-i18next'
 
 import { useLoans } from '../hooks/useLoans'
+import { displayBorrowerName } from '../lib/borrowerDisplay'
+import type { Loan } from '../lib/types'
 import { LendBookModal } from './LendBookModal'
 import { ReturnBookModal } from './ReturnBookModal'
+
+/**
+ * Resolve the borrower label for a loan row.
+ *
+ * ADR 008 keeps `loan.borrower_name`/`borrower_contact` as denormalized
+ * snapshot columns. Display code prefers the nested `loan.borrower` object
+ * so anonymized records get a localized label and contact updates flow
+ * through. The legacy column is the fallback for loans whose `borrower_id`
+ * is null (typed-name lend, pre-Borrower history that #223 couldn't link).
+ */
+function loanBorrowerLabel(loan: Loan, t: ReturnType<typeof useTranslation>['t']): string {
+  if (loan.borrower) return displayBorrowerName(loan.borrower, t)
+  return loan.borrower_name
+}
 
 export function LoanHistory({ bookId }: { bookId: string }) {
   const loansQuery = useLoans(bookId)
@@ -32,7 +48,7 @@ export function LoanHistory({ bookId }: { bookId: string }) {
         {loans.map((loan) => (
           <article key={loan.id} style={{ border: `1px solid ${loan.is_active ? 'var(--sh-amber)' : 'var(--sh-border)'}`, background: loan.is_active ? 'var(--sh-amber-bg)' : 'var(--sh-surface)', borderRadius: 'var(--sh-radius-md)', padding: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong>{loan.borrower_name}</strong>
+              <strong data-testid={`loan-borrower-${loan.id}`}>{loanBorrowerLabel(loan, t)}</strong>
               <span>{loan.is_active ? t('loans.active') : t('loans.returned')}</span>
             </div>
             <p style={{ marginBottom: 0, color: 'var(--sh-text-muted)' }}>{formatDateDDMMYYYY(loan.lent_date)} {loan.returned_date ? `– ${formatDateDDMMYYYY(loan.returned_date)}` : loan.due_date ? `• ${t('loans.due')} ${formatDateDDMMYYYY(loan.due_date)}` : ''}</p>

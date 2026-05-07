@@ -36,6 +36,11 @@ class Loan(Base):
         nullable=True,
         index=True,
     )
+    # Denormalized snapshot of the borrower's identity at lend time.
+    # See docs/adr/008-keep-legacy-loan-borrower-fields.md — these columns are
+    # deliberately kept (not deprecated). Display code should prefer the
+    # nested ``borrower`` relationship and fall back to these only when
+    # ``borrower_id`` is NULL.
     borrower_name: Mapped[str] = mapped_column(String(255), nullable=False)
     borrower_contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
     lent_date: Mapped[date] = mapped_column(Date(), nullable=False, default=date.today)
