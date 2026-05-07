@@ -6,9 +6,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.models.borrower import Borrower
+from app.models.loan import Loan
 from app.schemas.borrower import BorrowerCreate, BorrowerUpdate
 
 logger = structlog.get_logger()
+
+
+def _normalize_name(value: str | None) -> str:
+    if value is None:
+        return ""
+    return " ".join(value.split())
+
+
+def _normalize_contact(value: str | None) -> str | None:
+    if value is None:
+        return None
+    collapsed = " ".join(value.split())
+    return collapsed or None
 
 
 async def list_borrowers(session: AsyncSession, library_id: uuid.UUID) -> list[Borrower]:
@@ -62,3 +76,60 @@ async def update_borrower(
     await session.refresh(borrower)
     logger.info("borrower_updated", borrower_id=str(borrower.id), fields=list(update_data.keys()))
     return borrower
+
+
+async def link_loans_to_borrowers(session: AsyncSession, library_id: uuid.UUID) -> int:
+    """Link a library's existing loans to Borrower records.
+
+    Idempotent: loans that already have ``borrower_id`` set are skipped.
+    Loans whose ``borrower_name`` is blank after whitespace normalization are
+    also skipped. Within the library, loans matching the same normalized
+    ``(name, contact)`` reuse a single Borrower; otherwise a new Borrower is
+    created. Borrowers are never shared across libraries.
+
+    Returns the number of loans linked in this call.
+    """
+    existing = (
+        await session.execute(select(Borrower).where(Borrower.library_id == library_id))
+    ).scalars().all()
+    bucket: dict[tuple[str, str | None], Borrower] = {
+        (_normalize_name(b.name), _normalize_contact(b.contact)): b for b in existing
+    }
+
+    loans = (
+        await session.execute(
+            select(Loan).where(Loan.library_id == library_id, Loan.borrower_id.is_(None))
+        )
+    ).scalars().all()
+
+    linked = 0
+    for loan in loans:
+        normalized_name = _normalize_name(loan.borrower_name)
+        if not normalized_name:
+            continue
+        normalized_contact = _normalize_contact(loan.borrower_contact)
+        key = (normalized_name, normalized_contact)
+
+        borrower = bucket.get(key)
+        if borrower is None:
+            borrower = Borrower(
+                library_id=library_id,
+                name=normalized_name,
+                contact=normalized_contact,
+            )
+            session.add(borrower)
+            await session.flush()
+            bucket[key] = borrower
+
+        loan.borrower_id = borrower.id
+        linked += 1
+
+    if linked:
+        await session.commit()
+        logger.info(
+            "loans_linked_to_borrowers",
+            library_id=str(library_id),
+            linked=linked,
+            borrowers_total=len(bucket),
+        )
+    return linked
