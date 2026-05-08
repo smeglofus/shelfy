@@ -7,7 +7,6 @@ borrower side specifically — that fix lands alongside the borrowers epic
 """
 from collections.abc import AsyncIterator, Iterator
 import json
-import uuid
 
 from httpx import ASGITransport, AsyncClient
 import pytest
