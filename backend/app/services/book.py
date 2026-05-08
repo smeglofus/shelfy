@@ -4,11 +4,13 @@ from fastapi import HTTPException, status
 from sqlalchemy import ColumnElement, case, delete, update
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.base import ExecutableOption
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.models.book import Book, ReadingStatus
+from app.models.loan import Loan
 from app.models.location import Location
 from app.schemas.book import BookCreateRequest, BookUpdateRequest
 
@@ -16,6 +18,20 @@ from app.schemas.book import BookCreateRequest, BookUpdateRequest
 from app.services.csv_import import build_books_export_csv as build_books_export_csv  # noqa: F401
 
 logger = structlog.get_logger()
+
+
+def _book_loan_options() -> tuple[ExecutableOption, ...]:
+    """Eager-load options for any Book query whose response will hit
+    ``BookResponse.active_loan``.
+
+    ``Book.active_loan`` is a Python property on the ORM model that walks
+    ``book.loans``; the ``LoanResponse`` schema then dereferences
+    ``loan.borrower`` (added in #222). In an async session, accessing a
+    relationship that isn't preloaded raises ``MissingGreenlet``. So the
+    chain has to load the borrower too — this helper is the single source
+    of truth for that contract.
+    """
+    return (selectinload(Book.loans).selectinload(Loan.borrower),)
 
 
 async def list_books(
@@ -72,7 +88,7 @@ async def list_books(
     count_query = select(func.count()).select_from(Book).where(*filters)
     query = (
         select(Book)
-        .options(selectinload(Book.loans))
+        .options(*_book_loan_options())
         .where(*filters)
         .order_by(Book.created_at.desc(), Book.id.desc())
         .offset((page - 1) * page_size)
@@ -148,7 +164,7 @@ async def list_all_books_for_shelf(
     """
     query = (
         select(Book)
-        .options(selectinload(Book.loans))
+        .options(*_book_loan_options())
         .where(Book.library_id == library_id)
         .order_by(
             Book.location_id.asc().nulls_last(),
@@ -180,7 +196,7 @@ async def create_book(session: AsyncSession, payload: BookCreateRequest, library
 async def get_book_or_404(session: AsyncSession, book_id: uuid.UUID, library_id: uuid.UUID) -> Book:
     result = await session.execute(
         select(Book)
-        .options(selectinload(Book.loans))
+        .options(*_book_loan_options())
         .where(Book.id == book_id, Book.library_id == library_id)
     )
     book = result.scalar_one_or_none()
@@ -216,10 +232,12 @@ async def update_book(
             raise _isbn_conflict_error() from exc
         raise
 
-    await session.refresh(book)
-    await session.refresh(book, attribute_names=["loans"])
+    # Re-fetch through ``get_book_or_404`` so the response carries the full
+    # eager-load chain (loans + each loan's borrower). A bare ``refresh`` only
+    # reloads scalar columns plus the named relationship and would leave
+    # ``loan.borrower`` lazy — fatal in async serialization since #222.
     logger.info("book_updated", book_id=str(book.id), fields=list(update_data.keys()))
-    return book
+    return await get_book_or_404(session, book.id, library_id)
 
 
 async def delete_book(session: AsyncSession, book_id: uuid.UUID, library_id: uuid.UUID) -> None:

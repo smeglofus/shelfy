@@ -14,7 +14,9 @@ from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models.book import Book
+from app.models.borrower import Borrower
 from app.models.library import Library, LibraryMember, LibraryRole
+from app.models.loan import Loan
 from app.models.location import Location
 from app.models.user import User
 
@@ -525,6 +527,72 @@ async def test_shelf_endpoint_orders_by_location_and_shelf_position(
 async def test_shelf_endpoint_requires_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         assert (await client.get("/api/v1/books/shelf")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_shelf_endpoint_serializes_book_with_borrower_linked_active_loan(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Regression: a book whose active loan is linked to a Borrower row must
+    serialize cleanly via ``GET /api/v1/books/shelf``.
+
+    Pre-fix the ``selectinload(Book.loans)`` chain didn't reach ``Loan.borrower``,
+    so async serialization tripped MissingGreenlet on ``loan.borrower`` and the
+    whole shelf response 500'd — making every book disappear from the bookshelf
+    UI in libraries that had at least one borrower-linked loan (i.e. anyone who
+    used the Borrower picker shipped in #224).
+
+    The same shape covers all read paths via the shared ``_book_loan_options``
+    helper, so this single test pins the contract.
+    """
+    from datetime import date
+
+    async with test_session() as session:
+        _, library = await _seed_user_with_library(session)
+        location_id = await _create_location(session, library.id)
+        borrower = Borrower(
+            library_id=library.id, name="Alice Liddell", contact="alice@x.com"
+        )
+        session.add(borrower)
+        await session.flush()
+
+        book = Book(
+            library_id=library.id,
+            title="Wonderland",
+            location_id=location_id,
+            shelf_position=0,
+        )
+        session.add(book)
+        await session.flush()
+
+        session.add(
+            Loan(
+                library_id=library.id,
+                book_id=book.id,
+                borrower_id=borrower.id,
+                borrower_name=borrower.name,
+                borrower_contact=borrower.contact,
+                lent_date=date.today(),
+            )
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        response = await client.get("/api/v1/books/shelf", headers=headers)
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 1
+    body = payload[0]
+    assert body["title"] == "Wonderland"
+    assert body["is_currently_lent"] is True
+    assert body["active_loan"] is not None
+    assert body["active_loan"]["borrower"] is not None
+    assert body["active_loan"]["borrower"]["name"] == "Alice Liddell"
 
 
 # ── Shelf ETag / If-None-Match ─────────────────────────────────────────────────
