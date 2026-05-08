@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import ColumnElement, case, delete, update
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.base import ExecutableOption
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -19,7 +20,7 @@ from app.services.csv_import import build_books_export_csv as build_books_export
 logger = structlog.get_logger()
 
 
-def _book_loan_options() -> tuple[object, ...]:
+def _book_loan_options() -> tuple[ExecutableOption, ...]:
     """Eager-load options for any Book query whose response will hit
     ``BookResponse.active_loan``.
 
