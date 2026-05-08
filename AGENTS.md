@@ -27,3 +27,21 @@ cd ../frontend
 npm run lint
 npm test -- --run
 ```
+
+## Test-DB contract
+
+The backend test suite runs against SQLite (`sqlite+aiosqlite`). Production
+runs on Postgres. To stop the two from drifting on FK semantics — the kind
+of divergence that lets dangling-FK inserts pass green tests but break
+production — `backend/tests/conftest.py` registers a global SQLAlchemy
+connect-event listener that issues `PRAGMA foreign_keys=ON` on every SQLite
+connection. The listener is re-asserted by `tests/test_sqlite_pragma.py`,
+which both reads back the pragma and proves a dangling-FK insert raises
+`IntegrityError`.
+
+**Implication for new tests:** rows must reference real parents. To
+simulate "this borrower lives in another library that the user has no
+access to," seed an actual `Library` row (with a real `created_by_user_id`)
+but skip the `LibraryMember` — see the patterns in
+`tests/test_borrowers.py::test_list_borrowers_isolated_between_libraries`
+and friends.

@@ -7,7 +7,6 @@ borrower side specifically — that fix lands alongside the borrowers epic
 """
 from collections.abc import AsyncIterator, Iterator
 import json
-import uuid
 
 from httpx import ASGITransport, AsyncClient
 import pytest
@@ -175,12 +174,14 @@ async def test_export_anonymized_borrower_shows_sentinel(test_session: AsyncSess
 async def test_export_does_not_leak_borrowers_from_other_libraries(
     test_session: AsyncSession,
 ) -> None:
-    _, lib = await _seed_user_with_library(test_session)
-    foreign_lib_id = uuid.uuid4()
+    user, lib = await _seed_user_with_library(test_session)
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
 
     test_session.add_all([
         Borrower(library_id=lib.id, name="Mine"),
-        Borrower(library_id=foreign_lib_id, name="Not Mine"),
+        Borrower(library_id=foreign_lib.id, name="Not Mine"),
     ])
     await test_session.commit()
 

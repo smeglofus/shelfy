@@ -292,9 +292,12 @@ async def test_merge_with_anonymized_target_returns_422(test_session: AsyncSessi
 
 @pytest.mark.asyncio
 async def test_merge_with_foreign_source_returns_404(test_session: AsyncSession) -> None:
-    _, lib = await _seed_user_with_library(test_session)
+    user, lib = await _seed_user_with_library(test_session)
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
     target = Borrower(library_id=lib.id, name="Target")
-    foreign_source = Borrower(library_id=uuid.uuid4(), name="Foreign")
+    foreign_source = Borrower(library_id=foreign_lib.id, name="Foreign")
     test_session.add_all([target, foreign_source])
     await test_session.commit()
 
@@ -310,9 +313,12 @@ async def test_merge_with_foreign_source_returns_404(test_session: AsyncSession)
 
 @pytest.mark.asyncio
 async def test_merge_with_foreign_target_returns_404(test_session: AsyncSession) -> None:
-    _, lib = await _seed_user_with_library(test_session)
+    user, lib = await _seed_user_with_library(test_session)
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
     source = Borrower(library_id=lib.id, name="Source")
-    foreign_target = Borrower(library_id=uuid.uuid4(), name="ForeignTarget")
+    foreign_target = Borrower(library_id=foreign_lib.id, name="ForeignTarget")
     test_session.add_all([source, foreign_target])
     await test_session.commit()
 
