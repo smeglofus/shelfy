@@ -212,8 +212,12 @@ async def test_list_stats_does_not_count_cross_library_loans(
     a row with the wrong library_id (e.g. from a future bulk import bug) does
     not inflate the counts.
     """
-    _, lib = await _seed_user_with_library(test_session)
-    foreign_lib_id = uuid.uuid4()
+    user, lib = await _seed_user_with_library(test_session)
+    # Real foreign library row so the FK on the cross-library loan resolves.
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
+    foreign_lib_id = foreign_lib.id
 
     alice = Borrower(library_id=lib.id, name="Alice")
     test_session.add(alice)
@@ -229,8 +233,8 @@ async def test_list_stats_does_not_count_cross_library_loans(
         library_id=lib.id, book_id=book.id, borrower_id=alice.id,
         borrower_name="Alice", lent_date=date.today(),
     ))
-    # Cross-library loan pointing at our alice.id — this should be ignored.
-    # SQLite test DB does not enforce FKs so we can construct this dangling row.
+    # Cross-library loan pointing at our alice.id — defensive WHERE clause in
+    # ``list_borrowers_with_stats`` should still skip it.
     test_session.add(_make_loan(
         library_id=foreign_lib_id, book_id=foreign_book.id, borrower_id=alice.id,
         borrower_name="Alice", lent_date=date.today(),
@@ -418,9 +422,11 @@ async def test_borrower_loans_returns_empty_list_when_no_loans(
 async def test_borrower_loans_returns_404_for_foreign_borrower(
     test_session: AsyncSession,
 ) -> None:
-    await _seed_user_with_library(test_session)
-    foreign_lib_id = uuid.uuid4()
-    foreign = Borrower(library_id=foreign_lib_id, name="Foreign")
+    user, _ = await _seed_user_with_library(test_session)
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
+    foreign = Borrower(library_id=foreign_lib.id, name="Foreign")
     test_session.add(foreign)
     await test_session.commit()
 

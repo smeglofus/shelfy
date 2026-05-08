@@ -287,8 +287,11 @@ async def test_anonymize_already_anonymized_is_idempotent(
 
 @pytest.mark.asyncio
 async def test_anonymize_foreign_borrower_returns_404(test_session: AsyncSession) -> None:
-    await _seed_user_with_library(test_session)
-    foreign = Borrower(library_id=uuid.uuid4(), name="Foreign")
+    user, _ = await _seed_user_with_library(test_session)
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
+    foreign = Borrower(library_id=foreign_lib.id, name="Foreign")
     test_session.add(foreign)
     await test_session.commit()
 

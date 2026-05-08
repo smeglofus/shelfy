@@ -186,8 +186,9 @@ async def test_update_borrower_null_name_rejected(test_session: AsyncSession) ->
 async def test_list_borrowers_isolated_between_libraries(test_session: AsyncSession) -> None:
     """Borrowers seeded in a foreign library must not appear in the API response.
 
-    We directly insert a borrower into a different library_id so the test does
-    not depend on a second user being an editor of their own library.
+    We seed a real foreign Library (no LibraryMember row for the authed user)
+    so the borrower has a valid FK target — SQLite FK enforcement (see
+    ``conftest.py``) would otherwise reject the dangling insert.
     """
     from app.models.borrower import Borrower as BorrowerModel
 
@@ -198,9 +199,14 @@ async def test_list_borrowers_isolated_between_libraries(test_session: AsyncSess
         r = await client.post("/api/v1/borrowers", json={"name": "Own Borrower"}, headers=headers)
         assert r.status_code == 201
 
-        # Directly insert a borrower in a completely different (fake) library
-        foreign_lib_id = uuid.uuid4()
-        foreign_borrower = BorrowerModel(library_id=foreign_lib_id, name="Foreign Borrower")
+        # Seed a real foreign library that the authed user has no membership in.
+        owner_user = (await test_session.execute(
+            select(User).where(User.email == "admin@example.com")
+        )).scalar_one()
+        foreign_lib = Library(name="Foreign Library", created_by_user_id=owner_user.id)
+        test_session.add(foreign_lib)
+        await test_session.flush()
+        foreign_borrower = BorrowerModel(library_id=foreign_lib.id, name="Foreign Borrower")
         test_session.add(foreign_borrower)
         await test_session.commit()
 

@@ -7,9 +7,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.security import get_password_hash
 from app.db.base import Base
+from app.models.book import Book
 from app.models.borrower import Borrower
+from app.models.library import Library
 from app.models.loan import Loan
+from app.models.user import User
 from app.schemas.borrower import BorrowerCreate
 from app.services.borrower import create_borrower, link_loans_to_borrowers
 
@@ -25,8 +29,40 @@ async def session() -> AsyncIterator[AsyncSession]:
     await engine.dispose()
 
 
+# These tests are service-level (they call ``link_loans_to_borrowers`` directly,
+# bypassing the API). They previously fabricated ``library_id``/``book_id`` as
+# bare ``uuid.uuid4()`` values and relied on SQLite not enforcing FKs. Since
+# conftest.py turns FK enforcement on, every Loan needs a real Library +
+# real Book row to attach to.
+_SEED_USER_COUNTER = 0
+
+
+async def _seed_library(session: AsyncSession) -> uuid.UUID:
+    """Seed a Library row (with a fresh creator user) and return its id."""
+    global _SEED_USER_COUNTER
+    _SEED_USER_COUNTER += 1
+    user = User(
+        email=f"link-test-{_SEED_USER_COUNTER}@example.com",
+        hashed_password=get_password_hash("x"),
+    )
+    session.add(user)
+    await session.flush()
+    lib = Library(name=f"Link test lib {_SEED_USER_COUNTER}", created_by_user_id=user.id)
+    session.add(lib)
+    await session.flush()
+    return lib.id
+
+
+async def _seed_book(session: AsyncSession, library_id: uuid.UUID) -> uuid.UUID:
+    book = Book(library_id=library_id, title="Book")
+    session.add(book)
+    await session.flush()
+    return book.id
+
+
 def _make_loan(
     library_id: uuid.UUID,
+    book_id: uuid.UUID,
     *,
     borrower_name: str,
     borrower_contact: str | None = None,
@@ -34,7 +70,7 @@ def _make_loan(
 ) -> Loan:
     return Loan(
         library_id=library_id,
-        book_id=uuid.uuid4(),
+        book_id=book_id,
         borrower_id=borrower_id,
         borrower_name=borrower_name,
         borrower_contact=borrower_contact,
@@ -53,9 +89,10 @@ async def _all_borrowers(session: AsyncSession, library_id: uuid.UUID) -> list[B
 async def test_links_two_loans_with_same_name_and_contact_to_one_borrower(
     session: AsyncSession,
 ) -> None:
-    lib_id = uuid.uuid4()
-    session.add(_make_loan(lib_id, borrower_name="Alice", borrower_contact="alice@x.com"))
-    session.add(_make_loan(lib_id, borrower_name="Alice", borrower_contact="alice@x.com"))
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
+    session.add(_make_loan(lib_id, book_id, borrower_name="Alice", borrower_contact="alice@x.com"))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Alice", borrower_contact="alice@x.com"))
     await session.commit()
 
     linked = await link_loans_to_borrowers(session, lib_id)
@@ -72,10 +109,12 @@ async def test_links_two_loans_with_same_name_and_contact_to_one_borrower(
 async def test_same_name_in_two_libraries_creates_separate_borrowers(
     session: AsyncSession,
 ) -> None:
-    lib_a = uuid.uuid4()
-    lib_b = uuid.uuid4()
-    session.add(_make_loan(lib_a, borrower_name="Alice"))
-    session.add(_make_loan(lib_b, borrower_name="Alice"))
+    lib_a = await _seed_library(session)
+    book_a = await _seed_book(session, lib_a)
+    lib_b = await _seed_library(session)
+    book_b = await _seed_book(session, lib_b)
+    session.add(_make_loan(lib_a, book_a, borrower_name="Alice"))
+    session.add(_make_loan(lib_b, book_b, borrower_name="Alice"))
     await session.commit()
 
     await link_loans_to_borrowers(session, lib_a)
@@ -90,7 +129,8 @@ async def test_same_name_in_two_libraries_creates_separate_borrowers(
 
 @pytest.mark.asyncio
 async def test_existing_borrower_id_is_not_overwritten(session: AsyncSession) -> None:
-    lib_id = uuid.uuid4()
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
     pinned = await create_borrower(
         session, BorrowerCreate(name="Pre-existing", contact="pre@x.com"), lib_id
     )
@@ -102,6 +142,7 @@ async def test_existing_borrower_id_is_not_overwritten(session: AsyncSession) ->
     session.add(
         _make_loan(
             lib_id,
+            book_id,
             borrower_name="Pre-existing",
             borrower_contact="pre@x.com",
             borrower_id=other_id,
@@ -121,10 +162,11 @@ async def test_existing_borrower_id_is_not_overwritten(session: AsyncSession) ->
 
 @pytest.mark.asyncio
 async def test_null_or_empty_contact_is_handled(session: AsyncSession) -> None:
-    lib_id = uuid.uuid4()
-    session.add(_make_loan(lib_id, borrower_name="Bob", borrower_contact=None))
-    session.add(_make_loan(lib_id, borrower_name="Bob", borrower_contact=""))
-    session.add(_make_loan(lib_id, borrower_name="Bob", borrower_contact="   "))
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
+    session.add(_make_loan(lib_id, book_id, borrower_name="Bob", borrower_contact=None))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Bob", borrower_contact=""))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Bob", borrower_contact="   "))
     await session.commit()
 
     await link_loans_to_borrowers(session, lib_id)
@@ -139,9 +181,10 @@ async def test_null_or_empty_contact_is_handled(session: AsyncSession) -> None:
 async def test_extra_whitespace_in_borrower_name_does_not_crash(
     session: AsyncSession,
 ) -> None:
-    lib_id = uuid.uuid4()
-    session.add(_make_loan(lib_id, borrower_name="  Alice  Smith  "))
-    session.add(_make_loan(lib_id, borrower_name="Alice Smith"))
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
+    session.add(_make_loan(lib_id, book_id, borrower_name="  Alice  Smith  "))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Alice Smith"))
     await session.commit()
 
     await link_loans_to_borrowers(session, lib_id)
@@ -153,9 +196,10 @@ async def test_extra_whitespace_in_borrower_name_does_not_crash(
 
 @pytest.mark.asyncio
 async def test_blank_borrower_name_is_skipped(session: AsyncSession) -> None:
-    lib_id = uuid.uuid4()
-    session.add(_make_loan(lib_id, borrower_name="   "))
-    session.add(_make_loan(lib_id, borrower_name="Real Person"))
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
+    session.add(_make_loan(lib_id, book_id, borrower_name="   "))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Real Person"))
     await session.commit()
 
     linked = await link_loans_to_borrowers(session, lib_id)
@@ -167,9 +211,10 @@ async def test_blank_borrower_name_is_skipped(session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_helper_is_idempotent(session: AsyncSession) -> None:
-    lib_id = uuid.uuid4()
-    session.add(_make_loan(lib_id, borrower_name="Alice"))
-    session.add(_make_loan(lib_id, borrower_name="Bob", borrower_contact="bob@x.com"))
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
+    session.add(_make_loan(lib_id, book_id, borrower_name="Alice"))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Bob", borrower_contact="bob@x.com"))
     await session.commit()
 
     first = await link_loans_to_borrowers(session, lib_id)
@@ -184,11 +229,12 @@ async def test_helper_is_idempotent(session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_reuses_borrower_created_via_create_borrower(session: AsyncSession) -> None:
     """A pre-existing Borrower record should not be duplicated by the linker."""
-    lib_id = uuid.uuid4()
+    lib_id = await _seed_library(session)
+    book_id = await _seed_book(session, lib_id)
     existing = await create_borrower(
         session, BorrowerCreate(name="Alice", contact="alice@x.com"), lib_id
     )
-    session.add(_make_loan(lib_id, borrower_name="Alice", borrower_contact="alice@x.com"))
+    session.add(_make_loan(lib_id, book_id, borrower_name="Alice", borrower_contact="alice@x.com"))
     await session.commit()
 
     await link_loans_to_borrowers(session, lib_id)
