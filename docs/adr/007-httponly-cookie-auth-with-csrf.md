@@ -130,3 +130,9 @@ a single auth resolver that covers both flows without per-endpoint branching.
   automatically persisted by Playwright across navigations.
 - `e2e/tests/scan-account-reset-flow.spec.ts` — continues to use the Bearer flow to prove
   backward compatibility for non-browser clients.
+- `frontend/src/lib/api.auth-epoch.test.ts` — pins the auth-epoch guard from #125. Four
+  cases: outbound requests are tagged with the current epoch, a stale-epoch 401 rejects
+  silently without firing refresh or `onUnauthorized`, a current-epoch 401 still runs
+  the refresh path, and a 401 from `/auth/refresh` itself does not recurse. Without
+  this file the guard was carried by comments alone — a future refactor that removed
+  the tagging or the stale check would not have broken any test.
