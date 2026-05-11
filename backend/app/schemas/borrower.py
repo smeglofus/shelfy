@@ -30,7 +30,7 @@ class BorrowerResponse(BaseModel):
     id: uuid.UUID
     name: str
     contact: str | None
-    notes: str | None
+    notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
     anonymized_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -76,4 +76,4 @@ class BorrowerLoanItem(BaseModel):
     due_date: date | None
     returned_date: date | None
     return_condition: str | None
-    notes: str | None
+    notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
