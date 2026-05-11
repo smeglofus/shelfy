@@ -2254,6 +2254,70 @@
         }
       }
     },
+    "/api/v1/borrowers/bulk/anonymize": {
+      "post": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Bulk Anonymize Borrowers Endpoint",
+        "operationId": "bulk_anonymize_borrowers_endpoint_api_v1_borrowers_bulk_anonymize_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowerBulkAnonymizeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowerBulkAnonymizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/borrowers/{target_id}/merge": {
       "post": {
         "tags": [
@@ -4479,6 +4543,38 @@
         },
         "type": "object",
         "title": "BookUpdateRequest"
+      },
+      "BorrowerBulkAnonymizeRequest": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "BorrowerBulkAnonymizeRequest"
+      },
+      "BorrowerBulkAnonymizeResponse": {
+        "properties": {
+          "affected": {
+            "type": "integer",
+            "title": "Affected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "affected"
+        ],
+        "title": "BorrowerBulkAnonymizeResponse"
       },
       "BorrowerCreate": {
         "properties": {
