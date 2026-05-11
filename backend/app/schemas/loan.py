@@ -4,7 +4,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
-from app.schemas.borrower import BorrowerResponse
+from app.schemas.borrower import BorrowerResponse, MAX_NOTES_LENGTH
 
 
 class LoanCreate(BaseModel):
@@ -13,7 +13,7 @@ class LoanCreate(BaseModel):
     borrower_contact: str | None = Field(None, max_length=255)
     lent_date: date = Field(default_factory=date.today)
     due_date: date | None = None
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=MAX_NOTES_LENGTH)
 
     @model_validator(mode="after")
     def require_borrower_name_without_id(self) -> "LoanCreate":
@@ -25,7 +25,7 @@ class LoanCreate(BaseModel):
 class LoanReturn(BaseModel):
     returned_date: date = Field(default_factory=date.today)
     return_condition: Literal["perfect", "good", "fair", "damaged", "lost"]
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=MAX_NOTES_LENGTH)
 
 
 class LoanResponse(BaseModel):

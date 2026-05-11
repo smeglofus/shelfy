@@ -182,6 +182,20 @@ async def test_update_borrower_null_name_rejected(test_session: AsyncSession) ->
         assert 400 <= resp.status_code < 500
 
 
+
+
+@pytest.mark.asyncio
+async def test_create_borrower_rejects_notes_over_2000_chars(test_session: AsyncSession) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+
+        response = await client.post(
+            "/api/v1/borrowers",
+            json={"name": "Alice", "notes": "x" * 2001},
+            headers=headers,
+        )
+
+    assert response.status_code == 422
 @pytest.mark.asyncio
 async def test_list_borrowers_isolated_between_libraries(test_session: AsyncSession) -> None:
     """Borrowers seeded in a foreign library must not appear in the API response.

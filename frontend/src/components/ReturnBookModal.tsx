@@ -39,7 +39,9 @@ export function ReturnBookModal({ bookId, loanId, onClose }: { bookId: string; l
             <option value="lost">{t('loans.condition_lost')}</option>
           </select>
         </label>
-        <textarea className="sh-input" rows={3} placeholder={t('loans.return_notes')} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <textarea className="sh-input" rows={3} placeholder={t('loans.return_notes')} value={notes} onChange={(event) => setNotes(event.target.value)}
+          maxLength={2000}
+        />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
           <button type="button" className="sh-btn-secondary" onClick={onClose}>{t('loans.cancel')}</button>
           <button type="submit" className="sh-btn-primary" disabled={returnLoan.isPending}>{returnLoan.isPending ? t('loans.return_saving') : t('loans.return_submit')}</button>
