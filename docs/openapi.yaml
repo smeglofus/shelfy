@@ -2190,70 +2190,6 @@
         }
       }
     },
-    "/api/v1/borrowers/{borrower_id}/anonymize": {
-      "post": {
-        "tags": [
-          "borrowers"
-        ],
-        "summary": "Anonymize Borrower Endpoint",
-        "operationId": "anonymize_borrower_endpoint_api_v1_borrowers__borrower_id__anonymize_post",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "borrower_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Borrower Id"
-            }
-          },
-          {
-            "name": "X-Library-Id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Library-Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BorrowerResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/borrowers/bulk/anonymize": {
       "post": {
         "tags": [
@@ -2301,6 +2237,70 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BorrowerBulkAnonymizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/borrowers/{borrower_id}/anonymize": {
+      "post": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Anonymize Borrower Endpoint",
+        "operationId": "anonymize_borrower_endpoint_api_v1_borrowers__borrower_id__anonymize_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "borrower_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Borrower Id"
+            }
+          },
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowerResponse"
                 }
               }
             }
