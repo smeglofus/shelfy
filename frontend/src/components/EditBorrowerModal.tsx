@@ -78,6 +78,7 @@ export function EditBorrowerModal({ borrower, onClose }: Props) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             data-testid="edit-borrower-notes"
+            maxLength={2000}
           />
         </label>
         {error && <p style={{ margin: 0, color: 'var(--sh-red)', fontSize: 14 }}>{error}</p>}

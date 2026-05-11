@@ -145,6 +145,22 @@ async def test_create_loan(test_session: async_sessionmaker[AsyncSession]) -> No
     assert body["is_active"] is True
 
 
+
+
+@pytest.mark.asyncio
+async def test_create_loan_rejects_notes_over_2000_chars(test_session: async_sessionmaker[AsyncSession]) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with test_session() as session:
+            headers = await _auth_headers(client, session)
+
+        book_id = await _create_book(client, headers)
+        response = await client.post(
+            f"/api/v1/books/{book_id}/loans",
+            json={"borrower_name": "Alice", "notes": "x" * 2001},
+            headers=headers,
+        )
+
+    assert response.status_code == 422
 @pytest.mark.asyncio
 async def test_create_loan_book_not_found(test_session: async_sessionmaker[AsyncSession]) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

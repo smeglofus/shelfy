@@ -125,7 +125,9 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
           {t('loans.due_date')}
           <input className="sh-input" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
         </label>
-        <textarea className="sh-input" rows={3} placeholder={t('loans.notes')} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <textarea className="sh-input" rows={3} placeholder={t('loans.notes')} value={notes} onChange={(event) => setNotes(event.target.value)}
+          maxLength={2000}
+        />
         {error && <p style={{ margin: 0, color: 'var(--sh-red)', fontSize: 14 }}>{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
           <button type="button" className="sh-btn-secondary" onClick={onClose}>{t('loans.cancel')}</button>

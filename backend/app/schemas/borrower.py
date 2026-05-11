@@ -3,17 +3,19 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+MAX_NOTES_LENGTH = 2000
+
 
 class BorrowerCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     contact: str | None = Field(None, max_length=255)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=MAX_NOTES_LENGTH)
 
 
 class BorrowerUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     contact: str | None = Field(default=None, max_length=255)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=MAX_NOTES_LENGTH)
 
     @model_validator(mode="after")
     def reject_explicit_nulls(self) -> "BorrowerUpdate":
