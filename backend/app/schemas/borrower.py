@@ -77,3 +77,11 @@ class BorrowerLoanItem(BaseModel):
     returned_date: date | None
     return_condition: str | None
     notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
+
+
+class BorrowerBulkAnonymizeRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+
+
+class BorrowerBulkAnonymizeResponse(BaseModel):
+    affected: int

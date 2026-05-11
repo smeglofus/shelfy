@@ -338,4 +338,50 @@ async def test_anonymize_requires_editor_role(test_session: AsyncSession) -> Non
 async def test_anonymize_requires_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(f"/api/v1/borrowers/{uuid.uuid4()}/anonymize")
-        assert resp.status_code == 401
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_bulk_anonymize_success(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    first = Borrower(library_id=lib.id, name="Alice", contact="alice@example.com", notes="a")
+    second = Borrower(library_id=lib.id, name="Bob", contact="bob@example.com", notes="b")
+    test_session.add_all([first, second])
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.post(
+            "/api/v1/borrowers/bulk/anonymize",
+            headers=headers,
+            json={"ids": [str(first.id), str(second.id)]},
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"affected": 2}
+
+    refreshed = (
+        await test_session.execute(select(Borrower).where(Borrower.id.in_([first.id, second.id])))
+    ).scalars().all()
+    assert all(row.name == "Deleted borrower" for row in refreshed)
+    assert all(row.contact is None for row in refreshed)
+    assert all(row.notes is None for row in refreshed)
+    assert all(row.anonymized_at is not None for row in refreshed)
+
+
+@pytest.mark.asyncio
+async def test_bulk_anonymize_foreign_borrower_returns_404(test_session: AsyncSession) -> None:
+    _, own_lib = await _seed_user_with_library(test_session)
+    _, foreign_lib = await _seed_user_with_library(test_session, email="other@example.com")
+    own = Borrower(library_id=own_lib.id, name="Own")
+    foreign = Borrower(library_id=foreign_lib.id, name="Foreign")
+    test_session.add_all([own, foreign])
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.post(
+            "/api/v1/borrowers/bulk/anonymize",
+            headers=headers,
+            json={"ids": [str(own.id), str(foreign.id)]},
+        )
+    assert resp.status_code == 404
