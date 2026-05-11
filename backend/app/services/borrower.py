@@ -381,3 +381,50 @@ async def anonymize_borrower(
         library_id=str(library_id),
     )
     return borrower
+
+
+async def bulk_anonymize_borrowers(
+    session: AsyncSession, borrower_ids: list[uuid.UUID], library_id: uuid.UUID
+) -> int:
+    """Anonymize many borrowers in one request.
+
+    Strict ownership semantics: every id must exist in ``library_id``.
+    """
+    if not borrower_ids:
+        return 0
+
+    rows = (
+        await session.execute(
+            select(Borrower).where(Borrower.id.in_(borrower_ids), Borrower.library_id == library_id)
+        )
+    ).scalars().all()
+    if len(rows) != len(set(borrower_ids)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Borrower not found",
+        )
+
+    affected = 0
+    for borrower in rows:
+        if borrower.anonymized_at is not None:
+            continue
+        borrower.name = ANONYMIZED_BORROWER_NAME
+        borrower.contact = None
+        borrower.notes = None
+        borrower.anonymized_at = datetime.now(timezone.utc)
+        affected += 1
+
+    await session.execute(
+        update(Loan)
+        .where(Loan.borrower_id.in_(borrower_ids), Loan.library_id == library_id)
+        .values(borrower_name=ANONYMIZED_BORROWER_NAME, borrower_contact=None)
+    )
+
+    await session.commit()
+    logger.info(
+        "borrowers_bulk_anonymized",
+        borrower_ids_count=len(borrower_ids),
+        affected=affected,
+        library_id=str(library_id),
+    )
+    return affected

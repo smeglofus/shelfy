@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
 from app.schemas.borrower import (
+    BorrowerBulkAnonymizeRequest,
+    BorrowerBulkAnonymizeResponse,
     BorrowerCreate,
     BorrowerListItem,
     BorrowerListResponse,
@@ -16,6 +18,7 @@ from app.schemas.borrower import (
 )
 from app.services.borrower import (
     anonymize_borrower,
+    bulk_anonymize_borrowers,
     create_borrower,
     get_borrower_or_404,
     list_borrowers_with_stats,
@@ -94,6 +97,16 @@ async def read_borrower_loans(
 ) -> list[BorrowerLoanItem]:
     rows = await list_loans_for_borrower(session, borrower_id, library_id)
     return [BorrowerLoanItem.model_validate(row) for row in rows]
+
+
+@router.post("/bulk/anonymize", response_model=BorrowerBulkAnonymizeResponse)
+async def bulk_anonymize_borrowers_endpoint(
+    payload: BorrowerBulkAnonymizeRequest,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerBulkAnonymizeResponse:
+    affected = await bulk_anonymize_borrowers(session, payload.ids, library_id)
+    return BorrowerBulkAnonymizeResponse(affected=affected)
 
 
 @router.post("/{borrower_id}/anonymize", response_model=BorrowerResponse)

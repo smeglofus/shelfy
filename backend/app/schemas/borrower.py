@@ -77,3 +77,17 @@ class BorrowerLoanItem(BaseModel):
     returned_date: date | None
     return_condition: str | None
     notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
+
+
+class BorrowerBulkAnonymizeRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def reject_duplicate_ids(self) -> "BorrowerBulkAnonymizeRequest":
+        if len(set(self.ids)) != len(self.ids):
+            raise ValueError("ids must be unique")
+        return self
+
+
+class BorrowerBulkAnonymizeResponse(BaseModel):
+    affected: int
