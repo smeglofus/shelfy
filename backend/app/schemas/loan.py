@@ -41,7 +41,7 @@ class LoanResponse(BaseModel):
     due_date: date | None
     returned_date: date | None
     return_condition: str | None
-    notes: str | None = Field(None, max_length=MAX_NOTES_LENGTH)
+    notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
     created_at: datetime
 
     @computed_field
