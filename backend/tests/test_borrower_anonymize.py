@@ -385,3 +385,20 @@ async def test_bulk_anonymize_foreign_borrower_returns_404(test_session: AsyncSe
             json={"ids": [str(own.id), str(foreign.id)]},
         )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_bulk_anonymize_duplicate_ids_rejected(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    borrower = Borrower(library_id=lib.id, name="Dup")
+    test_session.add(borrower)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.post(
+            "/api/v1/borrowers/bulk/anonymize",
+            headers=headers,
+            json={"ids": [str(borrower.id), str(borrower.id)]},
+        )
+    assert resp.status_code == 422
