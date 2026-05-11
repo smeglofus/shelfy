@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LEGAL_DOC_EFFECTIVE_DATE, LEGAL_DOC_VERSION, LEGAL_ENTITY_ICO, LEGAL_ENTITY_NAME, LEGAL_ENTITY_SEAT, PRIVACY_CONTACT_EMAIL } from '../lib/legal'
 
 const SECTION: CSSProperties = { marginBottom: 32 }
 const H2: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
@@ -8,10 +9,6 @@ const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', 
 const TABLE: CSSProperties = { width: '100%', borderCollapse: 'collapse', margin: '10px 0 16px', fontSize: 14 }
 const TH: CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid var(--sh-border)', fontWeight: 600, fontSize: 13 }
 const TD: CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--sh-border)', verticalAlign: 'top', color: 'var(--sh-text-secondary)' }
-
-const EFFECTIVE_DATE = '8. dubna 2026'
-const VERSION = '2.0'
-const CONTACT_EMAIL = 'privacy@shelfy.cz'
 
 export function PrivacyPage() {
   const navigate = useNavigate()
@@ -40,7 +37,7 @@ export function PrivacyPage() {
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Zásady ochrany osobních údajů</h1>
         <p style={{ ...P, fontSize: 13, marginBottom: 8 }}>
-          Verze {VERSION} · Účinnost od {EFFECTIVE_DATE}
+          Verze {LEGAL_DOC_VERSION} · Účinnost od {LEGAL_DOC_EFFECTIVE_DATE}
         </p>
 
         {/* ── Human-friendly summary ── */}
@@ -66,11 +63,11 @@ export function PrivacyPage() {
           <h2 style={H2}>1. Správce osobních údajů</h2>
           <table style={TABLE}>
             <tbody>
-              <tr><td style={{ ...TD, fontWeight: 600, width: 160 }}>Správce</td><td style={TD}>Patrik Šušlík</td></tr>
-              <tr><td style={{ ...TD, fontWeight: 600 }}>IČO</td><td style={TD}>24561401</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600, width: 160 }}>Správce</td><td style={TD}>{LEGAL_ENTITY_NAME}</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>IČO</td><td style={TD}>{LEGAL_ENTITY_ICO}</td></tr>
               {/* TODO: doplnit sídlo po ověření s právníkem */}
-              <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>—</td></tr>
-              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a></td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>{LEGAL_ENTITY_SEAT}</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{PRIVACY_CONTACT_EMAIL}</a></td></tr>
               <tr><td style={{ ...TD, fontWeight: 600 }}>Web</td><td style={TD}>https://shelfy.cz</td></tr>
             </tbody>
           </table>
@@ -217,7 +214,7 @@ export function PrivacyPage() {
           </ul>
           <p style={P}>
             Práva, která nelze uplatnit přímo v aplikaci, vyřídíme na základě žádosti zaslané na{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+            <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{PRIVACY_CONTACT_EMAIL}</a>.
             Na žádost odpovíme nejpozději do 30 dnů.
           </p>
         </div>

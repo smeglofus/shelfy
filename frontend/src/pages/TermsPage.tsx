@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LEGAL_DOC_EFFECTIVE_DATE, LEGAL_DOC_VERSION, LEGAL_ENTITY_ICO, LEGAL_ENTITY_NAME, LEGAL_ENTITY_SEAT, TERMS_CONTACT_EMAIL } from '../lib/legal'
 import { ROUTES } from '../lib/routes'
 
 const SECTION: CSSProperties = { marginBottom: 32 }
@@ -8,10 +9,6 @@ const P: CSSProperties = { margin: '0 0 10px', lineHeight: 1.7, color: 'var(--sh
 const UL: CSSProperties = { paddingLeft: 20, color: 'var(--sh-text-secondary)', lineHeight: 1.7, margin: '0 0 10px' }
 const TABLE: CSSProperties = { width: '100%', borderCollapse: 'collapse', margin: '10px 0 16px', fontSize: 14 }
 const TD: CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--sh-border)', verticalAlign: 'top', color: 'var(--sh-text-secondary)' }
-
-const EFFECTIVE_DATE = '8. dubna 2026'
-const VERSION = '2.0'
-const CONTACT_EMAIL = 'info@shelfy.cz'
 
 export function TermsPage() {
   const navigate = useNavigate()
@@ -40,7 +37,7 @@ export function TermsPage() {
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Obchodní podmínky</h1>
         <p style={{ ...P, fontSize: 13, marginBottom: 8 }}>
-          Verze {VERSION} · Účinnost od {EFFECTIVE_DATE}
+          Verze {LEGAL_DOC_VERSION} · Účinnost od {LEGAL_DOC_EFFECTIVE_DATE}
         </p>
 
         {/* ── Human-friendly summary ── */}
@@ -56,7 +53,7 @@ export function TermsPage() {
             <li>Shelfy je aplikace na správu osobní knihovny. Základní verze je zdarma.</li>
             <li>Placené plány se platí měsíčně přes Stripe. Zrušit můžete kdykoliv v Nastavení.</li>
             <li>Vaše knihy a data patří vám. Můžete si je kdykoliv exportovat nebo smazat účet.</li>
-            <li>Nesnažíme se nic skrývat — jestli máte otázku, napište na {CONTACT_EMAIL}.</li>
+            <li>Nesnažíme se nic skrývat — jestli máte otázku, napište na {TERMS_CONTACT_EMAIL}.</li>
           </ul>
         </div>
 
@@ -65,10 +62,10 @@ export function TermsPage() {
           <h2 style={H2}>1. Úvodní ustanovení</h2>
           <table style={TABLE}>
             <tbody>
-              <tr><td style={{ ...TD, fontWeight: 600, width: 160 }}>Poskytovatel</td><td style={TD}>Patrik Šušlík, IČO: 24561401</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600, width: 160 }}>Poskytovatel</td><td style={TD}>{LEGAL_ENTITY_NAME}, IČO: {LEGAL_ENTITY_ICO}</td></tr>
               {/* TODO: doplnit sídlo */}
-              <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>—</td></tr>
-              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a></td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>{LEGAL_ENTITY_SEAT}</td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${TERMS_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{TERMS_CONTACT_EMAIL}</a></td></tr>
               <tr><td style={{ ...TD, fontWeight: 600 }}>Web</td><td style={TD}>https://shelfy.cz</td></tr>
             </tbody>
           </table>
@@ -139,7 +136,7 @@ export function TermsPage() {
           </p>
           <p style={P}>
             <strong>Vrácení peněz:</strong> Požádejte e-mailem na{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>{' '}
+            <a href={`mailto:${TERMS_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{TERMS_CONTACT_EMAIL}</a>{' '}
             do 14 dnů od platby. Žádost posoudíme individuálně.
           </p>
         </div>
@@ -160,7 +157,7 @@ export function TermsPage() {
           </p>
           <p style={P}>
             Pro odstoupení od smlouvy zašlete jednoznačné prohlášení na{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+            <a href={`mailto:${TERMS_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{TERMS_CONTACT_EMAIL}</a>.
           </p>
         </div>
 
@@ -235,7 +232,7 @@ export function TermsPage() {
           <h2 style={H2}>11. Reklamace a řešení sporů</h2>
           <p style={P}>
             Reklamace a stížnosti zasílejte na{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+            <a href={`mailto:${TERMS_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{TERMS_CONTACT_EMAIL}</a>.
             Reklamaci vyřídíme nejpozději do 30 dnů od jejího obdržení.
           </p>
           <p style={P}>
@@ -278,7 +275,7 @@ export function TermsPage() {
 
         <p style={{ ...P, fontSize: 13, fontStyle: 'italic', marginTop: 24 }}>
           Otázky? Napište nám na{' '}
-          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{CONTACT_EMAIL}</a>.
+          <a href={`mailto:${TERMS_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{TERMS_CONTACT_EMAIL}</a>.
         </p>
 
         <button
