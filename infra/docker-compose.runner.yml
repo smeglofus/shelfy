@@ -1,0 +1,85 @@
+# Self-hosted GitHub Actions runner for smeglofus/shelfy.
+#
+# Lives in its own compose file so it can go up/down/upgrade independently
+# from the prod stack. The runner is repo-scoped (registered against the
+# `shelfy` repository only), labelled `self-hosted,shelfy`, and resource-
+# limited so it cannot starve prod containers on this 7.5 GB box.
+#
+# To bring it up:
+#
+#   1. Create a fine-grained PAT at https://github.com/settings/tokens?type=beta
+#      Resource owner: smeglofus
+#      Repository access: Only select repositories → shelfy
+#      Permissions:
+#        - Repository / Actions: Read and write
+#        - Repository / Administration: Read and write   (needed for the
+#          registration handshake — see myoung34/github-runner docs)
+#      Copy the token (starts with `github_pat_…`).
+#
+#   2. Append to `infra/.env.prod.local` (gitignored):
+#        RUNNER_PAT=github_pat_xxxxxxxxxxxxxxxxxxxxxx
+#        RUNNER_NAME=shelfy-prod-runner
+#
+#   3. From the repo root:
+#        docker compose --env-file infra/.env.prod.local \
+#          -f infra/docker-compose.yml \
+#          -f infra/docker-compose.runner.yml \
+#          up -d github-runner
+#
+#   4. Verify in https://github.com/smeglofus/shelfy/settings/actions/runners
+#      that the runner shows Online with labels `self-hosted, linux, x64, shelfy`.
+#
+# To tear it down:
+#
+#   docker compose -f infra/docker-compose.runner.yml down github-runner
+#
+# Detailed runbook: docs/runner-setup.md.
+
+services:
+  github-runner:
+    image: myoung34/github-runner:2.321.0
+    # Pin to a specific tag so prod runner is reproducible across host reboots.
+    # Bump deliberately and verify the registered runner still works after.
+    restart: unless-stopped
+    environment:
+      # Either REPO_URL + ACCESS_TOKEN (PAT) — token is auto-rotated by the
+      # runner image on every start so it never expires the way a raw
+      # registration token would.
+      REPO_URL: https://github.com/smeglofus/shelfy
+      ACCESS_TOKEN: ${RUNNER_PAT}
+      RUNNER_NAME: ${RUNNER_NAME:-shelfy-prod-runner}
+      LABELS: self-hosted,linux,x64,shelfy
+      # Ephemeral: tear the worker down after each job. Stops leftover state
+      # from one job leaking into the next. The container itself stays up
+      # and re-registers for the next job within seconds.
+      EPHEMERAL: "true"
+      # Stay in the work/_work directory so cached node_modules / pip wheels
+      # survive across jobs (significant speed-up — pip cache can be 200 MB+).
+      RUNNER_WORKDIR: /home/runner/_work
+      DISABLE_AUTO_UPDATE: "true"
+    volumes:
+      # Persistent work dir for caches (pip, npm, .git checkout).
+      - github_runner_work:/home/runner/_work
+    # Resource fence: this box also runs the prod backend + worker + postgres
+    # + minio + redis. Memory is the bottleneck (7.5 GB total, ~5 GB used at
+    # rest), CPU has slack (8 threads).
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "3.0"
+    # Compose v2 honors `deploy.resources.limits` for `docker compose up`
+    # only when `compat: true`; mirror the legacy keys so they apply
+    # unconditionally.
+    mem_limit: 2g
+    cpus: 3.0
+    # The runner kills the worker process when out-of-memory; restart picks
+    # up the next job. Set `oom_score_adj` to bias the OOM-killer toward
+    # this container before the kernel reaches for postgres or backend.
+    oom_score_adj: 500
+    # Defensive default — give the runner its own user namespace if the
+    # host has it enabled. Most homelab hosts don't; this is a no-op there.
+    user: runner
+
+volumes:
+  github_runner_work:
