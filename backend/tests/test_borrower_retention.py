@@ -351,6 +351,59 @@ async def test_dry_run_returns_zero_when_no_eligible_borrowers(
 
 
 @pytest.mark.asyncio
+async def test_bulk_anonymize_empty_id_list_is_a_no_op(test_session: AsyncSession) -> None:
+    """Service-level: ``bulk_anonymize_borrowers`` short-circuits cleanly when
+    given an empty id list. Previously only tested via the API which always
+    sends ≥1 id (the request schema rejects empty), so this branch had no
+    direct coverage."""
+    from app.services.borrower import bulk_anonymize_borrowers
+
+    _, lib = await _seed_owner_with_library(test_session)
+    affected = await bulk_anonymize_borrowers(test_session, [], lib.id)
+    assert affected == 0
+
+
+@pytest.mark.asyncio
+async def test_select_retention_candidates_treats_cutoff_as_strict(
+    test_session: AsyncSession,
+) -> None:
+    """``inactive_since`` is the open lower bound — a loan whose ``lent_date``
+    is exactly at the cutoff counts as "recent activity", so the borrower
+    stays ineligible."""
+    from app.services.borrower import select_borrowers_for_retention_anonymize
+
+    _, lib = await _seed_owner_with_library(test_session)
+    cutoff = date.today() - timedelta(days=100)
+
+    borrower_at_cutoff = Borrower(library_id=lib.id, name="At cutoff")
+    borrower_before = Borrower(library_id=lib.id, name="Before cutoff")
+    test_session.add_all([borrower_at_cutoff, borrower_before])
+    await test_session.flush()
+    book = _book(lib.id)
+    test_session.add(book)
+    await test_session.flush()
+    # Loan exactly on the cutoff date → recent → NOT eligible
+    test_session.add(_loan(
+        library_id=lib.id, book_id=book.id, borrower_id=borrower_at_cutoff.id,
+        borrower_name="At cutoff",
+        lent_date=cutoff,
+        returned_date=cutoff + timedelta(days=1),
+    ))
+    # Loan strictly before → eligible
+    test_session.add(_loan(
+        library_id=lib.id, book_id=book.id, borrower_id=borrower_before.id,
+        borrower_name="Before cutoff",
+        lent_date=cutoff - timedelta(days=1),
+        returned_date=cutoff,
+    ))
+    await test_session.commit()
+
+    ids = await select_borrowers_for_retention_anonymize(test_session, lib.id, cutoff)
+    assert borrower_before.id in ids
+    assert borrower_at_cutoff.id not in ids
+
+
+@pytest.mark.asyncio
 async def test_real_run_with_no_eligible_borrowers_is_a_no_op(
     test_session: AsyncSession,
 ) -> None:
