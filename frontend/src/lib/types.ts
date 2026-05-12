@@ -38,6 +38,11 @@ export interface Borrower {
   contact: string | null
   notes: string | null
   anonymized_at: string | null
+  /** Audit trail (#245). Null on rows created before the column existed
+   *  or when the actor user was deleted. */
+  created_by_user_id: string | null
+  anonymized_by_user_id: string | null
+  merged_into_by_user_id: string | null
   created_at: string
   updated_at: string
 }

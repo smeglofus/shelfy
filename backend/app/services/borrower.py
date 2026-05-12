@@ -184,18 +184,35 @@ async def list_loans_for_borrower(
 
 
 async def create_borrower(
-    session: AsyncSession, payload: BorrowerCreate, library_id: uuid.UUID
+    session: AsyncSession,
+    payload: BorrowerCreate,
+    library_id: uuid.UUID,
+    *,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Borrower:
+    """Create a borrower in ``library_id``.
+
+    ``actor_user_id`` is stamped onto ``created_by_user_id`` for the audit
+    trail (#245). Kept keyword-only and optional so callers that don't have
+    a user context (e.g. seed scripts, internal helpers) still work — those
+    rows just stay un-attributed.
+    """
     borrower = Borrower(
         library_id=library_id,
         name=payload.name,
         contact=payload.contact,
         notes=payload.notes,
+        created_by_user_id=actor_user_id,
     )
     session.add(borrower)
     await session.commit()
     await session.refresh(borrower)
-    logger.info("borrower_created", borrower_id=str(borrower.id), library_id=str(library_id))
+    logger.info(
+        "borrower_created",
+        borrower_id=str(borrower.id),
+        library_id=str(library_id),
+        actor_user_id=str(actor_user_id) if actor_user_id else None,
+    )
     return borrower
 
 
@@ -289,6 +306,8 @@ async def merge_borrowers(
     source_id: uuid.UUID,
     target_id: uuid.UUID,
     library_id: uuid.UUID,
+    *,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Borrower:
     """Merge ``source`` into ``target`` and delete the source row.
 
@@ -329,6 +348,11 @@ async def merge_borrowers(
         .values(borrower_id=target_id)
     )
 
+    # Audit (#245): stamp the surviving target with who performed the merge.
+    # The source row is about to be deleted, so we don't bother recording on
+    # it — the action is "I absorbed another record into me".
+    target.merged_into_by_user_id = actor_user_id
+
     await session.delete(source)
     await session.commit()
     await session.refresh(target)
@@ -337,12 +361,17 @@ async def merge_borrowers(
         source_id=str(source_id),
         target_id=str(target_id),
         library_id=str(library_id),
+        actor_user_id=str(actor_user_id) if actor_user_id else None,
     )
     return target
 
 
 async def anonymize_borrower(
-    session: AsyncSession, borrower_id: uuid.UUID, library_id: uuid.UUID
+    session: AsyncSession,
+    borrower_id: uuid.UUID,
+    library_id: uuid.UUID,
+    *,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Borrower:
     """Strip identifying data from a borrower and from their loan history.
 
@@ -363,6 +392,7 @@ async def anonymize_borrower(
     borrower.contact = None
     borrower.notes = None
     borrower.anonymized_at = datetime.now(timezone.utc)
+    borrower.anonymized_by_user_id = actor_user_id
 
     # Cascade-clear denormalized borrower text on loan rows. Loan history
     # remains (book_id, lent/due/returned dates, return_condition) so the
@@ -379,12 +409,17 @@ async def anonymize_borrower(
         "borrower_anonymized",
         borrower_id=str(borrower.id),
         library_id=str(library_id),
+        actor_user_id=str(actor_user_id) if actor_user_id else None,
     )
     return borrower
 
 
 async def bulk_anonymize_borrowers(
-    session: AsyncSession, borrower_ids: list[uuid.UUID], library_id: uuid.UUID
+    session: AsyncSession,
+    borrower_ids: list[uuid.UUID],
+    library_id: uuid.UUID,
+    *,
+    actor_user_id: uuid.UUID | None = None,
 ) -> int:
     """Anonymize many borrowers in one request.
 
@@ -412,6 +447,7 @@ async def bulk_anonymize_borrowers(
         borrower.contact = None
         borrower.notes = None
         borrower.anonymized_at = datetime.now(timezone.utc)
+        borrower.anonymized_by_user_id = actor_user_id
         affected += 1
 
     await session.execute(
