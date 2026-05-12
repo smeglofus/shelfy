@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
+import { BulkAnonymizeModal } from '../components/BulkAnonymizeModal'
 import { NoResultsIcon } from '../components/EmptyStateIcons'
 import { useDebounce } from '../hooks/useDebounce'
 import { useBorrowers } from '../hooks/useBorrowers'
@@ -28,6 +29,7 @@ export function BorrowersPage() {
   // Server-side search means the input has to settle before we re-fetch.
   // 250ms is the standard "felt instant but not a query per keystroke" range.
   const debouncedSearch = useDebounce(searchInput, 250)
+  const [bulkAnonOpen, setBulkAnonOpen] = useState(false)
 
   // Reset to page 1 whenever the search query changes — otherwise typing on
   // page 4 could leave the user on an empty page that doesn't exist for the
@@ -60,12 +62,35 @@ export function BorrowersPage() {
 
   return (
     <main className="sh-main" style={{ padding: 24, maxWidth: 960, margin: '0 auto' }}>
-      <header style={{ marginBottom: 16 }}>
-        <h1 className="text-h2" style={{ margin: 0 }}>{t('borrowers.title')}</h1>
-        <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>
-          {t('borrowers.subtitle')}
-        </p>
+      <header
+        style={{
+          marginBottom: 16,
+          display: 'flex',
+          gap: 12,
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1 className="text-h2" style={{ margin: 0 }}>{t('borrowers.title')}</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>
+            {t('borrowers.subtitle')}
+          </p>
+        </div>
+        <button
+          type="button"
+          data-testid="bulk-anonymize-button"
+          className="sh-btn-secondary"
+          onClick={() => setBulkAnonOpen(true)}
+        >
+          {t('borrowers.bulk_anon_button')}
+        </button>
       </header>
+
+      {bulkAnonOpen && (
+        <BulkAnonymizeModal onClose={() => setBulkAnonOpen(false)} />
+      )}
 
       <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
         <input

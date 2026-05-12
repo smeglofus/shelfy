@@ -91,3 +91,15 @@ class BorrowerBulkAnonymizeRequest(BaseModel):
 
 class BorrowerBulkAnonymizeResponse(BaseModel):
     affected: int
+
+
+class BorrowerRetentionAnonymizeRequest(BaseModel):
+    """Body for ``POST /api/v1/borrowers/bulk-anonymize-by-date`` (#246).
+
+    Anonymizes every borrower in the active library whose most recent
+    lending activity is before ``inactive_since`` AND who has no active
+    loan. Pass ``dry_run=True`` to get the count without mutating.
+    """
+
+    inactive_since: date
+    dry_run: bool = False

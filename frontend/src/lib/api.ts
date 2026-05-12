@@ -529,6 +529,25 @@ export async function anonymizeBorrower(id: string): Promise<Borrower> {
   return response.data
 }
 
+export interface BorrowerRetentionAnonymizeRequest {
+  inactive_since: string  // ISO date 'YYYY-MM-DD'
+  dry_run?: boolean
+}
+
+export interface BorrowerBulkAnonymizeResponse {
+  affected: number
+}
+
+export async function bulkAnonymizeBorrowersByDate(
+  payload: BorrowerRetentionAnonymizeRequest,
+): Promise<BorrowerBulkAnonymizeResponse> {
+  const response = await apiClient.post<BorrowerBulkAnonymizeResponse>(
+    '/api/v1/borrowers/bulk-anonymize-by-date',
+    payload,
+  )
+  return response.data
+}
+
 export async function uploadBookImage(file: File): Promise<UploadJobResponse> {
   const formData = new FormData()
   formData.append('image', file)

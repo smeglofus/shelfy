@@ -428,3 +428,70 @@ async def bulk_anonymize_borrowers(
         library_id=str(library_id),
     )
     return affected
+
+
+async def select_borrowers_for_retention_anonymize(
+    session: AsyncSession, library_id: uuid.UUID, inactive_since: date
+) -> list[uuid.UUID]:
+    """Return ids of borrowers in ``library_id`` eligible for retention-driven
+    anonymization given ``inactive_since`` as the cutoff date.
+
+    A borrower is eligible when **all** of the following hold:
+
+    - They are not already anonymized.
+    - They have no active loans (any loan with ``returned_date IS NULL``).
+    - Their most recent ``lent_date`` is strictly before ``inactive_since``,
+      OR they have no loans at all. (Borrowers added through the API but
+      never lent to are also retention candidates — their record carries
+      personal data without serving any active purpose.)
+
+    Loan rows are scoped to the same library on both sides of every check
+    (defense in depth, mirroring the pattern in
+    ``list_borrowers_with_stats``).
+    """
+    has_active_loan = select(Loan.id).where(
+        Loan.borrower_id == Borrower.id,
+        Loan.library_id == library_id,
+        Loan.returned_date.is_(None),
+    )
+    has_recent_loan = select(Loan.id).where(
+        Loan.borrower_id == Borrower.id,
+        Loan.library_id == library_id,
+        Loan.lent_date >= inactive_since,
+    )
+
+    stmt = (
+        select(Borrower.id)
+        .where(
+            Borrower.library_id == library_id,
+            Borrower.anonymized_at.is_(None),
+            ~has_active_loan.exists(),
+            ~has_recent_loan.exists(),
+        )
+    )
+    result = await session.execute(stmt)
+    return [row[0] for row in result.all()]
+
+
+async def bulk_anonymize_borrowers_by_inactivity(
+    session: AsyncSession,
+    library_id: uuid.UUID,
+    inactive_since: date,
+    *,
+    dry_run: bool = False,
+) -> int:
+    """Retention-driven bulk anonymize for a library.
+
+    Wraps ``select_borrowers_for_retention_anonymize`` plus
+    ``bulk_anonymize_borrowers`` — issue #246. When ``dry_run`` is True,
+    returns the count that *would* be anonymized without mutating any row.
+    Otherwise actually anonymizes them and returns the number of newly
+    anonymized borrowers (matching the contract of
+    ``bulk_anonymize_borrowers``).
+    """
+    candidate_ids = await select_borrowers_for_retention_anonymize(
+        session, library_id, inactive_since
+    )
+    if dry_run or not candidate_ids:
+        return len(candidate_ids)
+    return await bulk_anonymize_borrowers(session, candidate_ids, library_id)
