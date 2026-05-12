@@ -28,7 +28,9 @@
     "enrich_started": "Enrichment started. Data will update shortly.",
     "borrower_anonymized": "Borrower anonymized.",
     "borrower_saved": "Borrower saved.",
-    "borrowers_merged": "Borrowers merged."
+    "borrowers_merged": "Borrowers merged.",
+    "bulk_anonymized_one": "1 borrower anonymized.",
+    "bulk_anonymized_other": "{{count}} borrowers anonymized."
   },
   "bulk": {
     "selected": "{{count}} selected",
@@ -769,6 +771,20 @@
     "merge_irreversible": "This cannot be undone.",
     "merge_back": "Back",
     "merge_confirm": "Merge",
-    "merging": "Merging…"
+    "merging": "Merging…",
+    "bulk_anon_button": "Bulk anonymize…",
+    "bulk_anon_title": "Bulk anonymize inactive borrowers",
+    "bulk_anon_picker_hint": "Pick a cutoff date. Borrowers whose most recent loan is older — and who have no active loans — will be anonymized. Records with no loans at all are also eligible.",
+    "bulk_anon_cutoff_label": "Inactive since",
+    "bulk_anon_cutoff_required": "Pick a cutoff date.",
+    "bulk_anon_preview": "Preview affected",
+    "bulk_anon_previewing": "Previewing…",
+    "bulk_anon_summary_one": "1 borrower will be anonymized (inactive since {{date}}).",
+    "bulk_anon_summary_other": "{{count}} borrowers will be anonymized (inactive since {{date}}).",
+    "bulk_anon_irreversible": "This cannot be undone.",
+    "bulk_anon_back": "Back",
+    "bulk_anon_confirm": "Anonymize",
+    "bulk_anon_nothing_to_do": "Nothing to anonymize",
+    "bulk_anon_running": "Anonymizing…"
   }
 }

@@ -28,7 +28,10 @@
     "enrich_started": "Obohacování zahájeno. Data se brzy aktualizují.",
     "borrower_anonymized": "Dlužník anonymizován.",
     "borrower_saved": "Dlužník uložen.",
-    "borrowers_merged": "Dlužníci sloučeni."
+    "borrowers_merged": "Dlužníci sloučeni.",
+    "bulk_anonymized_one": "Anonymizován 1 dlužník.",
+    "bulk_anonymized_few": "Anonymizováni {{count}} dlužníci.",
+    "bulk_anonymized_other": "Anonymizováno {{count}} dlužníků."
   },
   "bulk": {
     "selected": "{{count}} vybráno",
@@ -772,6 +775,21 @@
     "merge_irreversible": "Tento krok nelze vrátit.",
     "merge_back": "Zpět",
     "merge_confirm": "Sloučit",
-    "merging": "Slučuji…"
+    "merging": "Slučuji…",
+    "bulk_anon_button": "Hromadně anonymizovat…",
+    "bulk_anon_title": "Hromadně anonymizovat neaktivní dlužníky",
+    "bulk_anon_picker_hint": "Zvol datum hranice. Dlužníci, jejichž nejnovější půjčka je starší — a kteří nemají žádnou aktivní půjčku — budou anonymizováni. Záznamy bez půjček jsou rovněž způsobilé.",
+    "bulk_anon_cutoff_label": "Neaktivní od",
+    "bulk_anon_cutoff_required": "Zvol datum hranice.",
+    "bulk_anon_preview": "Náhled počtu",
+    "bulk_anon_previewing": "Počítám…",
+    "bulk_anon_summary_one": "Bude anonymizován 1 dlužník (neaktivní od {{date}}).",
+    "bulk_anon_summary_few": "Budou anonymizováni {{count}} dlužníci (neaktivní od {{date}}).",
+    "bulk_anon_summary_other": "Bude anonymizováno {{count}} dlužníků (neaktivní od {{date}}).",
+    "bulk_anon_irreversible": "Tento krok nelze vrátit.",
+    "bulk_anon_back": "Zpět",
+    "bulk_anon_confirm": "Anonymizovat",
+    "bulk_anon_nothing_to_do": "Není koho anonymizovat",
+    "bulk_anon_running": "Anonymizuji…"
   }
 }

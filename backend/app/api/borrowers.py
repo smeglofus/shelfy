@@ -16,11 +16,13 @@ from app.schemas.borrower import (
     BorrowerLoanItem,
     BorrowerMergeRequest,
     BorrowerResponse,
+    BorrowerRetentionAnonymizeRequest,
     BorrowerUpdate,
 )
 from app.services.borrower import (
     anonymize_borrower,
     bulk_anonymize_borrowers,
+    bulk_anonymize_borrowers_by_inactivity,
     create_borrower,
     get_borrower_or_404,
     list_borrowers_with_stats,
@@ -113,6 +115,28 @@ async def bulk_anonymize_borrowers_endpoint(
 ) -> BorrowerBulkAnonymizeResponse:
     affected = await bulk_anonymize_borrowers(
         session, payload.ids, library_id, actor_user_id=current_user.id
+    )
+    return BorrowerBulkAnonymizeResponse(affected=affected)
+
+
+@router.post(
+    "/bulk-anonymize-by-date", response_model=BorrowerBulkAnonymizeResponse
+)
+async def bulk_anonymize_by_date_endpoint(
+    payload: BorrowerRetentionAnonymizeRequest,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerBulkAnonymizeResponse:
+    """Retention-driven bulk anonymize (#246). Anonymizes every borrower
+    in the active library whose most recent lending activity is before
+    ``inactive_since`` AND who has no active loan. Send ``dry_run=true``
+    to see the affected count without mutating any row.
+    """
+    affected = await bulk_anonymize_borrowers_by_inactivity(
+        session,
+        library_id,
+        payload.inactive_since,
+        dry_run=payload.dry_run,
     )
     return BorrowerBulkAnonymizeResponse(affected=affected)
 
