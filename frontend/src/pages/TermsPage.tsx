@@ -195,6 +195,15 @@ export function TermsPage() {
             <li>Poskytovatel neprodává a nesdílí data Uživatele za účelem reklamy.</li>
             <li>Uživatel může kdykoli exportovat svá data (JSON) nebo smazat celý účet v Nastavení.</li>
           </ul>
+          <p style={P}>
+            <strong>Údaje dlužníků.</strong> Pokud Uživatel ve Službě eviduje dlužníky (osoby,
+            kterým půjčuje knihy), je z hlediska GDPR <strong>správcem</strong> osobních
+            údajů těchto dlužníků; Poskytovatel je zpracovatelem. Uživatel odpovídá za
+            právní základ zpracování (souhlas, oprávněný zájem věřitele nebo plnění smlouvy
+            o zápůjčce), za splnění informační povinnosti vůči dlužníkům a za vyřizování
+            jejich práv. Detaily a odkaz na nástroj pro anonymizaci najdete v oddíle 11
+            Zásad ochrany osobních údajů.
+          </p>
         </div>
 
         {/* ── 9. Dostupnost a zálohy ── */}
