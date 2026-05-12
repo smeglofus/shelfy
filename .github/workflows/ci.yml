@@ -83,6 +83,14 @@ jobs:
   backend-tests:
     name: backend / tests
     runs-on: [self-hosted, shelfy]
+    # ``container:`` makes the job run inside this image, joined to the
+    # same Docker network as the ``services:`` postgres container below.
+    # This is what makes service-name DNS (``postgres``) work as the
+    # connection host across BOTH the GHA-hosted runner (which has
+    # historical localhost forwarding) AND the self-hosted runner (where
+    # the job-on-runner-host model breaks localhost networking).
+    container:
+      image: python:3.12-bookworm
     services:
       postgres:
         image: postgres:16
@@ -102,12 +110,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/requirements*.txt
+      # No ``actions/setup-python@v5`` — the ``container:`` image already
+      # ships python 3.12, and the action mis-detects + reinstalls when run
+      # inside a container.
 
       - name: Install backend dependencies
         working-directory: backend
@@ -116,20 +121,23 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Install postgresql-client
-        # GHA-hosted ubuntu-latest ships psql preinstalled; the self-hosted
-        # runner image (myoung34/github-runner) does not. Install once per
-        # job — apt cache makes this <5s on warm hosts.
+        # GHA-hosted ubuntu-latest ships psql preinstalled; python:3.12
+        # does not. Install once per job — apt cache makes this <5s on
+        # warm hosts. Container runs as root so no sudo.
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends postgresql-client
+          apt-get update -qq
+          apt-get install -y --no-install-recommends postgresql-client
 
       - name: Install pg_trgm extension
-        run: psql postgresql://test:test@localhost:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+        # ``postgres`` is the service-container DNS name on the shared
+        # docker network. Works both on GHA-hosted (job in container) and
+        # on self-hosted with docker-out-of-docker.
+        run: psql postgresql://test:test@postgres:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
       - name: Pytest with coverage gate
         working-directory: backend
         env:
-          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@postgres:5432/shelfy_test
           TESTING: "true"
         run: |
           echo "::group::pytest output"
@@ -139,7 +147,7 @@ jobs:
       - name: Check shelf ordering integrity
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
+          DATABASE_URL: postgresql+asyncpg://test:test@postgres:5432/shelfy_test
         run: python ../scripts/check_shelf_ordering_integrity.py
 
   # ── Frontend (lint + test + build + bundle checks) ────────────────────────
