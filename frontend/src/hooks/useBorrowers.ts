@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, updateBorrower } from '../lib/api'
+import { anonymizeBorrower, bulkAnonymizeBorrowersByDate, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, updateBorrower } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToastStore } from '../lib/toast-store'
 import type { BorrowerListParams, BorrowerUpdateRequest } from '../lib/types'
@@ -115,6 +115,24 @@ export function useAnonymizeBorrower() {
         queryClient.invalidateQueries({ queryKey: ['books'] }),
       ])
       showSuccess(t('toast.borrower_anonymized', 'Borrower anonymized.'))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
+  })
+}
+
+export function useBulkAnonymizeBorrowersByDate() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  return useMutation({
+    mutationFn: bulkAnonymizeBorrowersByDate,
+    onSuccess: async (result, payload) => {
+      if (!payload.dry_run && result.affected > 0) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
+          queryClient.invalidateQueries({ queryKey: ['loans'] }),
+          queryClient.invalidateQueries({ queryKey: ['books'] }),
+        ])
+      }
     },
     onError: (error: unknown) => showError(formatApiError(error)),
   })

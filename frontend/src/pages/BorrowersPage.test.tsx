@@ -10,9 +10,10 @@ vi.mock('../contexts/AuthContext', () => ({
 
 vi.mock('../lib/api', () => ({
   listBorrowers: vi.fn(),
+  bulkAnonymizeBorrowersByDate: vi.fn(),
 }))
 
-import { listBorrowers } from '../lib/api'
+import { bulkAnonymizeBorrowersByDate, listBorrowers } from '../lib/api'
 import type { BorrowerListItem, BorrowerListResponse } from '../lib/types'
 import { BorrowersPage } from './BorrowersPage'
 
@@ -219,6 +220,28 @@ describe('BorrowersPage', () => {
       const lastCall = vi.mocked(listBorrowers).mock.calls[vi.mocked(listBorrowers).mock.calls.length - 1]
       expect(lastCall?.[0]?.page).toBe(1)
       expect(lastCall?.[0]?.search).toBe('q')
+    })
+  })
+
+  it('opens bulk anonymize modal, previews count, and confirms with dry_run false', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue(makePage([]))
+    vi.mocked(bulkAnonymizeBorrowersByDate)
+      .mockResolvedValueOnce({ affected: 3 })
+      .mockResolvedValueOnce({ affected: 3 })
+    renderPage()
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('borrowers-bulk-anonymize-open'))
+    await user.type(screen.getByTestId('bulk-anonymize-date'), '2025-01-01')
+    await user.click(screen.getByTestId('bulk-anonymize-preview'))
+    expect(await screen.findByTestId('bulk-anonymize-count')).toBeInTheDocument()
+    expect(bulkAnonymizeBorrowersByDate).toHaveBeenCalledWith({
+      inactive_since: '2025-01-01',
+      dry_run: true,
+    })
+    await user.click(screen.getByTestId('bulk-anonymize-confirm'))
+    expect(bulkAnonymizeBorrowersByDate).toHaveBeenCalledWith({
+      inactive_since: '2025-01-01',
+      dry_run: false,
     })
   })
 })

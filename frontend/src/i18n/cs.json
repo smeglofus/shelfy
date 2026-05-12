@@ -772,6 +772,14 @@
     "merge_irreversible": "Tento krok nelze vrátit.",
     "merge_back": "Zpět",
     "merge_confirm": "Sloučit",
-    "merging": "Slučuji…"
+    "merging": "Slučuji…",
+    "bulk_anonymize_open": "Hromadně anonymizovat…",
+    "bulk_anonymize_title": "Hromadná anonymizace neaktivních dlužníků",
+    "bulk_anonymize_body": "Vyberte hraniční datum. Dlužníci neaktivní před tímto datem budou anonymizováni.",
+    "bulk_anonymize_date_label": "Neaktivní od",
+    "bulk_anonymize_preview": "Zobrazit počet",
+    "bulk_anonymize_confirm": "Potvrdit anonymizaci",
+    "bulk_anonymize_warning": "Tento krok nelze vrátit.",
+    "bulk_anonymize_affected": "Dotčeno: {{count}}"
   }
 }

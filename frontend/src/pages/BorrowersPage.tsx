@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { NoResultsIcon } from '../components/EmptyStateIcons'
+import { Modal } from '../components/Modal'
 import { useDebounce } from '../hooks/useDebounce'
-import { useBorrowers } from '../hooks/useBorrowers'
+import { useBorrowers, useBulkAnonymizeBorrowersByDate } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { getBorrowerDetailRoute } from '../lib/routes'
 import type { BorrowerListItem } from '../lib/types'
@@ -24,6 +25,10 @@ export function BorrowersPage() {
   const { t, i18n } = useTranslation()
   const [searchInput, setSearchInput] = useState('')
   const [page, setPage] = useState(1)
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [inactiveSince, setInactiveSince] = useState('')
+  const [previewCount, setPreviewCount] = useState<number | null>(null)
+  const bulkAnonymize = useBulkAnonymizeBorrowersByDate()
 
   // Server-side search means the input has to settle before we re-fetch.
   // 250ms is the standard "felt instant but not a query per keystroke" range.
@@ -65,6 +70,9 @@ export function BorrowersPage() {
         <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>
           {t('borrowers.subtitle')}
         </p>
+        <button type="button" className="sh-btn-secondary" data-testid="borrowers-bulk-anonymize-open" onClick={() => setBulkModalOpen(true)}>
+          {t('borrowers.bulk_anonymize_open')}
+        </button>
       </header>
 
       <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -229,6 +237,36 @@ export function BorrowersPage() {
           </button>
         </nav>
       )}
+      <Modal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} label={t('borrowers.bulk_anonymize_title')} size="md">
+        <h3>{t('borrowers.bulk_anonymize_title')}</h3>
+        <p>{t('borrowers.bulk_anonymize_body')}</p>
+        <label htmlFor="inactive-since">{t('borrowers.bulk_anonymize_date_label')}</label>
+        <input id="inactive-since" data-testid="bulk-anonymize-date" type="date" className="sh-input" value={inactiveSince} onChange={(e) => setInactiveSince(e.target.value)} />
+        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            data-testid="bulk-anonymize-preview"
+            className="sh-btn-secondary"
+            disabled={!inactiveSince || bulkAnonymize.isPending}
+            onClick={async () => {
+              const result = await bulkAnonymize.mutateAsync({ inactive_since: inactiveSince, dry_run: true })
+              setPreviewCount(result.affected)
+            }}
+          >{t('borrowers.bulk_anonymize_preview')}</button>
+          <button
+            type="button"
+            data-testid="bulk-anonymize-confirm"
+            className="sh-btn-danger"
+            disabled={!inactiveSince || bulkAnonymize.isPending}
+            onClick={async () => {
+              await bulkAnonymize.mutateAsync({ inactive_since: inactiveSince, dry_run: false })
+              setBulkModalOpen(false)
+            }}
+          >{t('borrowers.bulk_anonymize_confirm')}</button>
+        </div>
+        <p style={{ color: 'var(--sh-danger)' }}>{t('borrowers.bulk_anonymize_warning')}</p>
+        {previewCount !== null && <p data-testid="bulk-anonymize-count">{t('borrowers.bulk_anonymize_affected', { count: previewCount })}</p>}
+      </Modal>
     </main>
   )
 }

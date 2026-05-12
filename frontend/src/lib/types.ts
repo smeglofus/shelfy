@@ -84,6 +84,13 @@ export interface BorrowerUpdateRequest {
   contact?: string | null
   notes?: string | null
 }
+export interface BorrowerBulkAnonymizeByDateRequest {
+  inactive_since: string
+  dry_run: boolean
+}
+export interface BorrowerBulkAnonymizeResponse {
+  affected: number
+}
 
 export interface Loan {
   id: string

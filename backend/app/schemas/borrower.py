@@ -91,3 +91,8 @@ class BorrowerBulkAnonymizeRequest(BaseModel):
 
 class BorrowerBulkAnonymizeResponse(BaseModel):
     affected: int
+
+
+class BorrowerBulkAnonymizeByDateRequest(BaseModel):
+    inactive_since: date
+    dry_run: bool = False

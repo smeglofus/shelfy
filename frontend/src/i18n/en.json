@@ -769,6 +769,14 @@
     "merge_irreversible": "This cannot be undone.",
     "merge_back": "Back",
     "merge_confirm": "Merge",
-    "merging": "Merging…"
+    "merging": "Merging…",
+    "bulk_anonymize_open": "Bulk anonymize…",
+    "bulk_anonymize_title": "Bulk anonymize inactive borrowers",
+    "bulk_anonymize_body": "Choose a cutoff date. Borrowers inactive before that date will be anonymized.",
+    "bulk_anonymize_date_label": "Inactive since",
+    "bulk_anonymize_preview": "Preview affected count",
+    "bulk_anonymize_confirm": "Confirm anonymization",
+    "bulk_anonymize_warning": "This cannot be undone.",
+    "bulk_anonymize_affected": "Affected: {{count}}"
   }
 }

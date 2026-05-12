@@ -10,6 +10,8 @@ import type {
   BorrowerCreateRequest,
   BorrowerListParams,
   BorrowerListResponse,
+  BorrowerBulkAnonymizeByDateRequest,
+  BorrowerBulkAnonymizeResponse,
   BorrowerLoanItem,
   BorrowerUpdateRequest,
   CheckoutResponse,
@@ -526,6 +528,16 @@ export async function mergeBorrowers(targetId: string, sourceId: string): Promis
 
 export async function anonymizeBorrower(id: string): Promise<Borrower> {
   const response = await apiClient.post<Borrower>(`/api/v1/borrowers/${id}/anonymize`)
+  return response.data
+}
+
+export async function bulkAnonymizeBorrowersByDate(
+  payload: BorrowerBulkAnonymizeByDateRequest,
+): Promise<BorrowerBulkAnonymizeResponse> {
+  const response = await apiClient.post<BorrowerBulkAnonymizeResponse>(
+    '/api/v1/borrowers/bulk-anonymize-by-date',
+    payload,
+  )
   return response.data
 }
 

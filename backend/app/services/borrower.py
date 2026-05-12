@@ -428,3 +428,33 @@ async def bulk_anonymize_borrowers(
         library_id=str(library_id),
     )
     return affected
+
+
+async def list_borrower_ids_to_anonymize_by_date(
+    session: AsyncSession, library_id: uuid.UUID, inactive_since: date
+) -> list[uuid.UUID]:
+    last_activity = (
+        select(func.max(Loan.lent_date))
+        .where(Loan.borrower_id == Borrower.id, Loan.library_id == library_id)
+        .scalar_subquery()
+    )
+    has_active_loan = (
+        select(Loan.id)
+        .where(
+            Loan.borrower_id == Borrower.id,
+            Loan.library_id == library_id,
+            Loan.returned_date.is_(None),
+        )
+        .exists()
+    )
+
+    result = await session.execute(
+        select(Borrower.id)
+        .where(
+            Borrower.library_id == library_id,
+            Borrower.anonymized_at.is_(None),
+            ~has_active_loan,
+            (last_activity.is_(None) | (last_activity < inactive_since)),
+        )
+    )
+    return list(result.scalars().all())

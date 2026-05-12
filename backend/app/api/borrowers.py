@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
 from app.schemas.borrower import (
+    BorrowerBulkAnonymizeByDateRequest,
     BorrowerBulkAnonymizeRequest,
     BorrowerBulkAnonymizeResponse,
     BorrowerCreate,
@@ -22,6 +23,7 @@ from app.services.borrower import (
     create_borrower,
     get_borrower_or_404,
     list_borrowers_with_stats,
+    list_borrower_ids_to_anonymize_by_date,
     list_loans_for_borrower,
     merge_borrowers,
     update_borrower,
@@ -106,6 +108,21 @@ async def bulk_anonymize_borrowers_endpoint(
     library_id: uuid.UUID = Depends(require_editor_library),
 ) -> BorrowerBulkAnonymizeResponse:
     affected = await bulk_anonymize_borrowers(session, payload.ids, library_id)
+    return BorrowerBulkAnonymizeResponse(affected=affected)
+
+
+@router.post("/bulk-anonymize-by-date", response_model=BorrowerBulkAnonymizeResponse)
+async def bulk_anonymize_borrowers_by_date_endpoint(
+    payload: BorrowerBulkAnonymizeByDateRequest,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerBulkAnonymizeResponse:
+    borrower_ids = await list_borrower_ids_to_anonymize_by_date(
+        session, library_id, payload.inactive_since
+    )
+    if payload.dry_run:
+        return BorrowerBulkAnonymizeResponse(affected=len(borrower_ids))
+    affected = await bulk_anonymize_borrowers(session, borrower_ids, library_id)
     return BorrowerBulkAnonymizeResponse(affected=affected)
 
 

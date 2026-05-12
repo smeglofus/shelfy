@@ -10,7 +10,7 @@ Covers:
 - 401 without auth
 """
 from collections.abc import AsyncIterator, Iterator
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import uuid
 
 from httpx import ASGITransport, AsyncClient
@@ -402,3 +402,122 @@ async def test_bulk_anonymize_duplicate_ids_rejected(test_session: AsyncSession)
             json={"ids": [str(borrower.id), str(borrower.id)]},
         )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_bulk_anonymize_by_date_dry_run_counts_without_mutation(test_session: AsyncSession) -> None:
+    _, lib = await _seed_user_with_library(test_session)
+    borrower = Borrower(
+        library_id=lib.id,
+        name="Dry Run",
+        created_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+    )
+    test_session.add(borrower)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        resp = await client.post(
+            "/api/v1/borrowers/bulk-anonymize-by-date",
+            headers=headers,
+            json={"inactive_since": "2024-01-01", "dry_run": True},
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"affected": 1}
+
+    refreshed = (await test_session.execute(select(Borrower).where(Borrower.id == borrower.id))).scalar_one()
+    assert refreshed.anonymized_at is None
+    assert refreshed.name == "Dry Run"
+
+
+@pytest.mark.asyncio
+async def test_bulk_anonymize_by_date_rules_and_idempotency(test_session: AsyncSession) -> None:
+    user, lib = await _seed_user_with_library(test_session)
+    foreign_lib = Library(name="Foreign", created_by_user_id=user.id)
+    test_session.add(foreign_lib)
+    await test_session.flush()
+
+    today = date(2026, 5, 1)
+    cutoff = "2025-01-01"
+
+    no_loans_old = Borrower(
+        library_id=lib.id,
+        name="NoLoansOld",
+        created_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+    )
+    returned_old = Borrower(library_id=lib.id, name="ReturnedOld")
+    active_old = Borrower(library_id=lib.id, name="ActiveOld")
+    recent_returned = Borrower(library_id=lib.id, name="RecentReturned")
+    already_anonymized = Borrower(
+        library_id=lib.id, name="Already", anonymized_at=datetime.now(timezone.utc)
+    )
+    foreign = Borrower(library_id=foreign_lib.id, name="Foreign")
+    test_session.add_all([no_loans_old, returned_old, active_old, recent_returned, already_anonymized, foreign])
+    await test_session.flush()
+
+    book = _make_book(lib.id, "Book")
+    foreign_book = _make_book(foreign_lib.id, "Foreign Book")
+    test_session.add_all([book, foreign_book])
+    await test_session.flush()
+
+    test_session.add_all([
+        _make_loan(
+            library_id=lib.id, book_id=book.id, borrower_id=returned_old.id,
+            borrower_name="ReturnedOld", borrower_contact=None, lent_date=date(2024, 1, 1),
+            returned_date=date(2024, 1, 10), return_condition="good",
+        ),
+        _make_loan(
+            library_id=lib.id, book_id=book.id, borrower_id=active_old.id,
+            borrower_name="ActiveOld", borrower_contact=None, lent_date=date(2024, 1, 1),
+        ),
+        _make_loan(
+            library_id=lib.id, book_id=book.id, borrower_id=recent_returned.id,
+            borrower_name="RecentReturned", borrower_contact=None, lent_date=today,
+            returned_date=today, return_condition="good",
+        ),
+        _make_loan(
+            library_id=foreign_lib.id, book_id=foreign_book.id, borrower_id=foreign.id,
+            borrower_name="Foreign", borrower_contact=None, lent_date=date(2020, 1, 1),
+            returned_date=date(2020, 1, 2), return_condition="good",
+        ),
+    ])
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _auth_headers(client, test_session)
+        first = await client.post(
+            "/api/v1/borrowers/bulk-anonymize-by-date",
+            headers=headers,
+            json={"inactive_since": cutoff, "dry_run": False},
+        )
+        second = await client.post(
+            "/api/v1/borrowers/bulk-anonymize-by-date",
+            headers=headers,
+            json={"inactive_since": cutoff, "dry_run": False},
+        )
+    assert first.status_code == 200
+    assert first.json() == {"affected": 2}
+    assert second.status_code == 200
+    assert second.json() == {"affected": 0}
+
+    borrowers = (
+        await test_session.execute(
+            select(Borrower).where(
+                Borrower.id.in_([
+                    no_loans_old.id,
+                    returned_old.id,
+                    active_old.id,
+                    recent_returned.id,
+                    already_anonymized.id,
+                    foreign.id,
+                ])
+            )
+        )
+    ).scalars().all()
+    by_id = {row.id: row for row in borrowers}
+    assert by_id[no_loans_old.id].anonymized_at is not None
+    assert by_id[returned_old.id].anonymized_at is not None
+    assert by_id[active_old.id].anonymized_at is None
+    assert by_id[recent_returned.id].anonymized_at is None
+    assert by_id[already_anonymized.id].anonymized_at is not None
+    assert by_id[foreign.id].anonymized_at is None
