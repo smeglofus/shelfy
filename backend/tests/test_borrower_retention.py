@@ -404,6 +404,36 @@ async def test_select_retention_candidates_treats_cutoff_as_strict(
 
 
 @pytest.mark.asyncio
+async def test_retention_run_stamps_anonymized_by_user_id(
+    test_session: AsyncSession,
+) -> None:
+    """Retention bulk threads the calling user's id into
+    ``anonymized_by_user_id`` for every row it touches (#245 audit trail
+    + #246 retention compose)."""
+    owner, lib = await _seed_owner_with_library(test_session)
+    cutoff = date.today() - timedelta(days=100)
+    standalone = Borrower(library_id=lib.id, name="To anonymize")
+    test_session.add(standalone)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.post(
+            "/api/v1/borrowers/bulk-anonymize-by-date",
+            json={"inactive_since": cutoff.isoformat()},
+            headers=headers,
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"affected": 1}
+
+    refreshed = (
+        await test_session.execute(select(Borrower).where(Borrower.id == standalone.id))
+    ).scalar_one()
+    assert refreshed.anonymized_at is not None
+    assert refreshed.anonymized_by_user_id == owner.id
+
+
+@pytest.mark.asyncio
 async def test_real_run_with_no_eligible_borrowers_is_a_no_op(
     test_session: AsyncSession,
 ) -> None:

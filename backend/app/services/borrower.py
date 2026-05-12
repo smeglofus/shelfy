@@ -515,6 +515,7 @@ async def bulk_anonymize_borrowers_by_inactivity(
     inactive_since: date,
     *,
     dry_run: bool = False,
+    actor_user_id: uuid.UUID | None = None,
 ) -> int:
     """Retention-driven bulk anonymize for a library.
 
@@ -524,10 +525,15 @@ async def bulk_anonymize_borrowers_by_inactivity(
     Otherwise actually anonymizes them and returns the number of newly
     anonymized borrowers (matching the contract of
     ``bulk_anonymize_borrowers``).
+
+    ``actor_user_id`` is threaded into the underlying per-row anonymize
+    so ``anonymized_by_user_id`` is stamped on each affected row (#245).
     """
     candidate_ids = await select_borrowers_for_retention_anonymize(
         session, library_id, inactive_since
     )
     if dry_run or not candidate_ids:
         return len(candidate_ids)
-    return await bulk_anonymize_borrowers(session, candidate_ids, library_id)
+    return await bulk_anonymize_borrowers(
+        session, candidate_ids, library_id, actor_user_id=actor_user_id
+    )
