@@ -115,6 +115,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Install postgresql-client
+        # GHA-hosted ubuntu-latest ships psql preinstalled; the self-hosted
+        # runner image (myoung34/github-runner) does not. Install once per
+        # job — apt cache makes this <5s on warm hosts.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
       - name: Install pg_trgm extension
         run: psql postgresql://test:test@localhost:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
@@ -191,8 +199,13 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y wget gnupg
+          # ``--batch`` is required on the self-hosted runner image
+          # (myoung34/github-runner). Without it gpg tries to open /dev/tty
+          # which doesn't exist in the container and the dearmor step exits
+          # 2. GHA-hosted ubuntu-latest has the tty, so this used to work
+          # without --batch; explicit is fine in both environments.
           wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key \
-            | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+            | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/trivy.gpg
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
             | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -qq
