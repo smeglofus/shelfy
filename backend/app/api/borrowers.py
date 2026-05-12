@@ -126,6 +126,7 @@ async def bulk_anonymize_by_date_endpoint(
     payload: BorrowerRetentionAnonymizeRequest,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> BorrowerBulkAnonymizeResponse:
     """Retention-driven bulk anonymize (#246). Anonymizes every borrower
     in the active library whose most recent lending activity is before
@@ -137,6 +138,7 @@ async def bulk_anonymize_by_date_endpoint(
         library_id,
         payload.inactive_since,
         dry_run=payload.dry_run,
+        actor_user_id=current_user.id,
     )
     return BorrowerBulkAnonymizeResponse(affected=affected)
 
