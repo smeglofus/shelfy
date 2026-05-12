@@ -37,9 +37,12 @@
 
 services:
   github-runner:
-    image: myoung34/github-runner:2.321.0
-    # Pin to a specific tag so prod runner is reproducible across host reboots.
-    # Bump deliberately and verify the registered runner still works after.
+    image: myoung34/github-runner:latest
+    # Tracked at HEAD intentionally for now — GitHub deprecates older
+    # actions-runner versions aggressively (a server-side "this runner is
+    # too old, will not dispatch jobs to it" gate). Re-pin to a specific
+    # tag after observing the runtime version reported in the container
+    # logs and verifying CI works.
     restart: unless-stopped
     environment:
       # Either REPO_URL + ACCESS_TOKEN (PAT) — token is auto-rotated by the
@@ -60,6 +63,13 @@ services:
     volumes:
       # Persistent work dir for caches (pip, npm, .git checkout).
       - github_runner_work:/home/runner/_work
+      # Docker-out-of-Docker: GHA's ``services:`` block (used by
+      # backend-tests to spin up a Postgres sidecar) talks to the host's
+      # Docker daemon. Mounting the socket gives the runner the ability
+      # to start sibling containers. SECURITY: this is effectively root
+      # on the host — only deploy on a box you control and only attach
+      # this runner to a private repo with trusted contributors.
+      - /var/run/docker.sock:/var/run/docker.sock
     # Resource fence: this box also runs the prod backend + worker + postgres
     # + minio + redis. Memory is the bottleneck (7.5 GB total, ~5 GB used at
     # rest), CPU has slack (8 threads).
@@ -77,9 +87,12 @@ services:
     # up the next job. Set `oom_score_adj` to bias the OOM-killer toward
     # this container before the kernel reaches for postgres or backend.
     oom_score_adj: 500
-    # Defensive default — give the runner its own user namespace if the
-    # host has it enabled. Most homelab hosts don't; this is a no-op there.
-    user: runner
+    # We rely on the image's default user setup (``RUN_AS_ROOT=true``).
+    # Forcing ``user: runner`` here conflicts with that and traps the
+    # container in a restart loop on every ephemeral re-register. The
+    # container is the isolation boundary; running as root inside an
+    # already cgroup-fenced container is the standard pattern for this
+    # image.
 
 volumes:
   github_runner_work:
