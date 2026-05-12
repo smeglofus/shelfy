@@ -104,6 +104,12 @@ export function PrivacyPage() {
                 <td style={TD}>Plnění smlouvy (čl. 6/1b)</td>
               </tr>
               <tr>
+                <td style={TD}>Údaje dlužníků</td>
+                <td style={TD}>Jméno, kontakt a volitelné poznámky o osobách, kterým Uživatel půjčil knihy</td>
+                <td style={TD}>Vedení historie půjček a evidence dlužníků</td>
+                <td style={TD}>Plnění smlouvy mezi Uživatelem a Poskytovatelem (čl. 6/1b); Uživatel je správcem těchto údajů, Poskytovatel zpracovatelem — viz oddíl 11</td>
+              </tr>
+              <tr>
                 <td style={TD}>Fakturační údaje</td>
                 <td style={TD}>Plán předplatného, Stripe customer ID</td>
                 <td style={TD}>Správa předplatného a fakturace</td>
@@ -184,6 +190,7 @@ export function PrivacyPage() {
             </thead>
             <tbody>
               <tr><td style={TD}>Účet a data knihovny</td><td style={TD}>Po dobu existence účtu</td></tr>
+              <tr><td style={TD}>Údaje dlužníka</td><td style={TD}>Do anonymizace (Uživatel může kdykoli v <em>/borrowers → Anonymizovat</em>) nebo do smazání účtu. Anonymizace je nevratná — smaže jméno, kontakt a poznámky a vyčistí tyto údaje i u všech půjček daného dlužníka. Historie půjček (kniha, data, stav vrácení) zůstává.</td></tr>
               <tr><td style={TD}>Po smazání účtu</td><td style={TD}>Nevratně odstraněno do 30 dnů (zálohy rotovány po 30 dnech)</td></tr>
               <tr><td style={TD}>Technické logy</td><td style={TD}>30 dnů</td></tr>
               <tr><td style={TD}>Chybové záznamy (Sentry)</td><td style={TD}>90 dnů</td></tr>
@@ -203,10 +210,13 @@ export function PrivacyPage() {
             <li>
               <strong>Právo na výmaz (čl. 17)</strong> — můžete smazat účet a všechna data.
               V aplikaci: <em>Nastavení → Nebezpečná zóna → Smazat účet</em>.
+              Pro dílčí výmaz údajů konkrétního dlužníka použijte <em>/borrowers → Anonymizovat</em> —
+              tato akce je nevratná a vyčistí osobní údaje napříč evidencí, historie půjček zůstává.
             </li>
             <li>
               <strong>Právo na přenositelnost (čl. 20)</strong> — můžete si stáhnout kompletní JSON export dat.
-              V aplikaci: <em>Nastavení → Export mých dat</em>.
+              V aplikaci: <em>Nastavení → Export mých dat</em>. Export obsahuje i záznamy dlužníků
+              evidovaných ve vašich knihovnách, protože jsou součástí vašich dat (viz oddíl 11).
             </li>
             <li><strong>Právo na omezení zpracování (čl. 18)</strong> — za podmínek stanovených GDPR.</li>
             <li><strong>Právo vznést námitku (čl. 21)</strong> — proti zpracování na základě oprávněného zájmu.</li>
@@ -262,9 +272,46 @@ export function PrivacyPage() {
           </ul>
         </div>
 
-        {/* ── 10. Změny ── */}
+        {/* ── 11. Údaje dlužníků ── */}
         <div style={SECTION}>
-          <h2 style={H2}>10. Změny těchto zásad</h2>
+          <h2 style={H2}>11. Údaje dlužníků: vztah správce/zpracovatel</h2>
+          <p style={P}>
+            Pokud jako Uživatel v aplikaci evidujete <strong>dlužníky</strong> (osoby, kterým
+            jste půjčili knihy), zadáváte tím osobní údaje třetích osob. V tomto vztahu jste
+            <strong> Vy správcem</strong> osobních údajů těchto dlužníků a Poskytovatel
+            (Shelfy) je <strong>zpracovatelem</strong> ve smyslu čl. 4 odst. 8 GDPR.
+          </p>
+          <p style={P}>Jako správce odpovídáte zejména za:</p>
+          <ul style={UL}>
+            <li>Existenci právního základu pro zpracování (typicky oprávněný zájem věřitele evidovat
+              splatné půjčky, nebo souhlas dlužníka, nebo plnění smlouvy o zápůjčce — čl. 6 GDPR).</li>
+            <li>Splnění informační povinnosti vůči dlužníkům (čl. 13 GDPR) — že o nich vedete
+              záznam, jaké údaje, k jakému účelu a po jakou dobu.</li>
+            <li>Vyřizování práv dlužníků (přístup, oprava, výmaz) — k dílčímu výmazu slouží
+              akce „Anonymizovat dlužníka" v aplikaci.</li>
+          </ul>
+          <p style={P}>
+            Poskytovatel jako zpracovatel:
+          </p>
+          <ul style={UL}>
+            <li>Zpracovává údaje dlužníků pouze v rozsahu nezbytném k provozu Služby (zobrazení
+              v evidenci, propojení s půjčkami, zahrnutí do exportu vašich dat).</li>
+            <li>Neposkytuje údaje dlužníků třetím stranám mimo zpracovatele uvedené v oddíle 3.</li>
+            <li>Uplatňuje stejná technická a organizační opatření jako u ostatních dat Uživatele
+              (oddíl 9).</li>
+          </ul>
+          <p style={P}>
+            <strong>Anonymizace</strong> je nevratný mechanismus, kterým jako správce vymažete
+            identifikující údaje dlužníka (jméno, kontakt, poznámky) z evidence i ze záznamů
+            půjček. Záznam o tom, kdy a co si dlužník půjčil, zůstává jako účetní historie.
+            Pro úplný výmaz včetně historie je nutné smazat celý účet nebo individuálně
+            související záznamy půjček.
+          </p>
+        </div>
+
+        {/* ── 12. Změny ── */}
+        <div style={SECTION}>
+          <h2 style={H2}>12. Změny těchto zásad</h2>
           <p style={P}>
             O podstatných změnách vás budeme informovat e-mailem minimálně 14 dní předem.
             Aktuální verzi vždy najdete na této stránce. Drobné formulační úpravy (bez dopadu
