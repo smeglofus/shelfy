@@ -311,3 +311,70 @@ async def test_requires_authentication() -> None:
             json={"inactive_since": date.today().isoformat()},
         )
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_dry_run_returns_zero_when_no_eligible_borrowers(
+    test_session: AsyncSession,
+) -> None:
+    """Dry-run with no eligible borrowers must return affected=0 — covers
+    the short-circuit branch in ``bulk_anonymize_borrowers_by_inactivity``
+    where ``candidate_ids`` is empty and we skip the call into the
+    explicit-list primitive."""
+    _, lib = await _seed_owner_with_library(test_session)
+    cutoff = date.today() - timedelta(days=365)
+
+    # Seed a borrower with an active loan — never eligible for retention.
+    borrower = Borrower(library_id=lib.id, name="Has open loan")
+    test_session.add(borrower)
+    await test_session.flush()
+    book = _book(lib.id)
+    test_session.add(book)
+    await test_session.flush()
+    test_session.add(_loan(
+        library_id=lib.id, book_id=book.id, borrower_id=borrower.id,
+        borrower_name="Has open loan",
+        lent_date=cutoff - timedelta(days=10),
+    ))
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.post(
+            "/api/v1/borrowers/bulk-anonymize-by-date",
+            json={"inactive_since": cutoff.isoformat(), "dry_run": True},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"affected": 0}
+
+
+@pytest.mark.asyncio
+async def test_real_run_with_no_eligible_borrowers_is_a_no_op(
+    test_session: AsyncSession,
+) -> None:
+    """Real run (dry_run=false) with no eligible borrowers also short-circuits
+    and returns affected=0 without touching any row."""
+    _, lib = await _seed_owner_with_library(test_session)
+    cutoff = date.today() - timedelta(days=365)
+    # Seed an already-anonymized borrower; ``select_borrowers_for_retention``
+    # filters those out, so candidate list is empty.
+    pre_anon = Borrower(
+        library_id=lib.id,
+        name="Deleted borrower",
+        anonymized_at=date.today(),
+    )
+    test_session.add(pre_anon)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.post(
+            "/api/v1/borrowers/bulk-anonymize-by-date",
+            json={"inactive_since": cutoff.isoformat()},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"affected": 0}

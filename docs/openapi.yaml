@@ -2254,6 +2254,71 @@
         }
       }
     },
+    "/api/v1/borrowers/bulk-anonymize-by-date": {
+      "post": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Bulk Anonymize By Date Endpoint",
+        "description": "Retention-driven bulk anonymize (#246). Anonymizes every borrower\nin the active library whose most recent lending activity is before\n``inactive_since`` AND who has no active loan. Send ``dry_run=true``\nto see the affected count without mutating any row.",
+        "operationId": "bulk_anonymize_by_date_endpoint_api_v1_borrowers_bulk_anonymize_by_date_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowerRetentionAnonymizeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowerBulkAnonymizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/borrowers/{borrower_id}/anonymize": {
       "post": {
         "tags": [
@@ -4918,6 +4983,26 @@
           "updated_at"
         ],
         "title": "BorrowerResponse"
+      },
+      "BorrowerRetentionAnonymizeRequest": {
+        "properties": {
+          "inactive_since": {
+            "type": "string",
+            "format": "date",
+            "title": "Inactive Since"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "inactive_since"
+        ],
+        "title": "BorrowerRetentionAnonymizeRequest",
+        "description": "Body for ``POST /api/v1/borrowers/bulk-anonymize-by-date`` (#246).\n\nAnonymizes every borrower in the active library whose most recent\nlending activity is before ``inactive_since`` AND who has no active\nloan. Pass ``dry_run=True`` to get the count without mutating."
       },
       "BorrowerUpdate": {
         "properties": {
