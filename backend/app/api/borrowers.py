@@ -3,8 +3,10 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.library import get_library_id, require_editor_library
 from app.db.session import get_db_session
+from app.models.user import User
 from app.schemas.borrower import (
     BorrowerBulkAnonymizeRequest,
     BorrowerBulkAnonymizeResponse,
@@ -63,8 +65,11 @@ async def create_borrower_endpoint(
     payload: BorrowerCreate,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> BorrowerResponse:
-    borrower = await create_borrower(session, payload, library_id)
+    borrower = await create_borrower(
+        session, payload, library_id, actor_user_id=current_user.id
+    )
     return BorrowerResponse.model_validate(borrower)
 
 
@@ -104,8 +109,11 @@ async def bulk_anonymize_borrowers_endpoint(
     payload: BorrowerBulkAnonymizeRequest,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> BorrowerBulkAnonymizeResponse:
-    affected = await bulk_anonymize_borrowers(session, payload.ids, library_id)
+    affected = await bulk_anonymize_borrowers(
+        session, payload.ids, library_id, actor_user_id=current_user.id
+    )
     return BorrowerBulkAnonymizeResponse(affected=affected)
 
 
@@ -114,8 +122,11 @@ async def anonymize_borrower_endpoint(
     borrower_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> BorrowerResponse:
-    borrower = await anonymize_borrower(session, borrower_id, library_id)
+    borrower = await anonymize_borrower(
+        session, borrower_id, library_id, actor_user_id=current_user.id
+    )
     return BorrowerResponse.model_validate(borrower)
 
 
@@ -125,6 +136,9 @@ async def merge_borrower_endpoint(
     payload: BorrowerMergeRequest,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
+    current_user: User = Depends(get_current_user),
 ) -> BorrowerResponse:
-    target = await merge_borrowers(session, payload.source_id, target_id, library_id)
+    target = await merge_borrowers(
+        session, payload.source_id, target_id, library_id, actor_user_id=current_user.id
+    )
     return BorrowerResponse.model_validate(target)

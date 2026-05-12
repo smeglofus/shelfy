@@ -185,3 +185,39 @@ the right default here.
 Implementation lives in `backend/app/services/borrower.merge_borrowers`;
 the cascade-vs-snapshot behavior is asserted in
 `tests/test_borrower_merge.py::test_merge_does_not_update_loan_snapshots`.
+
+## 2026-05-12 — Amendment: actor-audit columns on borrowers
+
+Phase-6 follow-up (#245) added three nullable user-FK columns to
+`borrowers` so identity-touching mutations record *who* performed them,
+not just *when*: `created_by_user_id`, `anonymized_by_user_id`,
+`merged_into_by_user_id`. Each is `ondelete=SET NULL` so deleting the
+acting user does not cascade-delete the borrower record.
+
+**Where each one is set:**
+
+| Mutation                              | Stamps                            |
+|---------------------------------------|-----------------------------------|
+| `create_borrower`                     | `created_by_user_id`              |
+| `anonymize_borrower`                  | `anonymized_by_user_id`           |
+| `bulk_anonymize_borrowers`            | `anonymized_by_user_id` (per row) |
+| `merge_borrowers` (on target)         | `merged_into_by_user_id`          |
+| `update_borrower`                     | none (deliberate — high-frequency, low audit value; can graduate later) |
+
+**Where it is *not* recorded:**
+
+- The source row in a merge is deleted, so there's no place to put a
+  "merged-from-by". The action is recorded on the surviving target as
+  "I absorbed another record into me." See
+  `test_borrower_audit.py::test_merged_into_by_user_id_is_stamped_only_on_target`.
+- Edits via `PATCH /api/v1/borrowers/{id}` (the Edit modal) do not record
+  the editor. If a real audit need shows up there, add an
+  `updated_by_user_id` column in a follow-up — the columns are FK-typed
+  the same way, so the migration is one line per addition.
+
+**Frontend status:** the new fields are exposed on `BorrowerResponse` and
+typed on the frontend `Borrower` interface. No UI surfaces them yet — a
+user-friendly footer ("Anonymized by alice@example.com on …") needs a
+user-resolver endpoint we don't currently expose. Filed as a follow-up.
+
+Tests pinning the contract: `backend/tests/test_borrower_audit.py`.

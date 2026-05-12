@@ -32,6 +32,11 @@ class BorrowerResponse(BaseModel):
     contact: str | None
     notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
     anonymized_at: datetime | None
+    # Audit trail (#245). Null for rows created before the column was added,
+    # or when the actor user was deleted (FK ondelete=SET NULL).
+    created_by_user_id: uuid.UUID | None = None
+    anonymized_by_user_id: uuid.UUID | None = None
+    merged_into_by_user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 
