@@ -28,6 +28,12 @@ npm run lint
 npm test -- --run
 ```
 
+**Backend schema changes?** Also run `scripts/check-openapi-drift.sh`
+and commit any `docs/openapi.yaml` diff in the same PR. The script
+regenerates the spec from the live FastAPI app and exits non-zero on
+drift, so it doubles as a one-line pre-push check. The CI `backend /
+lint` job runs the same check — running it locally just saves the cycle.
+
 ## Test-DB contract
 
 The backend test suite runs against SQLite (`sqlite+aiosqlite`). Production
