@@ -16,9 +16,8 @@ and observability.
 
 Always read these documents before starting any task:
 
-1. `docs/current-status.md` — what is done, what is in progress, what is broken
-2. `docs/project-spec.md` — product definition, architecture, scope, technical requirements
-3. `docs/implementation-phases.md` — implementation order, phase boundaries, deliverables
+1. `docs/project-spec.md` — product definition, architecture, scope, technical requirements
+2. `docs/implementation-phases.md` — implementation order, phase boundaries, deliverables
 
 Conflict resolution priority:
 1. Explicit user instruction in the current session
@@ -32,11 +31,10 @@ Do not invent a different architecture. Do not extend scope beyond the current p
 
 ## Before you write any code
 
-1. Read `docs/current-status.md` to understand what is done and in progress.
-2. Read the current phase definition in `docs/implementation-phases.md`.
-3. Identify exactly which deliverables and tests are required.
-4. Read any existing code in the affected modules before touching them.
-5. If anything is ambiguous, apply the smallest reasonable assumption and document it.
+1. Read the current phase definition in `docs/implementation-phases.md`.
+2. Identify exactly which deliverables and tests are required.
+3. Read any existing code in the affected modules before touching them.
+4. If anything is ambiguous, apply the smallest reasonable assumption and document it.
 
 Do not start implementing before completing these steps.
 
@@ -173,7 +171,6 @@ Quick reference:
 | What changed | What to update |
 |---|---|
 | Schema change | `docs/entity-design.md` + Alembic migration |
-| Phase completed/started | `docs/current-status.md` |
 | New endpoint added | `docs/project-spec.md` API table |
 | New environment variable | `.env.example` |
 | Architecture decision | new file under `docs/adr/` |

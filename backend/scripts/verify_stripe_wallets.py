@@ -91,7 +91,7 @@ async def _run() -> int:
         for w in readiness.warnings:
             print(f"  - {w}")
         print(
-            "\nSee docs/billing/STRIPE_WALLETS_CHECKLIST.md for remediation steps."
+            "\nFix the warnings above before relying on Apple Pay / Google Pay."
         )
         return 1
 

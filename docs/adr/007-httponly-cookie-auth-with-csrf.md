@@ -12,9 +12,8 @@ long-lived takeover: it only needs to read two `localStorage` keys and either re
 against our API or exfiltrate them to an attacker-controlled endpoint. Rotating refresh
 tokens does not help — the attacker simply rotates alongside the victim.
 
-Relevant pressure from the 2026-04 production-readiness audit (issue #117, P1) flagged
-browser storage of long-lived credentials as the highest-impact session-hijack vector the
-app still carried.
+A pre-launch security review flagged browser storage of long-lived credentials as the
+highest-impact session-hijack vector the app still carried.
 
 We also want to preserve a token flow that works outside of browsers (mobile clients, CLI
 tooling, the E2E rig) where cookies are inconvenient or impossible.
