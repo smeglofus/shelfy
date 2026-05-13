@@ -83,36 +83,52 @@ jobs:
   backend-tests:
     name: backend / tests
     runs-on: [self-hosted, shelfy]
-    # ``container:`` makes the job run inside this image, joined to the
-    # same Docker network as the ``services:`` postgres container below.
-    # This is what makes service-name DNS (``postgres``) work as the
-    # connection host across BOTH the GHA-hosted runner (which has
-    # historical localhost forwarding) AND the self-hosted runner (where
-    # the job-on-runner-host model breaks localhost networking).
-    container:
-      image: python:3.12-bookworm
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: shelfy_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    # ``services:`` deliberately not used here — on the self-hosted runner
+    # GHA creates a per-run ``github_network_*`` for service containers
+    # that the runner itself isn't on, and the job runs *on the runner*
+    # (not in a sibling container), so neither localhost nor the service
+    # DNS name resolves. Using ``container:`` to fix that hits another
+    # pothole: the ``myoung34/github-runner`` image puts its externals
+    # in a non-standard path, so GHA can't inject node20 into a job
+    # container and ``actions/checkout`` blows up on the first step.
+    #
+    # Workaround: spawn postgres ourselves on the same Docker network the
+    # runner already lives on (``infra_default``), reach it by container
+    # name. Robust against both GHA-hosted and self-hosted runtimes —
+    # the ``services:`` block was a convenience, not a contract.
 
     steps:
+      - name: Start postgres container
+        # Unique name per run lets parallel jobs co-exist on the same host.
+        run: |
+          docker run -d \
+            --name ci-postgres-${{ github.run_id }} \
+            --network infra_default \
+            -e POSTGRES_USER=test \
+            -e POSTGRES_PASSWORD=test \
+            -e POSTGRES_DB=shelfy_test \
+            postgres:16
+          # Health-check loop, max 30s.
+          for i in $(seq 1 30); do
+            if docker exec ci-postgres-${{ github.run_id }} pg_isready -U test -d shelfy_test >/dev/null 2>&1; then
+              echo "Postgres ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Postgres failed to become ready" >&2
+          docker logs ci-postgres-${{ github.run_id }}
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      # No ``actions/setup-python@v5`` — the ``container:`` image already
-      # ships python 3.12, and the action mis-detects + reinstalls when run
-      # inside a container.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
 
       - name: Install backend dependencies
         working-directory: backend
@@ -121,23 +137,20 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Install postgresql-client
-        # GHA-hosted ubuntu-latest ships psql preinstalled; python:3.12
-        # does not. Install once per job — apt cache makes this <5s on
-        # warm hosts. Container runs as root so no sudo.
+        # GHA-hosted ubuntu-latest ships psql preinstalled; the self-hosted
+        # runner image (myoung34/github-runner) does not. Apt cache makes
+        # this <5s on warm hosts.
         run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends postgresql-client
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
 
       - name: Install pg_trgm extension
-        # ``postgres`` is the service-container DNS name on the shared
-        # docker network. Works both on GHA-hosted (job in container) and
-        # on self-hosted with docker-out-of-docker.
-        run: psql postgresql://test:test@postgres:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+        run: psql postgresql://test:test@ci-postgres-${{ github.run_id }}:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
       - name: Pytest with coverage gate
         working-directory: backend
         env:
-          TEST_DATABASE_URL: postgresql+asyncpg://test:test@postgres:5432/shelfy_test
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@ci-postgres-${{ github.run_id }}:5432/shelfy_test
           TESTING: "true"
         run: |
           echo "::group::pytest output"
@@ -147,8 +160,12 @@ jobs:
       - name: Check shelf ordering integrity
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@postgres:5432/shelfy_test
+          DATABASE_URL: postgresql+asyncpg://test:test@ci-postgres-${{ github.run_id }}:5432/shelfy_test
         run: python ../scripts/check_shelf_ordering_integrity.py
+
+      - name: Stop postgres container
+        if: always()
+        run: docker rm -f ci-postgres-${{ github.run_id }} || true
 
   # ── Frontend (lint + test + build + bundle checks) ────────────────────────
   frontend:
