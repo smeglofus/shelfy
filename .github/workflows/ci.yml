@@ -36,7 +36,7 @@ concurrency:
 #     browsers want ~2 GB on top of the test process which is more than
 #     this 7.5 GB host can spare alongside prod.
 #
-# See infra/docker-compose.runner.yml and docs/runner-setup.md for ops.
+# See infra/docker-compose.runner.yml for the runner compose definition.
 
 jobs:
 

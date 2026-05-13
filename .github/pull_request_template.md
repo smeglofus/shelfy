@@ -18,7 +18,6 @@
 
 ## Docs updated
 
-- [ ] `docs/current-status.md` (if phase status or in-progress changed)
 - [ ] `docs/entity-design.md` (if schema changed)
 - [ ] `.env.example` (if new env var added)
 

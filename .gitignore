@@ -15,3 +15,12 @@ infra/docker-compose.prod.yml
 infra/.env.prod.local
 infra/GO_LIVE.local.md
 infra/deploy-prod.local.sh
+
+# Test runner scratch output
+frontend/test-results.txt
+frontend/test-verbose.txt
+e2e/tmp_*.js
+
+# Local-only docs (ops PII, business strategy, internal audits — kept out of
+# the public repo but the directory can hold them on your working copy).
+.private/

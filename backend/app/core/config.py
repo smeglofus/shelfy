@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     # Transactional email (Resend)
     # Set RESEND_API_KEY in .env to enable email notifications.
     # The from address must be a verified sender on the Resend account, and the
-    # domain (shelfy.cz) must have SPF/DKIM/DMARC records pointing at Resend
-    # before mail will deliver — see docs/runbooks/email.md.
+    # sending domain must have SPF/DKIM/DMARC records pointing at Resend before
+    # mail will deliver.
     resend_api_key: str | None = None
     email_from_address: str = "Shelfy <noreply@shelfy.cz>"
     # Reply-To header: where users land when they hit "Reply" on a transactional

@@ -208,5 +208,4 @@ Useful references:
 - Incident runbook: `docs/runbooks/incidents.md`
 - Monitoring and alerts: `docs/monitoring/README.md`
 - Prometheus rules: `docs/monitoring/alerts.prometheus.yml`
-- Production audit: `docs/production-readiness-audit-2026-04-02.md`
 

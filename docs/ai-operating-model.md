@@ -14,7 +14,7 @@ How AI agents and the human owner collaborate on Shelfy.
 
 ### Codex (Primary Implementation Agent)
 
-- Reads `docs/current-status.md` + `AGENTS.md` before any task
+- Reads `AGENTS.md` and the relevant `docs/` source-of-truth before any task
 - Implements features, fixes, tests from GitHub issues or prompts
 - Opens PRs with required description format
 - Max 2 fix iterations per PR, then escalates with `needs-human-review` label
@@ -60,7 +60,6 @@ After every merged PR that changes behavior, the merging workflow must update:
 | What changed | Update |
 |---|---|
 | Schema / model fields | `docs/entity-design.md` |
-| Phase completed or started | `docs/current-status.md` |
 | New architectural decision | new file in `docs/adr/` |
 | New environment variable | `.env.example` |
 | Agent rules changed | `docs/AGENTS.md` |

@@ -32,8 +32,6 @@
 # To tear it down:
 #
 #   docker compose -f infra/docker-compose.runner.yml down github-runner
-#
-# Detailed runbook: docs/runner-setup.md.
 
 services:
   github-runner:
