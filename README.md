@@ -3,8 +3,6 @@
 > AI-assisted home library manager: scan shelves, keep book metadata tidy,
 > lend books to people, and navigate a digital twin of your physical shelves.
 
-![Shelfy home](frontend/public/landing/demo-poster.webp)
-
 ---
 
 ## Features
