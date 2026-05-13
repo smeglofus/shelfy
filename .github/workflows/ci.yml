@@ -2,14 +2,41 @@ name: CI
 
 on:
   pull_request:
+    # Skip CI entirely on docs-only and changelog-only PRs — they cannot
+    # break runtime behaviour and we were burning ~15 minutes per changelog
+    # update. The `paths-ignore` filter is OR'd, so any PR that *also*
+    # touches a non-ignored file will still trigger CI.
+    paths-ignore:
+      - 'docs/**'
+      - '**/CHANGELOG.md'
+      - '**/*.md'
   push:
     branches: [main]
   workflow_dispatch:
+
+# Cancel any in-progress run for the same PR when a new commit is pushed.
+# Saves ~30–50% of CI minutes during iterative push cycles (the most
+# expensive failure mode we have). `main` pushes use `run_id` so concurrent
+# merges don't cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # ── Re-usable Python setup ────────────────────────────────────────────────────
 # backend-lint and backend-tests share the same dependency install pattern but
 # run as independent jobs so a lint failure never suppresses test results.
 # Both are required checks for branch protection (see bottom of this file).
+#
+# Runner placement (issue: CI-minute pressure on the Free tier):
+#
+#   - lint / backend tests / frontend / security-scan run on the self-hosted
+#     runner attached to the homelab box (label `shelfy`). Cheap, fast, and
+#     the host has plenty of CPU + caches.
+#   - e2e / e2e-p0-mobile stay on `ubuntu-latest`. Playwright + headless
+#     browsers want ~2 GB on top of the test process which is more than
+#     this 7.5 GB host can spare alongside prod.
+#
+# See infra/docker-compose.runner.yml and docs/runner-setup.md for ops.
 
 jobs:
 
@@ -17,7 +44,7 @@ jobs:
   # No Postgres needed — pure static analysis.
   backend-lint:
     name: backend / lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, shelfy]
 
     steps:
       - name: Checkout
@@ -55,23 +82,44 @@ jobs:
   # prevents tests from producing a result (which was the original blind spot).
   backend-tests:
     name: backend / tests
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: shelfy_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    runs-on: [self-hosted, shelfy]
+    # ``services:`` deliberately not used here — on the self-hosted runner
+    # GHA creates a per-run ``github_network_*`` for service containers
+    # that the runner itself isn't on, and the job runs *on the runner*
+    # (not in a sibling container), so neither localhost nor the service
+    # DNS name resolves. Using ``container:`` to fix that hits another
+    # pothole: the ``myoung34/github-runner`` image puts its externals
+    # in a non-standard path, so GHA can't inject node20 into a job
+    # container and ``actions/checkout`` blows up on the first step.
+    #
+    # Workaround: spawn postgres ourselves on the same Docker network the
+    # runner already lives on (``infra_default``), reach it by container
+    # name. Robust against both GHA-hosted and self-hosted runtimes —
+    # the ``services:`` block was a convenience, not a contract.
 
     steps:
+      - name: Start postgres container
+        # Unique name per run lets parallel jobs co-exist on the same host.
+        run: |
+          docker run -d \
+            --name ci-postgres-${{ github.run_id }} \
+            --network infra_default \
+            -e POSTGRES_USER=test \
+            -e POSTGRES_PASSWORD=test \
+            -e POSTGRES_DB=shelfy_test \
+            postgres:16
+          # Health-check loop, max 30s.
+          for i in $(seq 1 30); do
+            if docker exec ci-postgres-${{ github.run_id }} pg_isready -U test -d shelfy_test >/dev/null 2>&1; then
+              echo "Postgres ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Postgres failed to become ready" >&2
+          docker logs ci-postgres-${{ github.run_id }}
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -88,13 +136,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Install postgresql-client
+        # GHA-hosted ubuntu-latest ships psql preinstalled; the self-hosted
+        # runner image (myoung34/github-runner) does not. Apt cache makes
+        # this <5s on warm hosts.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
       - name: Install pg_trgm extension
-        run: psql postgresql://test:test@localhost:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+        run: psql postgresql://test:test@ci-postgres-${{ github.run_id }}:5432/shelfy_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
       - name: Pytest with coverage gate
         working-directory: backend
         env:
-          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@ci-postgres-${{ github.run_id }}:5432/shelfy_test
           TESTING: "true"
         run: |
           echo "::group::pytest output"
@@ -104,13 +160,17 @@ jobs:
       - name: Check shelf ordering integrity
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/shelfy_test
+          DATABASE_URL: postgresql+asyncpg://test:test@ci-postgres-${{ github.run_id }}:5432/shelfy_test
         run: python ../scripts/check_shelf_ordering_integrity.py
+
+      - name: Stop postgres container
+        if: always()
+        run: docker rm -f ci-postgres-${{ github.run_id }} || true
 
   # ── Frontend (lint + test + build + bundle checks) ────────────────────────
   frontend:
     name: frontend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, shelfy]
 
     steps:
       - name: Checkout
@@ -153,7 +213,7 @@ jobs:
   # if-no-files-found: ignore on upload handles the case where install fails.
   security-scan:
     name: security-scan
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, shelfy]
     continue-on-error: true
 
     steps:
@@ -164,8 +224,13 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y wget gnupg
+          # ``--batch`` is required on the self-hosted runner image
+          # (myoung34/github-runner). Without it gpg tries to open /dev/tty
+          # which doesn't exist in the container and the dearmor step exits
+          # 2. GHA-hosted ubuntu-latest has the tty, so this used to work
+          # without --batch; explicit is fine in both environments.
           wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key \
-            | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+            | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/trivy.gpg
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
             | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -qq
@@ -189,10 +254,15 @@ jobs:
             trivy-worker.sarif
 
   # ── E2E (full stack, runs only when both backend and frontend pass) ────────
+  # Skip on draft PRs — Playwright + full-stack boot eats ~5–8 minutes per
+  # run and a draft means the author is still iterating. The job re-fires
+  # automatically on the next push after un-draft, and you can always
+  # trigger it manually via `workflow_dispatch`.
   e2e:
     name: e2e
     runs-on: ubuntu-latest
     needs: [backend-lint, backend-tests, frontend]
+    if: github.event.pull_request.draft != true
 
     steps:
       - name: Checkout
