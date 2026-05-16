@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useBorrowers } from '../hooks/useBorrowers'
@@ -10,12 +10,19 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
-/** Returns the unique borrower whose normalized name equals the typed value, or null. */
-function findExactMatch(borrowers: Borrower[], typed: string): Borrower | null {
+/** Returns every borrower whose normalized name equals the typed value.
+ *
+ * Empty input returns ``[]`` (no candidates rather than every borrower). Used
+ * by the modal to decide between three states:
+ *
+ * - 0 matches → typed-name flow (legacy / new borrower)
+ * - 1 match   → auto-link by id
+ * - >1 match  → ask the user to disambiguate (#250)
+ */
+function findAllMatches(borrowers: Borrower[], typed: string): Borrower[] {
   const target = normalize(typed)
-  if (!target) return null
-  const matches = borrowers.filter((b) => normalize(b.name) === target)
-  return matches.length === 1 ? matches[0] : null
+  if (!target) return []
+  return borrowers.filter((b) => normalize(b.name) === target)
 }
 
 export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: () => void }) {
@@ -43,10 +50,37 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
     [borrowersQuery.data],
   )
 
-  const matchedBorrower = useMemo(
-    () => findExactMatch(borrowers, borrowerName),
+  // Track explicit disambiguation picks. When the user clicks a row in the
+  // multi-match list, we pin the choice here. The pin survives small edits to
+  // the contact field but is cleared whenever the name input changes — a
+  // different name implies the user backed out of the previous pick.
+  const [selectedBorrowerId, setSelectedBorrowerId] = useState<string | null>(null)
+
+  const matches = useMemo(
+    () => findAllMatches(borrowers, borrowerName),
     [borrowers, borrowerName],
   )
+
+  // Resolve the linked borrower in priority order:
+  //   1. Explicit pick from the disambiguation list.
+  //   2. Sole match (preserves the unambiguous-name shortcut).
+  //   3. Nothing — fall through to typed-name flow.
+  const linkedBorrower = useMemo<Borrower | null>(() => {
+    if (selectedBorrowerId) {
+      return matches.find((b) => b.id === selectedBorrowerId) ?? null
+    }
+    return matches.length === 1 ? matches[0] : null
+  }, [matches, selectedBorrowerId])
+
+  // Clear the explicit pick when the typed name changes such that the pick
+  // is no longer in the match set (e.g., the user retypes a different name).
+  // We avoid clearing on every keystroke so a transient empty match set
+  // (mid-typing) doesn't lose the pick.
+  useEffect(() => {
+    if (selectedBorrowerId && !matches.some((b) => b.id === selectedBorrowerId)) {
+      setSelectedBorrowerId(null)
+    }
+  }, [matches, selectedBorrowerId])
 
   return (
     <Modal open label={t('loans.lend_modal_title')} onClose={onClose} maxWidth={520}>
@@ -58,13 +92,14 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
             return
           }
 
-          // When the typed name uniquely matches an existing borrower, link by
+          // When the typed name uniquely matches an existing borrower (or the
+          // user picked one from the disambiguation list — #250), link by
           // borrower_id and let the backend supply name/contact. The typed
           // contact is intentionally ignored — a loan form should not
           // overwrite borrower details (issue #224).
-          const payload: LoanCreateRequest = matchedBorrower
+          const payload: LoanCreateRequest = linkedBorrower
             ? {
-                borrower_id: matchedBorrower.id,
+                borrower_id: linkedBorrower.id,
                 lent_date: lentDate,
                 due_date: dueDate || null,
                 notes: notes.trim() || null,
@@ -100,14 +135,69 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
               <option key={borrower.id} value={borrower.name} />
             ))}
           </datalist>
-          {matchedBorrower && (
+          {linkedBorrower && (
             <span
               data-testid="borrower-existing-match"
               style={{ fontSize: 12, color: 'var(--sh-text-muted)' }}
             >
               {t('loans.borrower_existing_match')}
-              {matchedBorrower.contact ? ` · ${matchedBorrower.contact}` : ''}
+              {linkedBorrower.contact ? ` · ${linkedBorrower.contact}` : ''}
             </span>
+          )}
+          {!linkedBorrower && matches.length > 1 && (
+            <div
+              data-testid="borrower-disambiguation"
+              style={{
+                marginTop: 4,
+                padding: 12,
+                border: '1px solid var(--sh-yellow, #facc15)',
+                borderRadius: 'var(--sh-radius-md)',
+                background: 'var(--sh-yellow-soft, #fffbe6)',
+                fontSize: 13,
+              }}
+            >
+              <p style={{ margin: '0 0 6px', fontWeight: 500 }}>
+                {t('loans.borrower_ambiguous_hint', { count: matches.length })}
+              </p>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  margin: 0,
+                  padding: 0,
+                  display: 'grid',
+                  gap: 4,
+                }}
+              >
+                {matches.map((candidate) => (
+                  <li key={candidate.id}>
+                    <button
+                      type="button"
+                      data-testid={`borrower-disambiguation-${candidate.id}`}
+                      className="sh-btn-secondary"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        padding: '6px 10px',
+                      }}
+                      onClick={() => setSelectedBorrowerId(candidate.id)}
+                    >
+                      {candidate.name}
+                      {candidate.contact ? ` · ${candidate.contact}` : ''}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p
+                style={{
+                  margin: '6px 0 0',
+                  fontSize: 12,
+                  color: 'var(--sh-text-muted)',
+                }}
+              >
+                {t('loans.borrower_ambiguous_fallback')}
+              </p>
+            </div>
           )}
         </div>
         <input
@@ -115,7 +205,7 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
           placeholder={t('loans.borrower_contact')}
           value={borrowerContact}
           onChange={(event) => setBorrowerContact(event.target.value)}
-          disabled={Boolean(matchedBorrower)}
+          disabled={Boolean(linkedBorrower)}
         />
         <label style={{ display: 'grid', gap: 4, fontSize: 14, fontWeight: 500, color: 'var(--sh-text-muted)' }}>
           {t('loans.lent_date')}
