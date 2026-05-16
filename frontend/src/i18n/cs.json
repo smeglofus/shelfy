@@ -790,6 +790,11 @@
     "bulk_anon_back": "Zpět",
     "bulk_anon_confirm": "Anonymizovat",
     "bulk_anon_nothing_to_do": "Není koho anonymizovat",
-    "bulk_anon_running": "Anonymizuji…"
+    "bulk_anon_running": "Anonymizuji…",
+    "audit_section_title": "Auditní stopa",
+    "audit_created_by": "Vytvořil(a) {{email}} — {{date}}",
+    "audit_anonymized_by": "Anonymizoval(a) {{email}} — {{date}}",
+    "audit_merged_into_by": "Sloučení provedl(a) {{email}}",
+    "audit_actor_unknown": "neznámý uživatel"
   }
 }

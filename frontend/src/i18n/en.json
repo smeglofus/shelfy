@@ -785,6 +785,11 @@
     "bulk_anon_back": "Back",
     "bulk_anon_confirm": "Anonymize",
     "bulk_anon_nothing_to_do": "Nothing to anonymize",
-    "bulk_anon_running": "Anonymizing…"
+    "bulk_anon_running": "Anonymizing…",
+    "audit_section_title": "Audit trail",
+    "audit_created_by": "Created by {{email}} on {{date}}",
+    "audit_anonymized_by": "Anonymized by {{email}} on {{date}}",
+    "audit_merged_into_by": "Merged by {{email}}",
+    "audit_actor_unknown": "unknown user"
   }
 }

@@ -20,6 +20,91 @@ function formatDate(value: string | null, locale: string): string {
   }
 }
 
+interface AuditFooterProps {
+  /** Audit data sourced from BorrowerDetailResponse (#261). */
+  createdByUserId: string | null
+  createdByEmail: string | null
+  createdAt: string
+  anonymizedByUserId: string | null
+  anonymizedByEmail: string | null
+  anonymizedAt: string | null
+  mergedIntoByUserId: string | null
+  mergedIntoByEmail: string | null
+  locale: string
+}
+
+function AuditFooter({
+  createdByUserId,
+  createdByEmail,
+  createdAt,
+  anonymizedByUserId,
+  anonymizedByEmail,
+  anonymizedAt,
+  mergedIntoByUserId,
+  mergedIntoByEmail,
+  locale,
+}: AuditFooterProps) {
+  const { t } = useTranslation()
+
+  // Hide entirely on legacy rows where every audit FK is NULL. Once at least
+  // one column is populated, render the section with whichever lines apply.
+  if (createdByUserId === null && anonymizedByUserId === null && mergedIntoByUserId === null) {
+    return null
+  }
+
+  const unknown = t('borrowers.audit_actor_unknown')
+
+  return (
+    <aside
+      data-testid="borrower-audit-footer"
+      style={{
+        marginTop: 32,
+        paddingTop: 16,
+        borderTop: '1px solid var(--sh-border)',
+        fontSize: 12,
+        color: 'var(--sh-text-muted)',
+      }}
+    >
+      <h3
+        style={{
+          margin: '0 0 4px',
+          fontSize: 12,
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+        }}
+      >
+        {t('borrowers.audit_section_title')}
+      </h3>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+        {createdByUserId !== null && (
+          <li data-testid="audit-created-by">
+            {t('borrowers.audit_created_by', {
+              email: createdByEmail ?? unknown,
+              date: formatDate(createdAt, locale),
+            })}
+          </li>
+        )}
+        {anonymizedByUserId !== null && anonymizedAt !== null && (
+          <li data-testid="audit-anonymized-by">
+            {t('borrowers.audit_anonymized_by', {
+              email: anonymizedByEmail ?? unknown,
+              date: formatDate(anonymizedAt, locale),
+            })}
+          </li>
+        )}
+        {mergedIntoByUserId !== null && (
+          <li data-testid="audit-merged-into-by">
+            {t('borrowers.audit_merged_into_by', {
+              email: mergedIntoByEmail ?? unknown,
+            })}
+          </li>
+        )}
+      </ul>
+    </aside>
+  )
+}
+
 interface LoanRowProps {
   loan: BorrowerLoanItem
   locale: string
@@ -262,6 +347,18 @@ export function BorrowerDetailPage() {
           </ul>
         )}
       </section>
+
+      <AuditFooter
+        createdByUserId={borrower.created_by_user_id}
+        createdByEmail={borrower.created_by_email ?? null}
+        createdAt={borrower.created_at}
+        anonymizedByUserId={borrower.anonymized_by_user_id}
+        anonymizedByEmail={borrower.anonymized_by_email ?? null}
+        anonymizedAt={borrower.anonymized_at}
+        mergedIntoByUserId={borrower.merged_into_by_user_id}
+        mergedIntoByEmail={borrower.merged_into_by_email ?? null}
+        locale={i18n.language}
+      />
 
       {confirmOpen && (
         <Modal

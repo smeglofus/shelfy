@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 import structlog
 
 from app.models.book import Book
@@ -221,6 +222,32 @@ async def get_borrower_or_404(
 ) -> Borrower:
     result = await session.execute(
         select(Borrower).where(Borrower.id == borrower_id, Borrower.library_id == library_id)
+    )
+    borrower = result.scalar_one_or_none()
+    if borrower is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrower not found")
+    return borrower
+
+
+async def get_borrower_detail_or_404(
+    session: AsyncSession, borrower_id: uuid.UUID, library_id: uuid.UUID
+) -> Borrower:
+    """Fetch a borrower with audit-trail user relationships eager-loaded (#261).
+
+    Same 404 semantics as :func:`get_borrower_or_404` but the returned row
+    has ``.created_by``, ``.anonymized_by`` and ``.merged_into_by`` populated
+    so the detail endpoint can render audit actor emails without a second
+    round-trip. Three LEFT JOINs at read time — acceptable on a single-row
+    fetch, deliberately not paid by the list endpoint.
+    """
+    result = await session.execute(
+        select(Borrower)
+        .where(Borrower.id == borrower_id, Borrower.library_id == library_id)
+        .options(
+            selectinload(Borrower.created_by),
+            selectinload(Borrower.anonymized_by),
+            selectinload(Borrower.merged_into_by),
+        )
     )
     borrower = result.scalar_one_or_none()
     if borrower is None:

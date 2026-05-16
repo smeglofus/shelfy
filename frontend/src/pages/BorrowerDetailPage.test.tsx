@@ -24,10 +24,10 @@ vi.mock('../lib/toast-store', () => ({
 }))
 
 import { anonymizeBorrower, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, updateBorrower } from '../lib/api'
-import type { Borrower, BorrowerLoanItem } from '../lib/types'
+import type { BorrowerDetail, BorrowerLoanItem } from '../lib/types'
 import { BorrowerDetailPage } from './BorrowerDetailPage'
 
-function makeBorrower(overrides: Partial<Borrower> = {}): Borrower {
+function makeBorrower(overrides: Partial<BorrowerDetail> = {}): BorrowerDetail {
   return {
     id: 'b-alice',
     name: 'Alice Liddell',
@@ -37,6 +37,12 @@ function makeBorrower(overrides: Partial<Borrower> = {}): Borrower {
     created_by_user_id: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
+    // #261: detail-only resolved emails. Defaulted to null so legacy-row
+    // tests don't need to set them; populate via ``overrides`` when testing
+    // the audit footer.
+    created_by_email: null,
+    anonymized_by_email: null,
+    merged_into_by_email: null,
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-01T00:00:00Z',
     ...overrides,
@@ -436,5 +442,100 @@ describe('BorrowerDetailPage', () => {
       expect(screen.queryByText('borrowers.anonymize_irreversible')).not.toBeInTheDocument()
     })
     expect(anonymizeBorrower).not.toHaveBeenCalled()
+  })
+
+  // ── Audit footer (#261) ─────────────────────────────────────────────────
+  //
+  // The i18n test mock (src/test/setup.ts) returns bare keys and does NOT
+  // run param interpolation, so these tests assert on testid presence
+  // rather than the interpolated email/date strings. The interpolation
+  // itself is exercised by the live i18next runtime in e2e.
+
+  it('hides the audit footer entirely when every audit FK is null (legacy row)', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    await screen.findByText('Alice Liddell')
+    expect(screen.queryByTestId('borrower-audit-footer')).not.toBeInTheDocument()
+  })
+
+  it('renders the "created by …" line when the creator is set', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        created_by_user_id: 'u-owner',
+        created_by_email: 'owner@example.com',
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByTestId('borrower-audit-footer')).toBeInTheDocument()
+    expect(screen.getByTestId('audit-created-by')).toBeInTheDocument()
+    // The other two lines stay hidden because their columns are NULL.
+    expect(screen.queryByTestId('audit-anonymized-by')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('audit-merged-into-by')).not.toBeInTheDocument()
+  })
+
+  it('renders all three audit lines for a borrower with full audit history', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        name: 'Deleted borrower',
+        contact: null,
+        notes: null,
+        anonymized_at: '2026-05-07T00:00:00Z',
+        created_by_user_id: 'u-owner',
+        created_by_email: 'owner@example.com',
+        anonymized_by_user_id: 'u-editor-b',
+        anonymized_by_email: 'editor-b@example.com',
+        merged_into_by_user_id: 'u-editor-a',
+        merged_into_by_email: 'editor-a@example.com',
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    await screen.findByTestId('borrower-audit-footer')
+    expect(screen.getByTestId('audit-created-by')).toBeInTheDocument()
+    expect(screen.getByTestId('audit-anonymized-by')).toBeInTheDocument()
+    expect(screen.getByTestId('audit-merged-into-by')).toBeInTheDocument()
+  })
+
+  it('still renders the line when the actor user_id is set but the email is null', async () => {
+    // ondelete=SET NULL nulls both column and email in the normal case, but
+    // if a partial state ever shipped (transient backend bug, schema drift),
+    // the section must still render — the UI falls back to a localized
+    // "unknown user" label via the audit_actor_unknown key.
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        created_by_user_id: 'u-vanished',
+        created_by_email: null,
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByTestId('audit-created-by')).toBeInTheDocument()
+  })
+
+  it('does not render the anonymized-by line when anonymized_at is unset (mid-state safety)', async () => {
+    // The anonymized line is gated on BOTH the user_id AND the timestamp.
+    // A row with user_id set but anonymized_at NULL should never happen
+    // (services always stamp both together) — but if it does, the line stays
+    // hidden so the user isn't shown "anonymized by X on —".
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        created_by_user_id: 'u-owner',
+        created_by_email: 'owner@example.com',
+        anonymized_by_user_id: 'u-editor',
+        anonymized_by_email: 'editor@example.com',
+        anonymized_at: null,
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    await screen.findByTestId('borrower-audit-footer')
+    expect(screen.queryByTestId('audit-anonymized-by')).not.toBeInTheDocument()
   })
 })
