@@ -385,6 +385,19 @@ async def test_detail_endpoint_returns_404_for_unknown_borrower(
     assert resp.status_code == 404
 
 
+def test_normalize_name_handles_none_input() -> None:
+    """``_normalize_name`` is called by ``link_loans_to_borrowers`` which
+    always passes a non-null ``loan.borrower_name`` (the column is
+    ``Mapped[str]``), so the ``None`` branch sits unreached in production.
+    Pin it with a direct unit test — protects the contract for any
+    future caller that legitimately needs to normalize a nullable
+    string."""
+    from app.services.borrower import _normalize_name
+
+    assert _normalize_name(None) == ""
+    assert _normalize_name("  alice   liddell  ") == "alice liddell"
+
+
 @pytest.mark.asyncio
 async def test_patch_borrower_updates_contact_without_touching_audit_columns(
     test_session: AsyncSession,
