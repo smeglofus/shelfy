@@ -386,6 +386,45 @@ async def test_detail_endpoint_returns_404_for_unknown_borrower(
 
 
 @pytest.mark.asyncio
+async def test_patch_borrower_updates_contact_without_touching_audit_columns(
+    test_session: AsyncSession,
+) -> None:
+    """``PATCH /api/v1/borrowers/{id}`` is the editor's "fix a typo" path —
+    it must update non-identity fields (contact / notes) without resetting
+    or stamping any of the audit-trail columns. Previously had no direct
+    API-level coverage in the test suite, surfacing as a hole during the
+    #261 coverage push."""
+    owner, lib = await _seed_user_with_library(test_session)
+    borrower = Borrower(
+        library_id=lib.id,
+        name="Alice",
+        contact="old@example.com",
+        created_by_user_id=owner.id,
+    )
+    test_session.add(borrower)
+    await test_session.commit()
+    await test_session.refresh(borrower)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.patch(
+            f"/api/v1/borrowers/{borrower.id}",
+            json={"contact": "new@example.com"},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["contact"] == "new@example.com"
+    assert body["name"] == "Alice"
+    # Audit columns survive a PATCH untouched — the editor is fixing
+    # contact data, not performing an identity-touching mutation.
+    assert body["created_by_user_id"] == str(owner.id)
+    assert body["anonymized_by_user_id"] is None
+    assert body["merged_into_by_user_id"] is None
+
+
+@pytest.mark.asyncio
 async def test_detail_endpoint_returns_404_for_cross_library_borrower(
     test_session: AsyncSession,
 ) -> None:
