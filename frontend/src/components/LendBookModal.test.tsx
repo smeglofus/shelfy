@@ -170,7 +170,54 @@ describe('LendBookModal', () => {
     expect(payload.borrower_id).toBeUndefined()
   })
 
-  it('ambiguous name (two borrowers, same name) falls back to legacy flow', async () => {
+  it('ambiguous name (two borrowers, same name) shows a disambiguation list, not the unambiguous-match hint', async () => {
+    mockBorrowersList([
+      makeBorrower({ id: 'b1', name: 'John Smith', contact: 'a@x.com' }),
+      makeBorrower({ id: 'b2', name: 'John Smith', contact: 'b@x.com' }),
+    ])
+    renderModal()
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText('loans.borrower_name'), 'John Smith')
+
+    // The single-match hint stays hidden until the user picks.
+    expect(screen.queryByTestId('borrower-existing-match')).not.toBeInTheDocument()
+
+    // The disambiguation panel lists every candidate (#250).
+    const panel = await screen.findByTestId('borrower-disambiguation')
+    expect(panel).toBeInTheDocument()
+    expect(screen.getByTestId('borrower-disambiguation-b1')).toBeInTheDocument()
+    expect(screen.getByTestId('borrower-disambiguation-b2')).toBeInTheDocument()
+  })
+
+  it('ambiguous name without an explicit pick still falls back to the legacy typed-name flow on submit', async () => {
+    // The disambiguation panel is advisory — the user remains free to ignore
+    // it and create a new borrower row (e.g. their typed Alice really is a
+    // different person than either listed Alice). This preserves the
+    // create-anyway escape hatch documented in the LendBookModal comments.
+    mockBorrowersList([
+      makeBorrower({ id: 'b1', name: 'John Smith', contact: 'a@x.com' }),
+      makeBorrower({ id: 'b2', name: 'John Smith', contact: 'b@x.com' }),
+    ])
+    vi.mocked(createLoan).mockResolvedValue(makeLoan())
+    renderModal()
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText('loans.borrower_name'), 'John Smith')
+    expect(await screen.findByTestId('borrower-disambiguation')).toBeInTheDocument()
+
+    // Submit without picking → typed-name flow.
+    await user.click(screen.getByRole('button', { name: 'loans.lend_submit' }))
+
+    await waitFor(() => expect(createLoan).toHaveBeenCalledTimes(1))
+    const payload = vi.mocked(createLoan).mock.calls[0][1]
+    expect(payload).toMatchObject({ borrower_name: 'John Smith' })
+    expect(payload.borrower_id).toBeUndefined()
+  })
+
+  it('clicking a disambiguation row pins the pick and submits with borrower_id', async () => {
     mockBorrowersList([
       makeBorrower({ id: 'b1', name: 'John Smith', contact: 'a@x.com' }),
       makeBorrower({ id: 'b2', name: 'John Smith', contact: 'b@x.com' }),
@@ -182,14 +229,50 @@ describe('LendBookModal', () => {
     const user = userEvent.setup()
     await user.type(screen.getByPlaceholderText('loans.borrower_name'), 'John Smith')
 
-    expect(screen.queryByTestId('borrower-existing-match')).not.toBeInTheDocument()
+    // Pick the second candidate.
+    await user.click(await screen.findByTestId('borrower-disambiguation-b2'))
+
+    // Disambiguation hides, single-match hint appears in its place.
+    await waitFor(() => {
+      expect(screen.queryByTestId('borrower-disambiguation')).not.toBeInTheDocument()
+      expect(screen.getByTestId('borrower-existing-match')).toBeInTheDocument()
+    })
 
     await user.click(screen.getByRole('button', { name: 'loans.lend_submit' }))
 
     await waitFor(() => expect(createLoan).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(createLoan).mock.calls[0][1]
-    expect(payload).toMatchObject({ borrower_name: 'John Smith' })
-    expect(payload.borrower_id).toBeUndefined()
+    expect(payload).toMatchObject({ borrower_id: 'b2' })
+    expect(payload).not.toHaveProperty('borrower_name')
+  })
+
+  it('retyping a different name after a pick clears the pick (disambiguation re-shows if still ambiguous)', async () => {
+    mockBorrowersList([
+      makeBorrower({ id: 'b1', name: 'John Smith', contact: 'a@x.com' }),
+      makeBorrower({ id: 'b2', name: 'John Smith', contact: 'b@x.com' }),
+      makeBorrower({ id: 'b3', name: 'Jane Doe', contact: null }),
+    ])
+    renderModal()
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    const nameInput = screen.getByPlaceholderText('loans.borrower_name')
+
+    await user.type(nameInput, 'John Smith')
+    await user.click(await screen.findByTestId('borrower-disambiguation-b1'))
+    expect(screen.getByTestId('borrower-existing-match')).toBeInTheDocument()
+
+    // Switch to a different name — the pinned pick should drop.
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Jane Doe')
+
+    await waitFor(() => {
+      // Jane is unique → unambiguous-match hint applies, but the cached pick
+      // for the John id must not leak into the new selection.
+      const existing = screen.queryByTestId('borrower-existing-match')
+      expect(existing).toBeInTheDocument()
+      expect(existing?.textContent ?? '').not.toContain('a@x.com')
+    })
   })
 
   it('still works when there are no existing borrowers (preserves prior UX)', async () => {
