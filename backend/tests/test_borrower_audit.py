@@ -271,8 +271,10 @@ async def test_detail_endpoint_resolves_all_three_audit_emails(
     """When a borrower has gone through create → merge → anonymize by
     different editors, all three resolver fields point at the right users."""
     _owner, lib = await _seed_user_with_library(test_session)
-    editor_a = await _add_editor(test_session, lib.id, "editor-a@example.com")
-    editor_b = await _add_editor(test_session, lib.id, "editor-b@example.com")
+    # Seed two editors with logins; we identify them later by their email
+    # in the resolver assertions, so we don't need the User return values.
+    await _add_editor(test_session, lib.id, "editor-a@example.com")
+    await _add_editor(test_session, lib.id, "editor-b@example.com")
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         owner_headers = await _login(client, "owner@example.com")
@@ -364,3 +366,41 @@ async def test_list_endpoint_does_not_include_resolved_emails(
     assert "created_by_email" not in item
     assert "anonymized_by_email" not in item
     assert "merged_into_by_email" not in item
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_returns_404_for_unknown_borrower(
+    test_session: AsyncSession,
+) -> None:
+    """Missing detail-id path through ``get_borrower_detail_or_404`` — exercises
+    the 404 branch added in #261. Without this the new function's
+    ``raise HTTPException`` line stays uncovered."""
+    await _seed_user_with_library(test_session)
+    bogus = uuid.uuid4()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.get(f"/api/v1/borrowers/{bogus}", headers=headers)
+
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_returns_404_for_cross_library_borrower(
+    test_session: AsyncSession,
+) -> None:
+    """A borrower that exists but lives in a different library is reported
+    as 404 — same path as a truly missing id. Confirms the library scope
+    is enforced on the new detail endpoint, mirroring the contract of
+    ``get_borrower_or_404`` it parallels."""
+    _, _ = await _seed_user_with_library(test_session, "own@example.com")
+    _, foreign_lib = await _seed_user_with_library(test_session, "foreign@example.com")
+    foreign = Borrower(library_id=foreign_lib.id, name="Foreign borrower")
+    test_session.add(foreign)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        own_headers = await _login(client, "own@example.com")
+        resp = await client.get(f"/api/v1/borrowers/{foreign.id}", headers=own_headers)
+
+    assert resp.status_code == 404
