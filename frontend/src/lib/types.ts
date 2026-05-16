@@ -47,6 +47,15 @@ export interface Borrower {
   updated_at: string
 }
 
+/** Detail-page borrower (#261). Adds resolved user emails for each of
+ *  the audit-trail FKs. Only shipped by ``GET /api/v1/borrowers/{id}``;
+ *  list rows stay on the cheap ``Borrower`` shape (no extra JOINs). */
+export interface BorrowerDetail extends Borrower {
+  created_by_email: string | null
+  anonymized_by_email: string | null
+  merged_into_by_email: string | null
+}
+
 export interface BorrowerListItem extends Borrower {
   active_loans: number
   total_loans: number

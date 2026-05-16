@@ -2032,7 +2032,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BorrowerResponse"
+                  "$ref": "#/components/schemas/BorrowerDetailResponse"
                 }
               }
             }
@@ -4679,6 +4679,145 @@
           "name"
         ],
         "title": "BorrowerCreate"
+      },
+      "BorrowerDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "anonymized_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized At"
+          },
+          "created_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By User Id"
+          },
+          "anonymized_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized By User Id"
+          },
+          "merged_into_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "created_by_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Email"
+          },
+          "anonymized_by_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized By Email"
+          },
+          "merged_into_by_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into By Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "contact",
+          "notes",
+          "anonymized_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BorrowerDetailResponse",
+        "description": "Borrower detail response with audit actors resolved to user emails (#261).\n\nUsed only by ``GET /api/v1/borrowers/{borrower_id}`` to avoid paying the\ncost of 3 extra JOINs on the cheap list endpoint. Each field is the\nresolved email of the user pointed to by the corresponding ``*_user_id``\ncolumn, or ``None`` when the column is NULL (legacy rows, deleted users,\nor actions performed without an authenticated user context)."
       },
       "BorrowerListItem": {
         "properties": {

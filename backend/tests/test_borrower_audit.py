@@ -228,3 +228,231 @@ async def test_audit_fields_are_null_for_legacy_rows(test_session: AsyncSession)
     assert body["created_by_user_id"] is None
     assert body["anonymized_by_user_id"] is None
     assert body["merged_into_by_user_id"] is None
+    # #261: legacy rows ship null *_email resolvers too.
+    assert body["created_by_email"] is None
+    assert body["anonymized_by_email"] is None
+    assert body["merged_into_by_email"] is None
+
+
+# ── #261: detail endpoint resolves audit user IDs to emails ───────────────────
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_resolves_created_by_email(
+    test_session: AsyncSession,
+) -> None:
+    """Creating a borrower then fetching the detail page surfaces the
+    creator's email under ``created_by_email`` (#261)."""
+    owner, _lib = await _seed_user_with_library(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        created = await client.post(
+            "/api/v1/borrowers", json={"name": "Alice"}, headers=headers
+        )
+        assert created.status_code == 201
+        borrower_id = created.json()["id"]
+
+        detail = await client.get(f"/api/v1/borrowers/{borrower_id}", headers=headers)
+
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["created_by_user_id"] == str(owner.id)
+    assert body["created_by_email"] == "owner@example.com"
+    # The other two actors haven't acted yet — both columns and resolvers null.
+    assert body["anonymized_by_email"] is None
+    assert body["merged_into_by_email"] is None
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_resolves_all_three_audit_emails(
+    test_session: AsyncSession,
+) -> None:
+    """When a borrower has gone through create → merge → anonymize by
+    different editors, all three resolver fields point at the right users."""
+    _owner, lib = await _seed_user_with_library(test_session)
+    # Seed two editors with logins; we identify them later by their email
+    # in the resolver assertions, so we don't need the User return values.
+    await _add_editor(test_session, lib.id, "editor-a@example.com")
+    await _add_editor(test_session, lib.id, "editor-b@example.com")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        owner_headers = await _login(client, "owner@example.com")
+        # Owner creates a source + target.
+        target = await client.post(
+            "/api/v1/borrowers", json={"name": "Alice Liddell"}, headers=owner_headers
+        )
+        source = await client.post(
+            "/api/v1/borrowers", json={"name": "Alice (dup)"}, headers=owner_headers
+        )
+        target_id = target.json()["id"]
+        source_id = source.json()["id"]
+
+        # Editor A merges source into target.
+        editor_a_headers = await _login(client, "editor-a@example.com")
+        merged = await client.post(
+            f"/api/v1/borrowers/{target_id}/merge",
+            json={"source_id": source_id},
+            headers=editor_a_headers,
+        )
+        assert merged.status_code == 200
+
+        # Editor B anonymizes the merged target.
+        editor_b_headers = await _login(client, "editor-b@example.com")
+        anonymized = await client.post(
+            f"/api/v1/borrowers/{target_id}/anonymize", headers=editor_b_headers
+        )
+        assert anonymized.status_code == 200
+
+        detail = await client.get(
+            f"/api/v1/borrowers/{target_id}", headers=owner_headers
+        )
+
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["created_by_email"] == "owner@example.com"
+    assert body["merged_into_by_email"] == "editor-a@example.com"
+    assert body["anonymized_by_email"] == "editor-b@example.com"
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_resolves_null_when_user_deleted(
+    test_session: AsyncSession,
+) -> None:
+    """``ondelete=SET NULL`` on the FK means an actor who later deletes their
+    account leaves the audit columns at NULL — the resolver must mirror that
+    by returning ``None`` for the email (no fallback string, no exception)."""
+    _, lib = await _seed_user_with_library(test_session)
+    # Simulate a row whose creator's account was deleted: column is NULL.
+    borrower = Borrower(
+        library_id=lib.id, name="Orphan", created_by_user_id=None
+    )
+    test_session.add(borrower)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        detail = await client.get(f"/api/v1/borrowers/{borrower.id}", headers=headers)
+
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["created_by_user_id"] is None
+    assert body["created_by_email"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_endpoint_does_not_include_resolved_emails(
+    test_session: AsyncSession,
+) -> None:
+    """The list endpoint stays on ``BorrowerResponse`` (no audit resolver
+    fields). Confirms the separation between the cheap list path and the
+    detail path — list must not pay for 3 JOINs per row."""
+    owner, _lib = await _seed_user_with_library(test_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        await client.post(
+            "/api/v1/borrowers", json={"name": "Alice"}, headers=headers
+        )
+        listing = await client.get("/api/v1/borrowers", headers=headers)
+
+    assert listing.status_code == 200
+    items = listing.json()["items"]
+    assert len(items) == 1
+    item = items[0]
+    # ID columns survive into list (cheap, no JOIN).
+    assert item["created_by_user_id"] == str(owner.id)
+    # Resolved-email fields are NOT shipped on list rows.
+    assert "created_by_email" not in item
+    assert "anonymized_by_email" not in item
+    assert "merged_into_by_email" not in item
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_returns_404_for_unknown_borrower(
+    test_session: AsyncSession,
+) -> None:
+    """Missing detail-id path through ``get_borrower_detail_or_404`` — exercises
+    the 404 branch added in #261. Without this the new function's
+    ``raise HTTPException`` line stays uncovered."""
+    await _seed_user_with_library(test_session)
+    bogus = uuid.uuid4()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.get(f"/api/v1/borrowers/{bogus}", headers=headers)
+
+    assert resp.status_code == 404
+
+
+def test_normalize_name_handles_none_input() -> None:
+    """``_normalize_name`` is called by ``link_loans_to_borrowers`` which
+    always passes a non-null ``loan.borrower_name`` (the column is
+    ``Mapped[str]``), so the ``None`` branch sits unreached in production.
+    Pin it with a direct unit test — protects the contract for any
+    future caller that legitimately needs to normalize a nullable
+    string."""
+    from app.services.borrower import _normalize_name
+
+    assert _normalize_name(None) == ""
+    assert _normalize_name("  alice   liddell  ") == "alice liddell"
+
+
+@pytest.mark.asyncio
+async def test_patch_borrower_updates_contact_without_touching_audit_columns(
+    test_session: AsyncSession,
+) -> None:
+    """``PATCH /api/v1/borrowers/{id}`` is the editor's "fix a typo" path —
+    it must update non-identity fields (contact / notes) without resetting
+    or stamping any of the audit-trail columns. Previously had no direct
+    API-level coverage in the test suite, surfacing as a hole during the
+    #261 coverage push."""
+    owner, lib = await _seed_user_with_library(test_session)
+    borrower = Borrower(
+        library_id=lib.id,
+        name="Alice",
+        contact="old@example.com",
+        created_by_user_id=owner.id,
+    )
+    test_session.add(borrower)
+    await test_session.commit()
+    await test_session.refresh(borrower)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client, "owner@example.com")
+        resp = await client.patch(
+            f"/api/v1/borrowers/{borrower.id}",
+            json={"contact": "new@example.com"},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["contact"] == "new@example.com"
+    assert body["name"] == "Alice"
+    # Audit columns survive a PATCH untouched — the editor is fixing
+    # contact data, not performing an identity-touching mutation.
+    assert body["created_by_user_id"] == str(owner.id)
+    assert body["anonymized_by_user_id"] is None
+    assert body["merged_into_by_user_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_detail_endpoint_returns_404_for_cross_library_borrower(
+    test_session: AsyncSession,
+) -> None:
+    """A borrower that exists but lives in a different library is reported
+    as 404 — same path as a truly missing id. Confirms the library scope
+    is enforced on the new detail endpoint, mirroring the contract of
+    ``get_borrower_or_404`` it parallels."""
+    _, _ = await _seed_user_with_library(test_session, "own@example.com")
+    _, foreign_lib = await _seed_user_with_library(test_session, "foreign@example.com")
+    foreign = Borrower(library_id=foreign_lib.id, name="Foreign borrower")
+    test_session.add(foreign)
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        own_headers = await _login(client, "own@example.com")
+        resp = await client.get(f"/api/v1/borrowers/{foreign.id}", headers=own_headers)
+
+    assert resp.status_code == 404

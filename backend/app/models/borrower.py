@@ -11,6 +11,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.loan import Loan
+    from app.models.user import User
 
 
 class Borrower(Base):
@@ -53,3 +54,28 @@ class Borrower(Base):
     )
 
     loans: Mapped[list[Loan]] = relationship(back_populates="borrower")
+
+    # ── Audit-trail relationships (read-only) ────────────────────────────────
+    # ``selectinload``-able resolvers for ``BorrowerDetailResponse`` (#261).
+    # ``viewonly=True`` because writes go through the *_user_id columns
+    # directly in services.borrower; ``lazy="raise"`` keeps the list view
+    # cheap by failing loud if anyone tries to lazy-load these without
+    # eager-loading them first.
+    created_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[created_by_user_id],
+        viewonly=True,
+        lazy="raise",
+    )
+    anonymized_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[anonymized_by_user_id],
+        viewonly=True,
+        lazy="raise",
+    )
+    merged_into_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[merged_into_by_user_id],
+        viewonly=True,
+        lazy="raise",
+    )

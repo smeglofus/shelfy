@@ -11,6 +11,7 @@ from app.schemas.borrower import (
     BorrowerBulkAnonymizeRequest,
     BorrowerBulkAnonymizeResponse,
     BorrowerCreate,
+    BorrowerDetailResponse,
     BorrowerListItem,
     BorrowerListResponse,
     BorrowerLoanItem,
@@ -24,7 +25,7 @@ from app.services.borrower import (
     bulk_anonymize_borrowers,
     bulk_anonymize_borrowers_by_inactivity,
     create_borrower,
-    get_borrower_or_404,
+    get_borrower_detail_or_404,
     list_borrowers_with_stats,
     list_loans_for_borrower,
     merge_borrowers,
@@ -75,14 +76,27 @@ async def create_borrower_endpoint(
     return BorrowerResponse.model_validate(borrower)
 
 
-@router.get("/{borrower_id}", response_model=BorrowerResponse)
+@router.get("/{borrower_id}", response_model=BorrowerDetailResponse)
 async def read_borrower(
     borrower_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(get_library_id),
-) -> BorrowerResponse:
-    borrower = await get_borrower_or_404(session, borrower_id, library_id)
-    return BorrowerResponse.model_validate(borrower)
+) -> BorrowerDetailResponse:
+    # Detail endpoint enriches the base response with resolved audit-actor
+    # emails (#261). The three LEFT JOINs live in
+    # ``get_borrower_detail_or_404`` and are deliberately *not* in the cheap
+    # list endpoint.
+    borrower = await get_borrower_detail_or_404(session, borrower_id, library_id)
+    return BorrowerDetailResponse(
+        **BorrowerResponse.model_validate(borrower).model_dump(),
+        created_by_email=borrower.created_by.email if borrower.created_by else None,
+        anonymized_by_email=(
+            borrower.anonymized_by.email if borrower.anonymized_by else None
+        ),
+        merged_into_by_email=(
+            borrower.merged_into_by.email if borrower.merged_into_by else None
+        ),
+    )
 
 
 @router.patch("/{borrower_id}", response_model=BorrowerResponse)

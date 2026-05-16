@@ -41,6 +41,21 @@ class BorrowerResponse(BaseModel):
     updated_at: datetime
 
 
+class BorrowerDetailResponse(BorrowerResponse):
+    """Borrower detail response with audit actors resolved to user emails (#261).
+
+    Used only by ``GET /api/v1/borrowers/{borrower_id}`` to avoid paying the
+    cost of 3 extra JOINs on the cheap list endpoint. Each field is the
+    resolved email of the user pointed to by the corresponding ``*_user_id``
+    column, or ``None`` when the column is NULL (legacy rows, deleted users,
+    or actions performed without an authenticated user context).
+    """
+
+    created_by_email: str | None = None
+    anonymized_by_email: str | None = None
+    merged_into_by_email: str | None = None
+
+
 class BorrowerListItem(BorrowerResponse):
     """Borrower record enriched with lending-activity stats for the overview page."""
 

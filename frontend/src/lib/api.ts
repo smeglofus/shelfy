@@ -8,6 +8,7 @@ import type {
   BillingStatus,
   Borrower,
   BorrowerCreateRequest,
+  BorrowerDetail,
   BorrowerListParams,
   BorrowerListResponse,
   BorrowerLoanItem,
@@ -496,8 +497,11 @@ export async function listBorrowers(params: BorrowerListParams = {}): Promise<Bo
   return response.data
 }
 
-export async function getBorrower(id: string): Promise<Borrower> {
-  const response = await apiClient.get<Borrower>(`/api/v1/borrowers/${id}`)
+export async function getBorrower(id: string): Promise<BorrowerDetail> {
+  // Detail endpoint enriches the base shape with resolved audit-actor
+  // emails (#261). Mutation endpoints below still return ``Borrower`` —
+  // the audit footer re-fetches via this query on success.
+  const response = await apiClient.get<BorrowerDetail>(`/api/v1/borrowers/${id}`)
   return response.data
 }
 
