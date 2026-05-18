@@ -34,8 +34,12 @@ from app.models.loan import Loan
 from app.models.user import User
 from app.services.borrower import (
     ANONYMIZE_PENDING_TTL,
+    anonymize_borrower,
+    bulk_anonymize_borrowers,
     finalize_due_pending_anonymizations,
+    restore_borrower,
 )
+from fastapi import HTTPException
 
 
 @pytest.fixture
@@ -394,6 +398,168 @@ async def test_worker_is_idempotent(test_session: AsyncSession) -> None:
 
 
 # ── Retention bulk respects pending state ─────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_service_anonymize_borrower_pending_mode_direct(
+    test_session: AsyncSession,
+) -> None:
+    """Direct call to ``anonymize_borrower(immediate=False)`` — bypasses the
+    API layer so coverage instrumentation traces the service body even
+    when the ASGI test transport does odd things with async frames."""
+    _, lib = await _seed_owner_with_library(test_session)
+    borrower = _seeded_borrower(lib.id)
+    test_session.add(borrower)
+    await test_session.commit()
+
+    returned = await anonymize_borrower(test_session, borrower.id, lib.id)
+    assert returned.anonymized_at is None
+    assert returned.pending_anonymization_until is not None
+    assert returned.name == "Alice Liddell"
+
+
+@pytest.mark.asyncio
+async def test_service_anonymize_borrower_immediate_mode_direct(
+    test_session: AsyncSession,
+) -> None:
+    _, lib = await _seed_owner_with_library(test_session)
+    borrower = _seeded_borrower(lib.id)
+    test_session.add(borrower)
+    await test_session.commit()
+
+    returned = await anonymize_borrower(
+        test_session, borrower.id, lib.id, immediate=True
+    )
+    assert returned.anonymized_at is not None
+    assert returned.pending_anonymization_until is None
+    assert returned.name == "Deleted borrower"
+
+
+@pytest.mark.asyncio
+async def test_service_anonymize_already_finalized_is_noop_direct(
+    test_session: AsyncSession,
+) -> None:
+    """Re-anonymizing an already-finalized row is a clean no-op — returns
+    the existing row, no state mutation, no exception."""
+    _, lib = await _seed_owner_with_library(test_session)
+    borrower = _seeded_borrower(lib.id)
+    test_session.add(borrower)
+    await test_session.flush()
+    await anonymize_borrower(test_session, borrower.id, lib.id, immediate=True)
+
+    returned = await anonymize_borrower(test_session, borrower.id, lib.id)
+    assert returned.anonymized_at is not None
+
+
+@pytest.mark.asyncio
+async def test_service_restore_borrower_direct(test_session: AsyncSession) -> None:
+    _, lib = await _seed_owner_with_library(test_session)
+    borrower = _seeded_borrower(lib.id)
+    test_session.add(borrower)
+    await test_session.flush()
+    await anonymize_borrower(test_session, borrower.id, lib.id)
+
+    restored = await restore_borrower(test_session, borrower.id, lib.id)
+    assert restored.pending_anonymization_until is None
+    assert restored.anonymized_by_user_id is None
+
+
+@pytest.mark.asyncio
+async def test_service_restore_finalized_raises_422_direct(
+    test_session: AsyncSession,
+) -> None:
+    _, lib = await _seed_owner_with_library(test_session)
+    borrower = _seeded_borrower(lib.id)
+    test_session.add(borrower)
+    await test_session.flush()
+    await anonymize_borrower(test_session, borrower.id, lib.id, immediate=True)
+
+    with pytest.raises(HTTPException) as ei:
+        await restore_borrower(test_session, borrower.id, lib.id)
+    assert ei.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_service_restore_active_raises_422_direct(
+    test_session: AsyncSession,
+) -> None:
+    _, lib = await _seed_owner_with_library(test_session)
+    borrower = _seeded_borrower(lib.id)
+    test_session.add(borrower)
+    await test_session.commit()
+
+    with pytest.raises(HTTPException) as ei:
+        await restore_borrower(test_session, borrower.id, lib.id)
+    assert ei.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_service_bulk_anonymize_pending_default_direct(
+    test_session: AsyncSession,
+) -> None:
+    """Direct service-level bulk anonymize in pending mode — each row gets
+    a deadline, none are immediately wiped, the cascade UPDATE on Loan
+    rows is skipped (no rows finalized, no work to cascade)."""
+    _, lib = await _seed_owner_with_library(test_session)
+    b1 = Borrower(library_id=lib.id, name="Alice")
+    b2 = Borrower(library_id=lib.id, name="Bob")
+    test_session.add_all([b1, b2])
+    await test_session.commit()
+
+    affected = await bulk_anonymize_borrowers(test_session, [b1.id, b2.id], lib.id)
+    assert affected == 2
+    refreshed = (await test_session.execute(select(Borrower))).scalars().all()
+    assert all(r.pending_anonymization_until is not None for r in refreshed)
+    assert all(r.anonymized_at is None for r in refreshed)
+
+
+@pytest.mark.asyncio
+async def test_service_bulk_anonymize_immediate_direct(
+    test_session: AsyncSession,
+) -> None:
+    _, lib = await _seed_owner_with_library(test_session)
+    b1 = Borrower(library_id=lib.id, name="Alice")
+    b2 = Borrower(library_id=lib.id, name="Bob")
+    test_session.add_all([b1, b2])
+    await test_session.commit()
+
+    affected = await bulk_anonymize_borrowers(
+        test_session, [b1.id, b2.id], lib.id, immediate=True
+    )
+    assert affected == 2
+    refreshed = (await test_session.execute(select(Borrower))).scalars().all()
+    assert all(r.anonymized_at is not None for r in refreshed)
+    assert all(r.pending_anonymization_until is None for r in refreshed)
+
+
+@pytest.mark.asyncio
+async def test_service_bulk_anonymize_skips_already_pending_rows_direct(
+    test_session: AsyncSession,
+) -> None:
+    """A row already in the pending state is not double-counted and its
+    deadline is preserved (idempotent)."""
+    _, lib = await _seed_owner_with_library(test_session)
+    pending = Borrower(
+        library_id=lib.id,
+        name="Pending Alice",
+        pending_anonymization_until=datetime.now(timezone.utc) + timedelta(days=10),
+    )
+    fresh = Borrower(library_id=lib.id, name="Active Bob")
+    test_session.add_all([pending, fresh])
+    await test_session.commit()
+    original_deadline = pending.pending_anonymization_until
+
+    affected = await bulk_anonymize_borrowers(
+        test_session, [pending.id, fresh.id], lib.id
+    )
+    # Only the fresh one was newly scheduled; the pending one was skipped.
+    assert affected == 1
+    refreshed = {
+        row.id: row
+        for row in (await test_session.execute(select(Borrower))).scalars().all()
+    }
+    assert refreshed[pending.id].pending_anonymization_until == original_deadline
+    assert refreshed[fresh.id].pending_anonymization_until is not None
 
 
 @pytest.mark.asyncio
