@@ -50,6 +50,28 @@ function mockBorrowersList(items: BorrowerListItem[]): void {
   })
 }
 
+/**
+ * Mock that returns a different subset based on the ``search`` param —
+ * simulates the server-side ``ILIKE %search%`` filter. Used to exercise the
+ * #250 part-2 fix where the typed name is sent to the server instead of
+ * the modal client-side-matching against a fixed first-page slice.
+ */
+function mockServerSideSearch(allBorrowers: BorrowerListItem[]): void {
+  vi.mocked(listBorrowers).mockImplementation(async ({ search } = {}) => {
+    const query = search?.trim().toLowerCase() ?? ''
+    const filtered = query
+      ? allBorrowers.filter((b) => b.name.toLowerCase().includes(query))
+      : allBorrowers
+    const page = filtered.slice(0, 100) // server PAGE_SIZE_CAP
+    return {
+      total: filtered.length,
+      page: 1,
+      page_size: 100,
+      items: page,
+    }
+  })
+}
+
 function makeLoan(): Loan {
   return {
     id: 'loan-1',
@@ -329,5 +351,61 @@ describe('LendBookModal', () => {
 
     expect(await screen.findByText('loans.borrower_name_required')).toBeInTheDocument()
     expect(createLoan).not.toHaveBeenCalled()
+  })
+
+  // ── #250 part 2: server-side debounced search ─────────────────────────
+
+  it('sends the typed name to the server as a search query (debounced)', async () => {
+    mockServerSideSearch([
+      makeBorrower({ id: 'b-alice', name: 'Alice Liddell' }),
+      makeBorrower({ id: 'b-bob', name: 'Bob Builder' }),
+    ])
+    renderModal()
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText('loans.borrower_name'), 'Alice')
+
+    // After the debounce window elapses, the server is asked for borrowers
+    // matching the typed name. The most recent call carries the typed string
+    // in the ``search`` param — that's the contract that fixes the #250
+    // ">100 borrowers silent duplicate" gap.
+    await waitFor(() => {
+      const calls = vi.mocked(listBorrowers).mock.calls
+      const lastSearch = calls[calls.length - 1]?.[0]?.search
+      expect(lastSearch).toBe('Alice')
+    })
+  })
+
+  it('finds and links a borrower whose record lives beyond the first page (>100 borrowers)', async () => {
+    // Library of 150 borrowers; the one the user wants (id ``b-target``) sits
+    // at index 130 — well past the picker's 100-row page cap. The old
+    // "fetch first 100 once, match client-side" approach would silently fall
+    // back to typed-name and create a duplicate Borrower row. With
+    // server-side search the typed name finds them regardless of position.
+    const sea: BorrowerListItem[] = Array.from({ length: 150 }, (_, i) => {
+      const id = i === 130 ? 'b-target' : `b-${i}`
+      const name = i === 130 ? 'Zelda Page-Three' : `Filler ${i}`
+      return makeBorrower({ id, name, contact: i === 130 ? 'zelda@x.com' : null })
+    })
+    mockServerSideSearch(sea)
+    vi.mocked(createLoan).mockResolvedValue(makeLoan())
+    renderModal()
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText('loans.borrower_name'), 'Zelda Page-Three')
+
+    // The server-filtered result includes Zelda even though she would have
+    // been at index 130 in the unfiltered list. The matcher sees her and
+    // surfaces the single-match hint.
+    expect(await screen.findByTestId('borrower-existing-match')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'loans.lend_submit' }))
+
+    await waitFor(() => expect(createLoan).toHaveBeenCalledTimes(1))
+    const payload = vi.mocked(createLoan).mock.calls[0][1]
+    expect(payload).toMatchObject({ borrower_id: 'b-target' })
+    expect(payload).not.toHaveProperty('borrower_name')
   })
 })
