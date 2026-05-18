@@ -24,6 +24,7 @@ function makeBorrower(overrides: Partial<BorrowerListItem> = {}): BorrowerListIt
     notes: null,
     anonymized_at: null,
     created_by_user_id: null,
+    pending_anonymization_until: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
     created_at: '2026-05-01T00:00:00Z',

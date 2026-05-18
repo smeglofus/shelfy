@@ -254,7 +254,7 @@ async def test_merge_with_anonymized_source_returns_422(test_session: AsyncSessi
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         anon = await client.post(
-            f"/api/v1/borrowers/{source.id}/anonymize", headers=headers
+            f"/api/v1/borrowers/{source.id}/anonymize?immediate=true", headers=headers
         )
         assert anon.status_code == 200
 
@@ -277,7 +277,7 @@ async def test_merge_with_anonymized_target_returns_422(test_session: AsyncSessi
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        await client.post(f"/api/v1/borrowers/{target.id}/anonymize", headers=headers)
+        await client.post(f"/api/v1/borrowers/{target.id}/anonymize?immediate=true", headers=headers)
 
         resp = await client.post(
             f"/api/v1/borrowers/{target.id}/merge",

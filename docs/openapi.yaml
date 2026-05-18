@@ -2204,6 +2204,18 @@
         ],
         "parameters": [
           {
+            "name": "immediate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "DSAR / privacy bypass. When true, skips the 30-day pending window and wipes PII synchronously (#244).",
+              "default": false,
+              "title": "Immediate"
+            },
+            "description": "DSAR / privacy bypass. When true, skips the 30-day pending window and wipes PII synchronously (#244)."
+          },
+          {
             "name": "X-Library-Id",
             "in": "header",
             "required": false,
@@ -2269,6 +2281,18 @@
         ],
         "parameters": [
           {
+            "name": "immediate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "When true, skips the 30-day pending window and wipes PII synchronously for every eligible borrower (#244).",
+              "default": false,
+              "title": "Immediate"
+            },
+            "description": "When true, skips the 30-day pending window and wipes PII synchronously for every eligible borrower (#244)."
+          },
+          {
             "name": "X-Library-Id",
             "in": "header",
             "required": false,
@@ -2326,6 +2350,83 @@
         ],
         "summary": "Anonymize Borrower Endpoint",
         "operationId": "anonymize_borrower_endpoint_api_v1_borrowers__borrower_id__anonymize_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "borrower_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Borrower Id"
+            }
+          },
+          {
+            "name": "immediate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "DSAR / privacy bypass. When true, skips the 30-day pending window and wipes PII synchronously. Default behaviour (#244) schedules anonymization and leaves PII intact for the window — use POST /restore to cancel during it.",
+              "default": false,
+              "title": "Immediate"
+            },
+            "description": "DSAR / privacy bypass. When true, skips the 30-day pending window and wipes PII synchronously. Default behaviour (#244) schedules anonymization and leaves PII intact for the window — use POST /restore to cancel during it."
+          },
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/borrowers/{borrower_id}/restore": {
+      "post": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Restore Borrower Endpoint",
+        "description": "Cancel a pending anonymization (#244). Returns 422 if the borrower\nis already finalized (PII gone) or never scheduled.",
+        "operationId": "restore_borrower_endpoint_api_v1_borrowers__borrower_id__restore_post",
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -4726,6 +4827,18 @@
             ],
             "title": "Anonymized At"
           },
+          "pending_anonymization_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Anonymization Until"
+          },
           "created_by_user_id": {
             "anyOf": [
               {
@@ -4864,6 +4977,18 @@
               }
             ],
             "title": "Anonymized At"
+          },
+          "pending_anonymization_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Anonymization Until"
           },
           "created_by_user_id": {
             "anyOf": [
@@ -5135,6 +5260,18 @@
               }
             ],
             "title": "Anonymized At"
+          },
+          "pending_anonymization_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Anonymization Until"
           },
           "created_by_user_id": {
             "anyOf": [

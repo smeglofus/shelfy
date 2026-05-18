@@ -528,8 +528,32 @@ export async function mergeBorrowers(targetId: string, sourceId: string): Promis
   return response.data
 }
 
-export async function anonymizeBorrower(id: string): Promise<Borrower> {
-  const response = await apiClient.post<Borrower>(`/api/v1/borrowers/${id}/anonymize`)
+/**
+ * Anonymize a borrower (#244).
+ *
+ * Default (``immediate = false``): schedules anonymization with a 30-day
+ * pending window — PII stays intact, ``restoreBorrower`` is available
+ * until the worker finalizes. ``immediate = true`` is the DSAR / privacy
+ * bypass: skips the window and wipes PII synchronously.
+ */
+export async function anonymizeBorrower(
+  id: string,
+  options: { immediate?: boolean } = {},
+): Promise<Borrower> {
+  const response = await apiClient.post<Borrower>(
+    `/api/v1/borrowers/${id}/anonymize`,
+    undefined,
+    { params: options.immediate ? { immediate: true } : undefined },
+  )
+  return response.data
+}
+
+/**
+ * Cancel a pending anonymization (#244). 422 if the borrower is already
+ * finalized (PII gone) or never scheduled.
+ */
+export async function restoreBorrower(id: string): Promise<Borrower> {
+  const response = await apiClient.post<Borrower>(`/api/v1/borrowers/${id}/restore`)
   return response.data
 }
 

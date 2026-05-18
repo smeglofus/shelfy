@@ -546,7 +546,7 @@ async def test_create_loan_against_anonymized_borrower_returns_422(
         borrower_id = borrower_resp.json()["id"]
 
         anon_resp = await client.post(
-            f"/api/v1/borrowers/{borrower_id}/anonymize",
+            f"/api/v1/borrowers/{borrower_id}/anonymize?immediate=true",
             headers=headers,
         )
         assert anon_resp.status_code == 200

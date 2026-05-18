@@ -6,7 +6,7 @@ import { EditBorrowerModal } from '../components/EditBorrowerModal'
 import { EmptyShelfIcon, NoResultsIcon } from '../components/EmptyStateIcons'
 import { MergeBorrowerModal } from '../components/MergeBorrowerModal'
 import { Modal } from '../components/Modal'
-import { useAnonymizeBorrower, useBorrower, useBorrowerLoans } from '../hooks/useBorrowers'
+import { useAnonymizeBorrower, useBorrower, useBorrowerLoans, useRestoreBorrower } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
 import type { BorrowerLoanItem } from '../lib/types'
@@ -172,9 +172,13 @@ export function BorrowerDetailPage() {
   const borrowerQuery = useBorrower(borrowerId ?? '')
   const loansQuery = useBorrowerLoans(borrowerId ?? '')
   const anonymize = useAnonymizeBorrower()
+  const restore = useRestoreBorrower()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [mergeOpen, setMergeOpen] = useState(false)
+  // #244 DSAR bypass — when checked, the confirm modal sends
+  // ``immediate=true`` and we get the legacy hard-wipe behaviour.
+  const [anonymizeImmediate, setAnonymizeImmediate] = useState(false)
 
   const { active, returned } = useMemo(() => {
     const all = loansQuery.data ?? []
@@ -207,6 +211,7 @@ export function BorrowerDetailPage() {
 
   const borrower = borrowerQuery.data
   const isAnonymized = borrower.anonymized_at !== null
+  const isPending = !isAnonymized && borrower.pending_anonymization_until !== null
   const displayName = displayBorrowerName(borrower, t)
 
   return (
@@ -249,6 +254,22 @@ export function BorrowerDetailPage() {
               {t('borrowers.anonymized_hint')}
             </p>
           )}
+          {isPending && (
+            <p
+              data-testid="borrower-pending-anonymize-badge"
+              style={{
+                margin: '4px 0 0',
+                fontSize: 13,
+                color: 'var(--sh-yellow-text, #92400e)',
+                background: 'var(--sh-yellow-soft, #fffbe6)',
+                padding: '4px 8px',
+                borderRadius: 'var(--sh-radius-sm)',
+                display: 'inline-block',
+              }}
+            >
+              {t('borrowers.pending_anonymization_hint')}
+            </p>
+          )}
           {!isAnonymized && borrower.contact && (
             <p style={{ margin: '4px 0 0', color: 'var(--sh-text-muted)' }}>{borrower.contact}</p>
           )}
@@ -256,7 +277,22 @@ export function BorrowerDetailPage() {
             <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{borrower.notes}</p>
           )}
         </div>
-        {!isAnonymized && (
+        {isPending && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              data-testid="restore-button"
+              className="sh-btn-secondary"
+              disabled={restore.isPending}
+              onClick={() => restore.mutate(borrower.id)}
+            >
+              {restore.isPending
+                ? t('borrowers.restoring')
+                : t('borrowers.restore_button')}
+            </button>
+          </div>
+        )}
+        {!isAnonymized && !isPending && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -370,16 +406,48 @@ export function BorrowerDetailPage() {
           <div style={{ display: 'grid', gap: 12 }}>
             <h3 style={{ margin: 0 }}>{t('borrowers.anonymize_confirm_title')}</h3>
             <p style={{ margin: 0 }}>
-              {t('borrowers.anonymize_confirm_body', { name: displayName })}
+              {/* #244 — copy reflects the new 30-day soft-delete contract.
+                  The legacy "this cannot be undone" line only fires when
+                  the librarian explicitly opts in to the DSAR bypass. */}
+              {anonymizeImmediate
+                ? t('borrowers.anonymize_confirm_body_immediate', { name: displayName })
+                : t('borrowers.anonymize_confirm_body_pending', { name: displayName })}
             </p>
-            <p style={{ margin: 0, color: 'var(--sh-red)', fontWeight: 500 }}>
-              {t('borrowers.anonymize_irreversible')}
-            </p>
+            <label
+              style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'flex-start',
+                fontSize: 13,
+                color: 'var(--sh-text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="anonymize-immediate-checkbox"
+                checked={anonymizeImmediate}
+                onChange={(e) => setAnonymizeImmediate(e.target.checked)}
+                disabled={anonymize.isPending}
+              />
+              <span>{t('borrowers.anonymize_immediate_label')}</span>
+            </label>
+            {anonymizeImmediate && (
+              <p
+                data-testid="anonymize-irreversible-warning"
+                style={{ margin: 0, color: 'var(--sh-red)', fontWeight: 500 }}
+              >
+                {t('borrowers.anonymize_irreversible')}
+              </p>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
               <button
                 type="button"
                 className="sh-btn-secondary"
-                onClick={() => setConfirmOpen(false)}
+                onClick={() => {
+                  setConfirmOpen(false)
+                  setAnonymizeImmediate(false)
+                }}
                 disabled={anonymize.isPending}
               >
                 {t('common.cancel')}
@@ -392,9 +460,15 @@ export function BorrowerDetailPage() {
                 disabled={anonymize.isPending}
                 onClick={() => {
                   if (!borrower) return
-                  anonymize.mutate(borrower.id, {
-                    onSuccess: () => setConfirmOpen(false),
-                  })
+                  anonymize.mutate(
+                    { id: borrower.id, immediate: anonymizeImmediate },
+                    {
+                      onSuccess: () => {
+                        setConfirmOpen(false)
+                        setAnonymizeImmediate(false)
+                      },
+                    },
+                  )
                 }}
               >
                 {anonymize.isPending

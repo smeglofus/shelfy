@@ -8,3 +8,4 @@ Importing each task module registers its tasks and beat_schedule entries on cele
 from celery_app import celery_app  # noqa: F401 — re-export for Celery CLI
 import backup_tasks   # noqa: F401 — pg_dump, verify_restore, stripe_events cleanup
 import email_tasks    # noqa: F401 — trial reminders, limit-approaching notifications
+import borrower_maintenance_tasks  # noqa: F401 — finalize pending anonymizations (#244)
