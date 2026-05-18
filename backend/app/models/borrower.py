@@ -28,6 +28,14 @@ class Borrower(Base):
     contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
     anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Pending-anonymization timestamp (#244). When set, the borrower is in
+    # the "scheduled for anonymization" state — PII stays intact and a
+    # periodic worker finalizes the row once ``now() > pending_anonymization_until``.
+    # Mutually exclusive with ``anonymized_at`` (active → pending → anonymized).
+    # NULL on rows that are either active or already finalized.
+    pending_anonymization_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     # Audit trail (#245): who performed identity-touching mutations. All
     # nullable — old rows from before this migration stay NULL, as do rows
     # whose actor was deleted (FK ondelete=SET NULL).

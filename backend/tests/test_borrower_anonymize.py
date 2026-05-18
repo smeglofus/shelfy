@@ -141,7 +141,7 @@ async def test_anonymize_strips_borrower_pii_and_sets_anonymized_at(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        resp = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers)
+        resp = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -175,7 +175,7 @@ async def test_anonymize_clears_borrower_text_on_active_loan(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        resp = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers)
+        resp = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers)
         assert resp.status_code == 200
 
     refreshed = (await test_session.execute(select(Loan).where(Loan.id == loan.id))).scalar_one()
@@ -211,7 +211,7 @@ async def test_anonymize_clears_borrower_text_on_returned_loan(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        resp = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers)
+        resp = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers)
         assert resp.status_code == 200
 
     refreshed = (await test_session.execute(select(Loan).where(Loan.id == loan.id))).scalar_one()
@@ -245,7 +245,7 @@ async def test_loan_history_endpoint_still_renders_after_anonymization(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        anon = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers)
+        anon = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers)
         assert anon.status_code == 200
 
         loans = await client.get(f"/api/v1/borrowers/{borrower.id}/loans", headers=headers)
@@ -275,11 +275,11 @@ async def test_anonymize_already_anonymized_is_idempotent(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        first = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers)
+        first = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers)
         assert first.status_code == 200
         first_anonymized_at = first.json()["anonymized_at"]
 
-        second = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers)
+        second = await client.post(f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers)
         assert second.status_code == 200
         assert second.json()["anonymized_at"] == first_anonymized_at
         assert second.json()["name"] == "Deleted borrower"
@@ -297,7 +297,7 @@ async def test_anonymize_foreign_borrower_returns_404(test_session: AsyncSession
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        resp = await client.post(f"/api/v1/borrowers/{foreign.id}/anonymize", headers=headers)
+        resp = await client.post(f"/api/v1/borrowers/{foreign.id}/anonymize?immediate=true", headers=headers)
         assert resp.status_code == 404
 
 
@@ -306,7 +306,7 @@ async def test_anonymize_unknown_borrower_returns_404(test_session: AsyncSession
     await _seed_user_with_library(test_session)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
-        resp = await client.post(f"/api/v1/borrowers/{uuid.uuid4()}/anonymize", headers=headers)
+        resp = await client.post(f"/api/v1/borrowers/{uuid.uuid4()}/anonymize?immediate=true", headers=headers)
         assert resp.status_code == 404
 
 
@@ -329,7 +329,7 @@ async def test_anonymize_requires_editor_role(test_session: AsyncSession) -> Non
         )
         viewer_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
         resp = await client.post(
-            f"/api/v1/borrowers/{borrower.id}/anonymize", headers=viewer_headers
+            f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=viewer_headers
         )
         assert resp.status_code == 403
 
@@ -337,7 +337,7 @@ async def test_anonymize_requires_editor_role(test_session: AsyncSession) -> Non
 @pytest.mark.asyncio
 async def test_anonymize_requires_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post(f"/api/v1/borrowers/{uuid.uuid4()}/anonymize")
+        resp = await client.post(f"/api/v1/borrowers/{uuid.uuid4()}/anonymize?immediate=true")
     assert resp.status_code == 401
 
 
@@ -352,7 +352,7 @@ async def test_bulk_anonymize_success(test_session: AsyncSession) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         resp = await client.post(
-            "/api/v1/borrowers/bulk/anonymize",
+            "/api/v1/borrowers/bulk/anonymize?immediate=true",
             headers=headers,
             json={"ids": [str(first.id), str(second.id)]},
         )
@@ -380,7 +380,7 @@ async def test_bulk_anonymize_foreign_borrower_returns_404(test_session: AsyncSe
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         resp = await client.post(
-            "/api/v1/borrowers/bulk/anonymize",
+            "/api/v1/borrowers/bulk/anonymize?immediate=true",
             headers=headers,
             json={"ids": [str(own.id), str(foreign.id)]},
         )
@@ -397,7 +397,7 @@ async def test_bulk_anonymize_duplicate_ids_rejected(test_session: AsyncSession)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         resp = await client.post(
-            "/api/v1/borrowers/bulk/anonymize",
+            "/api/v1/borrowers/bulk/anonymize?immediate=true",
             headers=headers,
             json={"ids": [str(borrower.id), str(borrower.id)]},
         )

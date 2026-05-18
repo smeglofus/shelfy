@@ -1166,3 +1166,4 @@ def enrich_books_batch(self, book_ids: list[str], force: bool = False) -> None:
 
 import backup_tasks   # noqa: F401 — register pg_dump, verify_restore, stripe_events cleanup
 import email_tasks    # noqa: F401 — register trial reminders, limit-approaching notifications
+import borrower_maintenance_tasks  # noqa: F401 — register finalize_pending_anonymizations (#244)

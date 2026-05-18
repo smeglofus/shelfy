@@ -38,6 +38,11 @@ export interface Borrower {
   contact: string | null
   notes: string | null
   anonymized_at: string | null
+  /** Pending-anonymization deadline (#244). When non-null and
+   *  ``anonymized_at`` is null, the borrower is in the "scheduled for
+   *  deletion" soft-delete state — PII is still intact, restore is
+   *  available via ``POST /borrowers/{id}/restore`` until this time. */
+  pending_anonymization_until: string | null
   /** Audit trail (#245). Null on rows created before the column existed
    *  or when the actor user was deleted. */
   created_by_user_id: string | null

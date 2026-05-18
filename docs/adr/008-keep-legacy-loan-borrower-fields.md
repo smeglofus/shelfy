@@ -221,3 +221,81 @@ user-friendly footer ("Anonymized by alice@example.com on …") needs a
 user-resolver endpoint we don't currently expose. Filed as a follow-up.
 
 Tests pinning the contract: `backend/tests/test_borrower_audit.py`.
+
+---
+
+## 2026-05-18 — Amendment: pending-anonymization soft delete (#244)
+
+**Decision:** `POST /api/v1/borrowers/{id}/anonymize` no longer wipes PII
+synchronously by default. The default contract is now *scheduled* —
+sets `pending_anonymization_until = now() + 30 days` and stamps
+`anonymized_by_user_id`. PII stays intact for the window so a misclick
+is recoverable via `POST /restore`. A periodic worker
+(`finalize_pending_anonymizations`, every 30 min via Celery beat)
+finalizes rows once their deadline has passed.
+
+The legacy hard-anonymize path stays reachable as an explicit opt-in:
+`POST /anonymize?immediate=true`. This is the DSAR / "data-subject
+requested erasure" escape hatch — privacy laws sometimes require an
+immediate wipe and we should not force a 30-day delay on those.
+
+**Key semantic correction (carried over from review):** reversible
+anonymization is *not* anonymization. While the pending window is open,
+the row still contains PII. The schema reflects this — `anonymized_at`
+is only set when the worker finalizes; the pending state is its own
+column. Audit footers / GDPR exports must treat
+`pending_anonymization_until is not null AND anonymized_at is null` as
+"scheduled, not yet anonymized."
+
+**Schema (migration `20260518_000023`):**
+
+- `borrowers.pending_anonymization_until: timestamp NULL, indexed`.
+  Indexed because the worker scans for `WHERE … < now() AND
+  anonymized_at IS NULL` every 30 min.
+
+**State transitions:**
+
+| State                   | `anonymized_at` | `pending_anonymization_until` |
+|-------------------------|-----------------|-------------------------------|
+| active                  | NULL            | NULL                          |
+| pending_anonymization   | NULL            | future timestamp              |
+| anonymized (terminal)   | past timestamp  | NULL                          |
+
+Transitions:
+
+- active → pending_anonymization: `POST /anonymize` (default mode)
+- active → anonymized: `POST /anonymize?immediate=true` (DSAR)
+- pending_anonymization → anonymized: worker, or
+  `POST /anonymize?immediate=true` (upgrade in place)
+- pending_anonymization → active: `POST /restore`
+- anonymized → anything: not allowed (422 from `/restore`)
+
+**Idempotency rules:** double-scheduling preserves the original
+deadline; the API does not extend the window on a second click.
+Re-anonymizing a finalized borrower is a no-op (returns the existing
+row).
+
+**Worker:** `worker/borrower_maintenance_tasks.py`. Uses raw psycopg2
+(matches `email_tasks.py` convention) and `SELECT … FOR UPDATE SKIP
+LOCKED` so concurrent beat fires never double-process the same row.
+Batched (100/run). Cascade clears denormalized borrower text on loan
+rows during finalization — same contract as the immediate path.
+
+**Retention bulk (#246) interaction:** the retention bulk anonymize
+now defaults to the pending state too. Librarians get a 30-day window
+to spot false positives in the retention report and restore them. The
+`?immediate=true` query param is also available on the retention bulk
+endpoint.
+
+**Out of scope for this amendment:**
+
+- Merge undo. Same rationale (recover from misclicks) but the
+  implementation needs a different shape (snapshot + 10s undo log
+  table) — filed as a follow-up PR.
+- Countdown timer on the pending badge + dedicated "Recently
+  anonymized" filter on the borrowers list view. Separate FE polish PR.
+
+Tests pinning the contract:
+`backend/tests/test_borrower_pending_anonymize.py` (lifecycle + worker)
+plus updated `test_borrower_anonymize.py` (legacy immediate semantics
+now sit behind `?immediate=true`).

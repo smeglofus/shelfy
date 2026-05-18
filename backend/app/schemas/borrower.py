@@ -32,6 +32,10 @@ class BorrowerResponse(BaseModel):
     contact: str | None
     notes: str | None = Field(max_length=MAX_NOTES_LENGTH)
     anonymized_at: datetime | None
+    # Pending-anonymization deadline (#244). When non-null and
+    # ``anonymized_at`` is null, the row is in the "scheduled" state — PII
+    # is still intact, restore is available until the worker finalizes it.
+    pending_anonymization_until: datetime | None = None
     # Audit trail (#245). Null for rows created before the column was added,
     # or when the actor user was deleted (FK ondelete=SET NULL).
     created_by_user_id: uuid.UUID | None = None

@@ -156,7 +156,7 @@ async def test_dry_run_counts_eligible_borrowers_without_mutating(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat(), "dry_run": True},
             headers=headers,
         )
@@ -211,7 +211,7 @@ async def test_real_run_anonymizes_only_eligible_rows(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat()},
             headers=headers,
         )
@@ -240,12 +240,12 @@ async def test_idempotent_re_run_returns_zero(test_session: AsyncSession) -> Non
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         first = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat()},
             headers=headers,
         )
         second = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat()},
             headers=headers,
         )
@@ -267,7 +267,7 @@ async def test_does_not_touch_other_libraries(test_session: AsyncSession) -> Non
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "own@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": date.today().isoformat()},
             headers=headers,
         )
@@ -296,7 +296,7 @@ async def test_requires_editor_role(test_session: AsyncSession) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "viewer@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": date.today().isoformat()},
             headers=headers,
         )
@@ -307,7 +307,7 @@ async def test_requires_editor_role(test_session: AsyncSession) -> None:
 async def test_requires_authentication() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": date.today().isoformat()},
         )
     assert resp.status_code == 401
@@ -341,7 +341,7 @@ async def test_dry_run_returns_zero_when_no_eligible_borrowers(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat(), "dry_run": True},
             headers=headers,
         )
@@ -419,7 +419,7 @@ async def test_retention_run_stamps_anonymized_by_user_id(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat()},
             headers=headers,
         )
@@ -454,7 +454,7 @@ async def test_real_run_with_no_eligible_borrowers_is_a_no_op(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk-anonymize-by-date",
+            "/api/v1/borrowers/bulk-anonymize-by-date?immediate=true",
             json={"inactive_since": cutoff.isoformat()},
             headers=headers,
         )

@@ -141,7 +141,7 @@ async def test_anonymized_by_user_id_is_stamped_on_anonymize(
 
         editor_headers = await _login(client, "editor@example.com")
         anonymized = await client.post(
-            f"/api/v1/borrowers/{borrower_id}/anonymize", headers=editor_headers
+            f"/api/v1/borrowers/{borrower_id}/anonymize?immediate=true", headers=editor_headers
         )
 
     assert anonymized.status_code == 200
@@ -164,7 +164,7 @@ async def test_anonymized_by_user_id_is_stamped_on_bulk_anonymize(
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _login(client, "owner@example.com")
         resp = await client.post(
-            "/api/v1/borrowers/bulk/anonymize",
+            "/api/v1/borrowers/bulk/anonymize?immediate=true",
             headers=headers,
             json={"ids": [str(first.id), str(second.id)]},
         )
@@ -300,7 +300,7 @@ async def test_detail_endpoint_resolves_all_three_audit_emails(
         # Editor B anonymizes the merged target.
         editor_b_headers = await _login(client, "editor-b@example.com")
         anonymized = await client.post(
-            f"/api/v1/borrowers/{target_id}/anonymize", headers=editor_b_headers
+            f"/api/v1/borrowers/{target_id}/anonymize?immediate=true", headers=editor_b_headers
         )
         assert anonymized.status_code == 200
 

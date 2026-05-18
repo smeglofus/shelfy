@@ -13,6 +13,7 @@ vi.mock('../lib/api', () => ({
   listBorrowerLoans: vi.fn(),
   listBorrowers: vi.fn(),
   anonymizeBorrower: vi.fn(),
+  restoreBorrower: vi.fn(),
   updateBorrower: vi.fn(),
   mergeBorrowers: vi.fn(),
   formatApiError: (e: unknown) => String(e),
@@ -23,7 +24,7 @@ vi.mock('../lib/toast-store', () => ({
     selector({ showError: vi.fn(), showSuccess: vi.fn() }),
 }))
 
-import { anonymizeBorrower, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, updateBorrower } from '../lib/api'
+import { anonymizeBorrower, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, restoreBorrower, updateBorrower } from '../lib/api'
 import type { BorrowerDetail, BorrowerLoanItem } from '../lib/types'
 import { BorrowerDetailPage } from './BorrowerDetailPage'
 
@@ -35,6 +36,7 @@ function makeBorrower(overrides: Partial<BorrowerDetail> = {}): BorrowerDetail {
     notes: null,
     anonymized_at: null,
     created_by_user_id: null,
+    pending_anonymization_until: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
     // #261: detail-only resolved emails. Defaulted to null so legacy-row
@@ -190,7 +192,28 @@ describe('BorrowerDetailPage', () => {
     expect(await screen.findByTestId('anonymize-button')).toBeInTheDocument()
   })
 
-  it('opens the confirmation modal and calls the anonymize API on confirm', async () => {
+  it('opens the confirmation modal and calls the anonymize API in pending mode by default (#244)', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    vi.mocked(anonymizeBorrower).mockResolvedValue(
+      makeBorrower({ pending_anonymization_until: '2026-06-17T00:00:00Z' }),
+    )
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('anonymize-button'))
+
+    // Default confirm copy is the pending-mode body — the "irreversible"
+    // warning only appears when the immediate checkbox is on (#244).
+    expect(await screen.findByText('borrowers.anonymize_confirm_body_pending')).toBeInTheDocument()
+    expect(screen.queryByTestId('anonymize-irreversible-warning')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('anonymize-confirm'))
+
+    await waitFor(() => expect(anonymizeBorrower).toHaveBeenCalledWith('b-alice', { immediate: false }))
+  })
+
+  it('passes immediate=true when the DSAR checkbox is checked', async () => {
     vi.mocked(getBorrower).mockResolvedValue(makeBorrower())
     vi.mocked(listBorrowerLoans).mockResolvedValue([])
     vi.mocked(anonymizeBorrower).mockResolvedValue(
@@ -205,13 +228,14 @@ describe('BorrowerDetailPage', () => {
 
     const user = userEvent.setup()
     await user.click(await screen.findByTestId('anonymize-button'))
+    await user.click(await screen.findByTestId('anonymize-immediate-checkbox'))
 
-    // Confirmation modal includes the irreversible warning
-    expect(await screen.findByText('borrowers.anonymize_irreversible')).toBeInTheDocument()
+    // Irreversible warning surfaces only in immediate mode.
+    expect(screen.getByTestId('anonymize-irreversible-warning')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('anonymize-confirm'))
 
-    await waitFor(() => expect(anonymizeBorrower).toHaveBeenCalledWith('b-alice'))
+    await waitFor(() => expect(anonymizeBorrower).toHaveBeenCalledWith('b-alice', { immediate: true }))
   })
 
   it('opens the edit modal and PATCHes via updateBorrower on save', async () => {
@@ -264,6 +288,7 @@ describe('BorrowerDetailPage', () => {
           notes: null,
           anonymized_at: null,
     created_by_user_id: null,
+    pending_anonymization_until: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
           created_at: '2026-05-01T00:00:00Z',
@@ -310,6 +335,7 @@ describe('BorrowerDetailPage', () => {
           notes: null,
           anonymized_at: null,
     created_by_user_id: null,
+    pending_anonymization_until: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
           created_at: '2026-05-01T00:00:00Z',
@@ -326,6 +352,7 @@ describe('BorrowerDetailPage', () => {
           notes: null,
           anonymized_at: '2026-05-07T00:00:00Z',
           created_by_user_id: null,
+    pending_anonymization_until: null,
           anonymized_by_user_id: null,
           merged_into_by_user_id: null,
           created_at: '2026-05-01T00:00:00Z',
@@ -342,6 +369,7 @@ describe('BorrowerDetailPage', () => {
           notes: null,
           anonymized_at: null,
     created_by_user_id: null,
+    pending_anonymization_until: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
           created_at: '2026-05-01T00:00:00Z',
@@ -378,6 +406,7 @@ describe('BorrowerDetailPage', () => {
         notes: null,
         anonymized_at: null,
     created_by_user_id: null,
+    pending_anonymization_until: null,
     anonymized_by_user_id: null,
     merged_into_by_user_id: null,
         created_at: '2026-05-01T00:00:00Z',
@@ -434,12 +463,15 @@ describe('BorrowerDetailPage', () => {
 
     const user = userEvent.setup()
     await user.click(await screen.findByTestId('anonymize-button'))
-    expect(await screen.findByText('borrowers.anonymize_irreversible')).toBeInTheDocument()
+    // Anchor on the pending-mode confirm copy since that's what the modal
+    // shows in the default (non-immediate) path — the irreversible warning
+    // only fires once the DSAR checkbox is ticked.
+    expect(await screen.findByText('borrowers.anonymize_confirm_body_pending')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByText('borrowers.anonymize_irreversible')).not.toBeInTheDocument()
+      expect(screen.queryByText('borrowers.anonymize_confirm_body_pending')).not.toBeInTheDocument()
     })
     expect(anonymizeBorrower).not.toHaveBeenCalled()
   })
@@ -537,5 +569,40 @@ describe('BorrowerDetailPage', () => {
 
     await screen.findByTestId('borrower-audit-footer')
     expect(screen.queryByTestId('audit-anonymized-by')).not.toBeInTheDocument()
+  })
+
+  // ── Pending anonymization state + restore (#244) ────────────────────────
+
+  it('shows the pending-anonymization badge and a Restore button when in pending state', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({
+        pending_anonymization_until: '2026-06-17T00:00:00Z',
+      }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByTestId('borrower-pending-anonymize-badge')).toBeInTheDocument()
+    expect(screen.getByTestId('restore-button')).toBeInTheDocument()
+    // The active-state action buttons hide while in pending state — keeps
+    // the librarian from accidentally re-anonymizing or merging a record
+    // they meant to recover.
+    expect(screen.queryByTestId('anonymize-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument()
+  })
+
+  it('clicking Restore calls the restore API and the badge clears on the refetched borrower', async () => {
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({ pending_anonymization_until: '2026-06-17T00:00:00Z' }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    vi.mocked(restoreBorrower).mockResolvedValue(makeBorrower())
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByTestId('restore-button'))
+
+    await waitFor(() => expect(restoreBorrower).toHaveBeenCalledWith('b-alice'))
   })
 })

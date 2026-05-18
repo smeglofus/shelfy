@@ -29,6 +29,7 @@ from app.services.borrower import (
     list_borrowers_with_stats,
     list_loans_for_borrower,
     merge_borrowers,
+    restore_borrower,
     update_borrower,
 )
 
@@ -126,9 +127,20 @@ async def bulk_anonymize_borrowers_endpoint(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
     current_user: User = Depends(get_current_user),
+    immediate: bool = Query(
+        default=False,
+        description=(
+            "DSAR / privacy bypass. When true, skips the 30-day pending "
+            "window and wipes PII synchronously (#244)."
+        ),
+    ),
 ) -> BorrowerBulkAnonymizeResponse:
     affected = await bulk_anonymize_borrowers(
-        session, payload.ids, library_id, actor_user_id=current_user.id
+        session,
+        payload.ids,
+        library_id,
+        actor_user_id=current_user.id,
+        immediate=immediate,
     )
     return BorrowerBulkAnonymizeResponse(affected=affected)
 
@@ -141,6 +153,13 @@ async def bulk_anonymize_by_date_endpoint(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
     current_user: User = Depends(get_current_user),
+    immediate: bool = Query(
+        default=False,
+        description=(
+            "When true, skips the 30-day pending window and wipes PII "
+            "synchronously for every eligible borrower (#244)."
+        ),
+    ),
 ) -> BorrowerBulkAnonymizeResponse:
     """Retention-driven bulk anonymize (#246). Anonymizes every borrower
     in the active library whose most recent lending activity is before
@@ -153,6 +172,7 @@ async def bulk_anonymize_by_date_endpoint(
         payload.inactive_since,
         dry_run=payload.dry_run,
         actor_user_id=current_user.id,
+        immediate=immediate,
     )
     return BorrowerBulkAnonymizeResponse(affected=affected)
 
@@ -163,10 +183,35 @@ async def anonymize_borrower_endpoint(
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
     current_user: User = Depends(get_current_user),
+    immediate: bool = Query(
+        default=False,
+        description=(
+            "DSAR / privacy bypass. When true, skips the 30-day pending "
+            "window and wipes PII synchronously. Default behaviour (#244) "
+            "schedules anonymization and leaves PII intact for the window — "
+            "use POST /restore to cancel during it."
+        ),
+    ),
 ) -> BorrowerResponse:
     borrower = await anonymize_borrower(
-        session, borrower_id, library_id, actor_user_id=current_user.id
+        session,
+        borrower_id,
+        library_id,
+        actor_user_id=current_user.id,
+        immediate=immediate,
     )
+    return BorrowerResponse.model_validate(borrower)
+
+
+@router.post("/{borrower_id}/restore", response_model=BorrowerResponse)
+async def restore_borrower_endpoint(
+    borrower_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerResponse:
+    """Cancel a pending anonymization (#244). Returns 422 if the borrower
+    is already finalized (PII gone) or never scheduled."""
+    borrower = await restore_borrower(session, borrower_id, library_id)
     return BorrowerResponse.model_validate(borrower)
 
 

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, updateBorrower } from '../lib/api'
+import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, restoreBorrower, updateBorrower } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToastStore } from '../lib/toast-store'
 import type { BorrowerListParams, BorrowerUpdateRequest } from '../lib/types'
@@ -101,20 +101,48 @@ export function useAnonymizeBorrower() {
   const { t } = useTranslation()
 
   return useMutation({
-    mutationFn: (id: string) => anonymizeBorrower(id),
-    onSuccess: async (anonymizedBorrower) => {
+    mutationFn: ({ id, immediate = false }: { id: string; immediate?: boolean }) =>
+      anonymizeBorrower(id, { immediate }),
+    onSuccess: async (resultBorrower, variables) => {
       // The borrower list, the borrower detail, and the borrower's loans
       // (denormalized borrower text) all change at once. Invalidate broadly
       // rather than try to splice one row in.
+      //
+      // Note: in pending mode (default for #244) loan rows aren't actually
+      // touched until the worker finalizes — but invalidating ['loans'] is
+      // cheap insurance against any view that derives state from
+      // ``pending_anonymization_until``.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: borrowerKey(anonymizedBorrower.id) }),
-        queryClient.invalidateQueries({ queryKey: borrowerLoansKey(anonymizedBorrower.id) }),
-        // Loan rows on book pages also carry denormalized borrower text.
+        queryClient.invalidateQueries({ queryKey: borrowerKey(resultBorrower.id) }),
+        queryClient.invalidateQueries({ queryKey: borrowerLoansKey(resultBorrower.id) }),
         queryClient.invalidateQueries({ queryKey: ['loans'] }),
         queryClient.invalidateQueries({ queryKey: ['books'] }),
       ])
-      showSuccess(t('toast.borrower_anonymized', 'Borrower anonymized.'))
+      // Distinct toasts so the librarian sees what mode they actually used.
+      const toastKey = variables.immediate
+        ? 'toast.borrower_anonymized'
+        : 'toast.borrower_anonymization_scheduled'
+      showSuccess(t(toastKey))
+    },
+    onError: (error: unknown) => showError(formatApiError(error)),
+  })
+}
+
+export function useRestoreBorrower() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: (id: string) => restoreBorrower(id),
+    onSuccess: async (restoredBorrower) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: borrowerKey(restoredBorrower.id) }),
+      ])
+      showSuccess(t('toast.borrower_restored'))
     },
     onError: (error: unknown) => showError(formatApiError(error)),
   })

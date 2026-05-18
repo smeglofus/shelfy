@@ -154,7 +154,7 @@ async def test_export_anonymized_borrower_shows_sentinel(test_session: AsyncSess
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         headers = await _auth_headers(client, test_session)
         anon = await client.post(
-            f"/api/v1/borrowers/{borrower.id}/anonymize", headers=headers
+            f"/api/v1/borrowers/{borrower.id}/anonymize?immediate=true", headers=headers
         )
         assert anon.status_code == 200
 
