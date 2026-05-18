@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useBorrowers } from '../hooks/useBorrowers'
+import { useDebounce } from '../hooks/useDebounce'
 import { useCreateLoan } from '../hooks/useLoans'
 import type { Borrower, LoanCreateRequest } from '../lib/types'
 import { Modal } from './Modal'
+
+const PICKER_PAGE_SIZE = 100
 
 function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -35,13 +38,24 @@ export function LendBookModal({ bookId, onClose }: { bookId: string; onClose: ()
   const [error, setError] = useState<string | null>(null)
   const createLoan = useCreateLoan(bookId)
   const { t } = useTranslation()
-  // The picker grabs up to the page-size cap (100) of borrowers in one shot.
-  // This is a deliberate trade-off vs. live server-side search: the typed-name
-  // fallback in `create_loan` still produces a correct loan even when the
-  // exact match isn't on the first page, so the only downside in a >100-row
-  // library is occasional duplicate Borrower creation. If that turns out to
-  // matter, swap this for a debounced ``search`` query.
-  const borrowersQuery = useBorrowers({ pageSize: 100 })
+  // Server-side search-as-you-type (#250 follow-up). Mirrors the merge picker:
+  // 250 ms debounce on the typed name, fetch one page of up to 100 results.
+  // The empty-string case is handled by ``listBorrowers`` (passes
+  // ``search=undefined`` so the server returns the unfiltered first page,
+  // which keeps the open-the-modal-and-glance UX intact).
+  //
+  // Why this matters: with the old "load first 100 once" approach, a library
+  // with >100 borrowers could silently produce duplicate Borrower rows for a
+  // borrower that happened to land on page 2+ — the matcher never saw them,
+  // fell through to the typed-name flow, and ``create_loan`` happily made a
+  // new record. With debounced search the typed name is sent to the server,
+  // which finds the match regardless of pagination position.
+  const debouncedName = useDebounce(borrowerName, 250)
+  const borrowersQuery = useBorrowers({
+    search: debouncedName,
+    page: 1,
+    pageSize: PICKER_PAGE_SIZE,
+  })
   // Anonymized borrowers are excluded from the picker — there's no sensible
   // reason to lend a new book to one (and they all carry the same sentinel
   // name, which would clutter the suggestions).
