@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import re
 
 import httpx
 import psycopg2
@@ -30,10 +31,14 @@ log = logging.getLogger(__name__)
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 
-_DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://shelfy:shelfy@postgres:5432/shelfy",
-).replace("postgresql+asyncpg://", "postgresql://").replace("+asyncpg", "")
+# Strip any SQLAlchemy driver suffix before handing the URL to psycopg2 —
+# prod compose passes ``postgresql+psycopg2://…`` which psycopg2 itself
+# cannot parse. Prior chain only handled ``+asyncpg``.
+_DATABASE_URL = re.sub(
+    r"^postgresql\+\w+://",
+    "postgresql://",
+    os.environ.get("DATABASE_URL", "postgresql://shelfy:shelfy@postgres:5432/shelfy"),
+)
 
 _REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 _RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
