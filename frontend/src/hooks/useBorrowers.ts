@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
-import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, restoreBorrower, updateBorrower } from '../lib/api'
+import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, restoreBorrower, undoMerge, updateBorrower } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useMergeUndoStore } from '../lib/merge-undo-store'
 import { useToastStore } from '../lib/toast-store'
 import type { BorrowerListParams, BorrowerUpdateRequest } from '../lib/types'
 
@@ -76,27 +77,70 @@ export function useUpdateBorrower() {
 export function useMergeBorrowers() {
   const queryClient = useQueryClient()
   const showError = useToastStore((s) => s.showError)
-  const showSuccess = useToastStore((s) => s.showSuccess)
-  const { t } = useTranslation()
+  const setUndo = useMergeUndoStore((s) => s.set)
 
   return useMutation({
-    mutationFn: ({ targetId, sourceId }: { targetId: string; sourceId: string }) =>
-      mergeBorrowers(targetId, sourceId),
-    onSuccess: async (target, { sourceId }) => {
+    mutationFn: ({
+      targetId,
+      sourceId,
+    }: {
+      targetId: string
+      sourceId: string
+      sourceName: string
+      targetName: string
+    }) => mergeBorrowers(targetId, sourceId),
+    onSuccess: async (result, { sourceId, sourceName, targetName }) => {
       // Source row is gone; target's loans changed; loan caches on book pages
       // carry borrower nesting so they need a refresh too.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: borrowerKey(target.id) }),
-        queryClient.invalidateQueries({ queryKey: borrowerLoansKey(target.id) }),
+        queryClient.invalidateQueries({ queryKey: borrowerKey(result.id) }),
+        queryClient.invalidateQueries({ queryKey: borrowerLoansKey(result.id) }),
         queryClient.invalidateQueries({ queryKey: borrowerKey(sourceId) }),
         queryClient.invalidateQueries({ queryKey: borrowerLoansKey(sourceId) }),
         queryClient.invalidateQueries({ queryKey: ['loans'] }),
         queryClient.invalidateQueries({ queryKey: ['books'] }),
       ])
-      showSuccess(t('toast.borrowers_merged', 'Borrowers merged.'))
+      // #244 PR #3: surface the undo toast instead of a fire-and-forget
+      // "merged" success — the librarian's escape hatch lives here.
+      setUndo({
+        token: result.undo_token,
+        undoUntil: result.undo_until,
+        sourceName,
+        targetName,
+      })
     },
     onError: (error: unknown) => showError(formatApiError(error)),
+  })
+}
+
+export function useUndoMerge() {
+  const queryClient = useQueryClient()
+  const showError = useToastStore((s) => s.showError)
+  const showSuccess = useToastStore((s) => s.showSuccess)
+  const clearUndo = useMergeUndoStore((s) => s.clear)
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: (token: string) => undoMerge(token),
+    onSuccess: async (restored) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BORROWERS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: borrowerKey(restored.id) }),
+        queryClient.invalidateQueries({ queryKey: borrowerLoansKey(restored.id) }),
+        queryClient.invalidateQueries({ queryKey: ['loans'] }),
+        queryClient.invalidateQueries({ queryKey: ['books'] }),
+      ])
+      clearUndo()
+      showSuccess(t('toast.borrower_merge_undone'))
+    },
+    onError: (error: unknown) => {
+      // Clear the toast state even on error — the token is consumed /
+      // expired either way, leaving the toast up would dangle a button
+      // that no longer works.
+      clearUndo()
+      showError(formatApiError(error))
+    },
   })
 }
 

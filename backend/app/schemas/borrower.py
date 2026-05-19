@@ -74,6 +74,20 @@ class BorrowerMergeRequest(BaseModel):
     source_id: uuid.UUID
 
 
+class BorrowerMergeResponse(BorrowerResponse):
+    """POST /merge response (#244 PR #3).
+
+    Same shape as ``BorrowerResponse`` plus a raw ``undo_token`` valid for
+    10 seconds. Frontend captures the token, surfaces a toast with an
+    "Undo" button, and POSTs to ``/borrowers/merge-undo/{token}`` if
+    pressed. Raw token is never stored — the backend keeps only a
+    SHA-256 hash so a stolen log dump can't replay an undo.
+    """
+
+    undo_token: str
+    undo_until: datetime
+
+
 class BorrowerListResponse(BaseModel):
     """Paginated wrapper around BorrowerListItem rows.
 
