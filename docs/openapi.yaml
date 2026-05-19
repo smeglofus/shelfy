@@ -2507,6 +2507,7 @@
           "borrowers"
         ],
         "summary": "Merge Borrower Endpoint",
+        "description": "Merge ``source_id`` into ``target_id`` (#238) with a 10 s\nundoable window (#244 PR #3). The response carries a one-shot\n``undo_token`` — POST it to ``/borrowers/merge-undo/{token}`` to\nreverse the merge until ``undo_until``.",
         "operationId": "merge_borrower_endpoint_api_v1_borrowers__target_id__merge_post",
         "security": [
           {
@@ -2551,6 +2552,70 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowerMergeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/borrowers/merge-undo/{token}": {
+      "post": {
+        "tags": [
+          "borrowers"
+        ],
+        "summary": "Merge Undo Endpoint",
+        "description": "Reverse a recent merge (#244 PR #3). Recreates the source\nborrower from snapshot and re-points the moved loans back.\n\nStatus semantics:\n\n- **404**: token unknown OR foreign to this library OR already\n  consumed (one-shot). Probe-resistant — doesn't leak whether the\n  token exists for a different library.\n- **422**: token valid but ``undo_until`` already past. The worker\n  GC will remove the row on its next tick.\n- **200**: success. Returns the restored source borrower.",
+        "operationId": "merge_undo_endpoint_api_v1_borrowers_merge_undo__token__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          },
+          {
+            "name": "X-Library-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Library-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5231,6 +5296,135 @@
         ],
         "title": "BorrowerMergeRequest",
         "description": "Body for POST /api/v1/borrowers/{target_id}/merge."
+      },
+      "BorrowerMergeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "anonymized_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized At"
+          },
+          "pending_anonymization_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Anonymization Until"
+          },
+          "created_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By User Id"
+          },
+          "anonymized_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized By User Id"
+          },
+          "merged_into_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "undo_token": {
+            "type": "string",
+            "title": "Undo Token"
+          },
+          "undo_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Undo Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "contact",
+          "notes",
+          "anonymized_at",
+          "created_at",
+          "updated_at",
+          "undo_token",
+          "undo_until"
+        ],
+        "title": "BorrowerMergeResponse",
+        "description": "POST /merge response (#244 PR #3).\n\nSame shape as ``BorrowerResponse`` plus a raw ``undo_token`` valid for\n10 seconds. Frontend captures the token, surfaces a toast with an\n\"Undo\" button, and POSTs to ``/borrowers/merge-undo/{token}`` if\npressed. Raw token is never stored — the backend keeps only a\nSHA-256 hash so a stolen log dump can't replay an undo."
       },
       "BorrowerResponse": {
         "properties": {

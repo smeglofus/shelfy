@@ -12,6 +12,7 @@ import type {
   BorrowerListParams,
   BorrowerListResponse,
   BorrowerLoanItem,
+  BorrowerMergeResult,
   BorrowerUpdateRequest,
   CheckoutResponse,
   CsvImportConfirmRequest,
@@ -523,10 +524,32 @@ export async function updateBorrower(id: string, payload: BorrowerUpdateRequest)
   return response.data
 }
 
-export async function mergeBorrowers(targetId: string, sourceId: string): Promise<Borrower> {
-  const response = await apiClient.post<Borrower>(
+export async function mergeBorrowers(
+  targetId: string,
+  sourceId: string,
+): Promise<BorrowerMergeResult> {
+  // #244 PR #3 — response now carries an ``undo_token`` + ``undo_until``
+  // for the 10s undo window. Old callers that destructure the body as
+  // a plain Borrower still work because ``BorrowerMergeResult`` extends
+  // ``Borrower``.
+  const response = await apiClient.post<BorrowerMergeResult>(
     `/api/v1/borrowers/${targetId}/merge`,
     { source_id: sourceId },
+  )
+  return response.data
+}
+
+/**
+ * Reverse a recent merge (#244 PR #3). Backend deletes the undo log
+ * row on success — same token cannot be replayed.
+ *
+ * Status semantics surface as axios errors:
+ * - 404: token unknown / wrong library / already consumed
+ * - 422: window expired
+ */
+export async function undoMerge(token: string): Promise<Borrower> {
+  const response = await apiClient.post<Borrower>(
+    `/api/v1/borrowers/merge-undo/${encodeURIComponent(token)}`,
   )
   return response.data
 }

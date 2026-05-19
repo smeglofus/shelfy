@@ -17,12 +17,14 @@ from app.schemas.borrower import (
     BorrowerListResponse,
     BorrowerLoanItem,
     BorrowerMergeRequest,
+    BorrowerMergeResponse,
     BorrowerResponse,
     BorrowerRetentionAnonymizeRequest,
     BorrowerUpdate,
 )
 from app.services.borrower import (
     anonymize_borrower,
+    apply_merge_undo,
     bulk_anonymize_borrowers,
     bulk_anonymize_borrowers_by_inactivity,
     create_borrower,
@@ -231,15 +233,46 @@ async def restore_borrower_endpoint(
     return BorrowerResponse.model_validate(borrower)
 
 
-@router.post("/{target_id}/merge", response_model=BorrowerResponse)
+@router.post("/{target_id}/merge", response_model=BorrowerMergeResponse)
 async def merge_borrower_endpoint(
     target_id: uuid.UUID,
     payload: BorrowerMergeRequest,
     session: AsyncSession = Depends(get_db_session),
     library_id: uuid.UUID = Depends(require_editor_library),
     current_user: User = Depends(get_current_user),
-) -> BorrowerResponse:
-    target = await merge_borrowers(
+) -> BorrowerMergeResponse:
+    """Merge ``source_id`` into ``target_id`` (#238) with a 10 s
+    undoable window (#244 PR #3). The response carries a one-shot
+    ``undo_token`` — POST it to ``/borrowers/merge-undo/{token}`` to
+    reverse the merge until ``undo_until``.
+    """
+    result = await merge_borrowers(
         session, payload.source_id, target_id, library_id, actor_user_id=current_user.id
     )
-    return BorrowerResponse.model_validate(target)
+    return BorrowerMergeResponse(
+        **BorrowerResponse.model_validate(result.target).model_dump(),
+        undo_token=result.undo_token,
+        undo_until=result.undo_until,
+    )
+
+
+@router.post("/merge-undo/{token}", response_model=BorrowerResponse)
+async def merge_undo_endpoint(
+    token: str,
+    session: AsyncSession = Depends(get_db_session),
+    library_id: uuid.UUID = Depends(require_editor_library),
+) -> BorrowerResponse:
+    """Reverse a recent merge (#244 PR #3). Recreates the source
+    borrower from snapshot and re-points the moved loans back.
+
+    Status semantics:
+
+    - **404**: token unknown OR foreign to this library OR already
+      consumed (one-shot). Probe-resistant — doesn't leak whether the
+      token exists for a different library.
+    - **422**: token valid but ``undo_until`` already past. The worker
+      GC will remove the row on its next tick.
+    - **200**: success. Returns the restored source borrower.
+    """
+    restored = await apply_merge_undo(session, token, library_id)
+    return BorrowerResponse.model_validate(restored)

@@ -299,7 +299,11 @@ describe('BorrowerDetailPage', () => {
         },
       ],
     })
-    vi.mocked(mergeBorrowers).mockResolvedValue(makeBorrower({ id: 'b-target', name: 'Alice Liddell' }))
+    vi.mocked(mergeBorrowers).mockResolvedValue({
+      ...makeBorrower({ id: 'b-target', name: 'Alice Liddell' }),
+      undo_token: 'test-undo-token',
+      undo_until: new Date(Date.now() + 10_000).toISOString(),
+    })
     renderPage('b-source')
 
     const user = userEvent.setup()
@@ -308,8 +312,10 @@ describe('BorrowerDetailPage', () => {
     // Pick the target from the candidate list.
     await user.click(await screen.findByTestId('merge-source-b-target'))
 
-    // Confirm step shows the irreversible warning.
-    expect(await screen.findByText('borrowers.merge_irreversible')).toBeInTheDocument()
+    // Confirm step shows the 10s undo-window hint (#244 PR #3 — the
+    // older "irreversible" warning is gone now that merges are
+    // reversible for 10s).
+    expect(await screen.findByText('borrowers.merge_undo_hint')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('merge-confirm'))
 

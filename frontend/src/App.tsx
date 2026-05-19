@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
+import { MergeUndoToast } from './components/MergeUndoToast'
 import { Toast } from './components/Toast'
 import { Navigation } from './components/Navigation'
 import { UpgradePrompt } from './components/UpgradePrompt'
@@ -140,6 +141,7 @@ function AppShell() {
         </button>
       )}
       <Toast />
+      <MergeUndoToast />
     </div>
   )
 }

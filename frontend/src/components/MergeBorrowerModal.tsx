@@ -181,8 +181,13 @@ export function MergeBorrowerModal({ borrower, onClose }: Props) {
                 target: pickedName,
               })}
             </p>
-            <p style={{ margin: 0, color: 'var(--sh-red)', fontWeight: 500 }}>
-              {t('borrowers.merge_irreversible')}
+            <p style={{ margin: 0, color: 'var(--sh-text-muted)', fontSize: 13 }}>
+              {/* #244 PR #3: merge is now reversible for 10 s via the
+                  undo toast. Copy reflects that — the older
+                  "irreversible" warning lives behind the
+                  ``borrowers.merge_irreversible`` key for the case
+                  where the window has expired. */}
+              {t('borrowers.merge_undo_hint')}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
               <button
@@ -204,7 +209,12 @@ export function MergeBorrowerModal({ borrower, onClose }: Props) {
                   // Navigate to the target so we don't sit on a 404'd URL.
                   const targetId = picked.id
                   merge.mutate(
-                    { targetId, sourceId: borrower.id },
+                    {
+                      targetId,
+                      sourceId: borrower.id,
+                      sourceName,
+                      targetName: pickedName,
+                    },
                     {
                       onSuccess: () => {
                         onClose()

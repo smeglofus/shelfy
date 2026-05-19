@@ -127,6 +127,34 @@ def finalize_pending_anonymizations(self, batch_size: int = 100) -> dict[str, in
         conn.close()
 
 
+@celery_app.task(name="borrowers.gc_merge_undo_logs", bind=True, max_retries=2)
+def gc_merge_undo_logs(self) -> dict[str, int]:
+    """Drop expired merge undo log rows (#244 PR #3).
+
+    Cheap maintenance: the undo TTL is 10 s, so rows age out fast.
+    The undo endpoint already short-circuits with 422 when ``undo_until``
+    has passed — this task is purely housekeeping to keep the table
+    small (think tens of rows max in any normal load).
+
+    Idempotent: the DELETE is bounded by ``undo_until < NOW()``; after
+    the first run there's nothing else to delete until the next merge
+    expires.
+    """
+    conn = _db_conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM borrower_merge_undo_log WHERE undo_until < NOW()"
+                )
+                removed = cur.rowcount
+        if removed:
+            log.info("gc_merge_undo_logs.completed", extra={"removed": removed})
+        return {"removed": removed or 0}
+    finally:
+        conn.close()
+
+
 # ── Beat schedule ──────────────────────────────────────────────────────────────
 #
 # Use ``update`` (not ``=``) so the existing backup_tasks / email_tasks
@@ -138,5 +166,13 @@ celery_app.conf.beat_schedule.update({
         # "deadline reached" to "PII actually wiped" is bounded by this
         # interval — well under any reasonable expectation.
         "schedule": crontab(minute="*/30"),
+    },
+    "borrowers-gc-merge-undo-logs": {
+        "task": "borrowers.gc_merge_undo_logs",
+        # Every 5 minutes. The merge-undo TTL is 10 s, so worst-case
+        # log row lifetime is ~5 min — fine for a tiny table. Anything
+        # tighter (e.g. every 30 s) burns beat CPU for no real benefit
+        # since the undo endpoint already returns 422 for expired rows.
+        "schedule": crontab(minute="*/5"),
     },
 })

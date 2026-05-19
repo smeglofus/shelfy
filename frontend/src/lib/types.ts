@@ -96,6 +96,14 @@ export interface BorrowerLoanItem {
   notes: string | null
 }
 
+/** Merge response (#244 PR #3). Same shape as Borrower plus a one-shot
+ *  undo token valid for 10s. Frontend captures the token, shows an Undo
+ *  toast, and POSTs to /borrowers/merge-undo/{token} if pressed. */
+export interface BorrowerMergeResult extends Borrower {
+  undo_token: string
+  undo_until: string
+}
+
 export interface BorrowerCreateRequest {
   name: string
   contact?: string | null
