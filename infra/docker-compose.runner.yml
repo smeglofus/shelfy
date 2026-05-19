@@ -35,12 +35,18 @@
 
 services:
   github-runner:
-    image: myoung34/github-runner:latest
-    # Tracked at HEAD intentionally for now — GitHub deprecates older
-    # actions-runner versions aggressively (a server-side "this runner is
-    # too old, will not dispatch jobs to it" gate). Re-pin to a specific
-    # tag after observing the runtime version reported in the container
-    # logs and verifying CI works.
+    image: myoung34/github-runner:2.334.0
+    # Pinned to the actions-runner version that's been serving CI without
+    # incident since the runner was first deployed on 2026-05-12 (sha
+    # 4c0228ba…). Tracking ``:latest`` was intentional during bring-up so
+    # GitHub's "runner too old → won't dispatch jobs" server-side gate
+    # couldn't surprise us; now that we've watched the pipeline behave
+    # for a week we want reproducibility instead.
+    #
+    # To upgrade: bump the tag here, ``docker compose pull``, ``up -d``.
+    # Verify the runner shows Online in repo settings before merging.
+    # Don't track ``:latest`` again — re-introduces the unannounced-
+    # upgrade risk that motivated the pin.
     restart: unless-stopped
     environment:
       # Either REPO_URL + ACCESS_TOKEN (PAT) — token is auto-rotated by the
