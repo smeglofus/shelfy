@@ -325,13 +325,24 @@ function BillingSection() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Handle return from Stripe Checkout success URL
+  // Handle return from Stripe Checkout success URL.
+  //
+  // Stripe redirects to ``/settings#billing-success`` (hash fragment, not
+  // query string — see backend ``success_url`` rationale). Legacy
+  // ``?billing_success=1`` is still handled in case any cached checkout
+  // session from before the switch fires after deploy.
   useEffect(() => {
-    if (searchParams.get('billing_success')) {
-      showSuccess(t('billing.checkout_success'))
-      void queryClient.invalidateQueries({ queryKey: ['billing-status'] })
-      trackEvent('billing_success')
-      setSearchParams({})
+    const hasQuerySignal = searchParams.get('billing_success') !== null
+    const hasHashSignal = window.location.hash === '#billing-success'
+    if (!hasQuerySignal && !hasHashSignal) return
+
+    showSuccess(t('billing.checkout_success'))
+    void queryClient.invalidateQueries({ queryKey: ['billing-status'] })
+    trackEvent('billing_success')
+    if (hasQuerySignal) setSearchParams({})
+    if (hasHashSignal) {
+      // Strip the hash without adding a new history entry.
+      history.replaceState(null, '', window.location.pathname + window.location.search)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

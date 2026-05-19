@@ -288,7 +288,17 @@ async def create_checkout_session(
         "customer": customer_id,
         "mode": "subscription",
         "line_items": [{"price": price_id, "quantity": 1}],
-        "success_url": f"{settings.app_url}/settings?billing_success=1",
+        # Use a hash fragment (``#billing-success``) instead of a query
+        # string for the success return. Reason: query strings are sent
+        # to the server, which means the Service Worker intercepts the
+        # navigation, fetch()es upstream, and Safari aborts with
+        # "Response served by service worker has redirections" if any
+        # 30x sneaks into the fetch chain (Stripe redirect → Cloudflare
+        # → serve → …). Hash fragments are client-only, the SW serves
+        # the precached ``/settings`` HTML cleanly with no redirect,
+        # and the SettingsPage reads ``window.location.hash`` to show
+        # the success toast + trigger the billing-status refetch.
+        "success_url": f"{settings.app_url}/settings#billing-success",
         "cancel_url": f"{settings.app_url}/settings#billing",
         "metadata": {"user_id": str(user.id)},
         "subscription_data": subscription_data,
