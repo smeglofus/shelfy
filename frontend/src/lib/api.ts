@@ -492,6 +492,9 @@ export async function listBorrowers(params: BorrowerListParams = {}): Promise<Bo
       search: params.search?.trim() ? params.search.trim() : undefined,
       page: params.page ?? 1,
       page_size: params.pageSize ?? 20,
+      // Only send when non-default to keep the URL clean and the legacy
+      // contract (``status=all``) implicit on the wire.
+      status: params.status && params.status !== 'all' ? params.status : undefined,
     },
   })
   return response.data

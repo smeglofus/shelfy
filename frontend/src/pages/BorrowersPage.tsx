@@ -8,7 +8,7 @@ import { useDebounce } from '../hooks/useDebounce'
 import { useBorrowers } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { getBorrowerDetailRoute } from '../lib/routes'
-import type { BorrowerListItem } from '../lib/types'
+import type { BorrowerListItem, BorrowerStatusFilter } from '../lib/types'
 
 const PAGE_SIZE = 20
 
@@ -30,18 +30,23 @@ export function BorrowersPage() {
   // 250ms is the standard "felt instant but not a query per keystroke" range.
   const debouncedSearch = useDebounce(searchInput, 250)
   const [bulkAnonOpen, setBulkAnonOpen] = useState(false)
+  // Lifecycle filter (#244). Default "all" preserves the legacy view; the
+  // "pending" toggle powers the recovery / discovery view so librarians can
+  // find borrowers that are scheduled for deletion without knowing the URL.
+  const [statusFilter, setStatusFilter] = useState<BorrowerStatusFilter>('all')
 
-  // Reset to page 1 whenever the search query changes — otherwise typing on
-  // page 4 could leave the user on an empty page that doesn't exist for the
-  // narrowed result set.
+  // Reset to page 1 whenever the search query or filter changes — otherwise
+  // typing on page 4 could leave the user on an empty page that doesn't
+  // exist for the narrowed result set.
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch])
+  }, [debouncedSearch, statusFilter])
 
   const borrowersQuery = useBorrowers({
     search: debouncedSearch,
     page,
     pageSize: PAGE_SIZE,
+    status: statusFilter,
   })
 
   const data = borrowersQuery.data
@@ -112,13 +117,44 @@ export function BorrowersPage() {
         )}
       </div>
 
+      {/* Lifecycle filter chips (#244 PR #2). Two-state toggle: ``all`` is
+          the default; ``pending`` filters to borrowers scheduled for
+          deletion so the librarian can spot misclicks before the worker
+          finalizes them. */}
+      <div
+        role="group"
+        aria-label={t('borrowers.filter_group_label')}
+        style={{ marginBottom: 16, display: 'flex', gap: 8 }}
+      >
+        <button
+          type="button"
+          data-testid="borrowers-filter-all"
+          className={statusFilter === 'all' ? 'sh-btn-primary' : 'sh-btn-secondary'}
+          style={{ fontSize: 13 }}
+          onClick={() => setStatusFilter('all')}
+          aria-pressed={statusFilter === 'all'}
+        >
+          {t('borrowers.filter_all')}
+        </button>
+        <button
+          type="button"
+          data-testid="borrowers-filter-pending"
+          className={statusFilter === 'pending' ? 'sh-btn-primary' : 'sh-btn-secondary'}
+          style={{ fontSize: 13 }}
+          onClick={() => setStatusFilter('pending')}
+          aria-pressed={statusFilter === 'pending'}
+        >
+          {t('borrowers.filter_pending')}
+        </button>
+      </div>
+
       {isInitialLoading && (
         <p data-testid="borrowers-loading" style={{ color: 'var(--sh-text-muted)' }}>
           {t('borrowers.loading')}
         </p>
       )}
 
-      {hasAnyData && total === 0 && !debouncedSearch && (
+      {hasAnyData && total === 0 && !debouncedSearch && statusFilter === 'all' && (
         <div
           data-testid="borrowers-empty"
           style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--sh-text-muted)' }}
@@ -128,6 +164,16 @@ export function BorrowersPage() {
             {t('borrowers.empty_title')}
           </h2>
           <p style={{ margin: '4px 0 0' }}>{t('borrowers.empty_description')}</p>
+        </div>
+      )}
+
+      {hasAnyData && total === 0 && !debouncedSearch && statusFilter === 'pending' && (
+        <div
+          data-testid="borrowers-empty-pending"
+          style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--sh-text-muted)' }}
+        >
+          <NoResultsIcon size={64} />
+          <p style={{ margin: '12px 0 0' }}>{t('borrowers.empty_pending_description')}</p>
         </div>
       )}
 
@@ -166,13 +212,37 @@ export function BorrowersPage() {
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
                       fontWeight: 600,
                       fontSize: 15,
                       fontStyle: borrower.anonymized_at ? 'italic' : undefined,
                       color: borrower.anonymized_at ? 'var(--sh-text-muted)' : undefined,
                     }}
                   >
-                    {displayBorrowerName(borrower, t)}
+                    <span>{displayBorrowerName(borrower, t)}</span>
+                    {/* Inline pending badge (#244 PR #2). Surfaced in the
+                        default ``all`` view too so the librarian spots
+                        scheduled rows just by scrolling. */}
+                    {!borrower.anonymized_at && borrower.pending_anonymization_until && (
+                      <span
+                        data-testid={`borrower-pending-tag-${borrower.id}`}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          background: 'var(--sh-yellow-soft, #fffbe6)',
+                          color: 'var(--sh-yellow-text, #92400e)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        {t('borrowers.pending_tag')}
+                      </span>
+                    )}
                   </div>
                   {borrower.contact && (
                     <div

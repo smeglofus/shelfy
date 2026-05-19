@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,9 +44,24 @@ async def read_borrowers(
     search: str | None = Query(default=None, min_length=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    status_filter: Literal["all", "active", "pending"] = Query(
+        default="all",
+        alias="status",
+        description=(
+            "Filter by borrower lifecycle (#244). ``all`` (default) preserves "
+            "the legacy contract — every row in the library. ``active`` hides "
+            "both finalized and pending rows. ``pending`` shows only borrowers "
+            "scheduled for anonymization (the recovery / discovery view)."
+        ),
+    ),
 ) -> BorrowerListResponse:
     page_data = await list_borrowers_with_stats(
-        session, library_id, search=search, page=page, page_size=page_size
+        session,
+        library_id,
+        search=search,
+        page=page,
+        page_size=page_size,
+        status=status_filter,
     )
     items = [
         BorrowerListItem(

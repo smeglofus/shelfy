@@ -1,6 +1,7 @@
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, select, update
@@ -12,6 +13,8 @@ from app.models.book import Book
 from app.models.borrower import Borrower
 from app.models.loan import Loan
 from app.schemas.borrower import BorrowerCreate, BorrowerUpdate
+
+BorrowerStatusFilter = Literal["all", "active", "pending"]
 
 logger = structlog.get_logger()
 
@@ -92,6 +95,7 @@ async def list_borrowers_with_stats(
     search: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    status: BorrowerStatusFilter = "all",
 ) -> BorrowerStatsPage:
     """List a library's borrowers with aggregated lending stats, paginated.
 
@@ -99,6 +103,15 @@ async def list_borrowers_with_stats(
     The match runs on the *stored* name; for anonymized rows that means
     matching against the sentinel ("Deleted borrower"). Localized labels
     are a frontend concern (see ``displayBorrowerName``).
+
+    ``status`` filters by lifecycle state (#244):
+
+    - ``"all"`` (default): no filter — preserves the legacy contract.
+    - ``"active"``: rows that are neither anonymized nor pending — the
+      day-to-day working set.
+    - ``"pending"``: rows scheduled for anonymization but still
+      restorable. Powers the "Recently anonymized" discovery view in the
+      UI; without it a librarian could only restore via a known URL.
     """
     active_count = func.count(Loan.id).filter(Loan.returned_date.is_(None))
     total_count = func.count(Loan.id)
@@ -109,6 +122,12 @@ async def list_borrowers_with_stats(
         # default LIKE is already case-insensitive for ASCII so this is fine
         # for tests too.
         where_clauses.append(Borrower.name.ilike(f"%{search}%"))
+    if status == "active":
+        where_clauses.append(Borrower.anonymized_at.is_(None))
+        where_clauses.append(Borrower.pending_anonymization_until.is_(None))
+    elif status == "pending":
+        where_clauses.append(Borrower.anonymized_at.is_(None))
+        where_clauses.append(Borrower.pending_anonymization_until.is_not(None))
 
     # Count BEFORE applying limit/offset so the paginator knows the true
     # total. Cheap because there are no joins on the count query.

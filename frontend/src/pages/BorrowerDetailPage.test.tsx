@@ -592,6 +592,33 @@ describe('BorrowerDetailPage', () => {
     expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument()
   })
 
+  it('renders the countdown next to the pending badge when the deadline is in the future', async () => {
+    // 30 days from "now" — useFakeTimers would be more rigorous but the
+    // countdown contract is "show days+hours, hide when deadline reached"
+    // and the rough number works regardless of test-time drift.
+    const future = new Date(Date.now() + 30 * 86_400_000 + 5 * 3_600_000).toISOString()
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({ pending_anonymization_until: future }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByTestId('borrower-pending-countdown')).toBeInTheDocument()
+    expect(screen.queryByTestId('borrower-pending-countdown-imminent')).not.toBeInTheDocument()
+  })
+
+  it('renders the imminent-deadline label when the pending window has already expired', async () => {
+    const past = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(getBorrower).mockResolvedValue(
+      makeBorrower({ pending_anonymization_until: past }),
+    )
+    vi.mocked(listBorrowerLoans).mockResolvedValue([])
+    renderPage()
+
+    expect(await screen.findByTestId('borrower-pending-countdown-imminent')).toBeInTheDocument()
+    expect(screen.queryByTestId('borrower-pending-countdown')).not.toBeInTheDocument()
+  })
+
   it('clicking Restore calls the restore API and the badge clears on the refetched borrower', async () => {
     vi.mocked(getBorrower).mockResolvedValue(
       makeBorrower({ pending_anonymization_until: '2026-06-17T00:00:00Z' }),
