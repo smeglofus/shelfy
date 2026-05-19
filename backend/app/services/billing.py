@@ -262,10 +262,16 @@ async def create_checkout_session(
     from app.services.entitlements import get_or_create_subscription
 
     sub = await get_or_create_subscription(session, user.id)
-    customer_id = await get_or_create_stripe_customer(session, user, settings)
-
-    # Offer a trial only on the very first subscription (no previous Stripe sub ID)
+    # Snapshot ``is_first_time`` BEFORE calling get_or_create_stripe_customer
+    # below: that function commits when it creates a fresh Stripe customer,
+    # which expires every attribute on ``sub`` (SQLAlchemy default
+    # ``expire_on_commit=True``). Reading ``sub.stripe_subscription_id``
+    # after the commit would trigger a lazy reload from inside a non-
+    # greenlet async context → ``MissingGreenlet``. This bug only fires
+    # on the very first checkout per account (path that actually creates
+    # a new Stripe customer), which is why it stayed hidden until prod.
     is_first_time = sub.stripe_subscription_id is None
+    customer_id = await get_or_create_stripe_customer(session, user, settings)
     subscription_data: dict[str, Any] = {"metadata": {"user_id": str(user.id)}}
     if is_first_time:
         subscription_data["trial_period_days"] = _TRIAL_DAYS
