@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 import psycopg2
 import psycopg2.extras
@@ -42,10 +43,17 @@ log = logging.getLogger(__name__)
 # package — same trade-off as the other worker tasks).
 _ANONYMIZED_NAME = "Deleted borrower"
 
-_DATABASE_URL = (
-    os.environ.get("DATABASE_URL", "postgresql://shelfy:shelfy@postgres:5432/shelfy")
-    .replace("postgresql+asyncpg://", "postgresql://")
-    .replace("+asyncpg", "")
+# Strip any SQLAlchemy driver suffix (``postgresql+psycopg2://`` /
+# ``postgresql+asyncpg://`` / etc.) before handing the URL to psycopg2,
+# which only understands the bare ``postgresql://`` DSN form.
+#
+# Necessary because prod compose passes ``DATABASE_URL=postgresql+psycopg2://…``
+# (see infra/docker-compose.prod.yml) — the explicit driver suffix made
+# initial debugging easier but psycopg2 itself doesn't parse it.
+_DATABASE_URL = re.sub(
+    r"^postgresql\+\w+://",
+    "postgresql://",
+    os.environ.get("DATABASE_URL", "postgresql://shelfy:shelfy@postgres:5432/shelfy"),
 )
 
 
