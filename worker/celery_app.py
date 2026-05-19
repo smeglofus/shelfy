@@ -50,6 +50,38 @@ _configure_structlog()
 logger = structlog.get_logger()
 
 
+def _init_sentry() -> None:
+    """Initialize Sentry SDK in the worker process when ``SENTRY_DSN``
+    is set. Mirrors the backend bootstrap in ``app/main.py:_init_sentry``.
+
+    Imports are lazy so the overhead is zero when Sentry is disabled
+    (e.g. local dev without a DSN). ``CeleryIntegration`` adds breadcrumbs
+    + automatic capture for every task exception — exactly what would
+    have flagged the ``+psycopg2`` DSN bug (PR #277) the moment it fired
+    in prod instead of waiting for someone to grep the worker log.
+    """
+    if not worker_settings.sentry_dsn:
+        return
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=worker_settings.sentry_dsn,
+        environment=worker_settings.environment,
+        integrations=[CeleryIntegration(), SqlalchemyIntegration()],
+        # Conservative trace sampling — worker is mostly cron-style, the
+        # interesting signal is exceptions, not p95 latency. Backend has
+        # 0.1 because user-facing requests benefit more from tracing.
+        traces_sample_rate=0.05,
+        send_default_pii=False,
+    )
+    logger.info("sentry_initialized", environment=worker_settings.environment)
+
+
+_init_sentry()
+
+
 class Base(DeclarativeBase):
     pass
 
