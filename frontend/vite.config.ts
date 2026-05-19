@@ -40,7 +40,18 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api/],
+        // ``/settings`` is excluded from the SW navigation route because
+        // Safari throws "Response served by service worker has
+        // redirections" when the SW's NetworkOnly fetch picks up any
+        // 30x in the response chain (which Stripe checkout / portal
+        // returns trigger reliably via Cloudflare → ``serve`` → …).
+        // With this denylist, /settings navigation is handled natively
+        // by the browser — no SW interception, no Safari abort. The
+        // trade-off: offline navigation to /settings returns a real
+        // server response (or network error) instead of the precached
+        // shell. Acceptable since billing actions are always online-
+        // dependent anyway.
+        navigateFallbackDenylist: [/^\/api/, /^\/settings(?:[?#]|$|\/)/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
