@@ -8,7 +8,13 @@ import type { BorrowerListParams, BorrowerUpdateRequest } from '../lib/types'
 
 export const BORROWERS_QUERY_KEY = ['borrowers']
 const borrowersListKey = (params: BorrowerListParams) =>
-  ['borrowers', params.search ?? '', params.page ?? 1, params.pageSize ?? 20] as const
+  [
+    'borrowers',
+    params.search ?? '',
+    params.page ?? 1,
+    params.pageSize ?? 20,
+    params.status ?? 'all',
+  ] as const
 const borrowerKey = (id: string) => ['borrower', id]
 const borrowerLoansKey = (id: string) => ['borrower', id, 'loans']
 

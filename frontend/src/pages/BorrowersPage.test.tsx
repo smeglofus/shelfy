@@ -225,4 +225,89 @@ describe('BorrowersPage', () => {
       expect(lastCall?.[0]?.search).toBe('q')
     })
   })
+
+  // ── #244 PR #2: lifecycle filter chip + inline pending badge ────────────
+
+  it('renders an inline pending badge on rows that are scheduled for deletion', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue(
+      makePage([
+        makeBorrower({ id: 'b-active', name: 'Active Alice' }),
+        makeBorrower({
+          id: 'b-pending',
+          name: 'Pending Bob',
+          pending_anonymization_until: '2026-06-17T00:00:00Z',
+        }),
+      ]),
+    )
+    renderPage()
+
+    await waitFor(() => expect(screen.getByTestId('borrowers-list')).toBeInTheDocument())
+    expect(screen.getByTestId('borrower-pending-tag-b-pending')).toBeInTheDocument()
+    expect(screen.queryByTestId('borrower-pending-tag-b-active')).not.toBeInTheDocument()
+  })
+
+  it('filter chip toggles the status query param sent to the API', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue(makePage([]))
+    renderPage()
+
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('borrowers-filter-pending'))
+
+    await waitFor(() => {
+      const lastCall = vi.mocked(listBorrowers).mock.calls[vi.mocked(listBorrowers).mock.calls.length - 1]
+      expect(lastCall?.[0]?.status).toBe('pending')
+    })
+
+    // Toggling back to "All" drops the status param (legacy contract).
+    await user.click(screen.getByTestId('borrowers-filter-all'))
+    await waitFor(() => {
+      const lastCall = vi.mocked(listBorrowers).mock.calls[vi.mocked(listBorrowers).mock.calls.length - 1]
+      expect(lastCall?.[0]?.status).toBe('all')
+    })
+  })
+
+  it('shows the pending-empty state copy when the pending filter returns no rows', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue(makePage([]))
+    renderPage()
+
+    const user = userEvent.setup()
+    await waitFor(() => expect(listBorrowers).toHaveBeenCalled())
+    await user.click(screen.getByTestId('borrowers-filter-pending'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('borrowers-empty-pending')).toBeInTheDocument()
+    })
+    // The default empty state (which steers the user toward adding their
+    // first borrower) must NOT fire in the pending-filter zero state.
+    expect(screen.queryByTestId('borrowers-empty')).not.toBeInTheDocument()
+  })
+
+  it('resets to page 1 when the lifecycle filter changes', async () => {
+    // Same shape as the search-reset test — different trigger.
+    vi.mocked(listBorrowers).mockImplementation(async ({ page = 1 } = {}) => {
+      return makePage(
+        Array.from({ length: 20 }, (_, i) => makeBorrower({ id: `p${page}-${i}`, name: `X${i}` })),
+        { total: 25, page, page_size: 20 },
+      )
+    })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByTestId('borrowers-paginator')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('borrowers-next-page'))
+    await waitFor(() => {
+      const lastCall = vi.mocked(listBorrowers).mock.calls[vi.mocked(listBorrowers).mock.calls.length - 1]
+      expect(lastCall?.[0]?.page).toBe(2)
+    })
+
+    await user.click(screen.getByTestId('borrowers-filter-pending'))
+    await waitFor(() => {
+      const lastCall = vi.mocked(listBorrowers).mock.calls[vi.mocked(listBorrowers).mock.calls.length - 1]
+      expect(lastCall?.[0]?.page).toBe(1)
+      expect(lastCall?.[0]?.status).toBe('pending')
+    })
+  })
 })

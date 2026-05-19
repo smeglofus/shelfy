@@ -562,6 +562,109 @@ async def test_service_bulk_anonymize_skips_already_pending_rows_direct(
     assert refreshed[fresh.id].pending_anonymization_until is not None
 
 
+# ── List endpoint status filter (#244 PR #2) ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_list_borrowers_status_filter_active_excludes_pending_and_anonymized(
+    test_session: AsyncSession,
+) -> None:
+    """``GET /borrowers?status=active`` is the day-to-day working set —
+    hides both pending and finalized rows so the librarian doesn't see
+    yellow / italic clutter when they don't care about lifecycle state."""
+    _, lib = await _seed_owner_with_library(test_session)
+    active = Borrower(library_id=lib.id, name="Active Alice")
+    pending = Borrower(
+        library_id=lib.id,
+        name="Pending Bob",
+        pending_anonymization_until=datetime.now(timezone.utc) + timedelta(days=20),
+    )
+    anonymized = Borrower(
+        library_id=lib.id,
+        name="Deleted borrower",
+        anonymized_at=datetime.now(timezone.utc),
+    )
+    test_session.add_all([active, pending, anonymized])
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client)
+        resp = await client.get("/api/v1/borrowers?status=active", headers=headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["id"] == str(active.id)
+
+
+@pytest.mark.asyncio
+async def test_list_borrowers_status_filter_pending_shows_only_scheduled(
+    test_session: AsyncSession,
+) -> None:
+    """``GET /borrowers?status=pending`` is the recovery view — librarian
+    finds rows that are scheduled for deletion but still restorable."""
+    _, lib = await _seed_owner_with_library(test_session)
+    active = Borrower(library_id=lib.id, name="Active Alice")
+    pending_a = Borrower(
+        library_id=lib.id,
+        name="Pending Alice",
+        pending_anonymization_until=datetime.now(timezone.utc) + timedelta(days=20),
+    )
+    pending_b = Borrower(
+        library_id=lib.id,
+        name="Pending Bob",
+        pending_anonymization_until=datetime.now(timezone.utc) + timedelta(days=5),
+    )
+    anonymized = Borrower(
+        library_id=lib.id,
+        name="Deleted borrower",
+        anonymized_at=datetime.now(timezone.utc),
+    )
+    test_session.add_all([active, pending_a, pending_b, anonymized])
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client)
+        resp = await client.get("/api/v1/borrowers?status=pending", headers=headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 2
+    ids = {item["id"] for item in body["items"]}
+    assert ids == {str(pending_a.id), str(pending_b.id)}
+
+
+@pytest.mark.asyncio
+async def test_list_borrowers_status_all_preserves_legacy_contract(
+    test_session: AsyncSession,
+) -> None:
+    """No status param (or ``status=all``) returns every row — preserves the
+    pre-#244 list contract so existing clients don't break."""
+    _, lib = await _seed_owner_with_library(test_session)
+    test_session.add_all([
+        Borrower(library_id=lib.id, name="Active"),
+        Borrower(
+            library_id=lib.id,
+            name="Pending",
+            pending_anonymization_until=datetime.now(timezone.utc) + timedelta(days=10),
+        ),
+        Borrower(
+            library_id=lib.id,
+            name="Deleted borrower",
+            anonymized_at=datetime.now(timezone.utc),
+        ),
+    ])
+    await test_session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = await _login(client)
+        no_param = await client.get("/api/v1/borrowers", headers=headers)
+        all_param = await client.get("/api/v1/borrowers?status=all", headers=headers)
+
+    assert no_param.json()["total"] == 3
+    assert all_param.json()["total"] == 3
+
+
 @pytest.mark.asyncio
 async def test_retention_dry_run_skips_already_pending_rows(
     test_session: AsyncSession,

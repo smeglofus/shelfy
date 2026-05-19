@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 
@@ -18,6 +18,33 @@ function formatDate(value: string | null, locale: string): string {
   } catch {
     return value
   }
+}
+
+/**
+ * Hook for the pending-anonymization countdown (#244 PR #2).
+ *
+ * Re-renders every 60 s — finer than that adds nothing for a 30-day TTL
+ * and would burn render cycles in the background tab. Returns ``null``
+ * when the deadline has already passed (the worker will finalize on
+ * its next 30-min beat fire; the UI should show "any moment now"
+ * rather than a negative countdown).
+ */
+function usePendingCountdown(
+  deadline: string | null,
+): { days: number; hours: number } | null {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!deadline) return
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [deadline])
+
+  if (!deadline) return null
+  const remainingMs = new Date(deadline).getTime() - now
+  if (remainingMs <= 0) return null
+  const days = Math.floor(remainingMs / 86_400_000)
+  const hours = Math.floor((remainingMs % 86_400_000) / 3_600_000)
+  return { days, hours }
 }
 
 interface AuditFooterProps {
@@ -179,6 +206,11 @@ export function BorrowerDetailPage() {
   // #244 DSAR bypass — when checked, the confirm modal sends
   // ``immediate=true`` and we get the legacy hard-wipe behaviour.
   const [anonymizeImmediate, setAnonymizeImmediate] = useState(false)
+  // Hook must run unconditionally (rules of hooks) — call before any
+  // early returns. ``deadline=null`` short-circuits the interval setup.
+  const countdown = usePendingCountdown(
+    borrowerQuery.data?.pending_anonymization_until ?? null,
+  )
 
   const { active, returned } = useMemo(() => {
     const all = loansQuery.data ?? []
@@ -268,6 +300,21 @@ export function BorrowerDetailPage() {
               }}
             >
               {t('borrowers.pending_anonymization_hint')}
+              {countdown && (
+                <span data-testid="borrower-pending-countdown" style={{ marginLeft: 6 }}>
+                  {' · '}
+                  {t('borrowers.pending_anonymization_countdown', {
+                    days: countdown.days,
+                    hours: countdown.hours,
+                  })}
+                </span>
+              )}
+              {!countdown && (
+                <span data-testid="borrower-pending-countdown-imminent" style={{ marginLeft: 6 }}>
+                  {' · '}
+                  {t('borrowers.pending_anonymization_imminent')}
+                </span>
+              )}
             </p>
           )}
           {!isAnonymized && borrower.contact && (

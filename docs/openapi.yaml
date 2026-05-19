@@ -1884,6 +1884,23 @@
             }
           },
           {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "active",
+                "pending"
+              ],
+              "type": "string",
+              "description": "Filter by borrower lifecycle (#244). ``all`` (default) preserves the legacy contract — every row in the library. ``active`` hides both finalized and pending rows. ``pending`` shows only borrowers scheduled for anonymization (the recovery / discovery view).",
+              "default": "all",
+              "title": "Status"
+            },
+            "description": "Filter by borrower lifecycle (#244). ``all`` (default) preserves the legacy contract — every row in the library. ``active`` hides both finalized and pending rows. ``pending`` shows only borrowers scheduled for anonymization (the recovery / discovery view)."
+          },
+          {
             "name": "X-Library-Id",
             "in": "header",
             "required": false,

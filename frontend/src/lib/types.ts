@@ -67,10 +67,14 @@ export interface BorrowerListItem extends Borrower {
   last_activity_at: string | null
 }
 
+export type BorrowerStatusFilter = 'all' | 'active' | 'pending'
+
 export interface BorrowerListParams {
   search?: string
   page?: number
   pageSize?: number
+  /** Lifecycle filter (#244). ``pending`` powers the recovery view. */
+  status?: BorrowerStatusFilter
 }
 
 export interface BorrowerListResponse {
