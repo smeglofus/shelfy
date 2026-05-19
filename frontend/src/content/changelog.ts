@@ -14,6 +14,55 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    date: '2026-05-19',
+    title: {
+      cs: 'Vratná anonymizace a undo pro sloučení dlužníků',
+      en: 'Reversible anonymization and merge undo for borrowers',
+    },
+    summary: {
+      cs: 'Anonymizace dlužníka se teď dá do 30 dnů vrátit zpět, sloučení duplicit má 10vteřinové undo. Plus drobné UX vylepšení vybírání dlužníka v půjčce.',
+      en: 'Borrower anonymization is now reversible for 30 days, merging duplicates has a 10-second undo. Plus small UX upgrades to the borrower picker in the lend modal.',
+    },
+    added: {
+      cs: [
+        'Anonymizace dlužníka je teď ve výchozím režimu plánovaná na 30 dnů — během této doby se dá kdykoli vrátit tlačítkem „Vrátit". Po vypršení dlužníka tichý worker dokončí anonymizaci jako dřív (#244).',
+        'Pro žádost subjektu o smazání (GDPR/DSAR) zůstává okamžitý režim přístupný přes zaškrtávátko v potvrzovacím dialogu (#244).',
+        'Žlutý štítek „Plánovaná anonymizace" s odpočtem (dny + hodiny) na detailu dlužníka, aby bylo jasné, kolik času na vrácení ještě zbývá (#244).',
+        'Filtr „Plánovaná anonymizace" na stránce /borrowers, abys našel(a) dlužníky čekající na smazání bez znalosti URL (#244).',
+        'Sloučení dvou dlužníků je teď reverzibilní 10 vteřin — po potvrzení se objeví toast s tlačítkem „Vrátit (Xs)". Klik obnoví zdrojový záznam i jeho půjčky (#244).',
+        'Patička auditu na detailu dlužníka: ukazuje, kdo dlužníka vytvořil / anonymizoval / sloučil a kdy (#261).',
+        'Disambiguace v dialogu Půjčit knihu: když existují dva dlužníci se stejným jménem, místo tichého duplikátu se zobrazí inline panel s výběrem konkrétního záznamu (#250).',
+        'Půjčování knihy v knihovně se 100+ dlužníky teď dohledá existující záznam přes server-side hledání místo prvních 100 řádků (#250).',
+      ],
+      en: [
+        'Borrower anonymization now defaults to a 30-day scheduled mode — you can hit "Restore" any time during the window. After it expires, a quiet worker finishes the wipe exactly like before (#244).',
+        'For GDPR data-subject erasure requests the immediate mode stays available via a checkbox in the confirmation dialog (#244).',
+        'Yellow "Anonymization scheduled" badge with a live countdown (days + hours) on the borrower detail page, so the remaining grace window is visible at a glance (#244).',
+        '"Scheduled for deletion" filter on the /borrowers page — find pending borrowers without knowing their URL (#244).',
+        'Merging two borrowers is now reversible for 10 seconds — after confirming, a toast with "Undo (Xs)" surfaces. Clicking restores the source record and re-points its loans (#244).',
+        'Audit footer on the borrower detail page showing who created / anonymized / merged the record, and when (#261).',
+        'Disambiguation in the Lend book dialog: when two borrowers share a name, an inline panel surfaces both so you can pick the right record instead of silently creating a duplicate (#250).',
+        'Lending in a library with 100+ borrowers now finds the existing record via server-side search rather than just the first page of rows (#250).',
+      ],
+    },
+    changed: {
+      cs: [
+        'Potvrzovací dialog při sloučení dvou dlužníků už neříká „nelze vrátit" — místo toho vysvětluje, že akce je 10 vteřin vratná (#244).',
+      ],
+      en: [
+        'Merge confirmation dialog no longer says "this cannot be undone" — it now explains the 10-second undo window (#244).',
+      ],
+    },
+    fixed: {
+      cs: [
+        'Plánované úlohy ve workeru (denní e-mailové připomínky, retence dat) hlásí výjimky do Sentry. Dříve tiše končily v logu a nikdo se o nich nedozvěděl.',
+      ],
+      en: [
+        'Background worker tasks (daily email reminders, retention sweeps) now report exceptions to Sentry. Previously they failed silently in the log.',
+      ],
+    },
+  },
+  {
     date: '2026-05-07',
     title: {
       cs: 'Dlužníci jako samostatná entita',
