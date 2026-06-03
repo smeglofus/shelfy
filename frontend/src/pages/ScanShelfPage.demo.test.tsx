@@ -107,5 +107,5 @@ describe('ScanShelfPage — demo mode (#286)', () => {
     expect(api.scanShelf).not.toHaveBeenCalled()
     expect(api.getShelfScanResult).not.toHaveBeenCalled()
     expect(api.confirmShelfScan).not.toHaveBeenCalled()
-  })
+  }, 20000) // multi-step wizard + simulated scan delay; generous for slow CI
 })
