@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ProcessingIcon } from '../components/EmptyStateIcons'
 import { useCreateBook, useUploadBookImage, useJobStatus } from '../hooks/useBooks'
 import { useLocations } from '../hooks/useLocations'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { useAppNavigate } from '../features/demo/demoNav'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import type { BookCreateRequest, ReadingStatus } from '../lib/types'
 
 export function AddBookPage() {
   const { t } = useTranslation()
-  const navigate      = useNavigate()
+  const navigate      = useAppNavigate()
+  const isDemo        = useIsDemoMode()
   const showError     = useToastStore(s => s.showError)
   const showSuccess   = useToastStore(s => s.showSuccess)
   const { data: locations = [] } = useLocations()
@@ -88,7 +90,8 @@ export function AddBookPage() {
         <h2 className="text-h2" style={{ marginBottom: 0 }}>{t('add_book.page_title')}</h2>
       </div>
 
-      {/* Scan area */}
+      {/* Scan area — hidden in the demo (#285): no AI/upload pipeline there. */}
+      {!isDemo && (<>
       <div
         onClick={() => fileInputRef.current?.click()}
         style={{
@@ -135,6 +138,7 @@ export function AddBookPage() {
         <span style={{ fontSize: 13, color: 'var(--sh-text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('add_book.or_manual')}</span>
         <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--sh-border)' }} />
       </div>
+      </>)}
 
       {/* Form */}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -196,15 +200,20 @@ export function AddBookPage() {
           </div>
           <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: 'var(--sh-text-muted)' }}>
             {t('add_book.location_help')}
-            {' '}
-            <button
-              type='button'
-              className='sh-btn-ghost'
-              onClick={() => navigate(ROUTES.locations)}
-              style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
-            >
-              {t('add_book.add_location_cta')}
-            </button>
+            {/* Location management is network-backed — hidden in demo (#285). */}
+            {!isDemo && (
+              <>
+                {' '}
+                <button
+                  type='button'
+                  className='sh-btn-ghost'
+                  onClick={() => navigate(ROUTES.locations)}
+                  style={{ padding: 0, fontSize: 12, textDecoration: 'underline' }}
+                >
+                  {t('add_book.add_location_cta')}
+                </button>
+              </>
+            )}
           </p>
         </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -31,13 +31,17 @@ import { useBooksForShelf, useBulkMoveBooks } from '../hooks/useBooks'
 import { bulkReorderBooks } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { useLocations } from '../hooks/useLocations'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { useDemoStore } from '../store/useDemoStore'
+import { useAppNavigate } from '../features/demo/demoNav'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
 import { LocationsPage } from './LocationsPage'
 import type { Book, Location } from '../lib/types'
 
 export function BookshelfViewPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
+  const isDemo = useIsDemoMode()
   const [searchParams] = useSearchParams()
   const showError = useToastStore((s) => s.showError)
   const showSuccess = useToastStore((s) => s.showSuccess)
@@ -51,7 +55,9 @@ export function BookshelfViewPage() {
 
   const preselectedLocationId = searchParams.get('location_id')
   const highlightBookId = searchParams.get('highlight_book_id')
-  const activeTab = searchParams.get('tab') === 'locations' ? 'locations' : 'shelves'
+  // The locations tab edits real locations (network-backed) and is hidden in
+  // the demo, so force the shelves view there regardless of the query param.
+  const activeTab = !isDemo && searchParams.get('tab') === 'locations' ? 'locations' : 'shelves'
   const highlightSpineRef = useRef<HTMLButtonElement | null>(null)
   const shelfRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -298,7 +304,12 @@ export function BookshelfViewPage() {
 
     setSavingReorder(true)
     try {
-      await bulkReorderBooks({ items: changed })
+      if (isDemo) {
+        // Demo: mutate the in-memory store directly — no network. (#285)
+        useDemoStore.getState().reorder(changed)
+      } else {
+        await bulkReorderBooks({ items: changed })
+      }
       showSuccess(t('books.reorder_saved', 'Reordering saved'))
     } catch {
       setLocalByLocation(booksByLocation)
@@ -400,15 +411,21 @@ export function BookshelfViewPage() {
             </button>
           </>
         )}
-        <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? 13 : 14, marginLeft: isMobile ? 'auto' : 0 }}>
-          + {t('bookshelf.scan_shelf')}
-        </button>
+        {/* Scan entry point hits the AI pipeline — hidden in the demo (#285). */}
+        {!isDemo && (
+          <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? 13 : 14, marginLeft: isMobile ? 'auto' : 0 }}>
+            + {t('bookshelf.scan_shelf')}
+          </button>
+        )}
       </div>
 
-      <div className="sh-underline-tabs" style={{ marginBottom: 24 }}>
-        <button type='button' className={`sh-underline-tab${activeTab === 'shelves' ? ' sh-underline-tab--active' : ''}`} onClick={() => navigate(ROUTES.bookshelfView)}>{t('bookshelf.tab_shelves')}</button>
-        <button type='button' className={`sh-underline-tab${activeTab === 'locations' ? ' sh-underline-tab--active' : ''}`} onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}>{t('bookshelf.tab_locations')}</button>
-      </div>
+      {/* Locations management is network-backed — only shelves in the demo. */}
+      {!isDemo && (
+        <div className="sh-underline-tabs" style={{ marginBottom: 24 }}>
+          <button type='button' className={`sh-underline-tab${activeTab === 'shelves' ? ' sh-underline-tab--active' : ''}`} onClick={() => navigate(ROUTES.bookshelfView)}>{t('bookshelf.tab_shelves')}</button>
+          <button type='button' className={`sh-underline-tab${activeTab === 'locations' ? ' sh-underline-tab--active' : ''}`} onClick={() => navigate(`${ROUTES.bookshelfView}?tab=locations`)}>{t('bookshelf.tab_locations')}</button>
+        </div>
+      )}
 
       {activeTab === 'locations' ? (
         <LocationsPage />
@@ -513,7 +530,7 @@ export function BookshelfViewPage() {
                                   highlighted={highlightBookId === book.id}
                                   selected={selectedIds.has(book.id)}
                                   focusRef={highlightBookId === book.id ? highlightSpineRef : undefined}
-                                  onClick={() => (selectMode ? toggleSelect(book.id) : (reorderMode ? undefined : navigate(getBookDetailRoute(book.id))))}
+                                  onClick={() => (selectMode ? toggleSelect(book.id) : (reorderMode || isDemo ? undefined : navigate(getBookDetailRoute(book.id))))}
                                   compact={isMobile}
                                 />
                               ))}

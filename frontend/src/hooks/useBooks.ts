@@ -17,10 +17,23 @@ import {
 } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { useDemoStore } from '../store/useDemoStore'
 import type { BookCreateRequest, BookListParams, BookUpdateRequest, BulkDeleteRequest, BulkMoveRequest, BulkStatusRequest } from '../lib/types'
 import { useTranslation } from 'react-i18next'
 
 export const BOOKS_QUERY_KEY = ['books']
+
+/**
+ * Query-key prefix for the client-side demo (#285).
+ *
+ * Demo-aware hooks read/write the in-memory ``useDemoStore`` instead of the
+ * network. They live under a separate ``['demo', …]`` key space so demo
+ * invalidations never disturb the authenticated cache (and vice-versa), and
+ * so prod-only invalidators like ``useScan``/``useEnrich`` (which hit
+ * ``BOOKS_QUERY_KEY``) are inert inside the demo.
+ */
+export const DEMO_QUERY_KEY = ['demo']
 
 /**
  * List books for the current user.
@@ -33,11 +46,12 @@ export const BOOKS_QUERY_KEY = ['books']
  */
 export function useBooks(params: BookListParams) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: [...BOOKS_QUERY_KEY, params],
-    queryFn: () => listBooks(params),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, ...BOOKS_QUERY_KEY, params] : [...BOOKS_QUERY_KEY, params],
+    queryFn: () => (isDemo ? useDemoStore.getState().queryBooks(params) : listBooks(params)),
     retry: false,
-    enabled: isAuthenticated,
+    enabled: isDemo || isAuthenticated,
   })
 }
 
@@ -53,32 +67,43 @@ export const BOOKS_SHELF_QUERY_KEY = [...BOOKS_QUERY_KEY, 'shelf']
 
 export function useBooksForShelf() {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: BOOKS_SHELF_QUERY_KEY,
-    queryFn: () => listBooksForShelf(),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, ...BOOKS_SHELF_QUERY_KEY] : BOOKS_SHELF_QUERY_KEY,
+    queryFn: () => (isDemo ? useDemoStore.getState().booksForShelf() : listBooksForShelf()),
     retry: false,
-    enabled: isAuthenticated,
+    enabled: isDemo || isAuthenticated,
   })
 }
 
 export function useBook(bookId: string) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: [...BOOKS_QUERY_KEY, 'detail', bookId],
-    queryFn: () => getBook(bookId),
+    queryKey: isDemo
+      ? [...DEMO_QUERY_KEY, ...BOOKS_QUERY_KEY, 'detail', bookId]
+      : [...BOOKS_QUERY_KEY, 'detail', bookId],
+    queryFn: () => {
+      if (!isDemo) return getBook(bookId)
+      const found = useDemoStore.getState().books.find((b) => b.id === bookId)
+      if (!found) throw new Error('Book not found')
+      return found
+    },
     retry: false,
-    enabled: isAuthenticated && Boolean(bookId),
+    enabled: (isDemo || isAuthenticated) && Boolean(bookId),
   })
 }
 
 export function useCreateBook() {
   const queryClient = useQueryClient()
   const showError = useToastStore((state) => state.showError)
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: (payload: BookCreateRequest) => createBook(payload),
+    mutationFn: async (payload: BookCreateRequest) =>
+      isDemo ? useDemoStore.getState().addBook(payload) : createBook(payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
     },
     onError: (error: unknown) => {
       showError(formatApiError(error))
@@ -91,11 +116,13 @@ export function useUpdateBook() {
   const showError = useToastStore((state) => state.showError)
   const showSuccess = useToastStore((state) => state.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: BookUpdateRequest }) => updateBook(id, payload),
+    mutationFn: async ({ id, payload }: { id: string; payload: BookUpdateRequest }) =>
+      isDemo ? useDemoStore.getState().updateBook(id, payload) : updateBook(id, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
       showSuccess(t('toast.book_saved', 'Changes saved successfully.'))
     },
     onError: (error: unknown) => {
@@ -109,11 +136,18 @@ export function useDeleteBook() {
   const showError = useToastStore((state) => state.showError)
   const showSuccess = useToastStore((state) => state.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: (id: string) => deleteBook(id),
+    mutationFn: async (id: string) => {
+      if (isDemo) {
+        useDemoStore.getState().deleteBook(id)
+        return
+      }
+      return deleteBook(id)
+    },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
       showSuccess(t('toast.book_deleted', 'Book deleted.'))
     },
     onError: (error: unknown) => {
@@ -138,10 +172,17 @@ export function useBulkDeleteBooks() {
   const showError = useToastStore((s) => s.showError)
   const showSuccess = useToastStore((s) => s.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
   return useMutation({
-    mutationFn: (payload: BulkDeleteRequest) => bulkDeleteBooks(payload),
+    mutationFn: async (payload: BulkDeleteRequest) => {
+      if (isDemo) {
+        useDemoStore.getState().bulkDelete(payload.ids)
+        return { affected: payload.ids.length, operation: 'delete' as const }
+      }
+      return bulkDeleteBooks(payload)
+    },
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
       showSuccess(t('bulk.deleted', { count: data.affected }))
     },
     onError: (error: unknown) => showError(formatApiError(error)),
@@ -153,10 +194,17 @@ export function useBulkMoveBooks() {
   const showError = useToastStore((s) => s.showError)
   const showSuccess = useToastStore((s) => s.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
   return useMutation({
-    mutationFn: (payload: BulkMoveRequest) => bulkMoveBooks(payload),
+    mutationFn: async (payload: BulkMoveRequest) => {
+      if (isDemo) {
+        useDemoStore.getState().bulkMove(payload.ids, payload.location_id)
+        return { affected: payload.ids.length, operation: 'move' as const }
+      }
+      return bulkMoveBooks(payload)
+    },
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
       showSuccess(t('bulk.moved', { count: data.affected }))
     },
     onError: (error: unknown) => showError(formatApiError(error)),
@@ -168,10 +216,17 @@ export function useBulkUpdateStatus() {
   const showError = useToastStore((s) => s.showError)
   const showSuccess = useToastStore((s) => s.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
   return useMutation({
-    mutationFn: (payload: BulkStatusRequest) => bulkUpdateStatus(payload),
+    mutationFn: async (payload: BulkStatusRequest) => {
+      if (isDemo) {
+        useDemoStore.getState().bulkUpdateStatus(payload.ids, payload.reading_status)
+        return { affected: payload.ids.length, operation: 'status' as const }
+      }
+      return bulkUpdateStatus(payload)
+    },
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
       showSuccess(t('bulk.status_updated', { count: data.affected }))
     },
     onError: (error: unknown) => showError(formatApiError(error)),
@@ -180,11 +235,18 @@ export function useBulkUpdateStatus() {
 
 export function useBookCounts() {
   const { isAuthenticated } = useAuth()
-  const opts = { retry: false, enabled: isAuthenticated, staleTime: 30_000 } as const
-  const total = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count'], queryFn: () => listBooks({ pageSize: 1 }), ...opts })
-  const read = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count', 'read'], queryFn: () => listBooks({ readingStatus: 'read', pageSize: 1 }), ...opts })
-  const reading = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count', 'reading'], queryFn: () => listBooks({ readingStatus: 'reading', pageSize: 1 }), ...opts })
-  const lent = useQuery({ queryKey: [...BOOKS_QUERY_KEY, 'count', 'lent'], queryFn: () => listBooks({ readingStatus: 'lent', pageSize: 1 }), ...opts })
+  const isDemo = useIsDemoMode()
+  const opts = { retry: false, enabled: isDemo || isAuthenticated, staleTime: 30_000 } as const
+  // In demo, the in-memory store returns the same ``BookListResponse`` shape,
+  // so only the data source swaps — the ``.total`` read below is identical.
+  const fetch = (params: BookListParams) => () =>
+    isDemo ? useDemoStore.getState().queryBooks(params) : listBooks(params)
+  const key = (...rest: string[]) =>
+    isDemo ? [...DEMO_QUERY_KEY, ...BOOKS_QUERY_KEY, 'count', ...rest] : [...BOOKS_QUERY_KEY, 'count', ...rest]
+  const total = useQuery({ queryKey: key(), queryFn: fetch({ pageSize: 1 }), ...opts })
+  const read = useQuery({ queryKey: key('read'), queryFn: fetch({ readingStatus: 'read', pageSize: 1 }), ...opts })
+  const reading = useQuery({ queryKey: key('reading'), queryFn: fetch({ readingStatus: 'reading', pageSize: 1 }), ...opts })
+  const lent = useQuery({ queryKey: key('lent'), queryFn: fetch({ readingStatus: 'lent', pageSize: 1 }), ...opts })
   return {
     total: total.data?.total ?? 0,
     read: read.data?.total ?? 0,

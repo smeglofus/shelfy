@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { createLocation, deleteLocation, formatApiError, listLocations, updateLocation } from '../lib/api'
 import { useToastStore } from '../lib/toast-store'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { useDemoStore } from '../store/useDemoStore'
 import type { Location, LocationCreateRequest, LocationUpdateRequest } from '../lib/types'
 
 const LOCATIONS_QUERY_KEY = ['locations']
@@ -12,14 +14,18 @@ const LOCATIONS_QUERY_KEY = ['locations']
 /**
  * List the current user's locations. Gated on ``isAuthenticated`` so the
  * query never fires before auth bootstrap has settled (see #125).
+ *
+ * In the client-side demo (#285) it reads the in-memory ``useDemoStore``
+ * under a ``['demo', …]`` key instead — no network call.
  */
 export function useLocations() {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: LOCATIONS_QUERY_KEY,
-    queryFn: listLocations,
+    queryKey: isDemo ? ['demo', ...LOCATIONS_QUERY_KEY] : LOCATIONS_QUERY_KEY,
+    queryFn: () => (isDemo ? useDemoStore.getState().locations : listLocations()),
     retry: false,
-    enabled: isAuthenticated,
+    enabled: isDemo || isAuthenticated,
   })
 }
 
