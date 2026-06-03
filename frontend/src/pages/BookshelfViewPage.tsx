@@ -411,12 +411,11 @@ export function BookshelfViewPage() {
             </button>
           </>
         )}
-        {/* Scan entry point hits the AI pipeline — hidden in the demo (#285). */}
-        {!isDemo && (
-          <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? 13 : 14, marginLeft: isMobile ? 'auto' : 0 }}>
-            + {t('bookshelf.scan_shelf')}
-          </button>
-        )}
+        {/* Scan entry point. In the demo this routes to the scripted, canned
+            scan walkthrough (#286) — still no upload / AI / network. */}
+        <button onClick={() => navigate(ROUTES.scanShelf)} className="sh-btn-primary hover-scale" style={{ padding: isMobile ? '8px 12px' : '10px 20px', fontSize: isMobile ? 13 : 14, marginLeft: isMobile ? 'auto' : 0 }}>
+          + {t('bookshelf.scan_shelf')}
+        </button>
       </div>
 
       {/* Locations management is network-backed — only shelves in the demo. */}

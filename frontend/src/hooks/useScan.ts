@@ -10,9 +10,11 @@ import {
   scanShelf,
 } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsDemoMode } from '../features/demo/DemoContext'
 import { useToastStore } from '../lib/toast-store'
+import { useDemoStore } from '../store/useDemoStore'
 import type { ShelfScanConfirmRequest } from '../lib/types'
-import { BOOKS_QUERY_KEY } from './useBooks'
+import { BOOKS_QUERY_KEY, DEMO_QUERY_KEY } from './useBooks'
 
 export function useScanShelf() {
   const showError = useToastStore((state) => state.showError)
@@ -45,11 +47,13 @@ export function useConfirmShelfScan() {
   const showError = useToastStore((state) => state.showError)
   const showSuccess = useToastStore((state) => state.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: (payload: ShelfScanConfirmRequest) => confirmShelfScan(payload),
+    mutationFn: async (payload: ShelfScanConfirmRequest) =>
+      isDemo ? useDemoStore.getState().confirmShelfScan(payload) : confirmShelfScan(payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: isDemo ? DEMO_QUERY_KEY : BOOKS_QUERY_KEY })
       showSuccess(t('toast.scan_confirmed', 'Books saved to your library!'))
     },
     onError: (error: unknown) => {
@@ -60,10 +64,14 @@ export function useConfirmShelfScan() {
 
 export function useBooksByLocation(locationId: string | null) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: ['books-by-location', locationId],
-    queryFn: () => listBooksByLocation(locationId as string),
-    enabled: isAuthenticated && Boolean(locationId),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, 'books-by-location', locationId] : ['books-by-location', locationId],
+    queryFn: () =>
+      isDemo
+        ? useDemoStore.getState().booksByLocation(locationId as string)
+        : listBooksByLocation(locationId as string),
+    enabled: (isDemo || isAuthenticated) && Boolean(locationId),
     retry: false,
   })
 }

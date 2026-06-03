@@ -127,6 +127,42 @@ describe('useDemoStore', () => {
     expect(shelf[0].shelf_position).toBe(0)
   })
 
+  it('confirmShelfScan (replace) swaps out the shelf and adds non-sample books', () => {
+    const get = useDemoStore.getState
+    // demo-loc-1 seeds 6 books; replace mode should leave only the scanned ones.
+    const res = get().confirmShelfScan({
+      location_id: 'demo-loc-1',
+      append_after_book_id: null,
+      books: [
+        { position: 0, title: 'Krakatit', author: 'Karel Čapek', isbn: null },
+        { position: 1, title: 'Saturnin', author: 'Zdeněk Jirotka', isbn: null },
+      ],
+    })
+    expect(res.created_count).toBe(2)
+    expect(res.book_ids).toHaveLength(2)
+    const shelf = get().booksByLocation('demo-loc-1')
+    expect(shelf.map((b) => b.title)).toEqual(['Krakatit', 'Saturnin'])
+    expect(shelf.every((b) => b.is_sample === false)).toBe(true)
+    expect(shelf.map((b) => b.shelf_position)).toEqual([0, 1])
+  })
+
+  it('confirmShelfScan (append-right) inserts after the anchor and shifts the rest', () => {
+    const get = useDemoStore.getState
+    // Anchor on demo-loc-1 position 0 (shelf_position 0); insert 1 book after it.
+    const anchor = get().booksByLocation('demo-loc-1')[0]
+    get().confirmShelfScan({
+      location_id: 'demo-loc-1',
+      append_after_book_id: anchor.id,
+      books: [{ position: 0, title: 'Inserted', author: null, isbn: null }],
+    })
+    const shelf = get().booksByLocation('demo-loc-1')
+    // 6 seeded + 1 inserted, contiguous positions, inserted sits at index 1.
+    expect(shelf).toHaveLength(7)
+    expect(shelf[0].id).toBe(anchor.id)
+    expect(shelf[1].title).toBe('Inserted')
+    expect(shelf[1].shelf_position).toBe(1)
+  })
+
   it('persists to sessionStorage and reset() returns to pristine seed', () => {
     const get = useDemoStore.getState
     get().addBook({ title: 'Throwaway' })

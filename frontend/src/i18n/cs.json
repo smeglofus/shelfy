@@ -825,6 +825,9 @@
     "badge": "Ukázka",
     "banner_text": "Prohlížíte si živé demo. Změny zůstávají ve vašem prohlížeči a po odchodu se vynulují.",
     "cta_signup": "Vyzkoušet zdarma",
-    "exit": "Ukončit ukázku"
+    "exit": "Ukončit ukázku",
+    "scan_note": "Tohle je ukázka — klepněte na vzorovou fotku a uvidíte výsledek. Žádná fotka se nenahrává a neběží žádná AI.",
+    "scan_sample": "Naskenovat vzorovou fotku {{n}}",
+    "scan_sample_used": "Vzorová fotka {{n}} naskenována"
   }
 }
