@@ -30,6 +30,8 @@ import type {
   BookUpdateRequest,
   Location,
   ReadingStatus,
+  ShelfScanConfirmRequest,
+  ShelfScanConfirmResponse,
 } from '../lib/types'
 
 export const DEMO_STORAGE_KEY = 'shelfy:demo:v1'
@@ -68,6 +70,7 @@ interface DemoActions {
   bulkMove: (ids: string[], locationId: string | null) => void
   bulkUpdateStatus: (ids: string[], status: ReadingStatus) => void
   reorder: (items: ReorderItem[]) => void
+  confirmShelfScan: (payload: ShelfScanConfirmRequest) => ShelfScanConfirmResponse
   reset: () => void
 }
 
@@ -260,6 +263,56 @@ export const useDemoStore = create<DemoState>()(
               : b
           }),
         }))
+      },
+
+      confirmShelfScan: (payload) => {
+        const now = new Date().toISOString()
+        const { location_id, append_after_book_id, books } = payload
+
+        // Build the freshly scanned books (all in-memory, never sample).
+        const newBooks: Book[] = books.map((b, i) => ({
+          id: nextId(),
+          title: b.title,
+          author: b.author ?? null,
+          isbn: b.isbn ?? null,
+          publisher: null,
+          language: null,
+          description: null,
+          publication_year: null,
+          cover_image_url: null,
+          location_id,
+          shelf_position: i,
+          processing_status: 'done',
+          reading_status: 'unread',
+          is_currently_lent: false,
+          active_loan: null,
+          is_sample: false,
+          created_at: now,
+          updated_at: now,
+        }))
+
+        set((s) => {
+          if (!append_after_book_id) {
+            // Replace mode: drop existing books on this shelf, then add scanned
+            // ones at positions 0..n-1.
+            const others = s.books.filter((b) => b.location_id !== location_id)
+            return { books: [...others, ...newBooks] }
+          }
+
+          // Append-right mode: insert after the anchor book, shifting the books
+          // that currently sit to its right.
+          const anchor = s.books.find((b) => b.id === append_after_book_id)
+          const anchorPos = anchor?.shelf_position ?? -1
+          const shifted = s.books.map((b) =>
+            b.location_id === location_id && (b.shelf_position ?? 0) > anchorPos
+              ? { ...b, shelf_position: (b.shelf_position ?? 0) + newBooks.length, updated_at: now }
+              : b,
+          )
+          const placed = newBooks.map((b, i) => ({ ...b, shelf_position: anchorPos + 1 + i }))
+          return { books: [...shifted, ...placed] }
+        })
+
+        return { created_count: newBooks.length, book_ids: newBooks.map((b) => b.id) }
       },
 
       reset: () => set({ books: createDemoBooks(), locations: createDemoLocations() }),

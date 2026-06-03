@@ -1,9 +1,13 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { BookshelfInlineIcon, CameraIcon, ProcessingIcon } from '../components/EmptyStateIcons'
 import { Modal } from '../components/Modal'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { DemoShelfPhoto } from '../features/demo/DemoShelfPhoto'
+import { DEMO_SCAN_PHOTOS } from '../features/demo/demoScan'
+import { useAppNavigate } from '../features/demo/demoNav'
 import { useLocations, useCreateLocation } from '../hooks/useLocations'
 import { useBooksByLocation, useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
 import { useToastStore } from '../lib/toast-store'
@@ -50,7 +54,8 @@ const SCAN_DRAFT_KEY = 'shelfy:scan-shelf-draft:v1'
 
 export function ScanShelfPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
+  const isDemo = useIsDemoMode()
   const [searchParams] = useSearchParams()
   const showError = useToastStore(s => s.showError)
 
@@ -90,6 +95,8 @@ export function ScanShelfPage() {
   const [pendingDraft, setPendingDraft] = useState<ScanDraft | null>(null)
   const [tipsDismissed, setTipsDismissed] = useState(() => localStorage.getItem('shelfy_scan_tips_dismissed') === '1')
   const [confirmRemoveSegmentIdx, setConfirmRemoveSegmentIdx] = useState<number | null>(null)
+  // Demo-only: a brief simulated "scanning" state while the canned result lands.
+  const [demoScanning, setDemoScanning] = useState(false)
 
   const { data: booksAtLocation = [] } = useBooksByLocation(locationId)
   const existingShelfBooks = [...booksAtLocation].sort((a, b) => (a.shelf_position ?? 99999) - (b.shelf_position ?? 99999))
@@ -119,6 +126,8 @@ export function ScanShelfPage() {
 
 
   useEffect(() => {
+    // The demo never persists a draft (keeps localStorage clean + isolated).
+    if (isDemo) return
     try {
       const raw = localStorage.getItem(SCAN_DRAFT_KEY)
       if (!raw) return
@@ -131,7 +140,7 @@ export function ScanShelfPage() {
     } catch {
       localStorage.removeItem(SCAN_DRAFT_KEY)
     }
-  }, [])
+  }, [isDemo])
 
   const hasAutoExpandedNewLocationRef = useRef(false)
   useEffect(() => {
@@ -142,6 +151,7 @@ export function ScanShelfPage() {
   }, [locationsLoading, locations.length])
 
   useEffect(() => {
+    if (isDemo) return
     const hasDraftData =
       step !== 'location'
       || !!selRoom
@@ -184,7 +194,7 @@ export function ScanShelfPage() {
     }, 400)
 
     return () => clearTimeout(timer)
-  }, [step, selRoom, selFurniture, selShelf, newRoom, newFurniture, newShelf, showNewLocation, segments, editableBooks, locationId, scanMode, appendAfterBookId])
+  }, [isDemo, step, selRoom, selFurniture, selShelf, newRoom, newFurniture, newShelf, showNewLocation, segments, editableBooks, locationId, scanMode, appendAfterBookId])
 
   useEffect(() => {
     const preLocationId = searchParams.get('location_id')
@@ -205,7 +215,7 @@ export function ScanShelfPage() {
 
   // Derived state
   const totalBooksFound = segments.reduce((sum, seg) => sum + seg.books.length, 0)
-  const isProcessing = scanMutation.isPending || activeJobId !== null
+  const isProcessing = scanMutation.isPending || activeJobId !== null || demoScanning
   const hasCompletedSegments = segments.some(seg => seg.status === 'done' && seg.books.length > 0)
 
   function handleLocationNext() {
@@ -261,6 +271,26 @@ export function ScanShelfPage() {
         },
       }
     )
+  }
+
+  // Demo-only: replay a canned scan result for a sample photo. No upload, no
+  // AI, no network — just a short simulated "scanning" pause (#286).
+  function handleDemoScan(photoId: string) {
+    if (isProcessing) return
+    const photo = DEMO_SCAN_PHOTOS.find(p => p.id === photoId)
+    if (!photo) return
+    const jobId = `demo-scan-${photo.id}`
+    if (segments.some(seg => seg.jobId === jobId)) return // already scanned
+
+    const photoIndex = segments.length
+    setDemoScanning(true)
+    setSegments(prev => [...prev, { jobId, photoIndex, status: 'processing', books: [] }])
+    window.setTimeout(() => {
+      setSegments(prev => prev.map(seg =>
+        seg.jobId === jobId ? { ...seg, status: 'done', books: [...photo.books] } : seg
+      ))
+      setDemoScanning(false)
+    }, 900)
   }
 
   const handleGoToReview = useCallback(() => {
@@ -703,38 +733,92 @@ export function ScanShelfPage() {
             </button>
           )}
 
-          {/* Upload area */}
-          <div
-            onClick={() => !isProcessing && fileInputRef.current?.click()}
-            className={`sh-upload-area hover-lift${isProcessing ? ' sh-upload-area--processing' : ''}`}
-            style={{ marginBottom: 16 }}
-          >
-            {isProcessing ? (
-              <>
-                <ProcessingIcon size={48} className="sh-icon-processing" />
-                <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-amber-text)' }}>{t('scan.scanning')}</span>
-                <span className="text-small">{t('scan.scanning_desc')}</span>
-              </>
-            ) : (
-              <>
-                <CameraIcon size={48} style={{ color: 'var(--sh-primary)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.08))' }} />
-                <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-text-main)' }}>
-                  {segments.length === 0 ? t('scan.take_photo') : t('scan.take_next_photo')}
-                </span>
-                <span className="text-small">
-                  {segments.length === 0 ? t('scan.take_photo_desc') : t('scan.take_next_photo_desc')}
-                </span>
-              </>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png"
-              capture="environment"
-              style={{ display: 'none' }}
-              onChange={handleFileSelect}
-            />
-          </div>
+          {/* Upload area — in the demo this is replaced by tappable sample
+              photos that replay a canned result (no upload / AI / network). */}
+          {isDemo ? (
+            <div style={{ marginBottom: 16 }}>
+              <div
+                data-testid="demo-scan-note"
+                style={{
+                  padding: '10px 14px', marginBottom: 12,
+                  background: 'var(--sh-teal-bg)', borderRadius: 'var(--sh-radius-md)',
+                  fontSize: 13, color: 'var(--sh-teal)', fontWeight: 500,
+                }}
+              >
+                {t('demo.scan_note')}
+              </div>
+              {isProcessing ? (
+                <div className="sh-upload-area sh-upload-area--processing">
+                  <ProcessingIcon size={48} className="sh-icon-processing" />
+                  <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-amber-text)' }}>{t('scan.scanning')}</span>
+                  <span className="text-small">{t('scan.scanning_desc')}</span>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                  {DEMO_SCAN_PHOTOS.map((photo, i) => {
+                    const used = segments.some(seg => seg.jobId === `demo-scan-${photo.id}`)
+                    return (
+                      <button
+                        key={photo.id}
+                        type="button"
+                        data-testid={`demo-scan-photo-${photo.id}`}
+                        onClick={() => handleDemoScan(photo.id)}
+                        disabled={used}
+                        className="sh-card-panel hover-lift"
+                        style={{
+                          padding: 8, cursor: used ? 'default' : 'pointer',
+                          border: 'none', textAlign: 'left',
+                          opacity: used ? 0.5 : 1,
+                        }}
+                      >
+                        <DemoShelfPhoto hue={photo.hue} />
+                        <span style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          marginTop: 8, fontSize: 13, fontWeight: 600,
+                          color: 'var(--sh-text-main)',
+                        }}>
+                          <CameraIcon size={16} style={{ color: 'var(--sh-primary)' }} />
+                          {used ? t('demo.scan_sample_used', { n: i + 1 }) : t('demo.scan_sample', { n: i + 1 })}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              onClick={() => !isProcessing && fileInputRef.current?.click()}
+              className={`sh-upload-area hover-lift${isProcessing ? ' sh-upload-area--processing' : ''}`}
+              style={{ marginBottom: 16 }}
+            >
+              {isProcessing ? (
+                <>
+                  <ProcessingIcon size={48} className="sh-icon-processing" />
+                  <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-amber-text)' }}>{t('scan.scanning')}</span>
+                  <span className="text-small">{t('scan.scanning_desc')}</span>
+                </>
+              ) : (
+                <>
+                  <CameraIcon size={48} style={{ color: 'var(--sh-primary)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.08))' }} />
+                  <span className="text-p" style={{ fontWeight: 600, color: 'var(--sh-text-main)' }}>
+                    {segments.length === 0 ? t('scan.take_photo') : t('scan.take_next_photo')}
+                  </span>
+                  <span className="text-small">
+                    {segments.length === 0 ? t('scan.take_photo_desc') : t('scan.take_next_photo_desc')}
+                  </span>
+                </>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
+            </div>
+          )}
 
           {/* Segments list */}
           {segments.length > 0 && (

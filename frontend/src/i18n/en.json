@@ -819,6 +819,9 @@
     "badge": "Demo",
     "banner_text": "You're exploring a live demo. Changes stay in your browser and reset when you leave.",
     "cta_signup": "Sign up free",
-    "exit": "Exit demo"
+    "exit": "Exit demo",
+    "scan_note": "This is a scripted demo — tap a sample photo to see the result. No photo is uploaded and no AI runs.",
+    "scan_sample": "Scan sample photo {{n}}",
+    "scan_sample_used": "Sample photo {{n}} scanned"
   }
 }
