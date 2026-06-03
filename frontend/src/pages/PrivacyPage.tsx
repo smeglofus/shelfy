@@ -238,6 +238,11 @@ export function PrivacyPage() {
             nikoliv obsah knihovny, snímky nebo platební údaje.
           </p>
           <p style={P}>
+            Totéž platí pro interaktivní ukázku (demo) na úvodní stránce: měříme jen
+            agregované, neosobní události (např. počet výsledků hledání nebo počet přidaných knih),
+            <strong>nikdy</strong> názvy knih, fotografie ani text vyhledávání.
+          </p>
+          <p style={P}>
             PostHog pracuje <strong>bez sledovacích cookies</strong>. Pro persistenci analytického
             identifikátoru je využíván localStorage prohlížeče. Právním základem je oprávněný
             zájem správce na vylepšování služby (čl. 6/1f GDPR). Proti tomuto zpracování
@@ -253,6 +258,7 @@ export function PrivacyPage() {
           </p>
           <ul style={UL}>
             <li><strong>localStorage</strong> — autentizační tokeny, preference jazyka a tmavého režimu. Tato data neopouštějí váš prohlížeč.</li>
+            <li><strong>sessionStorage</strong> — dočasná knihovna v interaktivní ukázce (demo). Existuje pouze ve vašem prohlížeči, neodesílá se na server a po zavření karty se smaže.</li>
             <li><strong>Nezbytné cookies Cloudflare</strong> — technické cookies pro DDoS ochranu (cf_clearance apod.). Ty jsou nezbytné pro fungování služby a nevyžadují souhlas.</li>
           </ul>
         </div>

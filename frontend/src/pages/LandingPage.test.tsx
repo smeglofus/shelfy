@@ -145,14 +145,26 @@ describe('LandingPage', () => {
     expect(lightboxImg.src).toContain('/landing/demo-poster.webp')
   })
 
-  it('shows demo fallback when no video URL is configured', () => {
+  it('offers "Try the demo" CTAs that fire demo_start (no video placeholder)', async () => {
+    const user = userEvent.setup()
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText(/landing\.visual_proof_demo_coming/)).toBeInTheDocument()
+    // The old "demo coming" / video placeholder is gone.
+    expect(screen.queryByText(/landing\.visual_proof_demo_coming/)).not.toBeInTheDocument()
+
+    // Hero + visual-proof + final CTA all expose a try-demo entry point.
+    await user.click(screen.getByRole('button', { name: 'landing.hero_cta_try_demo' }))
+    expect(trackEventMock).toHaveBeenCalledWith('demo_start', { source: 'hero' })
+
+    await user.click(screen.getByRole('button', { name: /landing\.visual_proof_try_demo/ }))
+    expect(trackEventMock).toHaveBeenCalledWith('demo_start', { source: 'visual_proof' })
+
+    await user.click(screen.getByRole('button', { name: 'landing.final_cta_try_demo' }))
+    expect(trackEventMock).toHaveBeenCalledWith('demo_start', { source: 'final_cta' })
   })
 
   it('renders FAQ section with 5 questions', () => {

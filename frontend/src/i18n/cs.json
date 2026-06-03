@@ -588,6 +588,7 @@
     "nav_features": "Funkce",
     "nav_pricing": "Ceník",
     "hero_cta_signup": "Vyzkoušet zdarma",
+    "hero_cta_try_demo": "Vyzkoušet ukázku",
     "hero_cta_login": "Přihlásit se",
     "hero_cta_watch_demo": "Jak to funguje",
     "hero_free_limits": "Začni zdarma · Bez platební karty · Až 200 knih",
@@ -605,6 +606,7 @@
     "visual_proof_zoom": "Klikni pro zvětšení",
     "visual_proof_play_demo": "Přehrát ukázku",
     "visual_proof_demo_coming": "Demo již brzy",
+    "visual_proof_try_demo": "Vyzkoušet ukázku",
     "visual_proof_step1_title": "Vyfoť polici",
     "visual_proof_step1_desc": "Jedna fotka stačí.",
     "visual_proof_step2_title": "Potvrď rozpoznání",
@@ -630,6 +632,7 @@
     "final_cta_title": "Chceš vědět, co vlastníš na každé polici?",
     "final_cta_subtitle": "Domácí čtenáři, kluby, školy a malé knihovny — katalog, který sestavíš za minuty a prohledáš za vteřinu.",
     "final_cta_button": "Vytvořit svůj katalog zdarma",
+    "final_cta_try_demo": "Vyzkoušet ukázku",
     "footer_privacy": "Zásady ochrany soukromí",
     "footer_terms": "Podmínky použití",
     "hero_trust_summary": "Tvoje data patří tobě. Kdykoli je exportuješ a účet můžeš jednoduše smazat.",
@@ -828,6 +831,9 @@
     "exit": "Ukončit ukázku",
     "scan_note": "Tohle je ukázka — klepněte na vzorovou fotku a uvidíte výsledek. Žádná fotka se nenahrává a neběží žádná AI.",
     "scan_sample": "Naskenovat vzorovou fotku {{n}}",
-    "scan_sample_used": "Vzorová fotka {{n}} naskenována"
+    "scan_sample_used": "Vzorová fotka {{n}} naskenována",
+    "nudge_text": "Líbí se vám to? Zaregistrujte se zdarma a knihovnu si uložte.",
+    "nudge_cta": "Vyzkoušet zdarma",
+    "nudge_dismiss": "Zavřít"
   }
 }

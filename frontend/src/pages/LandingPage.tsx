@@ -26,10 +26,8 @@ import {
   trackSignupStart,
   trackSupportingCtaClick,
 } from '../lib/landingAnalytics'
+import { trackDemoStart, type DemoStartSource } from '../lib/demoAnalytics'
 import { ROUTES } from '../lib/routes'
-
-/** Set to a real URL (e.g. YouTube embed) when demo video is ready. */
-const DEMO_VIDEO_URL = ''
 
 const AUDIENCE_ITEMS = ['home', 'club', 'school', 'library'] as const
 
@@ -57,7 +55,6 @@ export function LandingPage() {
   const [searchParams] = useSearchParams()
   const howItWorksRef = useRef<HTMLElement | null>(null)
   const variantId = useMemo(() => resolveLandingVariantId(searchParams), [searchParams])
-  const [showVideo, setShowVideo] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   /** Active showcase tab: 0 = overview poster, 1–3 = step screenshots. */
@@ -78,6 +75,11 @@ export function LandingPage() {
       trackSupportingCtaClick(ctaLabel, sourceSection)
     }
     navigate(ROUTES.login)
+  }
+
+  function handleTryDemo(source: DemoStartSource): void {
+    trackDemoStart(source)
+    navigate(ROUTES.demo)
   }
 
   const howItWorksSteps = useMemo(
@@ -154,23 +156,16 @@ export function LandingPage() {
             <button
               type="button"
               className="sh-btn-primary lp-btn-lg"
-              onClick={() => handleSignupCtaClick('hero', t('landing.hero_cta_signup'), true)}
+              onClick={() => handleTryDemo('hero')}
             >
-              {t('landing.hero_cta_signup')}
+              {t('landing.hero_cta_try_demo')}
             </button>
             <button
               type="button"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--sh-text-muted)', fontSize: 14, textDecoration: 'underline',
-                padding: '8px 4px',
-              }}
-              onClick={() => {
-                trackSupportingCtaClick(t('landing.hero_cta_watch_demo'), 'hero')
-                howItWorksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
+              className="sh-btn-secondary lp-btn-lg"
+              onClick={() => handleSignupCtaClick('hero', t('landing.hero_cta_signup'), true)}
             >
-              {t('landing.hero_cta_watch_demo')} ↓
+              {t('landing.hero_cta_signup')}
             </button>
           </div>
 
@@ -229,19 +224,18 @@ export function LandingPage() {
               {t('landing.visual_proof_zoom')}
             </span>
 
-            {/* Video play overlay — only on poster (tab 0) */}
+            {/* Try-the-demo overlay — only on the poster (tab 0) */}
             {activeShowcase === 0 && (
               <button
                 type="button"
                 className="lp-showcase-play"
                 onClick={(e) => {
                   e.stopPropagation()
-                  trackSupportingCtaClick(t('landing.visual_proof_play_demo'), 'visual_proof')
-                  if (DEMO_VIDEO_URL) setShowVideo(true)
+                  handleTryDemo('visual_proof')
                 }}
               >
                 <span style={{ fontSize: 18, lineHeight: 1 }}>&#9654;</span>
-                {DEMO_VIDEO_URL ? t('landing.visual_proof_play_demo') : t('landing.visual_proof_demo_coming')}
+                {t('landing.visual_proof_try_demo')}
               </button>
             )}
           </div>
@@ -295,49 +289,6 @@ export function LandingPage() {
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M5 5l10 10M15 5l-10 10" />
                 </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Video lightbox */}
-        {showVideo && (
-          <div
-            className="sh-modal-overlay"
-            role="dialog"
-            aria-modal="true"
-            onClick={() => setShowVideo(false)}
-          >
-            <div
-              className="sh-modal-panel sh-modal-panel--lg"
-              style={{ padding: 0, overflow: 'hidden' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-                {DEMO_VIDEO_URL ? (
-                  <iframe
-                    src={DEMO_VIDEO_URL}
-                    title={t('landing.visual_proof_play_demo')}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                    <img src="/landing/demo-poster.webp" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }} />
-                    <p style={{ position: 'absolute', fontSize: 18, fontWeight: 600 }}>
-                      {t('landing.visual_proof_demo_coming')}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                className="sh-btn-secondary"
-                style={{ margin: 12 }}
-                onClick={() => setShowVideo(false)}
-              >
-                {t('landing.visual_proof_close')}
               </button>
             </div>
           </div>
@@ -440,13 +391,22 @@ export function LandingPage() {
           <div className="lp-final-cta">
             <h2 className="lp-final-cta-title">{t('landing.final_cta_title')}</h2>
             <p className="lp-final-cta-subtitle">{t('landing.final_cta_subtitle')}</p>
-            <button
-              type="button"
-              className="sh-btn-primary lp-btn-lg"
-              onClick={() => handleSignupCtaClick('final_cta', t('landing.final_cta_button'), false)}
-            >
-              {t('landing.final_cta_button')}
-            </button>
+            <div className="lp-hero-actions">
+              <button
+                type="button"
+                className="sh-btn-primary lp-btn-lg"
+                onClick={() => handleTryDemo('final_cta')}
+              >
+                {t('landing.final_cta_try_demo')}
+              </button>
+              <button
+                type="button"
+                className="sh-btn-secondary lp-btn-lg"
+                onClick={() => handleSignupCtaClick('final_cta', t('landing.final_cta_button'), false)}
+              >
+                {t('landing.final_cta_button')}
+              </button>
+            </div>
           </div>
         </section>
       </main>
