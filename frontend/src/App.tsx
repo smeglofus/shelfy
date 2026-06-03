@@ -25,6 +25,7 @@ import { TermsPage } from './pages/TermsPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ChangelogPage } from './pages/ChangelogPage'
+import { DemoLayout } from './features/demo/DemoLayout'
 
 import { ROUTES } from './lib/routes'
 
@@ -84,7 +85,9 @@ function AppShell() {
     },
   })
   const location = useLocation()
-  const hideNav = PUBLIC_PATHS.has(location.pathname)
+  // The demo subtree (#285) ships its own chrome (DemoBanner), so the
+  // authenticated Navigation must stay hidden across all of `/demo/*`.
+  const hideNav = PUBLIC_PATHS.has(location.pathname) || location.pathname.startsWith('/demo')
 
   return (
     <div className='sh-app'>
@@ -100,6 +103,14 @@ function AppShell() {
           <Route path={ROUTES.terms} element={<TermsPage />} />
           <Route path={ROUTES.pricing} element={<PricingPage />} />
           <Route path={ROUTES.changelog} element={<ChangelogPage />} />
+
+          {/* ── Public client-side demo (#285) — no auth, no network ── */}
+          <Route path='/demo' element={<DemoLayout />}>
+            <Route index element={<Navigate to='/demo/books' replace />} />
+            <Route path='books' element={<BooksPage />} />
+            <Route path='books/new' element={<AddBookPage />} />
+            <Route path='bookshelf' element={<BookshelfViewPage />} />
+          </Route>
 
           {/* ── Protected routes ── */}
           <Route element={<ProtectedRoute />}>

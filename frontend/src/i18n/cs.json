@@ -820,5 +820,11 @@
     "audit_anonymized_by": "Anonymizoval(a) {{email}} — {{date}}",
     "audit_merged_into_by": "Sloučení provedl(a) {{email}}",
     "audit_actor_unknown": "neznámý uživatel"
+  },
+  "demo": {
+    "badge": "Ukázka",
+    "banner_text": "Prohlížíte si živé demo. Změny zůstávají ve vašem prohlížeči a po odchodu se vynulují.",
+    "cta_signup": "Vyzkoušet zdarma",
+    "exit": "Ukončit ukázku"
   }
 }

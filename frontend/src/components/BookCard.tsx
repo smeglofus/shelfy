@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import type { Book } from '../lib/types'
 import { ReadingStatusBadge } from './ReadingStatusBadge'
 import { getBookDetailRoute } from '../lib/routes'
+import { useIsDemoMode } from '../features/demo/DemoContext'
 
 // ── Cover palette: [bgColor, accentColor] ────────────────────────────
 // Replaces the old GRADIENTS array. Each palette has a dark background
@@ -129,6 +130,8 @@ export function BookCard({
   onSelect,
 }: Props) {
   const { t } = useTranslation()
+  // The demo has no book-detail route, so cards there are non-navigating. (#285)
+  const isDemo = useIsDemoMode()
 
   const hash = hashTitle(book.title)
   const [bgColor, accentColor] = COVER_PALETTES[hash % COVER_PALETTES.length]
@@ -354,7 +357,7 @@ export function BookCard({
         </button>
       )}
 
-      {selectable ? (
+      {selectable || isDemo ? (
         <div
           style={{
             background: 'var(--sh-surface)',

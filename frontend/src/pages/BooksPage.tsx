@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { BookCard } from '../components/BookCard'
@@ -13,6 +12,8 @@ import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBookCount
 import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { useAppNavigate } from '../features/demo/demoNav'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import type { Book, Location, ReadingStatus } from '../lib/types'
@@ -23,7 +24,8 @@ const PAGE_SIZE = 20
 
 export function BooksPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
+  const isDemo = useIsDemoMode()
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput.trim(), 300)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
@@ -419,7 +421,9 @@ export function BooksPage() {
         </p>
       )}
 
-      {booksQuery.data?.has_sample_books && (
+      {/* The whole demo library is sample data; its "clear samples" action is a
+          network call, so the banner is suppressed in demo mode (#285). */}
+      {!isDemo && booksQuery.data?.has_sample_books && (
         <div
           data-testid="sample-library-banner"
           style={{

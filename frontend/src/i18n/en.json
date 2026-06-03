@@ -814,5 +814,11 @@
     "audit_anonymized_by": "Anonymized by {{email}} on {{date}}",
     "audit_merged_into_by": "Merged by {{email}}",
     "audit_actor_unknown": "unknown user"
+  },
+  "demo": {
+    "badge": "Demo",
+    "banner_text": "You're exploring a live demo. Changes stay in your browser and reset when you leave.",
+    "cta_signup": "Sign up free",
+    "exit": "Exit demo"
   }
 }

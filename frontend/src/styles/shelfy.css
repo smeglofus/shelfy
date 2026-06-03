@@ -300,6 +300,61 @@ a:focus-visible,
   padding-bottom: 0;
 }
 
+/* ── Demo banner (#285) ───────────────────────────────────────────── */
+.sh-demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--sh-z-nav);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--sh-primary-bg);
+  border-bottom: 1px solid var(--sh-border);
+  color: var(--sh-primary-text);
+  font-size: 13px;
+}
+.sh-demo-banner__badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: var(--sh-radius-pill);
+  background: var(--sh-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sh-demo-banner__text {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.sh-demo-banner__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.sh-demo-banner__exit {
+  color: var(--sh-primary-text);
+  text-decoration: underline;
+  font-weight: 500;
+}
+.sh-demo-banner__cta {
+  padding: 6px 14px;
+  border-radius: var(--sh-radius-pill);
+  background: var(--sh-primary);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sh-demo-banner__cta:hover {
+  background: var(--sh-primary-dark);
+}
+
 /* ── Bottom Nav (mobile) ──────────────────────────────────────────── */
 .sh-bottom-nav {
   position: fixed;
