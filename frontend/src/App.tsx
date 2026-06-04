@@ -111,6 +111,7 @@ function AppShell() {
             <Route index element={<Navigate to='/demo/books' replace />} />
             <Route path='books' element={<BooksPage />} />
             <Route path='books/new' element={<AddBookPage />} />
+            <Route path='books/:bookId' element={<BookDetailPage />} />
             <Route path='scan' element={<ScanShelfPage />} />
             <Route path='bookshelf' element={<BookshelfViewPage />} />
           </Route>
