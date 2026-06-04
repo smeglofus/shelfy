@@ -85,9 +85,11 @@ function AppShell() {
     },
   })
   const location = useLocation()
-  // The demo subtree (#285) ships its own chrome (DemoBanner), so the
-  // authenticated Navigation must stay hidden across all of `/demo/*`.
-  const hideNav = PUBLIC_PATHS.has(location.pathname) || location.pathname.startsWith('/demo')
+  // Marketing/auth pages render full-bleed with no app chrome. The demo subtree
+  // (#285) keeps the sidebar `Navigation` (which is demo-aware and scopes itself
+  // to `/demo/*`) on top of its own `DemoBanner`, so visitors can move between
+  // search / bookshelf / add / scan just like the real app.
+  const hideNav = PUBLIC_PATHS.has(location.pathname)
 
   return (
     <div className='sh-app'>
