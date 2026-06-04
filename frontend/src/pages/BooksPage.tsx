@@ -14,6 +14,9 @@ import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { useIsDemoMode } from '../features/demo/DemoContext'
 import { useAppNavigate } from '../features/demo/demoNav'
+import { useDemoActivity } from '../features/demo/useDemoActivity'
+import { useDemoStore } from '../store/useDemoStore'
+import { trackDemoSearch } from '../lib/demoAnalytics'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import type { Book, Location, ReadingStatus } from '../lib/types'
@@ -28,6 +31,18 @@ export function BooksPage() {
   const isDemo = useIsDemoMode()
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput.trim(), 300)
+  // Demo-funnel: record each distinct, meaningful search (counts only — never
+  // the query string itself). Fires at most once per query (#287).
+  const lastTrackedDemoSearch = useRef('')
+  useEffect(() => {
+    if (!isDemo) return
+    const q = debouncedSearch
+    if (q.length < 2 || q === lastTrackedDemoSearch.current) return
+    lastTrackedDemoSearch.current = q
+    const resultCount = useDemoStore.getState().queryBooks({ search: q }).total
+    trackDemoSearch(q.length, resultCount)
+    useDemoActivity.getState().recordSearch()
+  }, [isDemo, debouncedSearch])
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [uploadJobId, setUploadJobId] = useState<string | null>(null)
   const [readingFilter, setReadingFilter] = useState<ReadingStatus | null>(null)

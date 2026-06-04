@@ -5,6 +5,8 @@ import { useCreateBook, useUploadBookImage, useJobStatus } from '../hooks/useBoo
 import { useLocations } from '../hooks/useLocations'
 import { useIsDemoMode } from '../features/demo/DemoContext'
 import { useAppNavigate } from '../features/demo/demoNav'
+import { useDemoActivity } from '../features/demo/useDemoActivity'
+import { trackDemoAddBook } from '../lib/demoAnalytics'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import type { BookCreateRequest, ReadingStatus } from '../lib/types'
@@ -70,6 +72,10 @@ export function AddBookPage() {
     createMutation.mutate(payload, {
       onSuccess: () => {
         showSuccess(t('add_book.success_created', 'Kniha byla přidána.'))
+        if (isDemo) {
+          const actionIndex = useDemoActivity.getState().recordAdd()
+          trackDemoAddBook(actionIndex)
+        }
         navigate(ROUTES.books)
       },
       onError:   ()  => showError(t('add_book.error')),

@@ -7,6 +7,7 @@ export const ROUTES = {
   addBook: '/books/new',
   scanShelf: '/scan',
   bookshelfView: '/bookshelf',
+  demo: '/demo',
   locations: '/locations',
   borrowers: '/borrowers',
   borrowerDetail: '/borrowers/:borrowerId',

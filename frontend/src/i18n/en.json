@@ -262,6 +262,7 @@
     "nav_pricing": "Pricing",
     "hero_cta_signup": "Try it free",
     "hero_cta_login": "Sign in",
+    "hero_cta_try_demo": "Try the demo",
     "hero_cta_watch_demo": "How it works",
     "hero_free_limits": "Free to start · No credit card required · Up to 200 books",
     "how_title": "How it works",
@@ -278,6 +279,7 @@
     "visual_proof_zoom": "Click to enlarge",
     "visual_proof_play_demo": "Play demo",
     "visual_proof_demo_coming": "Demo coming soon",
+    "visual_proof_try_demo": "Try the demo",
     "visual_proof_step1_title": "Scan a shelf",
     "visual_proof_step1_desc": "One photo is enough.",
     "visual_proof_step2_title": "Confirm recognition",
@@ -303,6 +305,7 @@
     "final_cta_title": "Ready to know every book you own?",
     "final_cta_subtitle": "Home readers, book clubs, schools, and small libraries — finally, a catalog that takes minutes to build and seconds to search.",
     "final_cta_button": "Create your free library catalog",
+    "final_cta_try_demo": "Try the demo",
     "footer_privacy": "Privacy Policy",
     "footer_terms": "Terms of Service",
     "hero_trust_summary": "Your data stays yours. Export anytime and delete your account whenever you want.",
@@ -822,6 +825,9 @@
     "exit": "Exit demo",
     "scan_note": "This is a scripted demo — tap a sample photo to see the result. No photo is uploaded and no AI runs.",
     "scan_sample": "Scan sample photo {{n}}",
-    "scan_sample_used": "Sample photo {{n}} scanned"
+    "scan_sample_used": "Sample photo {{n}} scanned",
+    "nudge_text": "Like it? Sign up free to keep your library.",
+    "nudge_cta": "Sign up free",
+    "nudge_dismiss": "Dismiss"
   }
 }

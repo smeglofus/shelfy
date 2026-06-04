@@ -355,6 +355,60 @@ a:focus-visible,
   background: var(--sh-primary-dark);
 }
 
+/* Conversion nudge — non-blocking bar under the banner (#287). */
+.sh-demo-nudge {
+  position: sticky;
+  top: 41px;
+  z-index: calc(var(--sh-z-nav) - 1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--sh-teal-bg);
+  border-bottom: 1px solid var(--sh-border);
+  color: var(--sh-teal-text);
+  font-size: 13px;
+  animation: sh-demo-nudge-in 0.25s ease-out;
+}
+@keyframes sh-demo-nudge-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sh-demo-nudge__text {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-weight: 500;
+}
+.sh-demo-nudge__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.sh-demo-nudge__cta {
+  padding: 6px 14px;
+  border-radius: var(--sh-radius-pill);
+  background: var(--sh-teal);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sh-demo-nudge__cta:hover {
+  filter: brightness(0.95);
+}
+.sh-demo-nudge__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sh-teal-text);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
 /* ── Bottom Nav (mobile) ──────────────────────────────────────────── */
 .sh-bottom-nav {
   position: fixed;

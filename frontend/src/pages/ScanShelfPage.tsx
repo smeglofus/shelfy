@@ -8,6 +8,8 @@ import { useIsDemoMode } from '../features/demo/DemoContext'
 import { DemoShelfPhoto } from '../features/demo/DemoShelfPhoto'
 import { DEMO_SCAN_PHOTOS } from '../features/demo/demoScan'
 import { useAppNavigate } from '../features/demo/demoNav'
+import { useDemoActivity } from '../features/demo/useDemoActivity'
+import { trackDemoScanComplete } from '../lib/demoAnalytics'
 import { useLocations, useCreateLocation } from '../hooks/useLocations'
 import { useBooksByLocation, useConfirmShelfScan, useScanShelf, useShelfScanResult } from '../hooks/useScan'
 import { useToastStore } from '../lib/toast-store'
@@ -433,7 +435,13 @@ export function ScanShelfPage() {
       },
       {
         onSuccess: () => {
-          trackEvent('shelf_scanned', { book_count: validBooks.length })
+          if (isDemo) {
+            // Demo funnel — keep the real `shelf_scanned` event clean of demo noise.
+            useDemoActivity.getState().recordScan()
+            trackDemoScanComplete(validBooks.length)
+          } else {
+            trackEvent('shelf_scanned', { book_count: validBooks.length })
+          }
           clearDraft()
           navigate(ROUTES.bookshelfView + '?location_id=' + locationId)
         },
