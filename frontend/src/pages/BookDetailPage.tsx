@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 import { AccordionSection } from '../components/AccordionSection'
 import { ReadingStatusBadge } from '../components/ReadingStatusBadge'
@@ -12,6 +12,8 @@ import { ROUTES } from '../lib/routes'
 import type { ReadingStatus } from '../lib/types'
 import { LoanHistory } from '../components/LoanHistory'
 import { Modal } from '../components/Modal'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { useAppNavigate } from '../features/demo/demoNav'
 
 const GRADIENTS: [string, string][] = [
   ['#1D9E75', '#085041'],
@@ -43,7 +45,10 @@ function sectionHeading(text: string) {
 
 export function BookDetailPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  // useAppNavigate keeps back / show-in-twin / post-delete navigation inside the
+  // `/demo` subtree when the visitor is in the public demo. (#288 follow-up)
+  const navigate = useAppNavigate()
+  const isDemo = useIsDemoMode()
   const { bookId = '' } = useParams()
   const [expandedDescription, setExpandedDescription] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -259,19 +264,22 @@ export function BookDetailPage() {
                 <span className="sh-metadata-row__label">{t('book_detail.scan_status')}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'inline-block', background: book.processing_status === 'done' ? 'var(--sh-teal-bg)' : 'var(--sh-amber-bg)', padding: '2px 8px', borderRadius: 'var(--sh-radius-pill)' }}>{t(`processing_status.${book.processing_status}`)}</span>
-                  <button
-                    type="button"
-                    onClick={() => enrichMutation.mutate({ bookId: book.id, force: book.processing_status === 'done' })}
-                    disabled={enrichMutation.isPending}
-                    style={{
-                      background: 'none', border: '1px solid var(--sh-border)',
-                      borderRadius: 'var(--sh-radius-sm)', padding: '2px 10px',
-                      fontSize: 12, fontWeight: 500, cursor: enrichMutation.isPending ? 'wait' : 'pointer',
-                      color: 'var(--sh-teal)',
-                    }}
-                  >
-                    {enrichMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_book')}
-                  </button>
+                  {/* AI enrichment hits the backend, so it's hidden in the demo. */}
+                  {!isDemo && (
+                    <button
+                      type="button"
+                      onClick={() => enrichMutation.mutate({ bookId: book.id, force: book.processing_status === 'done' })}
+                      disabled={enrichMutation.isPending}
+                      style={{
+                        background: 'none', border: '1px solid var(--sh-border)',
+                        borderRadius: 'var(--sh-radius-sm)', padding: '2px 10px',
+                        fontSize: 12, fontWeight: 500, cursor: enrichMutation.isPending ? 'wait' : 'pointer',
+                        color: 'var(--sh-teal)',
+                      }}
+                    >
+                      {enrichMutation.isPending ? t('enrich.enriching') : t('enrich.enrich_book')}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -387,10 +395,14 @@ export function BookDetailPage() {
             </div>
           </form>
 
-          {/* ── Loan history (accordion, collapsed by default) ── */}
-          <AccordionSection title={t('loans.history_title')} defaultOpen={false}>
-            <LoanHistory bookId={book.id} />
-          </AccordionSection>
+          {/* ── Loan history (accordion, collapsed by default) ──
+               Borrowers/loans are backend-only, so the section is omitted in
+               the demo. */}
+          {!isDemo && (
+            <AccordionSection title={t('loans.history_title')} defaultOpen={false}>
+              <LoanHistory bookId={book.id} />
+            </AccordionSection>
+          )}
 
           {/* ── Danger zone (de-emphasized) ── */}
           <AccordionSection title={t('book_detail.danger_zone_title')} defaultOpen={false}>

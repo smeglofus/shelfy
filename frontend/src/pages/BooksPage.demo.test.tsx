@@ -87,10 +87,14 @@ describe('BooksPage — demo mode (#285)', () => {
     expect(screen.queryByTestId('sample-library-banner')).not.toBeInTheDocument()
   })
 
-  it('renders book cards as non-navigating elements (no detail links)', async () => {
+  it('links book cards to the /demo book-detail twin (not the authenticated route)', async () => {
     renderDemo()
     await screen.findAllByText('Proměna')
-    // BookCard links to /books/:id outside the demo; inside it must not.
+    // Cards must point at the demo-prefixed detail route…
+    const detailLinks = Array.from(document.querySelectorAll('a[href^="/demo/books/"]'))
+      .filter((a) => a.getAttribute('href') !== '/demo/books/new')
+    expect(detailLinks.length).toBeGreaterThan(0)
+    // …and never at the authenticated `/books/:id` route (which would bounce to login).
     expect(document.querySelector('a[href^="/books/"]')).toBeNull()
   })
 })
