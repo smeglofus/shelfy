@@ -73,8 +73,9 @@ describe('ScanShelfPage — demo mode (#286)', () => {
 
     // ── Step 1: pick the seeded Living room / Bookcase / Shelf 1 ──
     // Locations arrive asynchronously from the demo store via React Query.
-    await waitFor(() =>
-      expect(screen.getAllByRole('combobox')[0].querySelectorAll('option').length).toBeGreaterThan(1),
+    await waitFor(
+      () => expect(screen.getAllByRole('combobox')[0].querySelectorAll('option').length).toBeGreaterThan(1),
+      { timeout: 5000 }, // React Query hydration is slow on CI runners; default 1s flakes
     )
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'Living room' } })
     fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'Bookcase' } })
