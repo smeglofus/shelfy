@@ -1,9 +1,10 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
+import { withDemoPrefix } from '../features/demo/demoNav'
 import { BookshelfInlineIcon } from './EmptyStateIcons'
 import { UsageMeterCard } from './UsageMeterCard'
 
@@ -131,21 +132,30 @@ export function Navigation() {
   const fabRef = useRef<HTMLDivElement>(null)
   const { logout } = useAuth()
 
+  /* Inside the public demo (#285/#288) the same sidebar is reused, but every
+     destination must stay within the `/demo/*` subtree and the authenticated-
+     only controls (borrowers, settings, usage, logout) are dropped. */
+  const isDemo = location.pathname.startsWith(ROUTES.demo)
+  const prefix = useCallback(
+    (path: string) => (isDemo ? withDemoPrefix(path) : path),
+    [isDemo],
+  )
+
   /* Grouped sidebar items (desktop) */
   const navGroup = useMemo<NavItem[]>(
     () => [
-      { label: t('nav.library'), icon: 'library', path: ROUTES.books },
-      { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
+      { label: t('nav.library'), icon: 'library', path: prefix(ROUTES.books) },
+      { label: t('nav.bookshelf'), icon: 'bookshelf', path: prefix(ROUTES.bookshelfView) },
     ],
-    [t],
+    [t, prefix],
   )
 
   const actionGroup = useMemo<NavItem[]>(
     () => [
-      { label: t('nav.add'), icon: 'add', path: ROUTES.addBook },
-      { label: t('nav.scan'), icon: 'scan', path: ROUTES.scanShelf },
+      { label: t('nav.add'), icon: 'add', path: prefix(ROUTES.addBook) },
+      { label: t('nav.scan'), icon: 'scan', path: prefix(ROUTES.scanShelf) },
     ],
-    [t],
+    [t, prefix],
   )
 
   const secondaryGroup = useMemo<NavItem[]>(
@@ -162,17 +172,25 @@ export function Navigation() {
     [t],
   )
 
-  /* Mobile bottom nav: 4 tabs split around the center FAB.
-     Layout: [library] [bookshelf] [FAB] [borrowers] [settings] */
-  const mobileTabs = useMemo(
-    () => [
-      { label: t('nav.library'), icon: 'library', path: ROUTES.books },
-      { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
-      { label: t('nav.borrowers'), icon: 'borrowers', path: ROUTES.borrowers },
-      { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
-    ],
-    [t],
+  /* Mobile bottom nav: tabs split around the center FAB.
+     App:  [library] [bookshelf] [FAB] [borrowers] [settings]
+     Demo: [library]            [FAB] [bookshelf]            */
+  const mobileTabs = useMemo<NavItem[]>(
+    () =>
+      isDemo
+        ? [
+            { label: t('nav.library'), icon: 'library', path: prefix(ROUTES.books) },
+            { label: t('nav.bookshelf'), icon: 'bookshelf', path: prefix(ROUTES.bookshelfView) },
+          ]
+        : [
+            { label: t('nav.library'), icon: 'library', path: ROUTES.books },
+            { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
+            { label: t('nav.borrowers'), icon: 'borrowers', path: ROUTES.borrowers },
+            { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
+          ],
+    [t, isDemo, prefix],
   )
+  const mobileSplit = Math.ceil(mobileTabs.length / 2)
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768)
@@ -208,13 +226,13 @@ export function Navigation() {
   }, [location.pathname])
 
   function isActive(path: string) {
+    const booksPath = prefix(ROUTES.books)
+    const addBookPath = prefix(ROUTES.addBook)
     return (
       location.pathname === path
-      || (path === ROUTES.books
-        && (location.pathname === ROUTES.books || location.pathname.startsWith('/books/'))
-        && location.pathname !== ROUTES.addBook)
-      || (path === ROUTES.scanShelf && location.pathname === ROUTES.scanShelf)
-      || (path === ROUTES.bookshelfView && location.pathname === ROUTES.bookshelfView)
+      || (path === booksPath
+        && (location.pathname === booksPath || location.pathname.startsWith(`${booksPath}/`))
+        && location.pathname !== addBookPath)
     )
   }
 
@@ -276,43 +294,47 @@ export function Navigation() {
           )
         })}
 
-        <div className="sh-sidebar-divider" />
-        {secondaryGroup.map((tab) => {
-          const active = isActive(tab.path)
-          const Icon = iconComponents[tab.icon]
-          return (
-            <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className={`sh-sidebar-btn${active ? ' active' : ''}`}
-              data-testid={`nav-${tab.icon}`}
-            >
-              <Icon size={20} />
-              <span>{tab.label}</span>
-            </button>
-          )
-        })}
+        {!isDemo && (
+          <>
+            <div className="sh-sidebar-divider" />
+            {secondaryGroup.map((tab) => {
+              const active = isActive(tab.path)
+              const Icon = iconComponents[tab.icon]
+              return (
+                <button
+                  key={tab.path}
+                  onClick={() => navigate(tab.path)}
+                  className={`sh-sidebar-btn${active ? ' active' : ''}`}
+                  data-testid={`nav-${tab.icon}`}
+                >
+                  <Icon size={20} />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
 
-        <div className="sh-sidebar-divider" style={{ marginTop: 'auto' }} />
-        <UsageMeterCard />
-        {settingsGroup.map((tab) => {
-          const active = isActive(tab.path)
-          const Icon = iconComponents[tab.icon]
-          return (
-            <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className={`sh-sidebar-btn${active ? ' active' : ''}`}
-            >
-              <Icon size={20} />
-              <span>{tab.label}</span>
+            <div className="sh-sidebar-divider" style={{ marginTop: 'auto' }} />
+            <UsageMeterCard />
+            {settingsGroup.map((tab) => {
+              const active = isActive(tab.path)
+              const Icon = iconComponents[tab.icon]
+              return (
+                <button
+                  key={tab.path}
+                  onClick={() => navigate(tab.path)}
+                  className={`sh-sidebar-btn${active ? ' active' : ''}`}
+                >
+                  <Icon size={20} />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+            <button onClick={logout} className="sh-sidebar-btn">
+              <IconLogout size={20} />
+              <span>{t('nav.logout', 'Logout')}</span>
             </button>
-          )
-        })}
-        <button onClick={logout} className="sh-sidebar-btn">
-          <IconLogout size={20} />
-          <span>{t('nav.logout', 'Logout')}</span>
-        </button>
+          </>
+        )}
       </nav>
     )
   }
@@ -325,7 +347,7 @@ export function Navigation() {
   //
   // Requires `viewport-fit=cover` in <meta name="viewport"> (see index.html).
 
-  const isFabActionActive = isActive(ROUTES.addBook) || isActive(ROUTES.scanShelf)
+  const isFabActionActive = isActive(prefix(ROUTES.addBook)) || isActive(prefix(ROUTES.scanShelf))
 
   const mobileTabStyle = (active: boolean): CSSProperties => ({
     flex: 1,
@@ -366,8 +388,8 @@ export function Navigation() {
       {/* ── Tab row ── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around' }}>
 
-        {/* Two tabs to the left of the FAB */}
-        {mobileTabs.slice(0, 2).map((tab) => {
+        {/* Tabs to the left of the FAB */}
+        {mobileTabs.slice(0, mobileSplit).map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon as NavIcon]
           return (
@@ -404,7 +426,7 @@ export function Navigation() {
               >
                 <button
                   role="menuitem"
-                  onClick={() => navigate(ROUTES.addBook)}
+                  onClick={() => navigate(prefix(ROUTES.addBook))}
                   className="sh-fab-menu-item"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
@@ -426,7 +448,7 @@ export function Navigation() {
                 </button>
                 <button
                   role="menuitem"
-                  onClick={() => navigate(ROUTES.scanShelf)}
+                  onClick={() => navigate(prefix(ROUTES.scanShelf))}
                   className="sh-fab-menu-item"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
@@ -492,8 +514,8 @@ export function Navigation() {
           )}
         </div>
 
-        {/* Two tabs to the right of the FAB */}
-        {mobileTabs.slice(2).map((tab) => {
+        {/* Tabs to the right of the FAB */}
+        {mobileTabs.slice(mobileSplit).map((tab) => {
           const active = isActive(tab.path)
           const Icon = iconComponents[tab.icon as NavIcon]
           return (
