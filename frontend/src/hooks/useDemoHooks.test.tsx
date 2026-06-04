@@ -72,7 +72,7 @@ describe('demo-aware hooks (#285)', () => {
   it('useBooks reads the in-memory store without auth or network', async () => {
     const { result } = renderHook(() => useBooks({ pageSize: 10, page: 1 }), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data?.total).toBe(16)
+    expect(result.current.data?.total).toBe(100)
     expect(result.current.data?.items).toHaveLength(10)
     expect(api.listBooks).not.toHaveBeenCalled()
   })
@@ -80,7 +80,7 @@ describe('demo-aware hooks (#285)', () => {
   it('useBooksForShelf returns the full ordered dataset from the store', async () => {
     const { result } = renderHook(() => useBooksForShelf(), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toHaveLength(16)
+    expect(result.current.data).toHaveLength(100)
     expect(api.listBooksForShelf).not.toHaveBeenCalled()
   })
 
@@ -93,9 +93,9 @@ describe('demo-aware hooks (#285)', () => {
 
   it('useBookCounts mirrors the store reading-status tallies', async () => {
     const { result } = renderHook(() => useBookCounts(), { wrapper })
-    await waitFor(() => expect(result.current.total).toBe(16))
-    expect(result.current.read).toBe(9)
-    expect(result.current.reading).toBe(2)
+    await waitFor(() => expect(result.current.total).toBe(100))
+    expect(result.current.read).toBe(42)
+    expect(result.current.reading).toBe(11)
     expect(api.listBooks).not.toHaveBeenCalled()
   })
 
@@ -104,7 +104,7 @@ describe('demo-aware hooks (#285)', () => {
     await act(async () => {
       await result.current.mutateAsync({ title: 'Demo addition', location_id: 'demo-loc-3' })
     })
-    expect(useDemoStore.getState().counts().total).toBe(17)
+    expect(useDemoStore.getState().counts().total).toBe(101)
     expect(api.createBook).not.toHaveBeenCalled()
   })
 

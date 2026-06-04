@@ -98,7 +98,7 @@ describe('ScanShelfPage — demo mode (#286)', () => {
 
     fireEvent.click(screen.getByText('scan.confirm_books'))
 
-    // Replace mode wiped the 6 seeded Shelf-1 books and wrote the 3 named ones
+    // Replace mode wiped the seeded Shelf-1 books and wrote the 3 named ones
     // (the no-text / needs-review entry was dropped for having no title).
     await waitFor(() => {
       const shelf = useDemoStore.getState().booksByLocation('demo-loc-1')

@@ -15,14 +15,14 @@ beforeEach(() => {
 })
 
 describe('demoSeed', () => {
-  it('mirrors the backend sample set (3 shelves, 16 books) with full type fidelity', () => {
+  it('mirrors the backend sample set (3 shelves, 100 books) with full type fidelity', () => {
     const locations = createDemoLocations()
     const books = createDemoBooks()
     expect(locations).toHaveLength(3)
-    expect(books).toHaveLength(16)
+    expect(books).toHaveLength(100)
     // Every book has all required fields populated (no undefined holes).
     for (const b of books) {
-      expect(b.id).toMatch(/^demo-book-\d{2}$/)
+      expect(b.id).toMatch(/^demo-book-\d{2,}$/)
       expect(b.is_sample).toBe(true)
       expect(b.processing_status).toBe('done')
       expect(typeof b.created_at).toBe('string')
@@ -45,13 +45,13 @@ describe('filterBooks', () => {
   const books = createDemoBooks()
 
   it('searches title / author case-insensitively', () => {
-    expect(filterBooks(books, { search: 'tolkien' })).toHaveLength(2)
+    expect(filterBooks(books, { search: 'tolkien' })).toHaveLength(5)
     expect(filterBooks(books, { search: 'HOBIT' }).map((b) => b.title)).toContain('Hobit')
   })
 
   it('filters by reading status and location', () => {
-    expect(filterBooks(books, { readingStatus: 'reading' })).toHaveLength(2)
-    expect(filterBooks(books, { locationId: 'demo-loc-3' })).toHaveLength(5)
+    expect(filterBooks(books, { readingStatus: 'reading' })).toHaveLength(11)
+    expect(filterBooks(books, { locationId: 'demo-loc-3' })).toHaveLength(33)
   })
 
   it('filters by language and publication-year range', () => {
@@ -64,18 +64,18 @@ describe('useDemoStore', () => {
   it('queryBooks paginates and reports total', () => {
     const get = useDemoStore.getState
     const page1 = get().queryBooks({ pageSize: 10, page: 1 })
-    expect(page1.total).toBe(16)
+    expect(page1.total).toBe(100)
     expect(page1.items).toHaveLength(10)
     expect(page1.has_sample_books).toBe(true)
     const page2 = get().queryBooks({ pageSize: 10, page: 2 })
-    expect(page2.items).toHaveLength(6)
+    expect(page2.items).toHaveLength(10)
   })
 
   it('counts reflects reading statuses', () => {
     const c = useDemoStore.getState().counts()
-    expect(c.total).toBe(16)
-    expect(c.read).toBe(9)
-    expect(c.reading).toBe(2)
+    expect(c.total).toBe(100)
+    expect(c.read).toBe(42)
+    expect(c.reading).toBe(11)
     expect(c.lent).toBe(0)
   })
 
@@ -84,9 +84,9 @@ describe('useDemoStore', () => {
     const created = get().addBook({ title: 'New Book', location_id: 'demo-loc-3' })
     expect(created.id).toContain('demo-book-')
     expect(created.is_sample).toBe(false)
-    expect(get().counts().total).toBe(17)
-    // demo-loc-3 had positions 0..4 → new one is 5.
-    expect(created.shelf_position).toBe(5)
+    expect(get().counts().total).toBe(101)
+    // demo-loc-3 had positions 0..32 → new one is 33.
+    expect(created.shelf_position).toBe(33)
   })
 
   it('updateBook patches only provided fields', () => {
@@ -94,15 +94,16 @@ describe('useDemoStore', () => {
     const updated = get().updateBook('demo-book-01', { reading_status: 'reading' })
     expect(updated?.reading_status).toBe('reading')
     expect(updated?.title).toBe('Proměna')
-    expect(get().counts().reading).toBe(3)
+    // demo-book-01 (Proměna) was 'read'; flipping it to 'reading' makes 11 → 12.
+    expect(get().counts().reading).toBe(12)
   })
 
   it('deleteBook and bulkDelete remove rows', () => {
     const get = useDemoStore.getState
     get().deleteBook('demo-book-01')
-    expect(get().counts().total).toBe(15)
+    expect(get().counts().total).toBe(99)
     get().bulkDelete(['demo-book-02', 'demo-book-03'])
-    expect(get().counts().total).toBe(13)
+    expect(get().counts().total).toBe(97)
   })
 
   it('bulkMove and bulkUpdateStatus mutate in place', () => {
@@ -129,7 +130,7 @@ describe('useDemoStore', () => {
 
   it('confirmShelfScan (replace) swaps out the shelf and adds non-sample books', () => {
     const get = useDemoStore.getState
-    // demo-loc-1 seeds 6 books; replace mode should leave only the scanned ones.
+    // demo-loc-1 seeds 34 books; replace mode should leave only the scanned ones.
     const res = get().confirmShelfScan({
       location_id: 'demo-loc-1',
       append_after_book_id: null,
@@ -156,8 +157,8 @@ describe('useDemoStore', () => {
       books: [{ position: 0, title: 'Inserted', author: null, isbn: null }],
     })
     const shelf = get().booksByLocation('demo-loc-1')
-    // 6 seeded + 1 inserted, contiguous positions, inserted sits at index 1.
-    expect(shelf).toHaveLength(7)
+    // 34 seeded + 1 inserted, contiguous positions, inserted sits at index 1.
+    expect(shelf).toHaveLength(35)
     expect(shelf[0].id).toBe(anchor.id)
     expect(shelf[1].title).toBe('Inserted')
     expect(shelf[1].shelf_position).toBe(1)
@@ -166,13 +167,13 @@ describe('useDemoStore', () => {
   it('persists to sessionStorage and reset() returns to pristine seed', () => {
     const get = useDemoStore.getState
     get().addBook({ title: 'Throwaway' })
-    expect(get().counts().total).toBe(17)
+    expect(get().counts().total).toBe(101)
     // Persisted as text-only data under the demo key.
     const raw = sessionStorage.getItem(DEMO_STORAGE_KEY)
     expect(raw).toBeTruthy()
     expect(raw).toContain('Throwaway')
     get().reset()
-    expect(get().counts().total).toBe(16)
+    expect(get().counts().total).toBe(100)
     expect(get().books.every((b) => b.is_sample)).toBe(true)
   })
 })
