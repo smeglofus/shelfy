@@ -529,7 +529,7 @@ export function BookshelfViewPage() {
                                   highlighted={highlightBookId === book.id}
                                   selected={selectedIds.has(book.id)}
                                   focusRef={highlightBookId === book.id ? highlightSpineRef : undefined}
-                                  onClick={() => (selectMode ? toggleSelect(book.id) : (reorderMode || isDemo ? undefined : navigate(getBookDetailRoute(book.id))))}
+                                  onClick={() => (selectMode ? toggleSelect(book.id) : (reorderMode ? undefined : navigate(getBookDetailRoute(book.id))))}
                                   compact={isMobile}
                                 />
                               ))}
