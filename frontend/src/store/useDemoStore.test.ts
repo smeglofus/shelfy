@@ -177,3 +177,111 @@ describe('useDemoStore', () => {
     expect(get().books.every((b) => b.is_sample)).toBe(true)
   })
 })
+
+describe('demo borrowers & loans', () => {
+  it('seeds borrowers with derived loan aggregates', () => {
+    const get = useDemoStore.getState
+    const res = get().queryBorrowers()
+    expect(res.total).toBe(4)
+    // Sorted by name; Jana has 2 active + 1 returned = 3 total.
+    const jana = res.items.find((b) => b.id === 'demo-borrower-1')!
+    expect(jana.active_loans).toBe(2)
+    expect(jana.total_loans).toBe(3)
+    expect(jana.last_activity_at).toBe('2026-06-02')
+  })
+
+  it('filters borrowers by search and active status', () => {
+    const get = useDemoStore.getState
+    expect(get().queryBorrowers({ search: 'svoboda' }).total).toBe(1)
+    expect(get().queryBorrowers({ search: 'email.cz' }).total).toBe(2)
+    // Tomáš has only a returned loan, so he drops out of the "active" filter.
+    const active = get().queryBorrowers({ status: 'active' })
+    expect(active.items.map((b) => b.id)).not.toContain('demo-borrower-4')
+    // No anonymization in the demo → the pending recovery view is always empty.
+    expect(get().queryBorrowers({ status: 'pending' }).total).toBe(0)
+  })
+
+  it('marks actively-lent seed books as currently lent', () => {
+    const get = useDemoStore.getState
+    const hobit = get().books.find((b) => b.id === 'demo-book-06')!
+    expect(hobit.is_currently_lent).toBe(true)
+    expect(hobit.active_loan?.borrower_id).toBe('demo-borrower-1')
+    // A returned-loan book is not currently lent.
+    expect(get().books.find((b) => b.id === 'demo-book-71')!.is_currently_lent).toBe(false)
+  })
+
+  it('builds borrower loan rows with joined book titles', () => {
+    const get = useDemoStore.getState
+    const rows = get().borrowerLoans('demo-borrower-1')
+    expect(rows).toHaveLength(3)
+    expect(rows.find((r) => r.book_id === 'demo-book-06')!.book_title).toBe('Hobit')
+  })
+
+  it('lends a book to an existing borrower and updates the book', () => {
+    const get = useDemoStore.getState
+    const loan = get().createLoan('demo-book-02', {
+      borrower_id: 'demo-borrower-2',
+      lent_date: '2026-06-08',
+      due_date: '2026-07-08',
+      notes: null,
+    })
+    expect(loan.is_active).toBe(true)
+    expect(loan.borrower_name).toBe('Petr Svoboda')
+    const book = get().books.find((b) => b.id === 'demo-book-02')!
+    expect(book.is_currently_lent).toBe(true)
+    expect(book.active_loan?.id).toBe(loan.id)
+    // No new borrower created when linking an existing one.
+    expect(get().queryBorrowers().total).toBe(4)
+  })
+
+  it('lends to a new typed-name borrower (creates the borrower)', () => {
+    const get = useDemoStore.getState
+    get().createLoan('demo-book-03', {
+      borrower_name: 'Nový Čtenář',
+      borrower_contact: 'novy@email.cz',
+      lent_date: '2026-06-08',
+      notes: null,
+    })
+    const res = get().queryBorrowers({ search: 'Nový' })
+    expect(res.total).toBe(1)
+    expect(res.items[0].contact).toBe('novy@email.cz')
+    expect(res.items[0].active_loans).toBe(1)
+  })
+
+  it('returns a loan and frees the book', () => {
+    const get = useDemoStore.getState
+    get().returnLoan('demo-book-06', 'demo-loan-1', {
+      returned_date: '2026-06-08',
+      return_condition: 'good',
+      notes: 'Vráceno.',
+    })
+    const loan = get().loansForBook('demo-book-06').find((l) => l.id === 'demo-loan-1')!
+    expect(loan.is_active).toBe(false)
+    expect(loan.returned_date).toBe('2026-06-08')
+    expect(get().books.find((b) => b.id === 'demo-book-06')!.is_currently_lent).toBe(false)
+    // Jana now has one fewer active loan.
+    expect(get().queryBorrowers().items.find((b) => b.id === 'demo-borrower-1')!.active_loans).toBe(1)
+  })
+
+  it('edits a borrower and refreshes nested loan references without rewriting snapshots', () => {
+    const get = useDemoStore.getState
+    get().updateBorrower('demo-borrower-3', { name: 'Lucie Nová', contact: 'lucie.nova@email.cz', notes: 'Sestřenice.' })
+    expect(get().getBorrowerDetail('demo-borrower-3')!.name).toBe('Lucie Nová')
+    const loan = get().loansForBook('demo-book-01').find((l) => l.borrower_id === 'demo-borrower-3')!
+    // Nested borrower reflects the edit (live resolution)...
+    expect(loan.borrower?.name).toBe('Lucie Nová')
+    // ...but the denormalized snapshot column is left intact (ADR 008).
+    expect(loan.borrower_name).toBe('Lucie Dvořáková')
+  })
+
+  it('persists borrowers/loans and reset() restores the pristine seed', () => {
+    const get = useDemoStore.getState
+    get().createLoan('demo-book-05', { borrower_name: 'Throwaway Reader', lent_date: '2026-06-08', notes: null })
+    const raw = sessionStorage.getItem(DEMO_STORAGE_KEY)!
+    expect(raw).toContain('Throwaway Reader')
+    expect(raw).toContain('demo-loan-1')
+    get().reset()
+    expect(get().queryBorrowers().total).toBe(4)
+    expect(get().loansForBook('demo-book-05')).toHaveLength(0)
+  })
+})

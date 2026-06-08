@@ -21,13 +21,23 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
-import { createDemoBooks, createDemoLocations } from '../features/demo/demoSeed'
+import { createDemoBooks, createDemoBorrowers, createDemoLoans, createDemoLocations } from '../features/demo/demoSeed'
 import type {
   Book,
   BookCreateRequest,
   BookListParams,
   BookListResponse,
   BookUpdateRequest,
+  Borrower,
+  BorrowerDetail,
+  BorrowerListItem,
+  BorrowerListParams,
+  BorrowerListResponse,
+  BorrowerLoanItem,
+  BorrowerUpdateRequest,
+  Loan,
+  LoanCreateRequest,
+  LoanReturnRequest,
   Location,
   ReadingStatus,
   ShelfScanConfirmRequest,
@@ -54,6 +64,8 @@ export interface ReorderItem {
 interface DemoData {
   books: Book[]
   locations: Location[]
+  borrowers: Borrower[]
+  loans: Loan[]
 }
 
 interface DemoActions {
@@ -62,6 +74,11 @@ interface DemoActions {
   booksForShelf: () => Book[]
   booksByLocation: (locationId: string) => Book[]
   counts: () => DemoBookCounts
+  // ── Borrower / loan read selectors ──
+  queryBorrowers: (params?: BorrowerListParams) => BorrowerListResponse
+  getBorrowerDetail: (id: string) => BorrowerDetail | null
+  borrowerLoans: (id: string) => BorrowerLoanItem[]
+  loansForBook: (bookId: string) => Loan[]
   // ── Write actions (all in-memory) ──
   addBook: (payload: BookCreateRequest) => Book
   updateBook: (id: string, payload: BookUpdateRequest) => Book | null
@@ -71,6 +88,10 @@ interface DemoActions {
   bulkUpdateStatus: (ids: string[], status: ReadingStatus) => void
   reorder: (items: ReorderItem[]) => void
   confirmShelfScan: (payload: ShelfScanConfirmRequest) => ShelfScanConfirmResponse
+  // ── Borrower / loan write actions ──
+  updateBorrower: (id: string, payload: BorrowerUpdateRequest) => Borrower | null
+  createLoan: (bookId: string, payload: LoanCreateRequest) => Loan
+  returnLoan: (bookId: string, loanId: string, payload: LoanReturnRequest) => Loan | null
   reset: () => void
 }
 
@@ -87,6 +108,35 @@ function nextId(): string {
     /* fall through */
   }
   return `demo-book-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+}
+
+function prefixedId(prefix: string): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `${prefix}-${crypto.randomUUID()}`
+    }
+  } catch {
+    /* fall through */
+  }
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+}
+
+/** Derive the list-row aggregates (`active_loans`, `total_loans`,
+ *  `last_activity_at`) for a borrower from the loan set. Exported for tests. */
+export function borrowerListItem(borrower: Borrower, loans: Loan[]): BorrowerListItem {
+  const mine = loans.filter((l) => l.borrower_id === borrower.id)
+  const dates: string[] = []
+  for (const l of mine) {
+    dates.push(l.lent_date)
+    if (l.returned_date) dates.push(l.returned_date)
+  }
+  dates.sort()
+  return {
+    ...borrower,
+    active_loans: mine.filter((l) => l.returned_date === null).length,
+    total_loans: mine.length,
+    last_activity_at: dates.length > 0 ? dates[dates.length - 1] : null,
+  }
 }
 
 function shelfOrder(books: Book[], locations: Location[]): Book[] {
@@ -149,6 +199,8 @@ export const useDemoStore = create<DemoState>()(
     (set, get) => ({
       books: createDemoBooks(),
       locations: createDemoLocations(),
+      borrowers: createDemoBorrowers(),
+      loans: createDemoLoans(),
 
       queryBooks: (params = {}) => {
         const all = get().books
@@ -182,6 +234,74 @@ export const useDemoStore = create<DemoState>()(
           lent: books.filter((b) => b.reading_status === 'lent').length,
         }
       },
+
+      queryBorrowers: (params = {}) => {
+        const { borrowers, loans } = get()
+        const search = params.search?.trim().toLowerCase()
+        const status = params.status ?? 'all'
+        let rows = borrowers.map((b) => borrowerListItem(b, loans))
+        if (search) {
+          rows = rows.filter((b) =>
+            [b.name, b.contact ?? ''].join(' ').toLowerCase().includes(search),
+          )
+        }
+        if (status === 'active') {
+          rows = rows.filter((b) => b.active_loans > 0)
+        } else if (status === 'pending') {
+          // No anonymization in the demo — the recovery view is always empty.
+          rows = rows.filter((b) => b.anonymized_at === null && b.pending_anonymization_until !== null)
+        }
+        rows.sort((a, b) => a.name.localeCompare(b.name))
+        const page = params.page ?? 1
+        const pageSize = params.pageSize ?? DEFAULT_PAGE_SIZE
+        const start = (page - 1) * pageSize
+        return {
+          total: rows.length,
+          page,
+          page_size: pageSize,
+          items: rows.slice(start, start + pageSize),
+        }
+      },
+
+      getBorrowerDetail: (id) => {
+        const borrower = get().borrowers.find((b) => b.id === id)
+        if (!borrower) return null
+        // The demo has no user accounts, so every audit FK is null — which is
+        // exactly the "legacy row" shape the detail page hides the footer for.
+        return {
+          ...borrower,
+          created_by_email: null,
+          anonymized_by_email: null,
+          merged_into_by_email: null,
+        }
+      },
+
+      borrowerLoans: (id) => {
+        const { books, loans } = get()
+        const titleOf = new Map(books.map((b) => [b.id, b]))
+        return loans
+          .filter((l) => l.borrower_id === id)
+          .sort((a, b) => (a.lent_date < b.lent_date ? 1 : -1))
+          .map((l) => {
+            const book = titleOf.get(l.book_id)
+            return {
+              id: l.id,
+              book_id: l.book_id,
+              book_title: book?.title ?? l.book_id,
+              book_author: book?.author ?? null,
+              lent_date: l.lent_date,
+              due_date: l.due_date,
+              returned_date: l.returned_date,
+              return_condition: l.return_condition,
+              notes: l.notes,
+            }
+          })
+      },
+
+      loansForBook: (bookId) =>
+        get()
+          .loans.filter((l) => l.book_id === bookId)
+          .sort((a, b) => (a.lent_date < b.lent_date ? 1 : -1)),
 
       addBook: (payload) => {
         const now = new Date().toISOString()
@@ -315,13 +435,140 @@ export const useDemoStore = create<DemoState>()(
         return { created_count: newBooks.length, book_ids: newBooks.map((b) => b.id) }
       },
 
-      reset: () => set({ books: createDemoBooks(), locations: createDemoLocations() }),
+      updateBorrower: (id, payload) => {
+        const now = new Date().toISOString()
+        let updated: Borrower | null = null
+        set((s) => {
+          const borrowers = s.borrowers.map((b) => {
+            if (b.id !== id) return b
+            updated = {
+              ...b,
+              name: payload.name !== undefined ? payload.name : b.name,
+              contact: payload.contact !== undefined ? payload.contact : b.contact,
+              notes: payload.notes !== undefined ? payload.notes : b.notes,
+              updated_at: now,
+            }
+            return updated
+          })
+          if (!updated) return {}
+          const fresh = updated
+          // ADR 008: edits do NOT rewrite the denormalized snapshot columns on
+          // historical loan rows — but the nested `borrower` object is resolved
+          // live, so refresh it everywhere it's referenced (loan rows + the
+          // active loan carried on the book).
+          const loans = s.loans.map((l) =>
+            l.borrower_id === id ? { ...l, borrower: fresh } : l,
+          )
+          const books = s.books.map((b) =>
+            b.active_loan && b.active_loan.borrower_id === id
+              ? { ...b, active_loan: { ...b.active_loan, borrower: fresh } }
+              : b,
+          )
+          return { borrowers, loans, books }
+        })
+        return updated
+      },
+
+      createLoan: (bookId, payload) => {
+        const now = new Date().toISOString()
+        const lentDate = payload.lent_date
+        let borrower: Borrower | null = null
+        const newBorrowers: Borrower[] = []
+
+        if (payload.borrower_id) {
+          borrower = get().borrowers.find((b) => b.id === payload.borrower_id) ?? null
+        }
+        if (!borrower) {
+          // Typed-name flow: mint a fresh borrower record (mirrors the backend
+          // creating a Borrower when a loan is made against a new name).
+          borrower = {
+            id: prefixedId('demo-borrower'),
+            name: payload.borrower_name?.trim() || 'Neznámý',
+            contact: payload.borrower_contact?.trim() || null,
+            notes: null,
+            anonymized_at: null,
+            pending_anonymization_until: null,
+            created_by_user_id: null,
+            anonymized_by_user_id: null,
+            merged_into_by_user_id: null,
+            created_at: now,
+            updated_at: now,
+          }
+          newBorrowers.push(borrower)
+        }
+
+        const loan: Loan = {
+          id: prefixedId('demo-loan'),
+          book_id: bookId,
+          borrower_id: borrower.id,
+          borrower_name: borrower.name,
+          borrower_contact: borrower.contact,
+          borrower,
+          lent_date: lentDate,
+          due_date: payload.due_date ?? null,
+          returned_date: null,
+          return_condition: null,
+          notes: payload.notes ?? null,
+          created_at: now,
+          is_active: true,
+        }
+
+        set((s) => ({
+          borrowers: newBorrowers.length ? [...s.borrowers, ...newBorrowers] : s.borrowers,
+          loans: [...s.loans, loan],
+          books: s.books.map((b) =>
+            b.id === bookId
+              ? { ...b, is_currently_lent: true, active_loan: loan, updated_at: now }
+              : b,
+          ),
+        }))
+        return loan
+      },
+
+      returnLoan: (bookId, loanId, payload) => {
+        const now = new Date().toISOString()
+        let updated: Loan | null = null
+        set((s) => {
+          const loans = s.loans.map((l) => {
+            if (l.id !== loanId) return l
+            updated = {
+              ...l,
+              returned_date: payload.returned_date,
+              return_condition: payload.return_condition,
+              notes: payload.notes ?? l.notes,
+              is_active: false,
+            }
+            return updated
+          })
+          if (!updated) return {}
+          const books = s.books.map((b) =>
+            b.id === bookId
+              ? { ...b, is_currently_lent: false, active_loan: null, updated_at: now }
+              : b,
+          )
+          return { loans, books }
+        })
+        return updated
+      },
+
+      reset: () =>
+        set({
+          books: createDemoBooks(),
+          locations: createDemoLocations(),
+          borrowers: createDemoBorrowers(),
+          loans: createDemoLoans(),
+        }),
     }),
     {
       name: DEMO_STORAGE_KEY,
       storage: createJSONStorage(() => sessionStorage),
       // Persist data only — never the action closures.
-      partialize: (state) => ({ books: state.books, locations: state.locations }),
+      partialize: (state) => ({
+        books: state.books,
+        locations: state.locations,
+        borrowers: state.borrowers,
+        loans: state.loans,
+      }),
     },
   ),
 )

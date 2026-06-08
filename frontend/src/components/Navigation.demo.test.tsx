@@ -2,9 +2,10 @@
  * Navigation — demo-aware sidebar (#288 follow-up).
  *
  * Inside `/demo/*` the same sidebar is reused so visitors can move between
- * search / bookshelf / add / scan, but it must (a) keep every destination
- * inside the `/demo` subtree and (b) drop the authenticated-only controls
- * (borrowers, settings, usage meter, logout).
+ * search / bookshelf / add / scan / borrowers, but it must (a) keep every
+ * destination inside the `/demo` subtree and (b) drop the truly
+ * authenticated-only controls (settings, usage meter, logout). Borrowers IS
+ * shown — the loan lifecycle is fully sandboxed client-side.
  */
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -36,15 +37,16 @@ beforeEach(() => navigateMock.mockReset())
 afterEach(() => cleanup())
 
 describe('Navigation — demo mode', () => {
-  it('exposes the demo-relevant items and hides authenticated-only controls', () => {
+  it('exposes the demo-relevant items (incl. borrowers) and hides authenticated-only controls', () => {
     renderAt('/demo/books')
 
     expect(screen.getByText('nav.library')).toBeInTheDocument()
     expect(screen.getByText('nav.bookshelf')).toBeInTheDocument()
     expect(screen.getByText('nav.add')).toBeInTheDocument()
     expect(screen.getByText('nav.scan')).toBeInTheDocument()
+    // Borrowers/loans are sandboxed client-side, so the entry IS shown.
+    expect(screen.getByText('nav.borrowers')).toBeInTheDocument()
 
-    expect(screen.queryByText('nav.borrowers')).not.toBeInTheDocument()
     expect(screen.queryByText('nav.settings')).not.toBeInTheDocument()
     expect(screen.queryByText('nav.logout')).not.toBeInTheDocument()
   })
@@ -61,6 +63,9 @@ describe('Navigation — demo mode', () => {
 
     await user.click(screen.getByText('nav.bookshelf'))
     expect(navigateMock).toHaveBeenLastCalledWith('/demo/bookshelf')
+
+    await user.click(screen.getByText('nav.borrowers'))
+    expect(navigateMock).toHaveBeenLastCalledWith('/demo/borrowers')
   })
 
   it('keeps the full authenticated sidebar (borrowers/settings/logout) outside the demo', () => {

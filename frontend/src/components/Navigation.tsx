@@ -160,9 +160,9 @@ export function Navigation() {
 
   const secondaryGroup = useMemo<NavItem[]>(
     () => [
-      { label: t('nav.borrowers'), icon: 'borrowers', path: ROUTES.borrowers },
+      { label: t('nav.borrowers'), icon: 'borrowers', path: prefix(ROUTES.borrowers) },
     ],
-    [t],
+    [t, prefix],
   )
 
   const settingsGroup = useMemo<NavItem[]>(
@@ -181,6 +181,7 @@ export function Navigation() {
         ? [
             { label: t('nav.library'), icon: 'library', path: prefix(ROUTES.books) },
             { label: t('nav.bookshelf'), icon: 'bookshelf', path: prefix(ROUTES.bookshelfView) },
+            { label: t('nav.borrowers'), icon: 'borrowers', path: prefix(ROUTES.borrowers) },
           ]
         : [
             { label: t('nav.library'), icon: 'library', path: ROUTES.books },
@@ -294,25 +295,28 @@ export function Navigation() {
           )
         })}
 
+        {/* Borrowers — shown in the demo too (the loan lifecycle is fully
+            sandboxed client-side). Usage / settings / logout stay
+            authenticated-only. */}
+        <div className="sh-sidebar-divider" />
+        {secondaryGroup.map((tab) => {
+          const active = isActive(tab.path)
+          const Icon = iconComponents[tab.icon]
+          return (
+            <button
+              key={tab.path}
+              onClick={() => navigate(tab.path)}
+              className={`sh-sidebar-btn${active ? ' active' : ''}`}
+              data-testid={`nav-${tab.icon}`}
+            >
+              <Icon size={20} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+
         {!isDemo && (
           <>
-            <div className="sh-sidebar-divider" />
-            {secondaryGroup.map((tab) => {
-              const active = isActive(tab.path)
-              const Icon = iconComponents[tab.icon]
-              return (
-                <button
-                  key={tab.path}
-                  onClick={() => navigate(tab.path)}
-                  className={`sh-sidebar-btn${active ? ' active' : ''}`}
-                  data-testid={`nav-${tab.icon}`}
-                >
-                  <Icon size={20} />
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
-
             <div className="sh-sidebar-divider" style={{ marginTop: 'auto' }} />
             <UsageMeterCard />
             {settingsGroup.map((tab) => {

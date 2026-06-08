@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 
 import { anonymizeBorrower, formatApiError, getBorrower, listBorrowerLoans, listBorrowers, mergeBorrowers, restoreBorrower, undoMerge, updateBorrower } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { DEMO_QUERY_KEY } from './useBooks'
+import { useDemoStore } from '../store/useDemoStore'
 import { useMergeUndoStore } from '../lib/merge-undo-store'
 import { useToastStore } from '../lib/toast-store'
 import type { BorrowerListParams, BorrowerUpdateRequest } from '../lib/types'
@@ -21,32 +24,40 @@ const borrowerLoansKey = (id: string) => ['borrower', id, 'loans']
 
 export function useBorrowers(params: BorrowerListParams = {}) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: borrowersListKey(params),
-    queryFn: () => listBorrowers(params),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, ...borrowersListKey(params)] : borrowersListKey(params),
+    queryFn: () => (isDemo ? useDemoStore.getState().queryBorrowers(params) : listBorrowers(params)),
     retry: false,
-    enabled: isAuthenticated,
+    enabled: isDemo || isAuthenticated,
     placeholderData: (previous) => previous,
   })
 }
 
 export function useBorrower(id: string) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: borrowerKey(id),
-    queryFn: () => getBorrower(id),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, ...borrowerKey(id)] : borrowerKey(id),
+    queryFn: () => {
+      if (!isDemo) return getBorrower(id)
+      const found = useDemoStore.getState().getBorrowerDetail(id)
+      if (!found) throw new Error('Borrower not found')
+      return found
+    },
     retry: false,
-    enabled: isAuthenticated && Boolean(id),
+    enabled: (isDemo || isAuthenticated) && Boolean(id),
   })
 }
 
 export function useBorrowerLoans(id: string) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: borrowerLoansKey(id),
-    queryFn: () => listBorrowerLoans(id),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, ...borrowerLoansKey(id)] : borrowerLoansKey(id),
+    queryFn: () => (isDemo ? useDemoStore.getState().borrowerLoans(id) : listBorrowerLoans(id)),
     retry: false,
-    enabled: isAuthenticated && Boolean(id),
+    enabled: (isDemo || isAuthenticated) && Boolean(id),
   })
 }
 
@@ -55,11 +66,25 @@ export function useUpdateBorrower() {
   const showError = useToastStore((s) => s.showError)
   const showSuccess = useToastStore((s) => s.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: BorrowerUpdateRequest }) =>
-      updateBorrower(id, payload),
+    mutationFn: async ({ id, payload }: { id: string; payload: BorrowerUpdateRequest }) => {
+      if (isDemo) {
+        const updated = useDemoStore.getState().updateBorrower(id, payload)
+        if (!updated) throw new Error('Borrower not found')
+        return updated
+      }
+      return updateBorrower(id, payload)
+    },
     onSuccess: async (updated) => {
+      if (isDemo) {
+        // The demo cache lives under a single ['demo', …] prefix; one
+        // invalidation refreshes the list, detail and any loan rows at once.
+        await queryClient.invalidateQueries({ queryKey: DEMO_QUERY_KEY })
+        showSuccess(t('toast.borrower_saved', 'Borrower saved.'))
+        return
+      }
       // ADR 008: edits do NOT propagate to historical loan rows. Only the
       // borrower-level caches need invalidating.
       // Invalidate every page/search variant of the borrowers list under
