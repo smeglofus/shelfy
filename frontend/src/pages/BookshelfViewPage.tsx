@@ -694,14 +694,17 @@ function BookSpine({
   }, [book.title])
 
   const displayTitle = book.title.length > 40 ? `${book.title.slice(0, 38)}…` : book.title
-  const isDraggable = Boolean(draggableProps)
 
+  // NOTE: do NOT add an `onPointerDown`/`onTouchStart` that calls
+  // `preventDefault()` here. Canceling `pointerdown` suppresses the browser's
+  // compatibility `mousedown` event, which is exactly what dnd-kit's
+  // `MouseSensor` listens for — doing so silently breaks drag-to-reorder with a
+  // mouse (touch still works via `TouchSensor`). Unwanted text/image selection
+  // while dragging is already prevented by `userSelect`/`WebkitUserDrag` below.
   return (
     <button
       ref={focusRef}
       onClick={onClick}
-      onPointerDown={(e) => { if (isDraggable) e.preventDefault() }}
-      onTouchStart={(e) => { if (isDraggable) e.preventDefault() }}
       className="sh-book-spine"
       title={`${book.title}${book.author ? ` — ${book.author}` : ''}`}
       data-highlighted={highlighted ? '' : undefined}
