@@ -396,13 +396,11 @@ export function BookDetailPage() {
           </form>
 
           {/* ── Loan history (accordion, collapsed by default) ──
-               Borrowers/loans are backend-only, so the section is omitted in
-               the demo. */}
-          {!isDemo && (
-            <AccordionSection title={t('loans.history_title')} defaultOpen={false}>
-              <LoanHistory bookId={book.id} />
-            </AccordionSection>
-          )}
+               The lend / return lifecycle is fully sandboxed client-side in the
+               demo (see useDemoStore), so the section renders there too. */}
+          <AccordionSection title={t('loans.history_title')} defaultOpen={false}>
+            <LoanHistory bookId={book.id} />
+          </AccordionSection>
 
           {/* ── Danger zone (de-emphasized) ── */}
           <AccordionSection title={t('book_detail.danger_zone_title')} defaultOpen={false}>

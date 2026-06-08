@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 
 import { BulkAnonymizeModal } from '../components/BulkAnonymizeModal'
 import { NoResultsIcon } from '../components/EmptyStateIcons'
+import { useDemoPath } from '../features/demo/demoNav'
+import { useIsDemoMode } from '../features/demo/DemoContext'
 import { useDebounce } from '../hooks/useDebounce'
 import { useBorrowers } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
@@ -23,6 +25,8 @@ function formatDate(value: string | null, locale: string): string {
 
 export function BorrowersPage() {
   const { t, i18n } = useTranslation()
+  const isDemo = useIsDemoMode()
+  const demoPath = useDemoPath()
   const [searchInput, setSearchInput] = useState('')
   const [page, setPage] = useState(1)
 
@@ -83,17 +87,20 @@ export function BorrowersPage() {
             {t('borrowers.subtitle')}
           </p>
         </div>
-        <button
-          type="button"
-          data-testid="bulk-anonymize-button"
-          className="sh-btn-secondary"
-          onClick={() => setBulkAnonOpen(true)}
-        >
-          {t('borrowers.bulk_anon_button')}
-        </button>
+        {/* Anonymization is a backend/GDPR workflow — not exposed in the demo. */}
+        {!isDemo && (
+          <button
+            type="button"
+            data-testid="bulk-anonymize-button"
+            className="sh-btn-secondary"
+            onClick={() => setBulkAnonOpen(true)}
+          >
+            {t('borrowers.bulk_anon_button')}
+          </button>
+        )}
       </header>
 
-      {bulkAnonOpen && (
+      {!isDemo && bulkAnonOpen && (
         <BulkAnonymizeModal onClose={() => setBulkAnonOpen(false)} />
       )}
 
@@ -194,7 +201,7 @@ export function BorrowersPage() {
           {items.map((borrower) => (
             <li key={borrower.id}>
               <Link
-                to={getBorrowerDetailRoute(borrower.id)}
+                to={demoPath(getBorrowerDetailRoute(borrower.id))}
                 data-testid={`borrower-row-${borrower.id}`}
                 className="sh-card"
                 style={{

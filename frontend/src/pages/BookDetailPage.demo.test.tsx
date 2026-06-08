@@ -2,8 +2,9 @@
  * Demo-mode behaviour for BookDetailPage (#288 follow-up).
  *
  * A logged-out visitor can now open a book from the demo list. The detail page
- * reads and writes the in-memory demo store (no network), and the backend-only
- * affordances (AI enrichment, loan history) are suppressed.
+ * reads and writes the in-memory demo store (no network). AI enrichment (a
+ * backend/AI call) stays suppressed, but the loan-history section IS shown —
+ * the lend/return lifecycle is fully sandboxed client-side.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
@@ -70,16 +71,18 @@ afterEach(() => {
 })
 
 describe('BookDetailPage — demo mode', () => {
-  it('renders the book from the in-memory store and hides backend-only sections', async () => {
+  it('renders the book from the in-memory store, hides AI enrichment, shows loan history', async () => {
     const book = useDemoStore.getState().books[0]
     renderDetail(book.id)
 
     expect((await screen.findAllByText(book.title)).length).toBeGreaterThan(0)
-    // AI enrichment + loan history depend on the backend — hidden in the demo.
+    // AI enrichment hits the backend — still hidden in the demo.
     expect(screen.queryByText('enrich.enrich_book')).not.toBeInTheDocument()
-    expect(screen.queryByText('loans.history_title')).not.toBeInTheDocument()
+    // Loan history is now sandboxed client-side, so the section IS present.
+    expect(screen.getAllByText('loans.history_title').length).toBeGreaterThan(0)
     // Never touched the network.
     expect(api.getBook).not.toHaveBeenCalled()
+    expect(api.listLoans).not.toHaveBeenCalled()
   })
 
   it('persists metadata edits to the in-memory store, no network', async () => {

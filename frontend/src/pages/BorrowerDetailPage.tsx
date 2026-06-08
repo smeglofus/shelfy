@@ -6,6 +6,8 @@ import { EditBorrowerModal } from '../components/EditBorrowerModal'
 import { EmptyShelfIcon, NoResultsIcon } from '../components/EmptyStateIcons'
 import { MergeBorrowerModal } from '../components/MergeBorrowerModal'
 import { Modal } from '../components/Modal'
+import { useDemoPath } from '../features/demo/demoNav'
+import { useIsDemoMode } from '../features/demo/DemoContext'
 import { useAnonymizeBorrower, useBorrower, useBorrowerLoans, useRestoreBorrower } from '../hooks/useBorrowers'
 import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { ROUTES, getBookDetailRoute } from '../lib/routes'
@@ -139,6 +141,7 @@ interface LoanRowProps {
 
 function LoanRow({ loan, locale }: LoanRowProps) {
   const { t } = useTranslation()
+  const demoPath = useDemoPath()
   return (
     <li
       data-testid={`borrower-loan-${loan.id}`}
@@ -154,7 +157,7 @@ function LoanRow({ loan, locale }: LoanRowProps) {
     >
       <div style={{ minWidth: 0 }}>
         <Link
-          to={getBookDetailRoute(loan.book_id)}
+          to={demoPath(getBookDetailRoute(loan.book_id))}
           style={{ fontWeight: 600, color: 'inherit', textDecoration: 'none' }}
         >
           {loan.book_title}
@@ -196,6 +199,8 @@ function LoanRow({ loan, locale }: LoanRowProps) {
 export function BorrowerDetailPage() {
   const { borrowerId } = useParams<{ borrowerId: string }>()
   const { t, i18n } = useTranslation()
+  const isDemo = useIsDemoMode()
+  const demoPath = useDemoPath()
   const borrowerQuery = useBorrower(borrowerId ?? '')
   const loansQuery = useBorrowerLoans(borrowerId ?? '')
   const anonymize = useAnonymizeBorrower()
@@ -236,7 +241,7 @@ export function BorrowerDetailPage() {
         <p data-testid="borrower-detail-error" style={{ color: 'var(--sh-text-muted)' }}>
           {t('borrowers.detail_not_found')}
         </p>
-        <Link to={ROUTES.borrowers}>{t('borrowers.back_to_overview')}</Link>
+        <Link to={demoPath(ROUTES.borrowers)}>{t('borrowers.back_to_overview')}</Link>
       </main>
     )
   }
@@ -250,7 +255,7 @@ export function BorrowerDetailPage() {
     <main className="sh-main" style={{ padding: 24, maxWidth: 760, margin: '0 auto' }}>
       <div style={{ marginBottom: 16 }}>
         <Link
-          to={ROUTES.borrowers}
+          to={demoPath(ROUTES.borrowers)}
           style={{ fontSize: 13, color: 'var(--sh-text-muted)', textDecoration: 'none' }}
         >
           ← {t('borrowers.back_to_overview')}
@@ -349,22 +354,27 @@ export function BorrowerDetailPage() {
             >
               {t('borrowers.edit_button')}
             </button>
-            <button
-              type="button"
-              data-testid="merge-button"
-              className="sh-btn-secondary"
-              onClick={() => setMergeOpen(true)}
-            >
-              {t('borrowers.merge_button')}
-            </button>
-            <button
-              type="button"
-              data-testid="anonymize-button"
-              className="sh-btn-secondary"
-              onClick={() => setConfirmOpen(true)}
-            >
-              {t('borrowers.anonymize_button')}
-            </button>
+            {/* Merge & anonymize are backend/GDPR workflows — hidden in the demo. */}
+            {!isDemo && (
+              <>
+                <button
+                  type="button"
+                  data-testid="merge-button"
+                  className="sh-btn-secondary"
+                  onClick={() => setMergeOpen(true)}
+                >
+                  {t('borrowers.merge_button')}
+                </button>
+                <button
+                  type="button"
+                  data-testid="anonymize-button"
+                  className="sh-btn-secondary"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  {t('borrowers.anonymize_button')}
+                </button>
+              </>
+            )}
           </div>
         )}
       </header>

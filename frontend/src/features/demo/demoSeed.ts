@@ -16,7 +16,7 @@
  *  - The factory functions return **fresh** arrays/objects on every call, so a
  *    `reset()` can never be polluted by in-place demo mutations.
  */
-import type { Book, Location, ReadingStatus } from '../../lib/types'
+import type { Book, Borrower, Loan, Location, ReadingStatus } from '../../lib/types'
 
 /** Fixed timestamp for all seed rows — keeps demo snapshots deterministic. */
 export const DEMO_SEED_TS = '2026-01-01T00:00:00.000Z'
@@ -146,6 +146,94 @@ const SEED_BOOKS: readonly SeedBook[] = [
   ['Snídaně u Tiffanyho', 'Truman Capote', 'cs', 1958, 'unread', 2, 32],
 ] as const
 
+// ── Borrowers & loans (#284 follow-up) ──────────────────────────────────────
+//
+// Mirrors the real borrowers/loans feature client-side so the demo can show a
+// populated "Borrowers" view and a working lend / return lifecycle — still with
+// zero backend/AI load. Anonymize / merge are intentionally NOT seeded or
+// exposed in the demo (they're hidden in the UI), so every borrower row here is
+// a plain, active record (no `anonymized_at`, no `pending_anonymization_until`).
+
+interface SeedBorrower {
+  id: string
+  name: string
+  contact: string | null
+  notes: string | null
+}
+
+const SEED_BORROWERS: readonly SeedBorrower[] = [
+  { id: 'demo-borrower-1', name: 'Jana Nováková', contact: 'jana.novakova@email.cz', notes: 'Kolegyně z práce, vrací včas.' },
+  { id: 'demo-borrower-2', name: 'Petr Svoboda', contact: '+420 777 123 456', notes: null },
+  { id: 'demo-borrower-3', name: 'Lucie Dvořáková', contact: 'lucie.dvorakova@email.cz', notes: null },
+  { id: 'demo-borrower-4', name: 'Tomáš Procházka', contact: null, notes: 'Soused odvedle.' },
+] as const
+
+type ReturnCondition = NonNullable<Loan['return_condition']>
+
+/** [id, bookId, borrowerId, lentDate, dueDate, returnedDate, returnCondition, notes] */
+type SeedLoan = readonly [
+  string,
+  string,
+  string,
+  string,
+  string | null,
+  string | null,
+  ReturnCondition | null,
+  string | null,
+]
+
+const SEED_LOANS: readonly SeedLoan[] = [
+  // ── Active loans (currently out) ──
+  ['demo-loan-1', 'demo-book-06', 'demo-borrower-1', '2026-05-20', '2026-06-20', null, null, null],
+  ['demo-loan-2', 'demo-book-37', 'demo-borrower-2', '2026-05-28', '2026-06-15', null, null, 'Půjčeno na dovolenou.'],
+  ['demo-loan-3', 'demo-book-51', 'demo-borrower-1', '2026-06-02', '2026-07-02', null, null, null],
+  // ── Returned loans (history) ──
+  ['demo-loan-4', 'demo-book-01', 'demo-borrower-3', '2026-03-01', '2026-03-21', '2026-03-22', 'good', null],
+  ['demo-loan-5', 'demo-book-71', 'demo-borrower-2', '2026-02-10', '2026-03-01', '2026-03-05', 'perfect', null],
+  ['demo-loan-6', 'demo-book-85', 'demo-borrower-4', '2026-04-15', '2026-05-15', '2026-05-10', 'fair', 'Trochu ohnutý roh.'],
+  ['demo-loan-7', 'demo-book-28', 'demo-borrower-1', '2026-01-05', '2026-02-05', '2026-02-01', 'good', null],
+] as const
+
+/** Build a fresh array of seed borrowers (new objects every call). */
+export function createDemoBorrowers(): Borrower[] {
+  return SEED_BORROWERS.map((b) => ({
+    id: b.id,
+    name: b.name,
+    contact: b.contact,
+    notes: b.notes,
+    anonymized_at: null,
+    pending_anonymization_until: null,
+    created_by_user_id: null,
+    anonymized_by_user_id: null,
+    merged_into_by_user_id: null,
+    created_at: DEMO_SEED_TS,
+    updated_at: DEMO_SEED_TS,
+  }))
+}
+
+/** Build a fresh array of seed loans, denormalizing the borrower snapshot. */
+export function createDemoLoans(): Loan[] {
+  const byId = new Map(createDemoBorrowers().map((b) => [b.id, b]))
+  return SEED_LOANS.map(([id, bookId, borrowerId, lentDate, dueDate, returnedDate, returnCondition, notes]) => {
+    const borrower = byId.get(borrowerId) ?? null
+    return {
+      id,
+      book_id: bookId,
+      borrower_id: borrowerId,
+      borrower_name: borrower?.name ?? '',
+      borrower_contact: borrower?.contact ?? null,
+      borrower,
+      lent_date: lentDate,
+      due_date: dueDate,
+      returned_date: returnedDate,
+      return_condition: returnCondition,
+      notes,
+      created_at: `${lentDate}T00:00:00.000Z`,
+      is_active: returnedDate === null,
+    }
+  })
+}
+
 /** Build a fresh array of seed locations (new objects every call). */
 export function createDemoLocations(): Location[] {
   return SEED_LOCATIONS.map((loc) => ({
@@ -162,24 +250,34 @@ export function createDemoLocations(): Location[] {
 
 /** Build a fresh array of seed books (new objects every call). */
 export function createDemoBooks(): Book[] {
-  return SEED_BOOKS.map(([title, author, language, year, readingStatus, locIdx, shelfPos], index) => ({
-    id: `demo-book-${String(index + 1).padStart(2, '0')}`,
-    title,
-    author,
-    isbn: null,
-    publisher: null,
-    language,
-    description: null,
-    publication_year: year,
-    cover_image_url: null,
-    location_id: SEED_LOCATIONS[locIdx].id,
-    shelf_position: shelfPos,
-    processing_status: 'done',
-    reading_status: readingStatus,
-    is_currently_lent: false,
-    active_loan: null,
-    is_sample: true,
-    created_at: DEMO_SEED_TS,
-    updated_at: DEMO_SEED_TS,
-  }))
+  // Reflect the seeded lending state: books with an active (un-returned) loan
+  // render as "currently lent" and carry their active loan on the book object,
+  // exactly like the backend's `Book` payload.
+  const activeLoanByBook = new Map(
+    createDemoLoans().filter((l) => l.is_active).map((l) => [l.book_id, l]),
+  )
+  return SEED_BOOKS.map(([title, author, language, year, readingStatus, locIdx, shelfPos], index) => {
+    const id = `demo-book-${String(index + 1).padStart(2, '0')}`
+    const activeLoan = activeLoanByBook.get(id) ?? null
+    return {
+      id,
+      title,
+      author,
+      isbn: null,
+      publisher: null,
+      language,
+      description: null,
+      publication_year: year,
+      cover_image_url: null,
+      location_id: SEED_LOCATIONS[locIdx].id,
+      shelf_position: shelfPos,
+      processing_status: 'done',
+      reading_status: readingStatus,
+      is_currently_lent: activeLoan !== null,
+      active_loan: activeLoan,
+      is_sample: true,
+      created_at: DEMO_SEED_TS,
+      updated_at: DEMO_SEED_TS,
+    }
+  })
 }

@@ -114,6 +114,8 @@ function AppShell() {
             <Route path='books/:bookId' element={<BookDetailPage />} />
             <Route path='scan' element={<ScanShelfPage />} />
             <Route path='bookshelf' element={<BookshelfViewPage />} />
+            <Route path='borrowers' element={<BorrowersPage />} />
+            <Route path='borrowers/:borrowerId' element={<BorrowerDetailPage />} />
           </Route>
 
           {/* ── Protected routes ── */}

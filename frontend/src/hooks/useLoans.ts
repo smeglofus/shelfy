@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 
 import { createLoan, formatApiError, listLoans, returnLoan } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsDemoMode } from '../features/demo/DemoContext'
+import { DEMO_QUERY_KEY } from './useBooks'
+import { useDemoStore } from '../store/useDemoStore'
 import { useToastStore } from '../lib/toast-store'
 import type { LoanCreateRequest, LoanReturnRequest } from '../lib/types'
 
@@ -11,10 +14,11 @@ const loansKey = (bookId: string) => ['loans', bookId]
 
 export function useLoans(bookId: string) {
   const { isAuthenticated } = useAuth()
+  const isDemo = useIsDemoMode()
   return useQuery({
-    queryKey: loansKey(bookId),
-    queryFn: () => listLoans(bookId),
-    enabled: isAuthenticated && Boolean(bookId),
+    queryKey: isDemo ? [...DEMO_QUERY_KEY, ...loansKey(bookId)] : loansKey(bookId),
+    queryFn: () => (isDemo ? useDemoStore.getState().loansForBook(bookId) : listLoans(bookId)),
+    enabled: (isDemo || isAuthenticated) && Boolean(bookId),
     retry: false,
   })
 }
@@ -24,12 +28,20 @@ export function useCreateLoan(bookId: string) {
   const showError = useToastStore((state) => state.showError)
   const showSuccess = useToastStore((state) => state.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: (payload: LoanCreateRequest) => createLoan(bookId, payload),
+    mutationFn: async (payload: LoanCreateRequest) =>
+      isDemo ? useDemoStore.getState().createLoan(bookId, payload) : createLoan(bookId, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: loansKey(bookId) })
-      await queryClient.invalidateQueries({ queryKey: ['books'] })
+      if (isDemo) {
+        // One ['demo', …] invalidation refreshes loans, the book and the
+        // borrower list/detail (a new borrower may have just been created).
+        await queryClient.invalidateQueries({ queryKey: DEMO_QUERY_KEY })
+      } else {
+        await queryClient.invalidateQueries({ queryKey: loansKey(bookId) })
+        await queryClient.invalidateQueries({ queryKey: ['books'] })
+      }
       showSuccess(t('toast.book_lent', 'Book lent successfully.'))
     },
     onError: (error: unknown) => showError(formatApiError(error)),
@@ -41,12 +53,20 @@ export function useReturnLoan(bookId: string) {
   const showError = useToastStore((state) => state.showError)
   const showSuccess = useToastStore((state) => state.showSuccess)
   const { t } = useTranslation()
+  const isDemo = useIsDemoMode()
 
   return useMutation({
-    mutationFn: ({ loanId, payload }: { loanId: string; payload: LoanReturnRequest }) => returnLoan(bookId, loanId, payload),
+    mutationFn: async ({ loanId, payload }: { loanId: string; payload: LoanReturnRequest }) =>
+      isDemo
+        ? useDemoStore.getState().returnLoan(bookId, loanId, payload)
+        : returnLoan(bookId, loanId, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: loansKey(bookId) })
-      await queryClient.invalidateQueries({ queryKey: ['books'] })
+      if (isDemo) {
+        await queryClient.invalidateQueries({ queryKey: DEMO_QUERY_KEY })
+      } else {
+        await queryClient.invalidateQueries({ queryKey: loansKey(bookId) })
+        await queryClient.invalidateQueries({ queryKey: ['books'] })
+      }
       showSuccess(t('toast.book_returned', 'Book returned successfully.'))
     },
     onError: (error: unknown) => showError(formatApiError(error)),
