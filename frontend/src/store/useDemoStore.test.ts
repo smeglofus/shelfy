@@ -16,11 +16,11 @@ beforeEach(() => {
 })
 
 describe('demoSeed', () => {
-  it('mirrors the backend sample set (3 shelves, 100 books) with full type fidelity', () => {
+  it('extends the backend sample set (7 shelves, 271 books) with full type fidelity', () => {
     const locations = createDemoLocations()
     const books = createDemoBooks()
-    expect(locations).toHaveLength(3)
-    expect(books).toHaveLength(100)
+    expect(locations).toHaveLength(7)
+    expect(books).toHaveLength(271)
     // Every book has all required fields populated (no undefined holes).
     for (const b of books) {
       expect(b.id).toMatch(/^demo-book-\d{2,}$/)
@@ -65,7 +65,7 @@ describe('useDemoStore', () => {
   it('queryBooks paginates and reports total', () => {
     const get = useDemoStore.getState
     const page1 = get().queryBooks({ pageSize: 10, page: 1 })
-    expect(page1.total).toBe(100)
+    expect(page1.total).toBe(271)
     expect(page1.items).toHaveLength(10)
     expect(page1.has_sample_books).toBe(true)
     const page2 = get().queryBooks({ pageSize: 10, page: 2 })
@@ -74,8 +74,8 @@ describe('useDemoStore', () => {
 
   it('counts reflects reading statuses', () => {
     const c = useDemoStore.getState().counts()
-    expect(c.total).toBe(100)
-    expect(c.read).toBe(42)
+    expect(c.total).toBe(271)
+    expect(c.read).toBe(128)
     expect(c.reading).toBe(11)
     expect(c.lent).toBe(0)
   })
@@ -85,7 +85,7 @@ describe('useDemoStore', () => {
     const created = get().addBook({ title: 'New Book', location_id: 'demo-loc-3' })
     expect(created.id).toContain('demo-book-')
     expect(created.is_sample).toBe(false)
-    expect(get().counts().total).toBe(101)
+    expect(get().counts().total).toBe(272)
     // demo-loc-3 had positions 0..32 → new one is 33.
     expect(created.shelf_position).toBe(33)
   })
@@ -102,9 +102,9 @@ describe('useDemoStore', () => {
   it('deleteBook and bulkDelete remove rows', () => {
     const get = useDemoStore.getState
     get().deleteBook('demo-book-01')
-    expect(get().counts().total).toBe(99)
+    expect(get().counts().total).toBe(270)
     get().bulkDelete(['demo-book-02', 'demo-book-03'])
-    expect(get().counts().total).toBe(97)
+    expect(get().counts().total).toBe(268)
   })
 
   it('bulkMove and bulkUpdateStatus mutate in place', () => {
@@ -168,14 +168,14 @@ describe('useDemoStore', () => {
   it('persists to sessionStorage and re-seeding returns to pristine seed', () => {
     const get = useDemoStore.getState
     get().addBook({ title: 'Throwaway' })
-    expect(get().counts().total).toBe(101)
+    expect(get().counts().total).toBe(272)
     // Persisted as text-only data under the demo key.
     const raw = sessionStorage.getItem(DEMO_STORAGE_KEY)
     expect(raw).toBeTruthy()
     expect(raw).toContain('Throwaway')
     expect(raw).toContain('"seeded":true')
     seedDemoStore()
-    expect(get().counts().total).toBe(100)
+    expect(get().counts().total).toBe(271)
     expect(get().books.every((b) => b.is_sample)).toBe(true)
   })
 })
