@@ -73,19 +73,22 @@ afterEach(() => {
   seedDemoStore()
 })
 
+// 20s timeouts: rendering BooksPage over the 271-book seed in jsdom takes
+// ~5s on a loaded CI runner — past vitest's 5s default. Same precedent as the
+// onboarding-wizard test; locally these finish in well under a second.
 describe('BooksPage — demo mode (#285)', () => {
   it('renders seeded books from the in-memory store without any network call', async () => {
     renderDemo()
     expect((await screen.findAllByText('Proměna')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Hobit').length).toBeGreaterThan(0)
     expect(api.listBooks).not.toHaveBeenCalled()
-  })
+  }, 20_000)
 
   it('hides the sample-library banner even though demo books are samples', async () => {
     renderDemo()
     await screen.findAllByText('Proměna')
     expect(screen.queryByTestId('sample-library-banner')).not.toBeInTheDocument()
-  })
+  }, 20_000)
 
   it('links book cards to the /demo book-detail twin (not the authenticated route)', async () => {
     renderDemo()
@@ -96,5 +99,5 @@ describe('BooksPage — demo mode (#285)', () => {
     expect(detailLinks.length).toBeGreaterThan(0)
     // …and never at the authenticated `/books/:id` route (which would bounce to login).
     expect(document.querySelector('a[href^="/books/"]')).toBeNull()
-  })
+  }, 20_000)
 })
