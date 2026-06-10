@@ -73,7 +73,7 @@ describe('demo-aware hooks (#285)', () => {
   it('useBooks reads the in-memory store without auth or network', async () => {
     const { result } = renderHook(() => useBooks({ pageSize: 10, page: 1 }), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data?.total).toBe(100)
+    expect(result.current.data?.total).toBe(271)
     expect(result.current.data?.items).toHaveLength(10)
     expect(api.listBooks).not.toHaveBeenCalled()
   })
@@ -81,21 +81,21 @@ describe('demo-aware hooks (#285)', () => {
   it('useBooksForShelf returns the full ordered dataset from the store', async () => {
     const { result } = renderHook(() => useBooksForShelf(), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toHaveLength(100)
+    expect(result.current.data).toHaveLength(271)
     expect(api.listBooksForShelf).not.toHaveBeenCalled()
   })
 
   it('useLocations returns the seeded locations from the store', async () => {
     const { result } = renderHook(() => useLocations(), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toHaveLength(3)
+    expect(result.current.data).toHaveLength(7)
     expect(api.listLocations).not.toHaveBeenCalled()
   })
 
   it('useBookCounts mirrors the store reading-status tallies', async () => {
     const { result } = renderHook(() => useBookCounts(), { wrapper })
-    await waitFor(() => expect(result.current.total).toBe(100))
-    expect(result.current.read).toBe(42)
+    await waitFor(() => expect(result.current.total).toBe(271))
+    expect(result.current.read).toBe(128)
     expect(result.current.reading).toBe(11)
     expect(api.listBooks).not.toHaveBeenCalled()
   })
@@ -105,7 +105,7 @@ describe('demo-aware hooks (#285)', () => {
     await act(async () => {
       await result.current.mutateAsync({ title: 'Demo addition', location_id: 'demo-loc-3' })
     })
-    expect(useDemoStore.getState().counts().total).toBe(101)
+    expect(useDemoStore.getState().counts().total).toBe(272)
     expect(api.createBook).not.toHaveBeenCalled()
   })
 
