@@ -49,7 +49,7 @@ export function AddBookPage() {
       }
       setUploadJobId(null)
     }
-  }, [uploadJobStatusQuery.data?.status, uploadJobStatusQuery.data?.error_message, showError])
+  }, [uploadJobStatusQuery.data?.status, uploadJobStatusQuery.data?.error_message, showError, t])
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

@@ -142,7 +142,13 @@ export function BookshelfViewPage() {
   }, [allBooks])
 
   const roomNames = Object.keys(locationTree)
-  const filteredTree = selectedRoom ? { [selectedRoom]: locationTree[selectedRoom] } : locationTree
+  // Memoized so the `visibleBooks` memo below only recomputes when the room
+  // filter or the tree itself changes — the inline conditional re-created the
+  // object every render and made that memo recompute unconditionally.
+  const filteredTree = useMemo(
+    () => (selectedRoom ? { [selectedRoom]: locationTree[selectedRoom] } : locationTree),
+    [selectedRoom, locationTree],
+  )
 
   const visibleBooks = useMemo(() => {
     const out: Book[] = []

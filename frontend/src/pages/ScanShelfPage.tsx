@@ -124,7 +124,11 @@ export function ScanShelfPage() {
       ))
       setActiveJobId(null)
     }
-  }, [activeResult.data?.status])
+    // Full dependency list is safe here: the polling query refreshes
+    // `activeResult.data` every ~2s, but the guard above makes non-terminal
+    // re-runs a no-op, and `setActiveJobId(null)` after a terminal status
+    // short-circuits the follow-up run.
+  }, [activeResult.data, activeJobId, showError, t])
 
 
   useEffect(() => {

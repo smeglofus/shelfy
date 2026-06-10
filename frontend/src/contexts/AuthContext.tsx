@@ -351,6 +351,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// The hook is deliberately co-located with its provider; a Fast Refresh
+// full-reload on edits to this file is acceptable (auth re-bootstraps anyway).
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext)
   if (!context) {
