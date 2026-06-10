@@ -14,12 +14,18 @@ from app.models.user import User
 _ROLE_ORDER = {LibraryRole.VIEWER: 0, LibraryRole.EDITOR: 1, LibraryRole.OWNER: 2}
 
 
-async def create_personal_library(session: AsyncSession, user: User) -> Library:
-    lib = Library(name=f"{user.email.split('@')[0]} library", created_by_user_id=user.id)
+async def create_library(session: AsyncSession, user_id: uuid.UUID, name: str) -> Library:
+    """Create a library owned by ``user_id``. Flushes but does not commit —
+    the caller owns the transaction boundary (entitlement locks depend on it)."""
+    lib = Library(name=name, created_by_user_id=user_id)
     session.add(lib)
     await session.flush()
-    session.add(LibraryMember(library_id=lib.id, user_id=user.id, role=LibraryRole.OWNER))
+    session.add(LibraryMember(library_id=lib.id, user_id=user_id, role=LibraryRole.OWNER))
     return lib
+
+
+async def create_personal_library(session: AsyncSession, user: User) -> Library:
+    return await create_library(session, user.id, f"{user.email.split('@')[0]} library")
 
 
 _SAMPLE_LOCATIONS = [

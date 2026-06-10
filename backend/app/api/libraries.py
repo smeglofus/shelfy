@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db_session
-from app.models.library import Library, LibraryMember, LibraryRole
+from app.models.library import LibraryRole
 from app.models.user import User
 from app.schemas.library import (
     AddLibraryMemberRequest,
@@ -19,6 +19,7 @@ from app.schemas.library import (
 from app.services import entitlements
 from app.services.library import (
     add_member,
+    create_library as create_library_service,
     list_members,
     list_user_libraries,
     remove_member,
@@ -50,10 +51,7 @@ async def create_library(
     # released when the transaction commits below.
     await entitlements.assert_can_create_library(session, current_user.id, lock=True)
 
-    lib = Library(name=payload.name, created_by_user_id=current_user.id)
-    session.add(lib)
-    await session.flush()
-    session.add(LibraryMember(library_id=lib.id, user_id=current_user.id, role=LibraryRole.OWNER))
+    lib = await create_library_service(session, current_user.id, payload.name)
     await session.commit()
     await session.refresh(lib)
     return LibraryResponse(id=lib.id, name=lib.name, role=LibraryRole.OWNER)

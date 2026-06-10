@@ -205,6 +205,17 @@ async def get_book_or_404(session: AsyncSession, book_id: uuid.UUID, library_id:
     return book
 
 
+async def list_book_ids(
+    session: AsyncSession, library_id: uuid.UUID, *, location_id: uuid.UUID | None = None
+) -> list[uuid.UUID]:
+    """IDs only — for fan-out jobs (enrichment) where full rows would be waste."""
+    stmt = select(Book.id).where(Book.library_id == library_id)
+    if location_id is not None:
+        stmt = stmt.where(Book.location_id == location_id)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
 async def update_book(
     session: AsyncSession, book_id: uuid.UUID, payload: BookUpdateRequest, library_id: uuid.UUID
 ) -> Book:

@@ -4,19 +4,18 @@ import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.library import require_editor_library
 from app.db.session import get_db_session
-from app.models.book import Book
-from app.models.location import Location
 from app.models.subscription import UsageMetric
 from app.models.user import User
 from app.schemas.enrich import EnrichBookResponse, EnrichResponse
 from app.services import entitlements
+from app.services.book import get_book_or_404, list_book_ids
 from app.services.job_queue import get_celery_client
+from app.services.location import get_location_or_404
 
 router = APIRouter(prefix="/api/v1/enrich", tags=["enrich"])
 
@@ -43,11 +42,7 @@ async def enrich_single_book(
     current_user: User = Depends(get_current_user),
 ) -> EnrichBookResponse:
     """Queue metadata enrichment for a single book."""
-    book = (await session.execute(
-        select(Book).where(Book.id == book_id, Book.library_id == library_id)
-    )).scalar_one_or_none()
-    if book is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+    await get_book_or_404(session, book_id, library_id)
 
     # Gate: raises HTTP 402 if monthly enrichment quota is exhausted
     await entitlements.assert_can_use(session, current_user.id, UsageMetric.enrichments)
@@ -76,16 +71,10 @@ async def enrich_by_location(
     current_user: User = Depends(get_current_user),
 ) -> EnrichResponse:
     """Queue metadata enrichment for all books in a location."""
-    loc = (await session.execute(
-        select(Location).where(Location.id == location_id, Location.library_id == library_id)
-    )).scalar_one_or_none()
-    if loc is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+    await get_location_or_404(session, location_id, library_id)
 
-    result = await session.execute(
-        select(Book.id).where(Book.location_id == location_id, Book.library_id == library_id)
-    )
-    book_ids = [str(row[0]) for row in result.all()]
+    ids = await list_book_ids(session, library_id, location_id=location_id)
+    book_ids = [str(book_id) for book_id in ids]
 
     if not book_ids:
         return EnrichResponse(status="queued", book_count=0, message="No books in this location")
@@ -130,10 +119,7 @@ async def enrich_all_books(
     current_user: User = Depends(get_current_user),
 ) -> EnrichResponse:
     """Queue metadata enrichment for all books in the active library."""
-    result = await session.execute(
-        select(Book.id).where(Book.library_id == library_id)
-    )
-    book_ids = [str(row[0]) for row in result.all()]
+    book_ids = [str(book_id) for book_id in await list_book_ids(session, library_id)]
 
     if not book_ids:
         return EnrichResponse(status="queued", book_count=0, message="No books in library")
