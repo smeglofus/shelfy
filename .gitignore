@@ -12,7 +12,9 @@ infra/.env
 infra/.env.local
 .claude/
 infra/docker-compose.prod.yml
-infra/.env.prod.local
+# Glob: also covers ad-hoc backups like .env.prod.local.bak-* — those carry
+# the same production secrets as the original and must never be committable.
+infra/.env.prod.local*
 infra/GO_LIVE.local.md
 infra/deploy-prod.local.sh
 

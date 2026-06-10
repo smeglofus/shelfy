@@ -40,6 +40,7 @@ vi.mock('../lib/toast-store', () => ({
 import * as api from '../lib/api'
 import { DemoModeProvider } from '../features/demo/DemoContext'
 import { useDemoStore } from '../store/useDemoStore'
+import { seedDemoStore } from '../features/demo/seedDemoStore'
 import {
   useBookCounts,
   useBooks,
@@ -60,12 +61,12 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   sessionStorage.clear()
-  useDemoStore.getState().reset()
+  seedDemoStore()
   vi.clearAllMocks()
 })
 
 afterEach(() => {
-  useDemoStore.getState().reset()
+  seedDemoStore()
 })
 
 describe('demo-aware hooks (#285)', () => {

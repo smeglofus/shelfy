@@ -21,8 +21,8 @@ from app.api.borrowers import router as borrowers_router
 from app.api.health import router as health_router
 from app.api.jobs import router as jobs_router
 from app.api.libraries import router as libraries_router
+from app.api.loans import router as loans_router
 from app.api.locations import router as locations_router
-from app.routers.loans import router as loans_router
 from app.api.enrich import router as enrich_router
 from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router

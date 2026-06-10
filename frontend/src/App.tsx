@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRegisterSW } from 'virtual:pwa-register/react'
@@ -25,9 +25,16 @@ import { TermsPage } from './pages/TermsPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ChangelogPage } from './pages/ChangelogPage'
-import { DemoLayout } from './features/demo/DemoLayout'
 
 import { ROUTES } from './lib/routes'
+
+// The demo subtree (layout chrome + the ~100-book seed library) is lazy so
+// its weight ships in a separate chunk — authenticated users never load it,
+// and the main bundle stays clear of the bundle-size budget (issue: budget
+// gate sat at 212/220 KB gzip with the seed inlined).
+const DemoLayout = lazy(() =>
+  import('./features/demo/DemoLayout').then((m) => ({ default: m.DemoLayout })),
+)
 
 export { ROUTES }
 
@@ -107,7 +114,20 @@ function AppShell() {
           <Route path={ROUTES.changelog} element={<ChangelogPage />} />
 
           {/* ── Public client-side demo (#285) — no auth, no network ── */}
-          <Route path='/demo' element={<DemoLayout />}>
+          <Route
+            path='/demo'
+            element={
+              <Suspense
+                fallback={
+                  <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+                    <div className='sh-spinner' aria-label='loading' />
+                  </div>
+                }
+              >
+                <DemoLayout />
+              </Suspense>
+            }
+          >
             <Route index element={<Navigate to='/demo/books' replace />} />
             <Route path='books' element={<BooksPage />} />
             <Route path='books/new' element={<AddBookPage />} />

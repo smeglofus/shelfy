@@ -21,12 +21,21 @@ Applies to the entire repository unless superseded by a more specific `AGENTS.md
 cd backend
 ruff check app tests
 mypy app tests
-TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db pytest --cov=app --cov-fail-under=80 tests
+# Full suite + coverage gate — requires Postgres with pg_trgm (this is what CI runs):
+TEST_DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/shelfy_test \
+  pytest --cov=app --cov-fail-under=80 tests
 
 cd ../frontend
 npm run lint
 npm test -- --run
 ```
+
+**No local Postgres / Python toolchain?** Push and let CI be the judge —
+the `backend / tests` job in `.github/workflows/ci.yml` spins up Postgres 16
+with `pg_trgm` and runs the exact command above. A SQLite fallback exists
+(`TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db`), but it is a partial
+smoke run only: Postgres-only tests (FTS, trigram similarity) do not pass
+there, so a red SQLite run is not by itself a regression.
 
 **Backend schema changes?** Also run `scripts/check-openapi-drift.sh`
 and commit any `docs/openapi.yaml` diff in the same PR. The script
@@ -36,14 +45,20 @@ lint` job runs the same check — running it locally just saves the cycle.
 
 ## Test-DB contract
 
-The backend test suite runs against SQLite (`sqlite+aiosqlite`). Production
-runs on Postgres. To stop the two from drifting on FK semantics — the kind
-of divergence that lets dangling-FK inserts pass green tests but break
+The authoritative test run is **Postgres**: CI (`backend / tests`) provisions
+Postgres 16 with `pg_trgm` and points the suite at it via `TEST_DATABASE_URL`,
+matching production semantics exactly. Each test module falls back to its own
+SQLite file when `TEST_DATABASE_URL` is unset — useful as a fast local smoke
+run, with a known gap: Postgres-only behaviour (FTS, trigram similarity) is
+not covered there.
+
+To stop the SQLite fallback from drifting on FK semantics — the kind of
+divergence that lets dangling-FK inserts pass green tests but break
 production — `backend/tests/conftest.py` registers a global SQLAlchemy
 connect-event listener that issues `PRAGMA foreign_keys=ON` on every SQLite
-connection. The listener is re-asserted by `tests/test_sqlite_pragma.py`,
-which both reads back the pragma and proves a dangling-FK insert raises
-`IntegrityError`.
+connection (a no-op on Postgres). The listener is re-asserted by
+`tests/test_sqlite_pragma.py`, which both reads back the pragma and proves a
+dangling-FK insert raises `IntegrityError`.
 
 **Implication for new tests:** rows must reference real parents. To
 simulate "this borrower lives in another library that the user has no

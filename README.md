@@ -47,7 +47,7 @@ A few things worth a closer look while reading the code:
 - **Service-layer discipline.** FastAPI routers stay thin; business logic lives under `backend/app/services/`. Routers do not touch the DB directly. Codified in `docs/coding-standards.md` and `AGENTS.md`.
 - **OpenAPI drift gate.** `scripts/check-openapi-drift.sh` regenerates the spec from the live FastAPI app and fails CI if `docs/openapi.yaml` diverges — schema changes can't ship silently.
 - **Bundle-size + leaked-secret gates.** `scripts/check_bundle_budget.mjs` enforces a size budget; `scripts/check_bundle_secrets.mjs` scans the built frontend bundle for accidentally-shipped credentials.
-- **Real DB semantics in tests.** Tests run on SQLite for speed, but `conftest.py` forces `PRAGMA foreign_keys=ON` on every connection and `test_sqlite_pragma.py` asserts that dangling-FK inserts raise. Stops a class of "green in CI, broken in prod" bugs.
+- **Real DB semantics in tests.** CI runs the backend suite against PostgreSQL 16 with `pg_trgm` — the same engine as production. Without `TEST_DATABASE_URL` the suite falls back to per-file SQLite databases for quick local smoke runs; `conftest.py` forces `PRAGMA foreign_keys=ON` there and `test_sqlite_pragma.py` asserts that dangling-FK inserts raise, but Postgres-only tests (FTS, trigram search) don't pass on SQLite — the CI run is the authoritative signal.
 - **Async end-to-end.** SQLAlchemy 2.x async, async services, Celery for background work, httpx for outbound. No sync DB calls in the request path.
 - **Coverage gate.** Backend tests run with `--cov-fail-under=80` in CI.
 - **Typed frontend.** TypeScript strict, no `any`. React Query for server state, Zustand for UI state only — never mixed.
@@ -98,7 +98,10 @@ cd backend
 pip install -r requirements.txt -r requirements-dev.txt
 ruff check app tests
 mypy app tests
-TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db pytest --cov=app --cov-fail-under=80 tests
+# Full suite — needs a Postgres with pg_trgm (CI runs exactly this):
+TEST_DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/shelfy_test pytest --cov=app --cov-fail-under=80 tests
+# Quick partial smoke run on SQLite (Postgres-only tests will fail — that's expected):
+#   TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db pytest tests
 
 # Frontend
 cd ../frontend

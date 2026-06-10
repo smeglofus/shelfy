@@ -9,11 +9,16 @@
  * Persistence (see #284):
  *  - Backed by `sessionStorage` under {@link DEMO_STORAGE_KEY}.
  *  - Survives in-app navigation within the same tab.
- *  - A fresh tab / new session starts from the pristine seed (empty storage
- *    falls back to the initializer).
- *  - `reset()` re-seeds from `demoSeed` (pristine) and rewrites storage.
- *  - Only the data (`books`, `locations`) is persisted — never the action
- *    functions — and it is text-only (no blobs) to stay well under quota.
+ *  - A fresh tab / new session starts unseeded; `DemoLayout` seeds it via
+ *    {@link DemoState.applySeed} on first mount.
+ *  - Only the data (`books`, `locations`, …, `seeded`) is persisted — never
+ *    the action functions — and it is text-only (no blobs) to stay well
+ *    under quota.
+ *
+ * Bundle-size note: this module deliberately does NOT import
+ * `features/demo/demoSeed` — the seed data ships only in the lazy-loaded
+ * `/demo` chunk (`DemoLayout` → `seedDemoStore`), so authenticated users
+ * never download it. Keep it that way.
  *
  * Everything here is pure in-memory: NO network calls, ever. That is the whole
  * point of the demo (zero backend/AI load for unauthenticated visitors).
@@ -21,7 +26,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
-import { createDemoBooks, createDemoBorrowers, createDemoLoans, createDemoLocations } from '../features/demo/demoSeed'
 import type {
   Book,
   BookCreateRequest,
@@ -66,6 +70,18 @@ interface DemoData {
   locations: Location[]
   borrowers: Borrower[]
   loans: Loan[]
+  /** False until `applySeed` ran (fresh tab); persisted so a mid-session
+   *  reload doesn't clobber the visitor's sandbox with the pristine seed. */
+  seeded: boolean
+}
+
+/** Payload for {@link DemoState.applySeed} — produced by the seed factories
+ *  in `features/demo/demoSeed` (lazy demo chunk) or by tests. */
+export interface DemoSeedData {
+  books: Book[]
+  locations: Location[]
+  borrowers: Borrower[]
+  loans: Loan[]
 }
 
 interface DemoActions {
@@ -92,7 +108,8 @@ interface DemoActions {
   updateBorrower: (id: string, payload: BorrowerUpdateRequest) => Borrower | null
   createLoan: (bookId: string, payload: LoanCreateRequest) => Loan
   returnLoan: (bookId: string, loanId: string, payload: LoanReturnRequest) => Loan | null
-  reset: () => void
+  /** Replace all data with a (pristine) seed and mark the store seeded. */
+  applySeed: (seed: DemoSeedData) => void
 }
 
 export type DemoState = DemoData & DemoActions
@@ -197,10 +214,11 @@ function applyUpdate(book: Book, payload: BookUpdateRequest): Book {
 export const useDemoStore = create<DemoState>()(
   persist(
     (set, get) => ({
-      books: createDemoBooks(),
-      locations: createDemoLocations(),
-      borrowers: createDemoBorrowers(),
-      loans: createDemoLoans(),
+      books: [],
+      locations: [],
+      borrowers: [],
+      loans: [],
+      seeded: false,
 
       queryBooks: (params = {}) => {
         const all = get().books
@@ -551,12 +569,13 @@ export const useDemoStore = create<DemoState>()(
         return updated
       },
 
-      reset: () =>
+      applySeed: (seed) =>
         set({
-          books: createDemoBooks(),
-          locations: createDemoLocations(),
-          borrowers: createDemoBorrowers(),
-          loans: createDemoLoans(),
+          books: seed.books,
+          locations: seed.locations,
+          borrowers: seed.borrowers,
+          loans: seed.loans,
+          seeded: true,
         }),
     }),
     {
@@ -568,6 +587,7 @@ export const useDemoStore = create<DemoState>()(
         locations: state.locations,
         borrowers: state.borrowers,
         loans: state.loans,
+        seeded: state.seeded,
       }),
     },
   ),

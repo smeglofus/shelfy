@@ -44,13 +44,24 @@ jobs:
           echo "Health check failed after 90 s" >&2
           exit 1
 
-      # Fire on success or failure; silently no-op when variables are not configured
+      # Fire on success or failure; silently no-op when not configured.
+      # The bot token lives in ``secrets`` (masked in logs, hidden from repo
+      # readers) — repo *variables* are plaintext-visible to anyone with read
+      # access. Secrets can't be referenced in ``if:`` expressions, so the
+      # "is it configured" check happens inside the shell step instead.
       - name: Notify Telegram
-        if: always() && vars.TELEGRAM_BOT_TOKEN && vars.TELEGRAM_CHAT_ID
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
         run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram notification not configured; skipping."
+            exit 0
+          fi
           STATUS="${{ job.status }}"
-          curl -fsS -X POST "https://api.telegram.org/bot${{ vars.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ vars.TELEGRAM_CHAT_ID }}" \
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d text="Shelfy deploy: ${STATUS}%0A%0ACommit: ${{ github.event.workflow_run.head_commit.message || github.event.head_commit.message }}%0AWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 # Rollback (manual):

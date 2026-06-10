@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createDemoBooks, createDemoLocations } from '../features/demo/demoSeed'
+import { seedDemoStore } from '../features/demo/seedDemoStore'
 import { DEMO_STORAGE_KEY, filterBooks, useDemoStore } from './useDemoStore'
 
 function freshStore() {
   // Each test starts from a pristine, isolated seed.
   sessionStorage.clear()
-  useDemoStore.getState().reset()
+  seedDemoStore()
   return useDemoStore.getState
 }
 
@@ -164,7 +165,7 @@ describe('useDemoStore', () => {
     expect(shelf[1].shelf_position).toBe(1)
   })
 
-  it('persists to sessionStorage and reset() returns to pristine seed', () => {
+  it('persists to sessionStorage and re-seeding returns to pristine seed', () => {
     const get = useDemoStore.getState
     get().addBook({ title: 'Throwaway' })
     expect(get().counts().total).toBe(101)
@@ -172,7 +173,8 @@ describe('useDemoStore', () => {
     const raw = sessionStorage.getItem(DEMO_STORAGE_KEY)
     expect(raw).toBeTruthy()
     expect(raw).toContain('Throwaway')
-    get().reset()
+    expect(raw).toContain('"seeded":true')
+    seedDemoStore()
     expect(get().counts().total).toBe(100)
     expect(get().books.every((b) => b.is_sample)).toBe(true)
   })
@@ -274,13 +276,13 @@ describe('demo borrowers & loans', () => {
     expect(loan.borrower_name).toBe('Lucie Dvořáková')
   })
 
-  it('persists borrowers/loans and reset() restores the pristine seed', () => {
+  it('persists borrowers/loans and re-seeding restores the pristine seed', () => {
     const get = useDemoStore.getState
     get().createLoan('demo-book-05', { borrower_name: 'Throwaway Reader', lent_date: '2026-06-08', notes: null })
     const raw = sessionStorage.getItem(DEMO_STORAGE_KEY)!
     expect(raw).toContain('Throwaway Reader')
     expect(raw).toContain('demo-loan-1')
-    get().reset()
+    seedDemoStore()
     expect(get().queryBorrowers().total).toBe(4)
     expect(get().loansForBook('demo-book-05')).toHaveLength(0)
   })

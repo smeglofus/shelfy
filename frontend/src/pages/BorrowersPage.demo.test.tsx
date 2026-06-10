@@ -38,6 +38,7 @@ import * as api from '../lib/api'
 import { BorrowersPage } from './BorrowersPage'
 import { DemoModeProvider } from '../features/demo/DemoContext'
 import { useDemoStore } from '../store/useDemoStore'
+import { seedDemoStore } from '../features/demo/seedDemoStore'
 
 function renderList() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -58,13 +59,13 @@ function renderList() {
 
 beforeEach(() => {
   sessionStorage.clear()
-  useDemoStore.getState().reset()
+  seedDemoStore()
   vi.clearAllMocks()
 })
 
 afterEach(() => {
   cleanup()
-  useDemoStore.getState().reset()
+  seedDemoStore()
 })
 
 describe('BorrowersPage — demo mode', () => {
