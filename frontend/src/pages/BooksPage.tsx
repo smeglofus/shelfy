@@ -181,7 +181,6 @@ export function BooksPage() {
   // Clear selection when navigating pages — selected IDs from another page are invisible
   useEffect(() => {
     clearSelection()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
   // Sort the current page (≤20 items) by location + shelf_position for grouped display

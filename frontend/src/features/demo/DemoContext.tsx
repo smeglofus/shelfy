@@ -16,6 +16,9 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
 }
 
 /** True only inside the demo subtree. */
+// One-bit flag hook co-located with its provider on purpose; splitting the
+// 20-line module in two for Fast Refresh would hurt readability more than it helps.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useIsDemoMode(): boolean {
   return useContext(DemoModeContext)
 }
