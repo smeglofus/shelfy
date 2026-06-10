@@ -48,7 +48,7 @@ vi.mock('../lib/toast-store', () => ({
 import * as api from '../lib/api'
 import { BooksPage } from './BooksPage'
 import { DemoModeProvider } from '../features/demo/DemoContext'
-import { useDemoStore } from '../store/useDemoStore'
+import { seedDemoStore } from '../features/demo/seedDemoStore'
 
 function renderDemo() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -64,13 +64,13 @@ function renderDemo() {
 
 beforeEach(() => {
   sessionStorage.clear()
-  useDemoStore.getState().reset()
+  seedDemoStore()
   vi.clearAllMocks()
 })
 
 afterEach(() => {
   cleanup()
-  useDemoStore.getState().reset()
+  seedDemoStore()
 })
 
 describe('BooksPage — demo mode (#285)', () => {

@@ -69,6 +69,7 @@ vi.mock('./LocationsPage', () => ({
 
 import { BookshelfViewPage } from './BookshelfViewPage'
 import { DemoModeProvider } from '../features/demo/DemoContext'
+import { seedDemoStore } from '../features/demo/seedDemoStore'
 
 function renderDemo() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -86,7 +87,11 @@ function renderDemo() {
   )
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  sessionStorage.clear()
+  seedDemoStore()
+})
 afterEach(() => cleanup())
 
 describe('BookshelfViewPage — demo mode', () => {

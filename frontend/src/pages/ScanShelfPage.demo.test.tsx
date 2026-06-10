@@ -42,6 +42,7 @@ import * as api from '../lib/api'
 import { ScanShelfPage } from './ScanShelfPage'
 import { DemoModeProvider } from '../features/demo/DemoContext'
 import { useDemoStore } from '../store/useDemoStore'
+import { seedDemoStore } from '../features/demo/seedDemoStore'
 
 function renderDemo() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -58,13 +59,13 @@ function renderDemo() {
 beforeEach(() => {
   sessionStorage.clear()
   localStorage.clear()
-  useDemoStore.getState().reset()
+  seedDemoStore()
   vi.clearAllMocks()
 })
 
 afterEach(() => {
   cleanup()
-  useDemoStore.getState().reset()
+  seedDemoStore()
 })
 
 describe('ScanShelfPage — demo mode (#286)', () => {
