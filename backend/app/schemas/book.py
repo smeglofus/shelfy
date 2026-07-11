@@ -151,6 +151,19 @@ class RetryEnrichmentResponse(BaseModel):
     status: str
 
 
+class BookSuggestion(BaseModel):
+    """Lightweight external-catalogue candidate for the add-book autocomplete (#308)."""
+
+    title: str
+    author: str | None = None
+    isbn: str | None = None
+    publisher: str | None = None
+    language: str | None = None
+    publication_year: int | None = None
+    cover_image_url: str | None = None
+    provider: str
+
+
 # ── Bulk operations ────────────────────────────────────────────────────────────
 
 class BulkDeleteRequest(BaseModel):

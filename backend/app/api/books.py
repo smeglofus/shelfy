@@ -15,7 +15,7 @@ from app.models.user import User
 from app.services import entitlements
 from app.models.processing_job import ProcessingJob, ProcessingJobStatus
 from app.schemas.book import (
-    BookCreateRequest, BookListResponse, BookResponse, BookUpdateRequest,
+    BookCreateRequest, BookListResponse, BookResponse, BookSuggestion, BookUpdateRequest,
     BulkDeleteRequest, BulkMoveRequest, BulkOperationResponse, BulkReorderRequest, BulkStatusRequest,
     CsvImportConfirmRequest, CsvImportConfirmResponse, CsvImportPreviewResponse,
     RetryEnrichmentResponse,
@@ -27,6 +27,7 @@ from app.services.book import (
     list_all_books_for_shelf, list_books, update_book,
 )
 from app.services.csv_import import build_books_export_csv, confirm_csv_import, preview_csv_import
+from app.services.metadata.search import suggest_books
 from app.services.job import create_upload_job
 from app.services.job_queue import get_celery_client
 from app.services.storage import delete_image_bytes
@@ -124,6 +125,26 @@ async def export_books_csv(
     response = StreamingResponse(iter([content]), media_type="text/csv; charset=utf-8")
     response.headers["Content-Disposition"] = 'attachment; filename="shelfy-export.csv"'
     return response
+
+
+@router.get("/suggest", response_model=list[BookSuggestion])
+async def suggest_books_endpoint(
+    q: str = Query(default="", max_length=200),
+    limit: int = Query(default=8, ge=1, le=20),
+    redis_client: aioredis.Redis = Depends(get_redis),
+    _current_user: User = Depends(get_current_user),
+) -> list[BookSuggestion]:
+    """Autocomplete candidates from the external catalogue (Open Library).
+
+    Queries shorter than 3 characters return ``[]`` without an external
+    call; results are Redis-cached server-side and the client debounces,
+    so keystrokes never map 1:1 to Open Library requests.
+
+    NOTE: like ``/shelf``, this route must stay registered before the
+    ``/{book_id}`` dynamic path.
+    """
+    suggestions = await suggest_books(q, limit, redis_client)
+    return [BookSuggestion.model_validate(s) for s in suggestions]
 
 
 @router.post(

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ProcessingIcon } from '../components/EmptyStateIcons'
 import { useCreateBook, useUploadBookImage, useJobStatus } from '../hooks/useBooks'
+import { MIN_SUGGEST_QUERY_LENGTH, useBookSuggestions } from '../hooks/useBookSuggestions'
+import { useDebounce } from '../hooks/useDebounce'
 import { useLocations } from '../hooks/useLocations'
 import { useIsDemoMode } from '../features/demo/DemoContext'
 import { useAppNavigate } from '../features/demo/demoNav'
@@ -9,7 +11,13 @@ import { useDemoActivity } from '../features/demo/useDemoActivity'
 import { trackDemoAddBook } from '../lib/demoAnalytics'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
-import type { BookCreateRequest, ReadingStatus } from '../lib/types'
+import type { BookCreateRequest, BookSuggestion, ReadingStatus } from '../lib/types'
+
+/** Metadata carried over silently from a picked suggestion (#308). */
+type SuggestionMeta = Pick<
+  BookCreateRequest,
+  'publisher' | 'language' | 'publication_year' | 'cover_image_url'
+>
 
 export function AddBookPage() {
   const { t } = useTranslation()
@@ -27,6 +35,66 @@ export function AddBookPage() {
   const [author, setAuthor]           = useState('')
   const [isbn, setIsbn]               = useState('')
   const [reading, setReading]         = useState<ReadingStatus>('unread')
+
+  /* Catalogue autocomplete on the title field (#308). Debounce matches the
+     BorrowersPage search cadence; the demo has no backend so it never
+     queries. `suggestMeta` carries the picked candidate's year/cover/
+     publisher/language silently into the create payload. */
+  const [suggestOpen, setSuggestOpen]       = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(-1)
+  const [suggestMeta, setSuggestMeta]       = useState<SuggestionMeta | null>(null)
+  const debouncedTitle = useDebounce(title, 250)
+  const suggestionsQuery = useBookSuggestions(debouncedTitle, !isDemo && suggestOpen)
+  const suggestions = suggestionsQuery.data ?? []
+  const listboxVisible = suggestOpen && !isDemo && suggestions.length > 0
+
+  function handleTitleChange(e: ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setTitle(value)
+    // Any manual edit invalidates metadata copied from a previous pick —
+    // otherwise a stale cover/year would ride along with a different book.
+    setSuggestMeta(null)
+    setActiveSuggestion(-1)
+    setSuggestOpen(value.trim().length >= MIN_SUGGEST_QUERY_LENGTH)
+  }
+
+  function applySuggestion(suggestion: BookSuggestion) {
+    setTitle(suggestion.title)
+    setAuthor(suggestion.author ?? '')
+    setIsbn(suggestion.isbn ?? '')
+    setSuggestMeta({
+      publisher: suggestion.publisher,
+      language: suggestion.language,
+      publication_year: suggestion.publication_year,
+      cover_image_url: suggestion.cover_image_url,
+    })
+    setSuggestOpen(false)
+    setActiveSuggestion(-1)
+  }
+
+  function handleTitleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Escape') {
+      if (listboxVisible) {
+        e.preventDefault()
+        setSuggestOpen(false)
+        setActiveSuggestion(-1)
+      }
+      return
+    }
+    if (!listboxVisible) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestion((i) => (i + 1) % suggestions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestion((i) => (i <= 0 ? suggestions.length - 1 : i - 1))
+    } else if (e.key === 'Enter') {
+      if (activeSuggestion >= 0 && activeSuggestion < suggestions.length) {
+        e.preventDefault()
+        applySuggestion(suggestions[activeSuggestion])
+      }
+    }
+  }
 
   // Three-level location picker
   const [selRoom, setSelRoom]       = useState('')
@@ -68,6 +136,9 @@ export function AddBookPage() {
       isbn:           isbn.trim()   || null,
       location_id:    resolvedId,
       reading_status: reading,
+      // Silent metadata from a picked catalogue suggestion (#308) — the
+      // created book carries its cover/year/publisher/language right away.
+      ...(suggestMeta ?? {}),
     }
     createMutation.mutate(payload, {
       onSuccess: () => {
@@ -149,9 +220,79 @@ export function AddBookPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="md-grid-2">
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.title_label')} <span style={{ color: 'var(--sh-red)' }}>*</span></label>
-            <input className="sh-input" placeholder={t('add_book.title_placeholder')} value={title} onChange={e => setTitle(e.target.value)} required />
+          <div style={{ position: 'relative' }}>
+            <label id="add-book-title-label" style={{ fontSize: 13, fontWeight: 600, color: 'var(--sh-text-main)', display: 'block', marginBottom: 8 }}>{t('add_book.title_label')} <span style={{ color: 'var(--sh-red)' }}>*</span></label>
+            <input
+              className="sh-input"
+              placeholder={t('add_book.title_placeholder')}
+              value={title}
+              onChange={handleTitleChange}
+              onKeyDown={handleTitleKeyDown}
+              onBlur={() => { setSuggestOpen(false); setActiveSuggestion(-1) }}
+              role="combobox"
+              aria-expanded={listboxVisible}
+              aria-controls="add-book-title-suggestions"
+              aria-autocomplete="list"
+              aria-labelledby="add-book-title-label"
+              aria-activedescendant={
+                listboxVisible && activeSuggestion >= 0
+                  ? `add-book-suggestion-${activeSuggestion}`
+                  : undefined
+              }
+              data-testid="add-book-title-input"
+              required
+            />
+            {listboxVisible && (
+              <ul
+                id="add-book-title-suggestions"
+                role="listbox"
+                aria-label={t('add_book.suggestions_label')}
+                data-testid="add-book-suggestions"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 30,
+                  margin: '4px 0 0',
+                  padding: 4,
+                  listStyle: 'none',
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                  background: 'var(--sh-surface)',
+                  border: '1px solid var(--sh-border)',
+                  borderRadius: 'var(--sh-radius-md)',
+                  boxShadow: 'var(--sh-shadow-lg)',
+                }}
+              >
+                {suggestions.map((suggestion, index) => (
+                  <li
+                    key={`${suggestion.title}-${suggestion.isbn ?? index}`}
+                    id={`add-book-suggestion-${index}`}
+                    role="option"
+                    aria-selected={index === activeSuggestion}
+                    data-testid={`add-book-suggestion-${index}`}
+                    // mousedown (not click) so the pick wins over the input's
+                    // blur handler closing the listbox first.
+                    onMouseDown={(e) => { e.preventDefault(); applySuggestion(suggestion) }}
+                    onMouseEnter={() => setActiveSuggestion(index)}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 'var(--sh-radius-sm, 6px)',
+                      cursor: 'pointer',
+                      background: index === activeSuggestion ? 'var(--sh-teal-bg)' : 'transparent',
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--sh-text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {suggestion.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--sh-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[suggestion.author, suggestion.publication_year].filter(Boolean).join(' · ')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div>

@@ -199,6 +199,18 @@ export interface BookListParams {
   pageSize?: number
 }
 
+/** External-catalogue candidate returned by GET /api/v1/books/suggest (#308). */
+export interface BookSuggestion {
+  title: string
+  author: string | null
+  isbn: string | null
+  publisher: string | null
+  language: string | null
+  publication_year: number | null
+  cover_image_url: string | null
+  provider: string
+}
+
 export interface BookCreateRequest {
   title: string
   author?: string | null
