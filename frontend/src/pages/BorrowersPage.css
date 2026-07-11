@@ -1,0 +1,55 @@
+/* Borrower list row (#307). Mobile-first: identity (name + contact) and
+   the stats block stack vertically and the stats wrap onto multiple
+   lines. From 768px — the same breakpoint the md-* utilities in
+   styles/shelfy.css use — the row returns to the original two-column
+   desktop layout with the stats pinned right on a single line. */
+.borrowers-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  background: var(--sh-surface);
+}
+
+.borrowers-row-identity {
+  min-width: 0;
+}
+
+.borrowers-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.borrowers-row-contact {
+  font-size: 13px;
+  color: var(--sh-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.borrowers-row-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--sh-text-muted);
+}
+
+@media (min-width: 768px) {
+  .borrowers-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .borrowers-row-stats {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+}
