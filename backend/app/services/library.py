@@ -132,8 +132,14 @@ async def list_members(session: AsyncSession, library_id: uuid.UUID) -> list[tup
     return [(member, user) for member, user in res.all()]
 
 
-async def add_member(session: AsyncSession, library_id: uuid.UUID, email: str, role: LibraryRole) -> LibraryMember:
+async def add_member(
+    session: AsyncSession, library_id: uuid.UUID, email: str, role: LibraryRole
+) -> tuple[LibraryMember, bool]:
     """Insert or update a library membership.
+
+    Returns ``(member, created)`` — ``created`` is False on the upsert
+    branch (role change of an existing member), which the endpoint uses to
+    send the added-to-library email only on the first add (#312).
 
     The caller owns the transaction boundary — this function flushes but does
     not commit. That invariant matters for issue #119: the endpoint takes a
@@ -151,6 +157,7 @@ async def add_member(session: AsyncSession, library_id: uuid.UUID, email: str, r
             )
         )
     ).scalar_one_or_none()
+    created = member is None
     if member is None:
         member = LibraryMember(library_id=library_id, user_id=user.id, role=role)
         session.add(member)
@@ -158,7 +165,7 @@ async def add_member(session: AsyncSession, library_id: uuid.UUID, email: str, r
         member.role = role
     await session.flush()
     await session.refresh(member)
-    return member
+    return member, created
 
 
 async def _owner_count(session: AsyncSession, library_id: uuid.UUID) -> int:

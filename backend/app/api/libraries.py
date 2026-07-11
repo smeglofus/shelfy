@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.locale import email_locale_from_request
 from app.db.session import get_db_session
-from app.models.library import LibraryRole
+from app.models.library import Library, LibraryRole
 from app.models.user import User
+from app.services import email as email_svc
 from app.schemas.library import (
     AddLibraryMemberRequest,
     CreateLibraryRequest,
@@ -72,6 +74,8 @@ async def get_members(
 async def create_member(
     library_id: uuid.UUID,
     payload: AddLibraryMemberRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> LibraryMemberResponse:
@@ -83,10 +87,24 @@ async def create_member(
     # until this endpoint commits below; ``add_member`` no longer commits
     # internally for that reason.
     await entitlements.assert_can_add_member(session, current_user.id, library_id, lock=True)
-    member = await add_member(session, library_id, str(payload.email), payload.role)
+    member, created = await add_member(session, library_id, str(payload.email), payload.role)
     await session.commit()
     user = await session.get(User, member.user_id)
     assert user is not None
+    # Notify the added user — fire-and-forget after the commit, mirroring the
+    # welcome email in ``register`` (#312). Only on the first add: role
+    # upserts stay silent, and owners adding themselves don't get mail.
+    if created and member.user_id != current_user.id:
+        library = await session.get(Library, library_id)
+        assert library is not None
+        background_tasks.add_task(
+            email_svc.send_added_to_library,
+            user.email,
+            library.name,
+            member.role.value,
+            current_user.email,
+            locale=email_locale_from_request(request),
+        )
     return LibraryMemberResponse(user_id=member.user_id, email=user.email, role=member.role)
 
 

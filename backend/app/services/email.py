@@ -11,6 +11,7 @@ Usage:
 Email catalogue
 ---------------
 welcome                — sent once on registration
+added_to_library       — user added to a shared library by its owner (#312)
 trial_ending_day10     — 4 days left on trial  (sent by beat task)
 trial_ending_day13     — 1 day left on trial   (sent by beat task)
 limit_approaching      — user at ≥ 80 % of a monthly quota (beat task)
@@ -168,6 +169,51 @@ async def send_welcome(to: str, name: str, *, locale: str | None = None) -> None
 <p style="color:#555">Happy reading,<br>The Shelfy team</p>
 """, locale=lang)
         subject = "Welcome to Shelfy 📚"
+    await _send(to=to, subject=subject, html=html)
+
+
+async def send_added_to_library(
+    to: str,
+    library_name: str,
+    role: str,
+    inviter_email: str | None = None,
+    *,
+    locale: str | None = None,
+) -> None:
+    """Sent when an owner adds an already-registered user to a shared library (#312).
+
+    Fired only on the first add — role upserts and self-adds don't notify
+    (guarded at the ``create_member`` call site).
+    """
+    settings = get_settings()
+    lang = normalize_locale(locale)
+    role_labels = {
+        "cs": {"owner": "správce", "editor": "editor", "viewer": "čtenář"},
+        "en": {"owner": "owner", "editor": "editor", "viewer": "viewer"},
+    }[lang]
+    role_label = role_labels.get(role, role)
+    if lang == "cs":
+        inviter_note = f" (přidal/a tě {inviter_email})" if inviter_email else ""
+        html = _base(f"""
+<p>Ahoj,</p>
+<p>právě jsi získal/a přístup do sdílené knihovny <strong>{library_name}</strong>
+   v roli <strong>{role_label}</strong>{inviter_note}.</p>
+<p>Knihovnu najdeš po přihlášení mezi svými knihovnami.</p>
+<p>{_cta(f"{settings.app_url}/books", "Otevřít Shelfy →")}</p>
+<p style="color:#555">Příjemné čtení,<br>tým Shelfy</p>
+""", locale=lang)
+        subject = f"Byl/a jsi přidán/a do knihovny „{library_name}“ 📚"
+    else:
+        inviter_note = f" (added by {inviter_email})" if inviter_email else ""
+        html = _base(f"""
+<p>Hey,</p>
+<p>you've just been given access to the shared library <strong>{library_name}</strong>
+   as <strong>{role_label}</strong>{inviter_note}.</p>
+<p>You'll find it among your libraries the next time you sign in.</p>
+<p>{_cta(f"{settings.app_url}/books", "Open Shelfy →")}</p>
+<p style="color:#555">Happy reading,<br>The Shelfy team</p>
+""", locale=lang)
+        subject = f'You\'ve been added to "{library_name}" 📚'
     await _send(to=to, subject=subject, html=html)
 
 
