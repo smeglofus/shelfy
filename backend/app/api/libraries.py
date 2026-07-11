@@ -115,24 +115,32 @@ async def create_member(
     # internally for that reason.
     await entitlements.assert_can_add_member(session, current_user.id, library_id, lock=True)
     member, created = await add_member(session, library_id, str(payload.email), payload.role)
+    # Capture scalars BEFORE the commit: if the session ever expires
+    # instances on commit again, a plain attribute access afterwards would
+    # lazy-load synchronously and crash with MissingGreenlet (prod 500 on
+    # this endpoint — the member row was committed, the response wasn't).
+    member_user_id = member.user_id
+    member_role = member.role
+    inviter_id = current_user.id
+    inviter_email = current_user.email
     await session.commit()
-    user = await session.get(User, member.user_id)
+    user = await session.get(User, member_user_id)
     assert user is not None
     # Notify the added user — fire-and-forget after the commit, mirroring the
     # welcome email in ``register`` (#312). Only on the first add: role
     # upserts stay silent, and owners adding themselves don't get mail.
-    if created and member.user_id != current_user.id:
+    if created and member_user_id != inviter_id:
         library = await session.get(Library, library_id)
         assert library is not None
         background_tasks.add_task(
             email_svc.send_added_to_library,
             user.email,
             library.name,
-            member.role.value,
-            current_user.email,
+            member_role.value,
+            inviter_email,
             locale=email_locale_from_request(request),
         )
-    return LibraryMemberResponse(user_id=member.user_id, email=user.email, role=member.role)
+    return LibraryMemberResponse(user_id=member_user_id, email=user.email, role=member_role)
 
 
 @router.patch("/{library_id}/members/{user_id}", response_model=LibraryMemberResponse)
