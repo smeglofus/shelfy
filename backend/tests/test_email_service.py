@@ -22,6 +22,7 @@ from pytest import LogCaptureFixture
 from app.services.email import (
     _send,
     normalize_locale,
+    send_added_to_library,
     send_limit_approaching,
     send_password_reset,
     send_welcome,
@@ -277,3 +278,52 @@ async def test_send_swallows_resend_errors() -> None:
         await _send(to="user@example.com", subject="Boom", html="<p>Hi</p>")
 
     response.raise_for_status.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_send_added_to_library_renders_czech_copy() -> None:
+    """cs locale: subject and body carry the library name, role label and inviter."""
+    send_mock = AsyncMock()
+    with patch("app.services.email._send", send_mock):
+        await send_added_to_library(
+            "member@example.com",
+            "Rodinná knihovna",
+            "editor",
+            "owner@example.com",
+            locale="cs",
+        )
+
+    send_mock.assert_awaited_once()
+    assert send_mock.await_args is not None
+    kwargs = send_mock.await_args.kwargs
+    assert kwargs["to"] == "member@example.com"
+    assert "Rodinná knihovna" in kwargs["subject"]
+    assert "Byl/a jsi přidán/a" in kwargs["subject"]
+    assert "Rodinná knihovna" in kwargs["html"]
+    assert "editor" in kwargs["html"]
+    assert "owner@example.com" in kwargs["html"]
+    assert 'lang="cs"' in kwargs["html"]
+
+
+@pytest.mark.asyncio
+async def test_send_added_to_library_falls_back_to_english_copy() -> None:
+    """Unknown locale falls back to English; inviter note is omitted when absent."""
+    send_mock = AsyncMock()
+    with patch("app.services.email._send", send_mock):
+        await send_added_to_library(
+            "member@example.com", "Family Library", "viewer", None, locale="de"
+        )
+
+    send_mock.assert_awaited_once()
+    assert send_mock.await_args is not None
+    kwargs = send_mock.await_args.kwargs
+    assert 'You\'ve been added to "Family Library"' in kwargs["subject"]
+    assert "viewer" in kwargs["html"]
+    assert "added by" not in kwargs["html"]
+    assert 'lang="en"' in kwargs["html"]
+
+
+@pytest.mark.asyncio
+async def test_send_added_to_library_noops_without_api_key() -> None:
+    """No RESEND_API_KEY in the test env — the real _send guard returns silently."""
+    await send_added_to_library("member@example.com", "Family Library", "viewer")

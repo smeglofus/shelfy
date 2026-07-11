@@ -198,11 +198,12 @@ async def test_add_member_creates_new_membership(test_session: AsyncSession) -> 
     new_user = await _make_user(test_session, "new@example.com")
     await test_session.commit()
 
-    member = await add_member(test_session, lib.id, "new@example.com", LibraryRole.VIEWER)
+    member, created = await add_member(test_session, lib.id, "new@example.com", LibraryRole.VIEWER)
     await test_session.commit()
 
     assert member.user_id == new_user.id
     assert member.role == LibraryRole.VIEWER
+    assert created is True
 
 
 @pytest.mark.asyncio
@@ -213,10 +214,12 @@ async def test_add_member_updates_existing_role(test_session: AsyncSession) -> N
     test_session.add(LibraryMember(library_id=lib.id, user_id=existing.id, role=LibraryRole.VIEWER))
     await test_session.commit()
 
-    member = await add_member(test_session, lib.id, "existing@example.com", LibraryRole.EDITOR)
+    member, created = await add_member(test_session, lib.id, "existing@example.com", LibraryRole.EDITOR)
     await test_session.commit()
 
     assert member.role == LibraryRole.EDITOR
+    # Upsert branch — create_member uses this flag to skip the notification.
+    assert created is False
 
 
 # ── update_member_role ────────────────────────────────────────────────────────
