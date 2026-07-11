@@ -34,6 +34,10 @@ vi.mock('../lib/api', () => ({
   createPortalSession: vi.fn(),
   ACTIVE_LIBRARY_ID_KEY: 'shelfy.activeLibraryId',
   getActiveLibraryId: vi.fn(() => null),
+  updateLibrary: vi.fn(),
+  listWishlist: vi.fn(),
+  createWishlistItem: vi.fn(),
+  deleteWishlistItem: vi.fn(),
 }))
 
 const mockLogout = vi.fn()
@@ -70,8 +74,8 @@ import { useAuth } from '../contexts/AuthContext'
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const LIBRARIES = [
-  { id: 'lib-1', name: 'Home Library', role: 'owner' as const },
-  { id: 'lib-2', name: 'Work Library', role: 'viewer' as const },
+  { id: 'lib-1', name: 'Home Library', role: 'owner' as const, wishlist_enabled: true },
+  { id: 'lib-2', name: 'Work Library', role: 'viewer' as const, wishlist_enabled: true },
 ]
 
 const MEMBERS = [
@@ -473,5 +477,60 @@ describe('SettingsPage – library management', () => {
     expect(screen.queryByRole('form', { name: 'add-member-form' })).not.toBeInTheDocument()
     // No comboboxes (role selects) for non-owners
     expect(screen.queryByLabelText('role-select-user-other')).not.toBeInTheDocument()
+  })
+})
+
+// ── Tests: wishlist toggle (#309) ────────────────────────────────────────────
+
+describe('SettingsPage – wishlist toggle (#309)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    resetAuthMock()
+    // Earlier describes swap the store to lib-2 via mockImplementation, which
+    // clearAllMocks does NOT undo — pin the active library back to lib-1.
+    const { useLibraryStore } = await import('../store/useLibraryStore')
+    vi.mocked(useLibraryStore).mockImplementation(
+      (selector: (s: { activeLibraryId: string | null; setActiveLibraryId: (id: string | null) => void }) => unknown) =>
+        selector({ activeLibraryId: 'lib-1', setActiveLibraryId: mockSetActiveLibraryId }),
+    )
+    vi.mocked(listLibraries).mockResolvedValue(LIBRARIES)
+    vi.mocked(listLibraryMembers).mockResolvedValue(MEMBERS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows the toggle to the owner, reflecting wishlist_enabled', async () => {
+    renderWithProviders(<SettingsPage />)
+    const row = await screen.findByTestId('wishlist-toggle-row')
+    const checkbox = within(row).getByRole('checkbox')
+    expect(checkbox).toBeChecked()
+  })
+
+  it('calls updateLibrary when the owner flips the toggle', async () => {
+    const { updateLibrary } = await import('../lib/api')
+    vi.mocked(updateLibrary).mockResolvedValue({
+      id: 'lib-1', name: 'Home Library', role: 'owner', wishlist_enabled: false,
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    const row = await screen.findByTestId('wishlist-toggle-row')
+    await user.click(within(row).getByRole('checkbox'))
+
+    await waitFor(() => {
+      expect(updateLibrary).toHaveBeenCalledWith('lib-1', { wishlist_enabled: false })
+    })
+  })
+
+  it('hides the toggle from non-owners', async () => {
+    // Active library is lib-1 but the caller is only a viewer there.
+    vi.mocked(listLibraries).mockResolvedValue([
+      { id: 'lib-1', name: 'Home Library', role: 'viewer', wishlist_enabled: true },
+    ])
+    renderWithProviders(<SettingsPage />)
+    await screen.findByText('Home Library')
+    expect(screen.queryByTestId('wishlist-toggle-row')).not.toBeInTheDocument()
   })
 })

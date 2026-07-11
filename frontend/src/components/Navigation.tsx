@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
+import { useLibraries } from '../hooks/useLibrary'
+import { useLibraryStore } from '../store/useLibraryStore'
 import { withDemoPrefix } from '../features/demo/demoNav'
 import { BookshelfInlineIcon } from './EmptyStateIcons'
 import { UsageMeterCard } from './UsageMeterCard'
@@ -75,6 +77,14 @@ function IconBorrowers({ size = 24 }: { size?: number }) {
   )
 }
 
+function IconWishlist({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  )
+}
+
 function IconSettings({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -115,6 +125,7 @@ const iconComponents = {
   bookshelf: IconBookshelf,
   locations: IconLocations,
   borrowers: IconBorrowers,
+  wishlist: IconWishlist,
   settings: IconSettings,
 }
 
@@ -141,6 +152,14 @@ export function Navigation() {
     [isDemo],
   )
 
+  /* Wishlist nav item (#309): shown only when the active library has the
+     feature enabled. Network-backed, so the demo never shows it. */
+  const activeLibraryId = useLibraryStore((s) => s.activeLibraryId)
+  const { data: libraries } = useLibraries()
+  const activeLibrary =
+    libraries?.find((lib) => lib.id === activeLibraryId) ?? libraries?.[0] ?? null
+  const showWishlist = !isDemo && (activeLibrary?.wishlist_enabled ?? false)
+
   /* Grouped sidebar items (desktop) */
   const navGroup = useMemo<NavItem[]>(
     () => [
@@ -161,8 +180,11 @@ export function Navigation() {
   const secondaryGroup = useMemo<NavItem[]>(
     () => [
       { label: t('nav.borrowers'), icon: 'borrowers', path: prefix(ROUTES.borrowers) },
+      ...(showWishlist
+        ? [{ label: t('nav.wishlist'), icon: 'wishlist' as const, path: ROUTES.wishlist }]
+        : []),
     ],
-    [t, prefix],
+    [t, prefix, showWishlist],
   )
 
   const settingsGroup = useMemo<NavItem[]>(
@@ -187,9 +209,12 @@ export function Navigation() {
             { label: t('nav.library'), icon: 'library', path: ROUTES.books },
             { label: t('nav.bookshelf'), icon: 'bookshelf', path: ROUTES.bookshelfView },
             { label: t('nav.borrowers'), icon: 'borrowers', path: ROUTES.borrowers },
+            ...(showWishlist
+              ? [{ label: t('nav.wishlist'), icon: 'wishlist' as const, path: ROUTES.wishlist }]
+              : []),
             { label: t('nav.settings'), icon: 'settings', path: ROUTES.settings },
           ],
-    [t, isDemo, prefix],
+    [t, isDemo, prefix, showWishlist],
   )
   const mobileSplit = Math.ceil(mobileTabs.length / 2)
 

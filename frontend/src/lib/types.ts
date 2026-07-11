@@ -410,6 +410,42 @@ export interface Library {
   id: string
   name: string
   role: LibraryRole
+  /** Per-library wishlist toggle (#309); drives the nav item + /wishlist route. */
+  wishlist_enabled: boolean
+}
+
+export interface UpdateLibraryRequest {
+  wishlist_enabled: boolean
+}
+
+export interface WishlistItem {
+  id: string
+  library_id: string
+  created_by_user_id: string | null
+  title: string
+  author: string | null
+  isbn: string | null
+  note: string | null
+  cover_image_url: string | null
+  publication_year: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WishlistListResponse {
+  total: number
+  page: number
+  page_size: number
+  items: WishlistItem[]
+}
+
+export interface WishlistItemCreateRequest {
+  title: string
+  author?: string | null
+  isbn?: string | null
+  note?: string | null
+  cover_image_url?: string | null
+  publication_year?: number | null
 }
 
 export interface LibraryMember {

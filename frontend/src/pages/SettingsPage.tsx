@@ -10,6 +10,7 @@ import { Modal } from '../components/Modal'
 import { useEnrichAll } from '../hooks/useEnrich'
 import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
 import { useAddMember, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
+import { useToggleWishlist } from '../hooks/useWishlist'
 import { useResetOnboarding } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
 import { trackEvent } from '../lib/analytics'
@@ -73,6 +74,17 @@ function LibraryManagement() {
   const addMemberMutation = useAddMember(activeLibraryId ?? '')
   const updateMemberMutation = useUpdateMember(activeLibraryId ?? '')
   const removeMemberMutation = useRemoveMember(activeLibraryId ?? '')
+  const toggleWishlistMutation = useToggleWishlist(activeLibraryId ?? '')
+
+  function handleWishlistToggle(enabled: boolean) {
+    toggleWishlistMutation.mutate(
+      { wishlist_enabled: enabled },
+      {
+        onSuccess: () => showSuccess(t('library.wishlist_toggle_success')),
+        onError: (err) => showError(formatApiError(err) || t('library.wishlist_toggle_error')),
+      },
+    )
+  }
 
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<LibraryRole>('viewer')
@@ -166,6 +178,28 @@ function LibraryManagement() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Wishlist toggle (#309) — owners only; viewers/editors just follow
+          the flag via the nav item. */}
+      {activeLibrary && isOwner && (
+        <div className='stg-row' data-testid='wishlist-toggle-row' style={{ marginTop: 16 }}>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('library.wishlist_toggle_title')}</p>
+            <p className='stg-row-desc'>{t('library.wishlist_toggle_desc')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <label className='stg-toggle' aria-label='wishlist-toggle'>
+              <input
+                type='checkbox'
+                checked={activeLibrary.wishlist_enabled}
+                disabled={toggleWishlistMutation.isPending}
+                onChange={(e) => handleWishlistToggle(e.target.checked)}
+              />
+              <span className='stg-toggle-track' />
+            </label>
+          </div>
         </div>
       )}
 

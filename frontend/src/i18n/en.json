@@ -14,7 +14,8 @@
     "add_book": "Add book",
     "scan_shelf": "Scan shelf",
     "actions": "Actions",
-    "logout": "Logout"
+    "logout": "Logout",
+    "wishlist": "Wishlist"
   },
   "toast": {
     "book_saved": "Changes saved successfully.",
@@ -576,7 +577,11 @@
     "remove_error": "Failed to remove member.",
     "role_update_success": "Role updated.",
     "role_update_error_400": "Cannot remove the last owner.",
-    "role_update_error": "Failed to update role."
+    "role_update_error": "Failed to update role.",
+    "wishlist_toggle_title": "Wishlist",
+    "wishlist_toggle_desc": "Library members can add books you'd like to acquire.",
+    "wishlist_toggle_success": "Wishlist setting saved.",
+    "wishlist_toggle_error": "Could not save the wishlist setting."
   },
   "billing": {
     "section_title": "Plan & Usage",
@@ -830,5 +835,31 @@
     "nudge_text": "Like it? Sign up free to keep your library.",
     "nudge_cta": "Sign up free",
     "nudge_dismiss": "Dismiss"
+  },
+  "wishlist": {
+    "title": "Wishlist",
+    "subtitle": "Books the library wants to acquire.",
+    "form_label": "Add a wish",
+    "title_label": "Title",
+    "title_placeholder": "e.g. Dune",
+    "author_label": "Author",
+    "author_placeholder": "e.g. Frank Herbert",
+    "note_label": "Note",
+    "note_placeholder": "e.g. recommended by Alice",
+    "add_button": "Add wish",
+    "adding": "Adding…",
+    "add_success": "Wish added.",
+    "add_error": "Could not add the wish.",
+    "delete_button": "Delete",
+    "delete_label": "Delete wish {{title}}",
+    "delete_success": "Wish deleted.",
+    "delete_error": "Could not delete the wish.",
+    "loading": "Loading wishlist…",
+    "empty": "No wishes yet. Add the first one!",
+    "disabled_notice": "The wishlist is disabled for this library.",
+    "pagination_label": "Wishlist pagination",
+    "prev_page": "Previous",
+    "next_page": "Next",
+    "page_indicator": "Page {{page}} of {{total}}"
   }
 }

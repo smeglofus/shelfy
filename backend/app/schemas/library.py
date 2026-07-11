@@ -11,6 +11,8 @@ class LibraryResponse(BaseModel):
     id: uuid.UUID
     name: str
     role: LibraryRole
+    # Per-library wishlist toggle (#309); drives the nav item + /wishlist route.
+    wishlist_enabled: bool = True
 
 
 class CreateLibraryRequest(BaseModel):
@@ -30,3 +32,9 @@ class AddLibraryMemberRequest(BaseModel):
 
 class UpdateLibraryMemberRequest(BaseModel):
     role: LibraryRole
+
+
+class UpdateLibraryRequest(BaseModel):
+    """Owner-only library settings (#309). Single field for now."""
+
+    wishlist_enabled: bool

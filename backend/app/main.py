@@ -28,6 +28,7 @@ from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
 from app.api.settings import router as settings_router
 from app.api.telemetry import router as telemetry_router
+from app.api.wishlist import router as wishlist_router
 from app.core.config import get_settings
 from app.core.csrf import CSRFMiddleware
 from app.core.limiter import limiter
@@ -168,6 +169,7 @@ def create_app() -> FastAPI:
     app.include_router(locations_router)
     app.include_router(books_router)
     app.include_router(borrowers_router)
+    app.include_router(wishlist_router)
     app.include_router(loans_router)
     app.include_router(enrich_router)
     app.include_router(scan_router)
