@@ -860,6 +860,15 @@
     "pagination_label": "Wishlist pagination",
     "prev_page": "Previous",
     "next_page": "Next",
-    "page_indicator": "Page {{page}} of {{total}}"
+    "page_indicator": "Page {{page}} of {{total}}",
+    "acquire_button": "Add",
+    "acquire_label": "Add {{title}} to the library",
+    "acquire_title": "Add to library",
+    "acquire_subtitle": "The book is added to the library and the wish is checked off the wishlist.",
+    "acquire_submit": "Add to library",
+    "acquiring": "Adding…",
+    "acquire_success": "Book added to the library and the wish removed.",
+    "acquire_error": "Could not add the book to the library.",
+    "acquire_cleanup_error": "The book was added, but the wish could not be removed from the wishlist."
   }
 }

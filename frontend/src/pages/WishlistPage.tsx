@@ -1,13 +1,14 @@
 import { useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { WishlistAcquireModal } from '../components/WishlistAcquireModal'
 import { useLibraries } from '../hooks/useLibrary'
 import { useLibraryStore } from '../store/useLibraryStore'
 import { MIN_SUGGEST_QUERY_LENGTH, useBookSuggestions } from '../hooks/useBookSuggestions'
 import { useCreateWishlistItem, useDeleteWishlistItem, useWishlist } from '../hooks/useWishlist'
 import { useDebounce } from '../hooks/useDebounce'
 import { useToastStore } from '../lib/toast-store'
-import type { BookSuggestion, WishlistItemCreateRequest } from '../lib/types'
+import type { BookSuggestion, WishlistItem, WishlistItemCreateRequest } from '../lib/types'
 
 const PAGE_SIZE = 20
 
@@ -40,6 +41,9 @@ export function WishlistPage() {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [note, setNote] = useState('')
+
+  /* "Acquired" flow: wish → real book with a location (modal). */
+  const [acquireWish, setAcquireWish] = useState<WishlistItem | null>(null)
 
   /* Catalogue autocomplete on the title field — reuses the #308 suggester. */
   const [suggestOpen, setSuggestOpen] = useState(false)
@@ -332,21 +336,37 @@ export function WishlistPage() {
                 )}
               </div>
               {canEdit && (
-                <button
-                  type="button"
-                  className="sh-btn-secondary"
-                  data-testid={`wishlist-delete-${item.id}`}
-                  aria-label={t('wishlist.delete_label', { title: item.title })}
-                  disabled={deleteMutation.isPending}
-                  onClick={() => handleDelete(item.id)}
-                  style={{ fontSize: 12, color: 'var(--sh-red)', flexShrink: 0 }}
-                >
-                  {t('wishlist.delete_button')}
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    className="sh-btn-primary"
+                    data-testid={`wishlist-acquire-${item.id}`}
+                    aria-label={t('wishlist.acquire_label', { title: item.title })}
+                    onClick={() => setAcquireWish(item)}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('wishlist.acquire_button')}
+                  </button>
+                  <button
+                    type="button"
+                    className="sh-btn-secondary"
+                    data-testid={`wishlist-delete-${item.id}`}
+                    aria-label={t('wishlist.delete_label', { title: item.title })}
+                    disabled={deleteMutation.isPending}
+                    onClick={() => handleDelete(item.id)}
+                    style={{ fontSize: 12, color: 'var(--sh-red)' }}
+                  >
+                    {t('wishlist.delete_button')}
+                  </button>
+                </div>
               )}
             </li>
           ))}
         </ul>
+      )}
+
+      {acquireWish && (
+        <WishlistAcquireModal wish={acquireWish} onClose={() => setAcquireWish(null)} />
       )}
 
       {wishlistEnabled && totalPages > 1 && (

@@ -866,6 +866,15 @@
     "pagination_label": "Stránkování wishlistu",
     "prev_page": "Předchozí",
     "next_page": "Další",
-    "page_indicator": "Strana {{page}} z {{total}}"
+    "page_indicator": "Strana {{page}} z {{total}}",
+    "acquire_button": "Přidat",
+    "acquire_label": "Přidat {{title}} do knihovny",
+    "acquire_title": "Přidat do knihovny",
+    "acquire_subtitle": "Kniha se přidá do knihovny a přání se odškrtne z wishlistu.",
+    "acquire_submit": "Přidat do knihovny",
+    "acquiring": "Přidávám…",
+    "acquire_success": "Kniha byla přidána do knihovny a přání odebráno.",
+    "acquire_error": "Nepodařilo se přidat knihu do knihovny.",
+    "acquire_cleanup_error": "Kniha byla přidána, ale přání se nepodařilo odebrat z wishlistu."
   }
 }
