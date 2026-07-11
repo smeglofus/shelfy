@@ -32,14 +32,14 @@ LIMITS: dict[SubscriptionPlan, dict[str, int]] = {
         "scans_per_month": 50,
         "enrichments_per_month": -1,       # -1 = unlimited
         "libraries": 3,
-        "members_per_library": 3,
+        "members_per_library": 10,
         "books_per_library": 5000,
     },
     SubscriptionPlan.library: {
         "scans_per_month": 200,
         "enrichments_per_month": -1,       # -1 = unlimited
         "libraries": 10,
-        "members_per_library": 15,
+        "members_per_library": 30,
         "books_per_library": 30000,
     },
 }

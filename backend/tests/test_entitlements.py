@@ -349,7 +349,10 @@ class TestConcurrentLimitEnforcement:
     async def test_concurrent_add_member_never_exceeds_limit(
         self, sessionmaker_: async_sessionmaker[AsyncSession]
     ) -> None:
-        """5 parallel add-member calls on a Pro-plan library (limit=3) → exactly 2 new members.
+        """5 parallel add-member calls on a Home-plan library (limit=3) → exactly 2 new members.
+
+        Home (not Pro) on purpose: the race assertion needs a limit smaller
+        than the number of candidates, and Pro was raised to 10 members.
 
         Owner already counts as the first member. Without the lock, two or
         more tasks could both observe count=1 and both insert, overshooting
@@ -359,7 +362,7 @@ class TestConcurrentLimitEnforcement:
 
         async with sessionmaker_() as s:
             owner = await _make_user(s)
-            await _set_plan(s, owner, SubscriptionPlan.pro)
+            await _set_plan(s, owner, SubscriptionPlan.home)
             lib = await _make_library(s, owner)   # owner = 1 member
             # Create the candidates up front so the race is purely on the
             # member-count check, not on user-row visibility.
@@ -391,9 +394,9 @@ class TestConcurrentLimitEnforcement:
                 )
             ).scalar_one()
 
-        # Pro: members_per_library=3. Owner + 2 new members = 3.
+        # Home: members_per_library=3. Owner + 2 new members = 3.
         assert succeeded == 2, f"expected 2 new members (cap 3 minus owner), got {succeeded}"
-        assert total == 3, f"Pro-plan member cap is 3, ended with {total}"
+        assert total == 3, f"Home-plan member cap is 3, ended with {total}"
 
 
 class TestIdempotency:
