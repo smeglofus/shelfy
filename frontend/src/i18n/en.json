@@ -489,7 +489,8 @@
     "location_optional_hint": "You do not have to pick a location now. The book will save without it and you can place it later from the book detail.",
     "no_room_option": "No room / place later",
     "no_furniture_option": "No bookshelf / place later",
-    "no_shelf_option": "No shelf / place later"
+    "no_shelf_option": "No shelf / place later",
+    "suggestions_label": "Catalogue suggestions"
   },
   "enrich": {
     "enriching": "Enriching…",

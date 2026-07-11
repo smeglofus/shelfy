@@ -417,7 +417,8 @@
     "location_optional_hint": "Nemusíš vybírat umístění hned. Kniha se uloží i bez něj a můžeš ji zařadit později v detailu knihy.",
     "no_room_option": "Bez místnosti / zařadit později",
     "no_furniture_option": "Bez knihovny / zařadit později",
-    "no_shelf_option": "Bez police / zařadit později"
+    "no_shelf_option": "Bez police / zařadit později",
+    "suggestions_label": "Návrhy z katalogu"
   },
   "enrich": {
     "enriching": "Obohacuji…",

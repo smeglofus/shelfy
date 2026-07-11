@@ -25,6 +25,7 @@ import type {
   Book,
   BookCreateRequest,
   BookListParams,
+  BookSuggestion,
   BookListResponse,
   BookUpdateRequest,
   BulkDeleteRequest,
@@ -440,6 +441,13 @@ export async function getBook(id: string): Promise<Book> {
 
 export async function createBook(payload: BookCreateRequest): Promise<Book> {
   const response = await apiClient.post<Book>('/api/v1/books', payload)
+  return response.data
+}
+
+export async function suggestBooks(q: string, limit = 8): Promise<BookSuggestion[]> {
+  const response = await apiClient.get<BookSuggestion[]>('/api/v1/books/suggest', {
+    params: { q, limit },
+  })
   return response.data
 }
 
