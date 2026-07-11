@@ -197,3 +197,49 @@ async def test_owner_adding_self_does_not_schedule_email(
 
     assert response.status_code == 200
     send_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_create_member_survives_expire_on_commit_sessions(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    """Regression for the prod 500 (MissingGreenlet) on member add.
+
+    The app's real ``SessionLocal`` used to expire ORM instances on commit;
+    ``create_member`` then touched ``member.user_id`` after ``commit()``,
+    which lazy-loads synchronously and explodes inside the async endpoint
+    (the member row was already committed — user saw the member appear AND
+    a 500 toast). Test fixtures all use ``expire_on_commit=False``, so this
+    override reproduces the production semantics explicitly.
+    """
+    engine = test_session.kw["bind"]
+    strict_factory = async_sessionmaker(
+        bind=engine, class_=AsyncSession, expire_on_commit=True
+    )
+
+    async def _strict_db() -> AsyncIterator[AsyncSession]:
+        async with strict_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = _strict_db
+
+    async with test_session() as session:
+        owner = await _create_user(session, "owner@example.com")
+        await _create_user(session, "member@example.com")
+        lib = await _create_library_with_owner(session, owner, "Rodinná knihovna")
+        await _give_plan(session, owner, SubscriptionPlan.pro)
+        await session.commit()
+
+    send_mock = AsyncMock()
+    with patch("app.api.libraries.email_svc.send_added_to_library", send_mock):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            headers = await _login(client, "owner@example.com")
+            response = await client.post(
+                f"/api/v1/libraries/{lib.id}/members",
+                json={"email": "member@example.com", "role": "viewer"},
+                headers=headers,
+            )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "viewer"
+    send_mock.assert_awaited_once()
