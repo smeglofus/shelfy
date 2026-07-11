@@ -12,6 +12,8 @@ import { displayBorrowerName } from '../lib/borrowerDisplay'
 import { getBorrowerDetailRoute } from '../lib/routes'
 import type { BorrowerListItem, BorrowerStatusFilter } from '../lib/types'
 
+import './BorrowersPage.css'
+
 const PAGE_SIZE = 20
 
 function formatDate(value: string | null, locale: string): string {
@@ -203,20 +205,9 @@ export function BorrowersPage() {
               <Link
                 to={demoPath(getBorrowerDetailRoute(borrower.id))}
                 data-testid={`borrower-row-${borrower.id}`}
-                className="sh-card"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(0, 1fr) auto',
-                  gap: 12,
-                  padding: 16,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  border: '1px solid var(--sh-border)',
-                  borderRadius: 'var(--sh-radius-md)',
-                  background: 'var(--sh-surface)',
-                }}
+                className="sh-card borrowers-row"
               >
-                <div style={{ minWidth: 0 }}>
+                <div className="borrowers-row-identity">
                   <div
                     style={{
                       display: 'flex',
@@ -229,7 +220,7 @@ export function BorrowersPage() {
                       color: borrower.anonymized_at ? 'var(--sh-text-muted)' : undefined,
                     }}
                   >
-                    <span>{displayBorrowerName(borrower, t)}</span>
+                    <span className="borrowers-row-name">{displayBorrowerName(borrower, t)}</span>
                     {/* Inline pending badge (#244 PR #2). Surfaced in the
                         default ``all`` view too so the librarian spots
                         scheduled rows just by scrolling. */}
@@ -252,30 +243,10 @@ export function BorrowersPage() {
                     )}
                   </div>
                   {borrower.contact && (
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--sh-text-muted)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {borrower.contact}
-                    </div>
+                    <div className="borrowers-row-contact">{borrower.contact}</div>
                   )}
                 </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridAutoFlow: 'column',
-                    gap: 12,
-                    alignItems: 'center',
-                    fontSize: 12,
-                    color: 'var(--sh-text-muted)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <div className="borrowers-row-stats">
                   <span data-testid={`borrower-active-${borrower.id}`}>
                     {t('borrowers.active_count', { count: borrower.active_loans })}
                   </span>

@@ -110,6 +110,35 @@ describe('BorrowersPage', () => {
     expect(screen.getByTestId('borrower-last-b-bob')).toHaveTextContent('borrowers.no_activity')
   })
 
+  // Layout itself can't be asserted in jsdom; #307 moved the row layout
+  // from inline styles into BorrowersPage.css classes, so pin the class
+  // hooks the responsive stylesheet relies on.
+  it('uses the responsive CSS classes for the row, identity and stats blocks (#307)', async () => {
+    vi.mocked(listBorrowers).mockResolvedValue(
+      makePage([
+        makeBorrower({
+          id: 'b-alice',
+          name: 'Alice',
+          active_loans: 2,
+          total_loans: 5,
+          last_activity_at: '2026-05-01',
+        }),
+      ]),
+    )
+    renderPage()
+
+    const row = await screen.findByTestId('borrower-row-b-alice')
+    expect(row).toHaveClass('sh-card', 'borrowers-row')
+    expect(row.querySelector('.borrowers-row-identity')).not.toBeNull()
+    expect(row.querySelector('.borrowers-row-name')).toHaveTextContent('Alice')
+    expect(row.querySelector('.borrowers-row-contact')).toHaveTextContent('alice@x.com')
+    const stats = row.querySelector('.borrowers-row-stats')
+    expect(stats).not.toBeNull()
+    expect(stats).toContainElement(screen.getByTestId('borrower-active-b-alice'))
+    expect(stats).toContainElement(screen.getByTestId('borrower-total-b-alice'))
+    expect(stats).toContainElement(screen.getByTestId('borrower-last-b-alice'))
+  })
+
   it('passes the typed (debounced) search string through to listBorrowers', async () => {
     vi.mocked(listBorrowers).mockResolvedValue(makePage([]))
     renderPage()
