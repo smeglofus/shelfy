@@ -12,7 +12,13 @@ from app.core.metrics import EXTERNAL_API_CALLS_TOTAL, observe_external_api_late
 from app.services.metadata.google_books import fetch_google_books_metadata
 from app.services.metadata.open_library import fetch_open_library_metadata
 
-CACHE_TTL_SECONDS = 24 * 60 * 60
+# Open Library allows commercial reuse of its data, so hits can be cached
+# aggressively; the long TTL also keeps us well inside its rate limits.
+CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+# Definitive misses (the catalogue answered but has no record) are cached
+# as JSON ``null`` so unknown ISBNs don't hammer Open Library on every
+# retry. Kept shorter than hits — the catalogue grows.
+NEGATIVE_CACHE_TTL_SECONDS = 24 * 60 * 60
 logger = structlog.get_logger()
 
 
@@ -22,6 +28,48 @@ def _cache_key(isbn: str | None, title: str | None) -> str | None:
     if title and title.strip():
         return f"book-metadata:title:{title.lower().strip()}"
     return None
+
+
+async def _google_books_lookup(
+    client: httpx.AsyncClient,
+    isbn: str | None,
+    title: str | None,
+    author: str | None,
+) -> tuple[dict[str, object] | None, bool]:
+    """Returns ``(metadata, errored)``."""
+    settings = get_settings()
+    start = perf_counter()
+    try:
+        EXTERNAL_API_CALLS_TOTAL.labels(provider="google_books").inc()
+        return (
+            await fetch_google_books_metadata(
+                client, isbn, title=title, author=author, api_key=settings.google_books_api_key
+            ),
+            False,
+        )
+    except Exception as exc:
+        logger.warning("google_books_lookup_failed", isbn=isbn, title=title, author=author, error=str(exc))
+        return None, True
+    finally:
+        observe_external_api_latency("google_books", start)
+
+
+async def _open_library_lookup(
+    client: httpx.AsyncClient,
+    isbn: str | None,
+    title: str | None,
+    author: str | None,
+) -> tuple[dict[str, object] | None, bool]:
+    """Returns ``(metadata, errored)``."""
+    start = perf_counter()
+    try:
+        EXTERNAL_API_CALLS_TOTAL.labels(provider="open_library").inc()
+        return await fetch_open_library_metadata(client, isbn, title=title, author=author), False
+    except Exception as exc:
+        logger.warning("open_library_lookup_failed", isbn=isbn, title=title, author=author, error=str(exc))
+        return None, True
+    finally:
+        observe_external_api_latency("open_library", start)
 
 
 async def enrich_metadata_with_fallback(
@@ -38,35 +86,28 @@ async def enrich_metadata_with_fallback(
     try:
         cached = await redis_client.get(cache_key)
         if cached:
-            result: dict[str, object] = json.loads(cached)
+            # ``"null"`` is a cached negative result and decodes to ``None``.
+            result: dict[str, object] | None = json.loads(cached)
             return result
 
+        # Open Library is the sole default provider — Google Books ToS
+        # forbids paid applications, so it only runs behind the explicit
+        # ``enable_google_books`` opt-in (see app/core/config.py), where it
+        # keeps its legacy primary-with-fallback position.
         metadata: dict[str, object] | None = None
+        errored = False
         async with httpx.AsyncClient() as client:
-            google_start = perf_counter()
-            try:
-                EXTERNAL_API_CALLS_TOTAL.labels(provider="google_books").inc()
-                metadata = await fetch_google_books_metadata(
-                    client, isbn, title=title, author=author, api_key=settings.google_books_api_key
-                )
-            except Exception as exc:
-                logger.warning("google_books_lookup_failed", isbn=isbn, title=title, author=author, error=str(exc))
-                metadata = None
-            finally:
-                observe_external_api_latency("google_books", google_start)
-
+            if settings.enable_google_books:
+                metadata, errored = await _google_books_lookup(client, isbn, title, author)
             if metadata is None:
-                open_library_start = perf_counter()
-                try:
-                    EXTERNAL_API_CALLS_TOTAL.labels(provider="open_library").inc()
-                    metadata = await fetch_open_library_metadata(client, isbn, title=title, author=author)
-                except Exception as exc:
-                    logger.warning("open_library_lookup_failed", isbn=isbn, title=title, author=author, error=str(exc))
-                    metadata = None
-                finally:
-                    observe_external_api_latency("open_library", open_library_start)
+                metadata, open_library_errored = await _open_library_lookup(client, isbn, title, author)
+                errored = errored or open_library_errored
 
         if metadata is None:
+            # Only cache a miss when the provider actually answered —
+            # transient failures must stay retryable.
+            if not errored:
+                await redis_client.set(cache_key, json.dumps(None), ex=NEGATIVE_CACHE_TTL_SECONDS)
             return None
 
         await redis_client.set(cache_key, json.dumps(metadata), ex=CACHE_TTL_SECONDS)

@@ -59,8 +59,9 @@ Backend processing pipeline (asynchronous):
 
 External APIs (with fallback):
 
-- Primary: Google Books API
-- Fallback: OpenLibrary API
+- Primary: OpenLibrary API
+- Optional (off by default, ToS-gated): Google Books API — its ToS forbids paid
+  applications, so it must stay disabled unless a separate agreement with Google exists
 
 If both APIs fail, the book is saved with only the data extracted
 locally. The user can fill in missing metadata manually.
@@ -153,8 +154,8 @@ Browser (React SPA)
         |         |
         |         +---> MinIO (image storage)
         |         |
-        |         +---> Google Books API
-        |         +---> OpenLibrary API (fallback)
+        |         +---> OpenLibrary API
+        |         +---> Google Books API (optional, off by default)
         |
         +---> MinIO (direct upload URL generation)
 ```
@@ -168,7 +169,7 @@ Browser (React SPA)
 
 2. Celery worker picks up job
    → Runs barcode detection with Gemini Vision fallback on image
-   → Queries Google Books API (or OpenLibrary fallback)
+   → Queries OpenLibrary API (Google Books only if explicitly enabled)
    → Writes book record to PostgreSQL
    → Updates job status to "done" or "failed"
 
@@ -370,9 +371,9 @@ both sources (env var takes precedence).
 ## External API Failures
 
 ```
-1. Try Google Books API
-2. On failure (timeout / 4xx / 5xx): log warning, try OpenLibrary
-3. On both failures: save book with local data only, set status="partial"
+1. Try OpenLibrary API (with Google Books first when the opt-in flag is on)
+2. On failure (timeout / 4xx / 5xx): log warning
+3. On failure of all enabled providers: save book with local data only, set status="partial"
 4. User sees a warning in the UI with option to retry enrichment
 ```
 
@@ -487,7 +488,7 @@ Target: `backend/app/services/`, `worker/`
 Examples:
 
 - ISBN extraction from Gemini Vision observed text
-- Metadata parsing from Google Books API response
+- Metadata parsing from OpenLibrary API response
 - Fallback logic when primary API fails
 - JWT token creation and validation
 

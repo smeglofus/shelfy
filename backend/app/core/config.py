@@ -30,7 +30,17 @@ class Settings(BaseSettings):
     admin_password: str | None = None
     seed_admin_on_startup: bool = False
 
+    # Book metadata providers.
+    # Open Library is the primary (and by default the only) source: the
+    # Google Books API ToS forbids charging users for an application that
+    # uses it without a separate agreement with Google, and Shelfy is a
+    # paid product. Only flip ``enable_google_books`` on if such an
+    # agreement exists; ``google_books_api_key`` stays unused until then.
+    enable_google_books: bool = False
     google_books_api_key: str | None = None
+    # Identifying User-Agent sent with Open Library requests — required
+    # etiquette and lifts the anonymous 1 req/s rate limit to 3 req/s.
+    open_library_user_agent: str = "Shelfy (https://shelfy.cz; support@shelfy.cz)"
 
     # Observability / error tracking
     # Set SENTRY_DSN in .env to enable Sentry error reporting.

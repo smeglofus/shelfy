@@ -488,6 +488,35 @@ def test_enrichment_cache_hit_skips_external_calls(monkeypatch) -> None:
     assert result == {"title": "Cached", "provider": "google_books"}
 
 
+def test_enrichment_default_uses_open_library_and_skips_google(monkeypatch) -> None:
+    stored = {}
+
+    class FakeRedis:
+        def get(self, _key):
+            return None
+
+        def setex(self, key, ttl, payload):
+            stored[key] = payload
+
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: FakeRedis())
+
+    async def _google_must_not_be_called(*_args, **_kwargs):
+        raise AssertionError("google books must not be called with the flag off")
+
+    async def _open_library(isbn, title=None, author=None):
+        return {"title": "Refactoring", "isbn": isbn, "provider": "open_library"}
+
+    monkeypatch.setattr(celery_app, "_fetch_google_books_metadata", _google_must_not_be_called)
+    monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
+
+    result = celery_app.asyncio.run(celery_app._enrich_metadata_with_fallback("9780201485677"))
+
+    assert result is not None
+    assert result["provider"] == "open_library"
+    assert "book-metadata:9780201485677" in stored
+
+
 def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> None:
     job_id = uuid.uuid4()
     book_image_id = uuid.uuid4()

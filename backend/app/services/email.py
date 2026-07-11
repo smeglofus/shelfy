@@ -147,7 +147,7 @@ async def send_welcome(to: str, name: str, *, locale: str | None = None) -> None
 <p>Hned můžeš:</p>
 <ul>
   <li>📷 naskenovat knihovnu pomocí AI skenu police,</li>
-  <li>🔍 doplnit obálky a metadata z Google Books,</li>
+  <li>🔍 doplnit obálky a metadata z veřejných knižních katalogů,</li>
   <li>📍 organizovat knihy podle umístění a stavu čtení.</li>
 </ul>
 <p>{_cta(f"{settings.app_url}/books", "Otevřít Shelfy →")}</p>
@@ -161,7 +161,7 @@ async def send_welcome(to: str, name: str, *, locale: str | None = None) -> None
 <p>Here's what you can do right away:</p>
 <ul>
   <li>📷 Scan your bookshelf with the AI shelf-scanning feature</li>
-  <li>🔍 Auto-enrich books with cover images &amp; metadata from Google Books</li>
+  <li>🔍 Auto-enrich books with cover images &amp; metadata from public book catalogues</li>
   <li>📍 Organise books by location and reading status</li>
 </ul>
 <p>{_cta(f"{settings.app_url}/books", "Open Shelfy →")}</p>

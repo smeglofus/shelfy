@@ -42,7 +42,7 @@
 
   <rect x="860" y="320" width="180" height="90" class="box"/>
   <text x="878" y="354" class="label">External APIs</text>
-  <text x="878" y="378" class="text">Google Books / OpenLibrary</text>
+  <text x="878" y="378" class="text">Open Library</text>
 
   <path d="M230 135 L290 135" class="arrow"/>
   <path d="M520 115 L600 115" class="arrow"/>
