@@ -1125,6 +1125,72 @@
         }
       }
     },
+    "/api/v1/books/suggest": {
+      "get": {
+        "tags": [
+          "books"
+        ],
+        "summary": "Suggest Books Endpoint",
+        "description": "Autocomplete candidates from the external catalogue (Open Library).\n\nQueries shorter than 3 characters return ``[]`` without an external\ncall; results are Redis-cached server-side and the client debounces,\nso keystrokes never map 1:1 to Open Library requests.\n\nNOTE: like ``/shelf``, this route must stay registered before the\n``/{book_id}`` dynamic path.",
+        "operationId": "suggest_books_endpoint_api_v1_books_suggest_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 8,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookSuggestion"
+                  },
+                  "title": "Response Suggest Books Endpoint Api V1 Books Suggest Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/books/import/preview": {
       "post": {
         "tags": [
@@ -4640,6 +4706,91 @@
           "updated_at"
         ],
         "title": "BookResponse"
+      },
+      "BookSuggestion": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "isbn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isbn"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "publication_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Year"
+          },
+          "cover_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Image Url"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "provider"
+        ],
+        "title": "BookSuggestion",
+        "description": "Lightweight external-catalogue candidate for the add-book autocomplete (#308)."
       },
       "BookUpdateRequest": {
         "properties": {
