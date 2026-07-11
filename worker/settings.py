@@ -23,11 +23,19 @@ class WorkerSettings(BaseSettings):
     sentry_dsn: str | None = None
     environment: str = "production"
 
-    # Enrichment rate limiting (SaaS-friendly defaults)
+    # Enrichment rate limiting (SaaS-friendly defaults). The per-minute cap
+    # also keeps us far below Open Library's identified 3 req/s limit.
     enrichment_delay_seconds: float = 1.5         # delay between API calls per book
     enrichment_max_per_minute: int = 30           # max enrichment API calls per minute
-    enrichment_max_per_day: int = 900             # max enrichment API calls per day (Google Books free = 1000)
-    google_books_api_key: str | None = None       # optional: increases Google Books quota
+    enrichment_max_per_day: int = 900             # max enrichment API calls per day
+
+    # Metadata providers — mirrors app/core/config.py. Google Books ToS
+    # forbids paid applications, so it stays disabled unless a separate
+    # agreement with Google exists.
+    enable_google_books: bool = False
+    google_books_api_key: str | None = None       # unused unless enable_google_books
+    # Identifying User-Agent for Open Library (lifts rate limit to 3 req/s).
+    open_library_user_agent: str = "Shelfy (https://shelfy.cz; support@shelfy.cz)"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

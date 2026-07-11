@@ -629,17 +629,20 @@ async def _fetch_open_library_metadata(isbn: str | None, title: str | None = Non
     start = perf_counter()
     try:
         async with httpx.AsyncClient() as client:
+            headers = {"User-Agent": worker_settings.open_library_user_agent}
             if isbn:
                 bib_key = f"ISBN:{isbn}"
                 response = await client.get(
                     "https://openlibrary.org/api/books",
                     params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
+                    headers=headers,
                     timeout=10.0,
                 )
             elif title:
                 response = await client.get(
                     "https://openlibrary.org/search.json",
                     params={"title": title, "author": author or "", "limit": 1},
+                    headers=headers,
                     timeout=10.0,
                 )
             else:
@@ -708,10 +711,14 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
 
     metadata: dict[str, object] | None = None
 
-    try:
-        metadata = await _fetch_google_books_metadata(isbn, title=title, author=author)
-    except Exception:
-        metadata = None
+    # Open Library is the sole default provider — Google Books ToS forbids
+    # paid applications, so it only runs behind the explicit opt-in flag
+    # (mirrors app/services/metadata/service.py in the backend).
+    if worker_settings.enable_google_books:
+        try:
+            metadata = await _fetch_google_books_metadata(isbn, title=title, author=author)
+        except Exception:
+            metadata = None
 
     if metadata is None:
         try:

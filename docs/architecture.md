@@ -22,8 +22,8 @@ flowchart LR
   R[(Redis)]
   S3[(MinIO)]
   W[Celery Worker]
-  GB[Google Books API]
   OL[Open Library API]
+  GB[Google Books API — optional, off by default]
 
   UI -->|REST + JWT| API
   API --> DB
@@ -60,7 +60,7 @@ flowchart LR
 1. Frontend uploads a cover image to `POST /api/v1/books/upload`.
 2. Backend validates type/size, stores bytes in MinIO, creates `book_images` + `processing_jobs` rows.
 3. Backend enqueues Celery task.
-4. Worker performs barcode extraction with Gemini Vision spine-recognition fallback, attempts metadata lookup (Google Books fallback to Open Library), then updates job/book rows.
+4. Worker performs barcode extraction with Gemini Vision spine-recognition fallback, attempts metadata lookup (Open Library; Google Books only behind the `ENABLE_GOOGLE_BOOKS` opt-in flag), then updates job/book rows.
 
 ## 5. Observability and operations
 

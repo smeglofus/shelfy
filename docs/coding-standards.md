@@ -105,7 +105,7 @@ Routers must stay thin. A router function should do nothing more than:
 ### Error handling rules
 
 - Never let exceptions bubble silently. Catch and handle explicitly.
-- External API failures (Google Books, OpenLibrary) must follow the
+- External API failures (OpenLibrary, Gemini Vision) must follow the
   fallback strategy defined in `docs/project-spec.md`.
 - Raise FastAPI `HTTPException` at the router layer, not in services.
   Services should raise domain-specific exceptions that routers translate.

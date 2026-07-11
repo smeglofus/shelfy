@@ -4,6 +4,12 @@ from typing import Any
 
 import httpx
 
+from app.core.config import get_settings
+
+
+def _headers() -> dict[str, str]:
+    return {"User-Agent": get_settings().open_library_user_agent}
+
 
 async def fetch_open_library_metadata(
     client: httpx.AsyncClient,
@@ -16,6 +22,7 @@ async def fetch_open_library_metadata(
         response = await client.get(
             "https://openlibrary.org/api/books",
             params={"bibkeys": bib_key, "format": "json", "jscmd": "data"},
+            headers=_headers(),
             timeout=10.0,
         )
         response.raise_for_status()
@@ -27,6 +34,7 @@ async def fetch_open_library_metadata(
         response = await client.get(
             "https://openlibrary.org/search.json",
             params={"title": title, "author": author or "", "limit": 1},
+            headers=_headers(),
             timeout=10.0,
         )
         response.raise_for_status()
@@ -60,6 +68,8 @@ async def fetch_open_library_metadata(
 
     cover = entry.get("cover") or {}
 
+    # ``cover_image_url`` deliberately points at covers.openlibrary.org —
+    # covers are hotlinked at display time, never copied into our storage.
     return {
         "title": entry.get("title"),
         "author": (entry.get("authors") or [{}])[0].get("name"),
