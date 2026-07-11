@@ -14,7 +14,8 @@
     "add_book": "Přidat knihu",
     "scan_shelf": "Skenovat polici",
     "actions": "Akce",
-    "logout": "Odhlásit"
+    "logout": "Odhlásit",
+    "wishlist": "Wishlist"
   },
   "toast": {
     "book_saved": "Změny uloženy.",
@@ -504,7 +505,11 @@
     "remove_error": "Odebrání člena selhalo.",
     "role_update_success": "Role aktualizována.",
     "role_update_error_400": "Nelze odebrat posledního vlastníka.",
-    "role_update_error": "Aktualizace role selhala."
+    "role_update_error": "Aktualizace role selhala.",
+    "wishlist_toggle_title": "Wishlist",
+    "wishlist_toggle_desc": "Členové knihovny mohou přidávat knihy, které chcete pořídit.",
+    "wishlist_toggle_success": "Nastavení wishlistu bylo uloženo.",
+    "wishlist_toggle_error": "Nastavení wishlistu se nepodařilo uložit."
   },
   "billing": {
     "section_title": "Plán & Využití",
@@ -836,5 +841,31 @@
     "nudge_text": "Líbí se vám to? Zaregistrujte se zdarma a knihovnu si uložte.",
     "nudge_cta": "Vyzkoušet zdarma",
     "nudge_dismiss": "Zavřít"
+  },
+  "wishlist": {
+    "title": "Wishlist",
+    "subtitle": "Knihy, které chce knihovna teprve pořídit.",
+    "form_label": "Přidat přání",
+    "title_label": "Název",
+    "title_placeholder": "např. Duna",
+    "author_label": "Autor",
+    "author_placeholder": "např. Frank Herbert",
+    "note_label": "Poznámka",
+    "note_placeholder": "např. doporučila Alice",
+    "add_button": "Přidat přání",
+    "adding": "Přidávám…",
+    "add_success": "Přání bylo přidáno.",
+    "add_error": "Nepodařilo se přidat přání.",
+    "delete_button": "Smazat",
+    "delete_label": "Smazat přání {{title}}",
+    "delete_success": "Přání bylo smazáno.",
+    "delete_error": "Nepodařilo se smazat přání.",
+    "loading": "Načítám wishlist…",
+    "empty": "Zatím tu nejsou žádná přání. Přidej první!",
+    "disabled_notice": "Wishlist je pro tuto knihovnu vypnutý.",
+    "pagination_label": "Stránkování wishlistu",
+    "prev_page": "Předchozí",
+    "next_page": "Další",
+    "page_indicator": "Strana {{page}} z {{total}}"
   }
 }

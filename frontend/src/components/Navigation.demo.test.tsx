@@ -7,6 +7,7 @@
  * authenticated-only controls (settings, usage meter, logout). Borrowers IS
  * shown — the loan lifecycle is fully sandboxed client-side.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
@@ -19,6 +20,9 @@ vi.mock('react-router-dom', async (orig) => {
   return { ...actual, useNavigate: () => navigateMock }
 })
 vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ logout: vi.fn() }) }))
+// The wishlist nav item (#309) reads the libraries payload; never fetched in
+// the demo (unauthenticated), but the hook still needs the module mocked.
+vi.mock('../lib/api', () => ({ listLibraries: vi.fn(() => Promise.resolve([])) }))
 // UsageMeterCard pulls plan usage from the API — never exercised in the demo,
 // stubbed so the authenticated-mode assertions don't need a QueryClient.
 vi.mock('./UsageMeterCard', () => ({ UsageMeterCard: () => null }))
@@ -26,10 +30,13 @@ vi.mock('./UsageMeterCard', () => ({ UsageMeterCard: () => null }))
 import { Navigation } from './Navigation'
 
 function renderAt(path: string): ReactNode {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Navigation />
-    </MemoryRouter>,
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[path]}>
+        <Navigation />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 

@@ -9,6 +9,7 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.processing_job import ProcessingJob
 from app.models.subscription import Subscription, UsageCounter, UsageEvent, SubscriptionPlan, SubscriptionStatus, UsageMetric
 from app.models.user import User
+from app.models.wishlist_item import WishlistItem
 
 __all__ = [
     "User", "Location", "Book", "Borrower", "BorrowerMergeUndoLog",
@@ -16,4 +17,5 @@ __all__ = [
     "Library", "LibraryMember", "LibraryRole",
     "PasswordResetToken",
     "Subscription", "UsageCounter", "UsageEvent", "SubscriptionPlan", "SubscriptionStatus", "UsageMetric",
+    "WishlistItem",
 ]

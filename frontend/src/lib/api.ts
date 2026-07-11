@@ -57,9 +57,13 @@ import type {
   ShelfScanResponse,
   ShelfScanResultResponse,
   TokenResponse,
+  UpdateLibraryRequest,
   UpdateMemberRoleRequest,
   UploadJobResponse,
   User,
+  WishlistItem,
+  WishlistItemCreateRequest,
+  WishlistListResponse,
 } from './types'
 
 export const ACTIVE_LIBRARY_ID_KEY = 'shelfy.activeLibraryId'
@@ -742,6 +746,27 @@ export async function resetOnboarding(): Promise<OnboardingStatus> {
 export async function listLibraries(): Promise<Library[]> {
   const response = await apiClient.get<Library[]>('/api/v1/libraries')
   return response.data
+}
+
+export async function updateLibrary(libraryId: string, payload: UpdateLibraryRequest): Promise<Library> {
+  const response = await apiClient.patch<Library>(`/api/v1/libraries/${libraryId}`, payload)
+  return response.data
+}
+
+export async function listWishlist(page = 1, pageSize = 20): Promise<WishlistListResponse> {
+  const response = await apiClient.get<WishlistListResponse>('/api/v1/wishlist', {
+    params: { page, page_size: pageSize },
+  })
+  return response.data
+}
+
+export async function createWishlistItem(payload: WishlistItemCreateRequest): Promise<WishlistItem> {
+  const response = await apiClient.post<WishlistItem>('/api/v1/wishlist', payload)
+  return response.data
+}
+
+export async function deleteWishlistItem(itemId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/wishlist/${itemId}`)
 }
 
 export async function listLibraryMembers(libraryId: string): Promise<LibraryMember[]> {

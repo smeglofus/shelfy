@@ -17,8 +17,10 @@ from app.schemas.library import (
     LibraryMemberResponse,
     LibraryResponse,
     UpdateLibraryMemberRequest,
+    UpdateLibraryRequest,
 )
 from app.services import entitlements
+from app.services.wishlist import set_wishlist_enabled
 from app.services.library import (
     add_member,
     create_library as create_library_service,
@@ -37,7 +39,12 @@ async def libraries_me(
     session: AsyncSession = Depends(get_db_session), current_user: User = Depends(get_current_user)
 ) -> list[LibraryResponse]:
     data = await list_user_libraries(session, current_user.id)
-    return [LibraryResponse(id=lib.id, name=lib.name, role=role) for lib, role in data]
+    return [
+        LibraryResponse(
+            id=lib.id, name=lib.name, role=role, wishlist_enabled=lib.wishlist_enabled
+        )
+        for lib, role in data
+    ]
 
 
 @router.post("", response_model=LibraryResponse, status_code=201)
@@ -56,7 +63,27 @@ async def create_library(
     lib = await create_library_service(session, current_user.id, payload.name)
     await session.commit()
     await session.refresh(lib)
-    return LibraryResponse(id=lib.id, name=lib.name, role=LibraryRole.OWNER)
+    return LibraryResponse(
+        id=lib.id, name=lib.name, role=LibraryRole.OWNER, wishlist_enabled=lib.wishlist_enabled
+    )
+
+
+@router.patch("/{library_id}", response_model=LibraryResponse)
+async def update_library(
+    library_id: uuid.UUID,
+    payload: UpdateLibraryRequest,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+) -> LibraryResponse:
+    """Owner-only library settings — currently just the wishlist toggle (#309)."""
+    member = await require_library_role(session, current_user.id, library_id, LibraryRole.OWNER)
+    library = await set_wishlist_enabled(session, library_id, payload.wishlist_enabled)
+    return LibraryResponse(
+        id=library.id,
+        name=library.name,
+        role=member.role,
+        wishlist_enabled=library.wishlist_enabled,
+    )
 
 
 @router.get("/{library_id}/members", response_model=list[LibraryMemberResponse])

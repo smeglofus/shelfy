@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 import uuid
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, String, Uuid, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, String, Uuid, UniqueConstraint, func, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -24,6 +24,11 @@ class Library(Base):
     slug: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Wishlist feature toggle (#309): default ON for existing and new
+    # libraries; only the owner may flip it (PATCH /api/v1/libraries/{id}).
+    wishlist_enabled: Mapped[bool] = mapped_column(
+        Boolean(), nullable=False, server_default=true(), default=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

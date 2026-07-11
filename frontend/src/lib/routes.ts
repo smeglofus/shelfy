@@ -10,6 +10,7 @@ export const ROUTES = {
   demo: '/demo',
   locations: '/locations',
   borrowers: '/borrowers',
+  wishlist: '/wishlist',
   borrowerDetail: '/borrowers/:borrowerId',
   settings: '/settings',
   pricing: '/pricing',
