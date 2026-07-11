@@ -245,9 +245,9 @@ async def test_can_create_library_false_at_limit(test_session: AsyncSession) -> 
 @pytest.mark.asyncio
 async def test_can_add_member_true_under_limit(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id, SubscriptionPlan.pro)  # pro: 3 members
+    await _make_subscription(test_session, user.id, SubscriptionPlan.pro)  # pro: 10 members
     lib = await _make_library_with_owner(test_session, user)
-    # Only owner (1 member) → can add 2 more
+    # Only owner (1 member) → well under the cap
     result = await entitlements.can_add_member(test_session, user.id, lib.id)
     assert result is True
 

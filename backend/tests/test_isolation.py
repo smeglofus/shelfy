@@ -326,7 +326,7 @@ async def test_owner_can_manage_members_editor_cannot(
         lib = await _create_library(session, owner, "Managed Library")
         await _add_member(session, lib, editor, LibraryRole.EDITOR)
         # Library already has 2 members (owner + editor); adding newcomer makes 3.
-        # Pro plan allows up to 3 members per library.
+        # Pro plan allows up to 10 members per library.
         await _give_plan(session, owner, SubscriptionPlan.pro)
         await session.commit()
 
