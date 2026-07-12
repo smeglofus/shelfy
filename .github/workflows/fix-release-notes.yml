@@ -1,0 +1,26 @@
+name: Fix release notes mention
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Replace @p0 mention with P0 in v1.0.0 release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_id=352816367
+          gh api "repos/${{ github.repository }}/releases/${release_id}" --jq .body > body.txt
+          if ! grep -q '(@p0)' body.txt; then
+            echo "No (@p0) mention found — nothing to do."
+            exit 0
+          fi
+          sed -i 's/(@p0)/(P0)/g' body.txt
+          gh api -X PATCH "repos/${{ github.repository }}/releases/${release_id}" \
+            -F body=@body.txt --jq '.id'
+          echo "Release notes updated."
