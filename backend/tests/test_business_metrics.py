@@ -132,7 +132,9 @@ async def test_touch_last_seen_writes_then_throttles(
         t2 = t0 + LAST_SEEN_THROTTLE + timedelta(seconds=1)
         assert await touch_last_seen(session, user.id, now=t2) is True
 
-        refreshed = await session.get(User, user.id)
+        # synchronize_session=False leaves the identity-map instance stale
+        # on purpose — force a re-SELECT to observe the written value.
+        refreshed = await session.get(User, user.id, populate_existing=True)
         assert refreshed is not None
         assert refreshed.last_seen_at is not None
 
