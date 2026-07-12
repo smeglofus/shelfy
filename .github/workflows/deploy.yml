@@ -31,8 +31,11 @@ jobs:
           # The runner container has no kubectl; run it via the host docker
           # daemon with the host kubeconfig. TODO(security follow-up): replace
           # the admin kubeconfig with a namespace-scoped ServiceAccount.
+          # --user 1000 matches the kubeconfig owner on the host (the image's
+          # default uid 1001 can't read the 600-mode file); HOME=/tmp gives
+          # kubectl a writable cache dir.
           kc() {
-            docker run --rm --network host \
+            docker run --rm --network host --user 1000 -e HOME=/tmp \
               -v /home/suslik/.kube/config:/kube/config:ro \
               -e KUBECONFIG=/kube/config \
               bitnami/kubectl:latest "$@"
