@@ -66,7 +66,7 @@ A few things worth a closer look while reading the code:
 - **Workers** — Celery (barcode, Gemini Vision, enrichment, email, backups)
 - **Data & infra** — PostgreSQL 16, Redis 7, MinIO
 - **Observability** — structlog JSON logs + Prometheus metrics at `/metrics`
-- **Deployment** — Docker Compose for dev, Docker Swarm + Traefik for production
+- **Deployment** — Docker Compose for dev, Kubernetes (k3s) + Traefik + Cloudflare Tunnel for production
 
 ---
 
@@ -209,16 +209,20 @@ docker compose ps
 
 ---
 
-## Homelab deployment (Docker Swarm)
+## Production deployment (Kubernetes / k3s)
 
-- Stack definition: `infra/swarm-stack.yml`
-- Runbook: `docs/deployment.md`
+Production runs on a two-node k3s homelab cluster since 2026-07-12 (migrated
+from Docker Compose — the cutover runbook that performed it is
+[`infra/k8s/CUTOVER.md`](infra/k8s/CUTOVER.md)).
 
-```bash
-docker stack deploy -c infra/swarm-stack.yml library-app
-```
+- Manifests: [`infra/k8s/`](infra/k8s/README.md) (kustomize base + staging/prod overlays)
+- CD: merge to `main` → `images` workflow builds sha-tagged images to GHCR →
+  `Deploy` workflow pins them via `kubectl set image` and waits for rollout
+- Manifest changes: `kubectl apply -k infra/k8s/overlays/prod`
 
-Swarm-specific vars are documented in `.env.example` and `docs/deployment.md`.
+Legacy compose production files (`infra/docker-compose.prod.yml`,
+`infra/swarm-stack.yml`, `infra/deploy-prod.local.sh`) are kept as the
+short-term rollback path and for reference.
 
 ---
 

@@ -8,4 +8,7 @@ global:
 scrape_configs:
   - job_name: shelfy-backend
     static_configs:
-      - targets: ["backend:8000"]
+      # Backend runs in k3s since 2026-07-12; scraped via the LAN-only NodePort
+      # (infra/k8s/overlays/prod/backend-nodeport.yaml). Interim until the
+      # monitoring stack itself moves into the cluster.
+      - targets: ["192.168.88.3:30800"]

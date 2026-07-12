@@ -1,8 +1,12 @@
 name: Deploy
 
+# k3s deploy (since 2026-07-12 the production stack runs in the cluster, see
+# infra/k8s/). Chains off the `images` workflow so the freshly pushed sha-tagged
+# images are guaranteed to exist before pods roll. Compose-era deploy lives in
+# git history if you ever need to compare.
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["images"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -13,36 +17,49 @@ concurrency:
 
 jobs:
   deploy:
-    # Only proceed if CI succeeded (workflow_run) or manual trigger (workflow_dispatch)
+    # Only proceed if images were built successfully (workflow_run) or manual trigger
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, shelfy-prod]
     timeout-minutes: 15
     steps:
-      - name: Deploy
+      - name: Deploy to k3s
         run: |
           set -euo pipefail
-          cd ~/shelfy
-          git pull origin main
-          cd infra
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "Deploying commit $SHA"
 
-          # Start dependencies before migrations (DB must be up)
-          docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build postgres redis minio
+          # The runner container has no kubectl; run it via the host docker
+          # daemon with the host kubeconfig. TODO(security follow-up): replace
+          # the admin kubeconfig with a namespace-scoped ServiceAccount.
+          kc() {
+            docker run --rm --network host \
+              -v /home/suslik/.kube/config:/kube/config:ro \
+              -e KUBECONFIG=/kube/config \
+              bitnami/kubectl:latest "$@"
+          }
 
-          # Build the backend image BEFORE running migrations — `compose run`
-          # otherwise reuses the image from the *previous* deploy, so any
-          # migration added in the commit being deployed silently doesn't run
-          # (bit us with users.last_seen_at: alembic saw the old head and the
-          # freshly deployed code 500'd on the missing column).
-          docker compose --env-file .env.prod.local -f docker-compose.prod.yml build backend
+          # Pin exact sha tags — never deploy a mutable :latest. `set image`
+          # updates the migrate initContainer too, so alembic runs from the
+          # same commit as the app (mirrors the old compose deploy ordering:
+          # initContainer finishes before the new pod serves traffic).
+          kc -n shelfy set image deploy/backend \
+            migrate=ghcr.io/smeglofus/shelfy-backend:sha-$SHA \
+            backend=ghcr.io/smeglofus/shelfy-backend:sha-$SHA
+          kc -n shelfy set image deploy/worker \
+            worker=ghcr.io/smeglofus/shelfy-worker:sha-$SHA
+          kc -n shelfy set image deploy/beat \
+            beat=ghcr.io/smeglofus/shelfy-worker:sha-$SHA
+          kc -n shelfy set image deploy/frontend \
+            frontend=ghcr.io/smeglofus/shelfy-frontend:prod-sha-$SHA
 
-          docker compose --env-file .env.prod.local -f docker-compose.prod.yml run --rm \
-            backend bash -lc "cd /app && alembic upgrade head"
+          kc -n shelfy rollout status deploy/backend  --timeout=300s
+          kc -n shelfy rollout status deploy/worker   --timeout=180s
+          kc -n shelfy rollout status deploy/beat     --timeout=180s
+          kc -n shelfy rollout status deploy/frontend --timeout=180s
 
-          docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build backend worker beat frontend prometheus grafana
-
-          # Poll health for up to 90 s (30 × 3 s)
+          # End-to-end check through the tunnel (Cloudflare -> Traefik -> pod)
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/health && curl -fsS http://127.0.0.1:8000/health/ready; then
+            if curl -fsS https://shelfy.cz/health && curl -fsS https://shelfy.cz/health/ready; then
               echo "Deploy healthy"
               exit 0
             fi
@@ -72,6 +89,6 @@ jobs:
             -d text="Shelfy deploy: ${STATUS}%0A%0ACommit: ${{ github.event.workflow_run.head_commit.message || github.event.head_commit.message }}%0AWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 # Rollback (manual):
-# If this workflow fails after docker compose up, revert the bad commit and
-# re-run via Actions → Deploy → Run workflow (workflow_dispatch):
+#   kubectl -n shelfy rollout undo deploy/backend deploy/worker deploy/beat deploy/frontend
+# or re-run this workflow (workflow_dispatch) after reverting the bad commit:
 #   cd ~/shelfy && git revert HEAD --no-edit && git push origin main

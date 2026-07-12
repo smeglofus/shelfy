@@ -1,5 +1,8 @@
 # Cutover: shelfy.cz z Docker Compose do k3s
 
+> **✅ PROVEDENO 12. 7. 2026** — produkce běží v k3s (namespace `shelfy`).
+> Dokument zůstává jako runbook-záznam a podklad pro rollback okno (14 dní).
+
 Runbook pro přepnutí produkce. Piš si k němu časy a poznámky — je to zároveň
 podklad pro pohovorovou historku. Všechno se spouští na homelab2 jako `suslik`
 (kroky se `sudo` jsou označené).

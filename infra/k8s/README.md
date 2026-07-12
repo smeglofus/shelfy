@@ -1,8 +1,12 @@
 # shelfy on k3s
 
-Kubernetes manifests for running the shelfy stack on the homelab k3s cluster,
-replacing `infra/docker-compose.prod.yml`. Plain kustomize — no Helm yet
-(charts are a planned follow-up).
+Kubernetes manifests for the shelfy stack on the homelab k3s cluster. Plain
+kustomize — no Helm yet (charts are a planned follow-up).
+
+**Status: production (`shelfy.cz`) runs from the `prod` overlay since
+2026-07-12** (cutover per [CUTOVER.md](CUTOVER.md)). Staging lives in the
+`shelfy-staging` namespace alongside it. The compose files in `infra/` are the
+short-term rollback path only.
 
 ## Layout
 
@@ -38,13 +42,19 @@ CUTOVER.md             # production cutover runbook (Czech)
 
 ## Deploy
 
+**Code changes (CD):** merge to `main` → the `images` workflow builds and
+pushes sha-tagged images to GHCR → the `Deploy` workflow pins them with
+`kubectl set image` and waits for the rollout + an end-to-end health check
+through the tunnel. Never deploys mutable `:latest`.
+
+**Manifest changes (manual for now):**
+
 ```bash
 export KUBECONFIG=~/.kube/config
 
-# staging
-infra/k8s/scripts/gen-secrets.sh staging
-kubectl apply -k infra/k8s/overlays/staging
-infra/k8s/scripts/smoke.sh staging.shelfy.cz
-
-# prod — follow CUTOVER.md, do not just apply
+kubectl apply -k infra/k8s/overlays/staging   # or overlays/prod
+infra/k8s/scripts/smoke.sh staging.shelfy.cz  # or shelfy.cz
 ```
+
+Secrets are managed by `scripts/gen-secrets.sh <env>` (idempotent; safe to
+rerun — existing datastore passwords are preserved).
