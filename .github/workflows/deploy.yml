@@ -28,6 +28,13 @@ jobs:
           # Start dependencies before migrations (DB must be up)
           docker compose --env-file .env.prod.local -f docker-compose.prod.yml up -d --build postgres redis minio
 
+          # Build the backend image BEFORE running migrations — `compose run`
+          # otherwise reuses the image from the *previous* deploy, so any
+          # migration added in the commit being deployed silently doesn't run
+          # (bit us with users.last_seen_at: alembic saw the old head and the
+          # freshly deployed code 500'd on the missing column).
+          docker compose --env-file .env.prod.local -f docker-compose.prod.yml build backend
+
           docker compose --env-file .env.prod.local -f docker-compose.prod.yml run --rm \
             backend bash -lc "cd /app && alembic upgrade head"
 
