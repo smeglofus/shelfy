@@ -1,6 +1,11 @@
 name: Fix release notes mention
 
 on:
+  push:
+    branches:
+      - claude/pavel-contributor-access-g54k8f
+    paths:
+      - .github/workflows/fix-release-notes.yml
   workflow_dispatch:
 
 permissions:
