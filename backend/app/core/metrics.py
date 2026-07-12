@@ -26,6 +26,24 @@ FRONTEND_RUNTIME_ERRORS_TOTAL = Counter(
     labelnames=("kind",),
 )
 
+# ── Business gauges (computed on every /metrics scrape) ───────────────────────
+# Prefixed shelfy_ to keep them apart from the request-level counters above.
+USERS_TOTAL = Gauge("shelfy_users_total", "Registered users")
+USERS_BY_PLAN = Gauge(
+    "shelfy_users_by_plan",
+    "Users by effective subscription plan (canceled/past_due count as free)",
+    labelnames=("plan",),
+)
+ACTIVE_USERS = Gauge(
+    "shelfy_active_users",
+    "Users with last_seen_at inside the window",
+    labelnames=("window",),
+)
+LIBRARIES_TOTAL = Gauge("shelfy_libraries_total", "Libraries")
+BOOKS_TOTAL = Gauge("shelfy_books_total", "Books across all libraries")
+ACTIVE_LOANS_TOTAL = Gauge("shelfy_active_loans_total", "Loans not yet returned")
+WISHLIST_ITEMS_TOTAL = Gauge("shelfy_wishlist_items_total", "Wishlist items across all libraries")
+
 EXTERNAL_API_LATENCY_SECONDS = Histogram(
     "external_api_latency_seconds",
     "External metadata API latency",
