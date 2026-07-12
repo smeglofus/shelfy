@@ -418,6 +418,10 @@ export interface UpdateLibraryRequest {
   wishlist_enabled: boolean
 }
 
+export interface CreateLibraryRequest {
+  name: string
+}
+
 export interface WishlistItem {
   id: string
   library_id: string

@@ -9,7 +9,7 @@ import { ImportCsvModal } from '../components/ImportCsvModal'
 import { Modal } from '../components/Modal'
 import { useEnrichAll } from '../hooks/useEnrich'
 import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
-import { useAddMember, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
+import { useAddMember, useCreateLibrary, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
 import { useToggleWishlist } from '../hooks/useWishlist'
 import { useResetOnboarding } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
@@ -88,6 +88,36 @@ function LibraryManagement() {
 
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<LibraryRole>('viewer')
+
+  /* Create-library form. The backend enforces the per-plan library limit
+     (free/home 1, pro 3, library 10) — the client doesn't duplicate the
+     numbers, it just translates the 403 into an upgrade hint. */
+  const createLibraryMutation = useCreateLibrary()
+  const [createOpen, setCreateOpen] = useState(false)
+  const [newLibraryName, setNewLibraryName] = useState('')
+
+  function handleCreateLibrary(e: FormEvent) {
+    e.preventDefault()
+    const name = newLibraryName.trim()
+    if (!name) return
+    createLibraryMutation.mutate(
+      { name },
+      {
+        onSuccess: (library) => {
+          setNewLibraryName('')
+          setCreateOpen(false)
+          // Jump straight into the new library — matches the invite flow.
+          setActiveLibraryId(library.id)
+          showSuccess(t('library.create_success'))
+        },
+        onError: (err) => {
+          const status = extractStatusCode(err)
+          if (status === 403) showError(t('library.create_error_403'))
+          else showError(formatApiError(err) || t('library.create_error'))
+        },
+      },
+    )
+  }
 
   function handleAddMember(e: FormEvent) {
     e.preventDefault()
@@ -180,6 +210,59 @@ function LibraryManagement() {
           })}
         </div>
       )}
+
+      {/* Create a new library — account-level, gated by the plan limit on
+          the backend. */}
+      <div style={{ marginTop: 12 }}>
+        {!createOpen ? (
+          <button
+            type='button'
+            className='sh-btn-secondary'
+            data-testid='create-library-button'
+            style={{ fontSize: 13 }}
+            onClick={() => setCreateOpen(true)}
+          >
+            {t('library.create_button')}
+          </button>
+        ) : (
+          <form
+            onSubmit={handleCreateLibrary}
+            aria-label='create-library-form'
+            data-testid='create-library-form'
+            className='stg-add-form'
+          >
+            <div className='stg-add-form-field'>
+              <label>{t('library.create_name_label')}</label>
+              <input
+                className='sh-input'
+                placeholder={t('library.create_name_placeholder')}
+                value={newLibraryName}
+                onChange={(e) => setNewLibraryName(e.target.value)}
+                aria-label='new-library-name'
+                maxLength={200}
+                required
+              />
+            </div>
+            <button
+              type='submit'
+              className='sh-btn-primary'
+              data-testid='create-library-submit'
+              disabled={createLibraryMutation.isPending || !newLibraryName.trim()}
+              style={{ height: 38, alignSelf: 'flex-end' }}
+            >
+              {createLibraryMutation.isPending ? t('library.creating') : t('library.create_submit')}
+            </button>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              onClick={() => { setCreateOpen(false); setNewLibraryName('') }}
+              style={{ height: 38, alignSelf: 'flex-end' }}
+            >
+              {t('common.cancel')}
+            </button>
+          </form>
+        )}
+      </div>
 
       {/* Wishlist toggle (#309) — owners only; viewers/editors just follow
           the flag via the nav item. */}

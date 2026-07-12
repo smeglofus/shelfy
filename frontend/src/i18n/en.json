@@ -581,7 +581,15 @@
     "wishlist_toggle_title": "Wishlist",
     "wishlist_toggle_desc": "Library members can add books you'd like to acquire.",
     "wishlist_toggle_success": "Wishlist setting saved.",
-    "wishlist_toggle_error": "Could not save the wishlist setting."
+    "wishlist_toggle_error": "Could not save the wishlist setting.",
+    "create_button": "+ New library",
+    "create_name_label": "Library name",
+    "create_name_placeholder": "e.g. Cottage",
+    "create_submit": "Create",
+    "creating": "Creating…",
+    "create_success": "Library created and set as active.",
+    "create_error": "Could not create the library.",
+    "create_error_403": "You've reached your plan's library limit. Upgrade to create more — see Settings → Billing."
   },
   "billing": {
     "section_title": "Plan & Usage",
