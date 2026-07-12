@@ -35,6 +35,11 @@ async def touch_last_seen(
         .where(User.id == user_id)
         .where(or_(User.last_seen_at.is_(None), User.last_seen_at < threshold))
         .values(last_seen_at=stamp)
+        # No identity-map sync: the default 'evaluate' strategy compares the
+        # WHERE clause in Python against in-session instances and dies on
+        # naive/aware datetime mixes; nothing reads last_seen_at from the
+        # session, so skipping the sync is both safe and cheaper.
+        .execution_options(synchronize_session=False)
     )
     if result.rowcount:
         await session.commit()

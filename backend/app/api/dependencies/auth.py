@@ -61,7 +61,10 @@ async def get_current_user(
     # Business telemetry: stamp last activity. Throttled inside the UPDATE
     # (one write per 15 min per user), commits only when it actually wrote —
     # runs before any endpoint logic, so it can't release endpoint locks.
-    await touch_last_seen(session, user.id)
+    if await touch_last_seen(session, user.id):
+        # The commit expires ``user`` under expire_on_commit=True sessions;
+        # re-load so callers never receive an expired instance.
+        await session.refresh(user)
 
     # Set Sentry user context so every error is tagged with the authenticated user.
     # Lazy import — zero cost when Sentry is not configured.
