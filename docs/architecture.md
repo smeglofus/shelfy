@@ -51,8 +51,10 @@ flowchart LR
 ### 4.1 Interactive API flow
 
 1. Frontend logs in at `POST /api/v1/auth/login`.
-2. Backend returns JWT access/refresh tokens.
-3. Frontend sends bearer token for protected endpoints.
+2. Backend sets JWT access/refresh tokens as **HttpOnly cookies** and issues a
+   CSRF token (double-submit pattern, ADR 007).
+3. The browser sends cookies automatically; mutating requests carry the CSRF
+   header. (Bearer tokens are used only by tests/tooling.)
 4. Books/locations endpoints persist and query entities in PostgreSQL.
 
 ### 4.2 Upload + enrichment flow
@@ -81,10 +83,14 @@ not exposed through the Cloudflare tunnel.
 
 ## 6. Security model
 
-- JWT auth using `python-jose`.
+- JWT auth in HttpOnly cookies with CSRF double-submit protection (ADR 007);
+  tokens signed via `python-jose`.
 - Password hashing via `passlib` + bcrypt.
-- Secret-like values supplied through environment variables.
+- Secret-like values supplied through environment variables — in production
+  injected from a Kubernetes Secret generated out-of-git
+  (`infra/k8s/scripts/gen-secrets.sh`).
 - CORS restricted by configurable allowlist.
+- `/metrics` and admin tooling are not exposed through the Cloudflare tunnel.
 
 ## 7. CI quality gates
 
@@ -95,10 +101,19 @@ GitHub Actions CI validates:
 3. Backend tests with coverage threshold (`--cov-fail-under=80`)
 4. Frontend lint and tests
 
-## 8. Homelab deployment architecture
+## 8. Production deployment architecture (k3s — ADR 011)
 
-- Production deployment target is Docker Swarm using `infra/swarm-stack.yml`.
-- Traefik v3 is the ingress controller, with label-based routing and ACME TLS.
-- Sensitive values are mounted via Docker Secrets under `/run/secrets/` and injected at runtime.
-- Persistent storage uses named Swarm volumes for PostgreSQL and MinIO.
-- Operational deployment and smoke-test steps are documented in `docs/deployment.md`.
+- Production runs on a two-node k3s cluster (amd64 miniPC + arm64 Raspberry
+  Pi 5); manifests are kustomize base + `staging`/`prod` overlays under
+  `infra/k8s/`.
+- Ingress: Cloudflare Tunnel → Traefik (k3s built-in) → Ingress routing
+  `/api` + `/health` to the backend and everything else to the frontend. TLS
+  terminates at Cloudflare.
+- CD: merge to `main` → GHCR images tagged `sha-<commit>` → `Deploy` workflow
+  pins tags via `kubectl set image` and waits for rollout; alembic migrations
+  run as a backend initContainer.
+- Sensitive values are injected from Kubernetes Secrets created out-of-git;
+  datastore credentials were rotated during the migration.
+- Persistent storage uses k3s local-path PVCs pinned to the amd64 node.
+- Operational steps: `docs/deployment.md`; migration record:
+  `infra/k8s/CUTOVER.md`.

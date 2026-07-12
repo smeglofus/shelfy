@@ -44,7 +44,12 @@ npm ci
 cd backend
 ruff check app tests
 mypy app tests
-TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db pytest --cov=app --cov-fail-under=80 tests
+# Full suite needs Postgres with pg_trgm (this is what CI runs and what counts):
+TEST_DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/shelfy_test \
+  pytest --cov=app --cov-fail-under=80 tests
+# No local Postgres? SQLite is a partial smoke run only (Postgres-only tests fail
+# there by design — see AGENTS.md "Test-DB contract"); push and let CI be the judge:
+#   TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db pytest tests
 
 # Frontend
 cd ../frontend

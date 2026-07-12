@@ -1,5 +1,9 @@
 # Implementation Phases
 
+> **Historical planning document** — all phases are complete and the project
+> has moved past this roadmap (production now runs on k3s, ADR 011). Kept as
+> a record of the build order; do not treat it as current instructions.
+
 This document defines the implementation order for the Home Library Manager project.
 
 The coding agent must always follow these rules:

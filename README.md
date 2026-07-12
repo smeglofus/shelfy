@@ -52,7 +52,7 @@ A few things worth a closer look while reading the code:
 - **Coverage gate.** Backend tests run with `--cov-fail-under=80` in CI.
 - **Typed frontend.** TypeScript strict, no `any`. React Query for server state, Zustand for UI state only — never mixed.
 - **Migrations as a source of truth.** 24 Alembic migrations document the schema's evolution, including the borrower-anonymization audit trail and the `pg_trgm` extension for fuzzy search.
-- **Decision trail.** 8 ADRs under `docs/adr/` cover the non-obvious choices: FastAPI over Django, Celery for async image processing, MinIO for object storage, React over Next.js, Docker Swarm + Traefik over Kubernetes, Gemini Vision for spine recognition, HttpOnly cookies + CSRF over localStorage tokens, and the deliberate retention of legacy loan fields.
+- **Decision trail.** 11 ADRs under `docs/adr/` cover the non-obvious choices: FastAPI over Django, Celery for async image processing, MinIO for object storage, React over Next.js, Gemini Vision for spine recognition, HttpOnly cookies + CSRF over localStorage tokens, retention of legacy loan fields, Open Library as primary metadata source, Prometheus/Grafana monitoring, and the k3s production platform (ADR 011, superseding the earlier Swarm decision — the supersession itself is part of the trail).
 - **Domain invariant checks.** `scripts/check_shelf_ordering_integrity.py` verifies the shelf-position invariant on demand — handy after migrations that touch ordering.
 
 ---
@@ -221,8 +221,8 @@ from Docker Compose — the cutover runbook that performed it is
 - Manifest changes: `kubectl apply -k infra/k8s/overlays/prod`
 
 Legacy compose production files (`infra/docker-compose.prod.yml`,
-`infra/swarm-stack.yml`, `infra/deploy-prod.local.sh`) are kept as the
-short-term rollback path and for reference.
+`infra/deploy-prod.local.sh`) are kept as the short-term rollback path
+(until ~2026-07-26); the never-used Swarm stack was removed (ADR 005 → 011).
 
 ---
 
@@ -269,6 +269,8 @@ Before each production release:
 - [ ] Shelf ordering integrity check passes
 - [ ] Critical routes smoke-tested (`/books`, `/bookshelf`, `/scan`)
 - [ ] No unresolved `frontend_runtime_error` bursts in monitoring
+- [ ] Milestone releases: tag the running commit (`git tag -a vX.Y.Z`) and
+      publish notes (`gh release create vX.Y.Z --generate-notes`)
 
 Useful references:
 
@@ -280,4 +282,4 @@ Useful references:
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+Business Source License 1.1 — see [`LICENSE`](LICENSE).

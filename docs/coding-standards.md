@@ -115,8 +115,8 @@ Routers must stay thin. A router function should do nothing more than:
 
 - Never hardcode secrets, passwords, or API keys.
 - All configuration is read from environment variables via pydantic-settings.
-- In Swarm deployment, Docker Secrets are mounted at `/run/secrets/`.
-  The config loader must support both sources (env var takes precedence).
+- In production (k3s), values are injected from a Kubernetes Secret
+  (`shelfy-secrets`) generated out-of-git — see `infra/k8s/scripts/gen-secrets.sh`.
 - The `.env` file is git-ignored. `.env.example` is committed and must
   stay up to date.
 
