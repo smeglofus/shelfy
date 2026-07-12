@@ -15,6 +15,7 @@ import type {
   BorrowerMergeResult,
   BorrowerUpdateRequest,
   CheckoutResponse,
+  CreateLibraryRequest,
   CsvImportConfirmRequest,
   CsvImportConfirmResponse,
   CsvImportPreviewResponse,
@@ -745,6 +746,11 @@ export async function resetOnboarding(): Promise<OnboardingStatus> {
 // Libraries
 export async function listLibraries(): Promise<Library[]> {
   const response = await apiClient.get<Library[]>('/api/v1/libraries')
+  return response.data
+}
+
+export async function createLibrary(payload: CreateLibraryRequest): Promise<Library> {
+  const response = await apiClient.post<Library>('/api/v1/libraries', payload)
   return response.data
 }
 

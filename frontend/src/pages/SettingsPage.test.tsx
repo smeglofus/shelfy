@@ -38,6 +38,7 @@ vi.mock('../lib/api', () => ({
   listWishlist: vi.fn(),
   createWishlistItem: vi.fn(),
   deleteWishlistItem: vi.fn(),
+  createLibrary: vi.fn(),
 }))
 
 const mockLogout = vi.fn()
@@ -532,5 +533,78 @@ describe('SettingsPage – wishlist toggle (#309)', () => {
     renderWithProviders(<SettingsPage />)
     await screen.findByText('Home Library')
     expect(screen.queryByTestId('wishlist-toggle-row')).not.toBeInTheDocument()
+  })
+})
+
+// ── Tests: create library ────────────────────────────────────────────────────
+
+describe('SettingsPage – create library', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    resetAuthMock()
+    const { useLibraryStore } = await import('../store/useLibraryStore')
+    vi.mocked(useLibraryStore).mockImplementation(
+      (selector: (s: { activeLibraryId: string | null; setActiveLibraryId: (id: string | null) => void }) => unknown) =>
+        selector({ activeLibraryId: 'lib-1', setActiveLibraryId: mockSetActiveLibraryId }),
+    )
+    vi.mocked(listLibraries).mockResolvedValue(LIBRARIES)
+    vi.mocked(listLibraryMembers).mockResolvedValue(MEMBERS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows the button and expands into the form', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    const button = await screen.findByTestId('create-library-button')
+    await user.click(button)
+
+    expect(screen.getByTestId('create-library-form')).toBeInTheDocument()
+    expect(screen.getByLabelText('new-library-name')).toBeInTheDocument()
+  })
+
+  it('creates the library and switches to it as active', async () => {
+    const { createLibrary } = await import('../lib/api')
+    vi.mocked(createLibrary).mockResolvedValue({
+      id: 'lib-new', name: 'Chata', role: 'owner', wishlist_enabled: true,
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    await user.click(await screen.findByTestId('create-library-button'))
+    await user.type(screen.getByLabelText('new-library-name'), 'Chata')
+    await user.click(screen.getByTestId('create-library-submit'))
+
+    await waitFor(() => {
+      expect(createLibrary).toHaveBeenCalledWith({ name: 'Chata' })
+    })
+    await waitFor(() => {
+      expect(mockSetActiveLibraryId).toHaveBeenCalledWith('lib-new')
+    })
+    // Form collapses back to the button.
+    await waitFor(() => {
+      expect(screen.queryByTestId('create-library-form')).not.toBeInTheDocument()
+    })
+  })
+
+  it('does not switch libraries when the plan limit rejects the create (403)', async () => {
+    const { createLibrary } = await import('../lib/api')
+    vi.mocked(createLibrary).mockRejectedValue({ response: { status: 403 } })
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsPage />)
+
+    await user.click(await screen.findByTestId('create-library-button'))
+    await user.type(screen.getByLabelText('new-library-name'), 'Čtvrtá knihovna')
+    await user.click(screen.getByTestId('create-library-submit'))
+
+    await waitFor(() => {
+      expect(createLibrary).toHaveBeenCalled()
+    })
+    expect(mockSetActiveLibraryId).not.toHaveBeenCalled()
+    // Form stays open so the user can rename / retry after upgrading.
+    expect(screen.getByTestId('create-library-form')).toBeInTheDocument()
   })
 })

@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   addLibraryMember,
+  createLibrary,
   listLibraries,
   listLibraryMembers,
   removeLibraryMember,
   updateLibraryMember,
 } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import type { AddMemberRequest, LibraryRole } from '../lib/types'
+import type { AddMemberRequest, CreateLibraryRequest, LibraryRole } from '../lib/types'
 
 export function useLibraries() {
   const { isAuthenticated } = useAuth()
@@ -16,6 +17,16 @@ export function useLibraries() {
     queryKey: ['libraries'],
     queryFn: listLibraries,
     enabled: isAuthenticated,
+  })
+}
+
+export function useCreateLibrary() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateLibraryRequest) => createLibrary(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['libraries'] })
+    },
   })
 }
 

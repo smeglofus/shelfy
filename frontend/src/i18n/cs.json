@@ -509,7 +509,15 @@
     "wishlist_toggle_title": "Wishlist",
     "wishlist_toggle_desc": "Členové knihovny mohou přidávat knihy, které chcete pořídit.",
     "wishlist_toggle_success": "Nastavení wishlistu bylo uloženo.",
-    "wishlist_toggle_error": "Nastavení wishlistu se nepodařilo uložit."
+    "wishlist_toggle_error": "Nastavení wishlistu se nepodařilo uložit.",
+    "create_button": "+ Nová knihovna",
+    "create_name_label": "Název knihovny",
+    "create_name_placeholder": "např. Chata",
+    "create_submit": "Vytvořit",
+    "creating": "Vytvářím…",
+    "create_success": "Knihovna byla vytvořena a přepnuta jako aktivní.",
+    "create_error": "Knihovnu se nepodařilo vytvořit.",
+    "create_error_403": "Dosáhl jsi limitu knihoven svého tarifu. Vyšší tarif umožní více knihoven — mrkni do Nastavení → Předplatné."
   },
   "billing": {
     "section_title": "Plán & Využití",
