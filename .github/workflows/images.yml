@@ -1,0 +1,77 @@
+# Build & push container images to GHCR for the k3s deployment (ADR: k3s
+# migration). Backend and worker are environment-agnostic; the frontend bakes
+# VITE_API_BASE_URL at build time, so it is built once per environment.
+name: images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feat/k3s-migration]
+    paths:
+      - "backend/**"
+      - "worker/**"
+      - "frontend/**"
+      - ".github/workflows/images.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  backend-worker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/shelfy-${{ matrix.component }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/shelfy-${{ matrix.component }}:sha-${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,scope=${{ matrix.component }},mode=max
+
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env_name: prod
+            api_base_url: https://shelfy.cz
+          - env_name: staging
+            api_base_url: https://staging.shelfy.cz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=${{ matrix.api_base_url }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/shelfy-frontend:${{ matrix.env_name }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/shelfy-frontend:${{ matrix.env_name }}-sha-${{ github.sha }}
+          cache-from: type=gha,scope=frontend-${{ matrix.env_name }}
+          cache-to: type=gha,scope=frontend-${{ matrix.env_name }},mode=max

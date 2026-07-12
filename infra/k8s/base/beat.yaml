@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: celerybeat-state
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beat
+  labels:
+    app: beat
+spec:
+  replicas: 1
+  # Recreate: exactly one beat may hold the schedule file (and only one beat
+  # instance may ever run against the broker, or periodic tasks fire twice).
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: beat
+  template:
+    metadata:
+      labels:
+        app: beat
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      # fsGroup replaces the compose beat-init chown job: the worker image runs
+      # as uid 1000 and gets group write on the mounted volume.
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: beat
+          image: ghcr.io/smeglofus/shelfy-worker:latest
+          imagePullPolicy: Always
+          command: ["celery", "-A", "celery_beat", "beat", "--loglevel=info", "--schedule=/var/lib/celerybeat/celerybeat-schedule"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: shelfy-secrets
+                  key: DATABASE_URL_SYNC
+          envFrom:
+            - secretRef:
+                name: shelfy-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/celerybeat
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: celerybeat-state
