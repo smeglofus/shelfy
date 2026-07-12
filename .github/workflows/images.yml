@@ -12,6 +12,9 @@ on:
       - "worker/**"
       - "frontend/**"
       - ".github/workflows/images.yml"
+      # deploy.yml chains off this workflow (workflow_run) and pins sha tags —
+      # rebuilding here guarantees the tag for HEAD exists before it deploys.
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
