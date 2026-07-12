@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+        - name: worker
+          image: ghcr.io/smeglofus/shelfy-worker:latest
+          imagePullPolicy: Always
+          command: ["celery", "-A", "celery_app", "worker", "--loglevel=info", "-Q", "default"]
+          # Explicit env wins over envFrom: the worker talks to Postgres with the
+          # sync (psycopg2) driver, same as in docker-compose.prod.yml.
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: shelfy-secrets
+                  key: DATABASE_URL_SYNC
+          envFrom:
+            - secretRef:
+                name: shelfy-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              memory: 768Mi

@@ -1,0 +1,16 @@
+# LAN-only escape hatch for the compose Prometheus (ADR 010): after cutover the
+# backend no longer publishes 127.0.0.1:8000, so Prometheus scrapes
+# 192.168.88.3:30800/metrics instead. Goes away in week 3 when monitoring
+# moves to kube-prometheus-stack + ServiceMonitor.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30800

@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: shelfy
+
+resources:
+  - namespace.yaml
+  - ../../base
+  - backend-nodeport.yaml
+
+images:
+  - name: ghcr.io/smeglofus/shelfy-backend
+    newTag: latest
+  - name: ghcr.io/smeglofus/shelfy-worker
+    newTag: latest
+  - name: ghcr.io/smeglofus/shelfy-frontend
+    newTag: prod
+
+patches:
+  - target:
+      kind: Ingress
+      name: shelfy
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: shelfy.cz

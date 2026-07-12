@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: shelfy-staging
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+images:
+  - name: ghcr.io/smeglofus/shelfy-backend
+    newTag: latest
+  - name: ghcr.io/smeglofus/shelfy-worker
+    newTag: latest
+  - name: ghcr.io/smeglofus/shelfy-frontend
+    newTag: staging
+
+patches:
+  # Staging hostname (served through the Cloudflare tunnel like prod).
+  - target:
+      kind: Ingress
+      name: shelfy
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.shelfy.cz
+  # No beat in staging: periodic jobs (reminder e-mails, R2 backups) must only
+  # ever run against production data, and never twice.
+  - target:
+      kind: Deployment
+      name: beat
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0
