@@ -1,0 +1,95 @@
+# pgAdmin — cluster admin tool, ONE instance for the whole cluster. Lives
+# outside base/ on purpose: overlays must not stamp a copy per environment.
+#
+# The pgadmin-secret is NOT in git (public repo). Create it once:
+#
+#   kubectl -n shelfy create secret generic pgadmin-secret \
+#     --from-literal=PGADMIN_DEFAULT_EMAIL=admin@shelfy.cz \
+#     --from-literal=PGADMIN_DEFAULT_PASSWORD="$(openssl rand -hex 16)"
+#
+# Apply: kubectl -n shelfy apply -f infra/k8s/pgadmin/pgadmin.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgadmin-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgadmin
+  template:
+    metadata:
+      labels:
+        app: pgadmin
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
+      securityContext:
+        fsGroup: 5050
+      containers:
+        - name: pgadmin
+          image: dpage/pgadmin4:8
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: pgadmin-secret
+          env:
+            - name: PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION
+              value: "True"
+          volumeMounts:
+            - name: pgadmin-data
+              mountPath: /var/lib/pgadmin
+          resources:
+            requests:
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+      volumes:
+        - name: pgadmin-data
+          persistentVolumeClaim:
+            claimName: pgadmin-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgadmin
+spec:
+  type: ClusterIP
+  selector:
+    app: pgadmin
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+# TODO(follow-up): add an explicit `host:` here — a host-less rule catches every
+# request on :80 that no other Ingress claims (the shelfy Ingresses win on their
+# hosts, so the app is unaffected, but this should not stay a catch-all).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pgadmin
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pgadmin
+                port:
+                  number: 80
