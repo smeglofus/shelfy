@@ -1,0 +1,11 @@
+# Shelfy monitoring (ADR 010). Scrapes the backend's /metrics endpoint —
+# the endpoint is intentionally NOT exposed through the Cloudflare tunnel
+# (only /api/* and /health* are), so business gauges stay private.
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: shelfy-backend
+    static_configs:
+      - targets: ["backend:8000"]

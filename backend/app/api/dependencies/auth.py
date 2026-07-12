@@ -8,6 +8,7 @@ from app.core.security import decode_token
 from app.db.session import get_db_session
 from app.models.user import User
 from app.services.auth import get_user_by_email
+from app.services.user_activity import touch_last_seen
 
 # auto_error=False so a missing Authorization header doesn't short-circuit
 # with a 401 before we've had a chance to look at the cookie. This keeps
@@ -56,6 +57,14 @@ async def get_current_user(
         raise credentials_exception
 
     request.state.user_id = str(user.id)
+
+    # Business telemetry: stamp last activity. Throttled inside the UPDATE
+    # (one write per 15 min per user), commits only when it actually wrote —
+    # runs before any endpoint logic, so it can't release endpoint locks.
+    if await touch_last_seen(session, user.id):
+        # The commit expires ``user`` under expire_on_commit=True sessions;
+        # re-load so callers never receive an expired instance.
+        await session.refresh(user)
 
     # Set Sentry user context so every error is tagged with the authenticated user.
     # Lazy import — zero cost when Sentry is not configured.

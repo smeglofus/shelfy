@@ -127,6 +127,10 @@ async def test_metrics_endpoint_returns_prometheus_payload() -> None:
         def scalar_one(self) -> int:
             return 0
 
+        def all(self) -> list[object]:
+            # The users-by-plan GROUP BY in refresh_business_gauges.
+            return []
+
     class _FakeSession:
         async def execute(self, _statement: object) -> _FakeResult:
             return _FakeResult()

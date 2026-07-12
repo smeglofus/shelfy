@@ -64,6 +64,15 @@ flowchart LR
 
 ## 5. Observability and operations
 
+Monitoring (ADR 010): Prometheus (`127.0.0.1:9092`, 180d retention)
+scrapes the backend `/metrics` endpoint every 60 s; Grafana
+(`127.0.0.1:3300`, provisioned from `infra/grafana/`) ships two
+dashboards — *Shelfy · Byznys* (users by tier, DAU/WAU/MAU from
+`users.last_seen_at`, inventory totals) and *Shelfy · Systém* (request
+rates, 5xx ratio, external-API latency, processing jobs). `/metrics` is
+not exposed through the Cloudflare tunnel.
+
+
 - JSON structured logs are emitted by backend and worker via structlog.
 - `/metrics` endpoint exports Prometheus-compatible counters/histograms.
 - Health endpoints:

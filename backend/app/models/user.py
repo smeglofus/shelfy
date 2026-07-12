@@ -50,6 +50,13 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Business telemetry: stamped (throttled) on every authenticated request
+    # by ``services.user_activity.touch_last_seen``. Drives the
+    # ``shelfy_active_users`` gauges on /metrics.
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     # ── Timestamps ───────────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
