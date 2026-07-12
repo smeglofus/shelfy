@@ -1,191 +1,129 @@
-# Homelab deployment (Docker Swarm)
+# Production deployment (Kubernetes / k3s)
 
-This guide deploys Shelfy to a Docker Swarm homelab host using `infra/swarm-stack.yml`.
+Shelfy production (`shelfy.cz`) runs on a two-node k3s homelab cluster since
+**2026-07-12** (ADR 011). This guide covers day-to-day deployment operations.
+The one-time migration itself is documented in
+[`infra/k8s/CUTOVER.md`](../infra/k8s/CUTOVER.md).
 
-## 1) Prerequisites
+> Historic note: the previous Docker Swarm guide (never used for the real
+> production, which ran on Docker Compose) lives in git history and ADR 005.
 
-- Docker Engine with Swarm mode enabled.
-- Public DNS records pointed at your Swarm manager node:
-  - `SHELFY_APP_HOST`
-  - `API_HOST`
-  - `MINIO_API_HOST`
-  - `MINIO_CONSOLE_HOST`
-  - `TRAEFIK_DASHBOARD_HOST`
-- TLS e-mail for Let's Encrypt (`TRAEFIK_ACME_EMAIL`).
-- Built and published images for backend/frontend/worker.
+## 1) Topology
 
-Initialize Swarm (one-time):
-
-```bash
-docker swarm init
+```
+internet → Cloudflare Tunnel (cloudflared, systemd on homelab2)
+         → Traefik (k3s svclb :80)
+         → Ingress `shelfy` (/api + /health → backend, / → frontend)
 ```
 
-## 2) Build and publish application images
+- Cluster: `homelab2` (amd64, control plane + app workloads) and
+  `raspberrypi` (arm64, auxiliary workloads such as pgAdmin).
+- Namespaces: `shelfy` (production), `shelfy-staging` (staging, same
+  manifests via overlay).
+- Manifests: [`infra/k8s/`](../infra/k8s/README.md) — kustomize `base/` +
+  `overlays/staging|prod`. App images are amd64-only and pinned to amd64
+  nodes via `nodeSelector`.
+- TLS terminates at Cloudflare; the tunnel forwards plain HTTP to Traefik
+  with the original `Host` header.
 
-From the repository root:
+## 2) Continuous deployment (code changes)
 
-```bash
-# Choose your registry path and tag
-export REGISTRY=ghcr.io/<your-user-or-org>
-export TAG=latest
-export API_BASE_URL=https://api.library.example.com
+Merging to `main` deploys automatically:
 
-# Backend
-docker build -t "$REGISTRY/shelfy-backend:$TAG" backend
-# Frontend (Vite variable is baked in at build time)
-docker build \
-  --build-arg VITE_API_BASE_URL="$API_BASE_URL" \
-  -t "$REGISTRY/shelfy-frontend:$TAG" frontend
-# Worker
-docker build -t "$REGISTRY/shelfy-worker:$TAG" worker
+1. **`images` workflow** builds `backend`, `worker`, and `frontend` images and
+   pushes them to GHCR tagged `sha-<commit>` (frontend additionally per
+   environment: `prod-sha-<commit>` / `staging-sha-<commit>`, because
+   `VITE_API_BASE_URL` is baked at build time).
+2. **`Deploy` workflow** (chained via `workflow_run`) pins the new tags with
+   `kubectl set image` — including the alembic `migrate` initContainer — waits
+   for `kubectl rollout status`, then health-checks `https://shelfy.cz/health`
+   end-to-end through the tunnel.
 
-# Push all three
-docker push "$REGISTRY/shelfy-backend:$TAG"
-docker push "$REGISTRY/shelfy-frontend:$TAG"
-docker push "$REGISTRY/shelfy-worker:$TAG"
-```
+Production never runs a mutable `:latest` tag; every pod image is traceable to
+a commit. Database migrations run in the backend's initContainer before the
+new pod serves traffic.
 
-## 3) Create Docker secrets
-
-Create local files in a temporary directory (avoid writing secrets in the repo checkout). Ensure `htpasswd` is installed (`apache2-utils` on Debian/Ubuntu or `httpd-tools` on RHEL/Fedora):
-
-```bash
-SECRETS_DIR="$(mktemp -d)"
-trap 'rm -rf "$SECRETS_DIR"' EXIT
-
-openssl rand -base64 32 > "$SECRETS_DIR/postgres_password.txt"
-openssl rand -base64 32 > "$SECRETS_DIR/redis_password.txt"
-openssl rand -base64 32 > "$SECRETS_DIR/minio_root_password.txt"
-openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret_key.txt"
-htpasswd -nB admin > "$SECRETS_DIR/traefik_dashboard_auth.txt"
-printf 'admin@example.com' > "$SECRETS_DIR/admin_email.txt"
-printf 'change-this-admin-password' > "$SECRETS_DIR/admin_password.txt"
-```
-
-Create Swarm secrets:
+## 3) Manifest and secret changes (manual for now)
 
 ```bash
-docker secret create postgres_password "$SECRETS_DIR/postgres_password.txt"
-docker secret create redis_password "$SECRETS_DIR/redis_password.txt"
-docker secret create minio_root_password "$SECRETS_DIR/minio_root_password.txt"
-docker secret create jwt_secret_key "$SECRETS_DIR/jwt_secret_key.txt"
-docker secret create traefik_dashboard_auth "$SECRETS_DIR/traefik_dashboard_auth.txt"
-docker secret create admin_email "$SECRETS_DIR/admin_email.txt"
-docker secret create admin_password "$SECRETS_DIR/admin_password.txt"
+export KUBECONFIG=~/.kube/config
+
+# manifests
+kubectl apply -k infra/k8s/overlays/staging   # verify on staging first
+kubectl apply -k infra/k8s/overlays/prod
+
+# secrets (idempotent; existing datastore passwords are preserved)
+infra/k8s/scripts/gen-secrets.sh staging|prod
+
+# smoke test through Traefik (no DNS needed)
+infra/k8s/scripts/smoke.sh staging.shelfy.cz|shelfy.cz
 ```
 
-> Important (secret rotation): Swarm secrets are immutable. Use a versioned-secret flow:
-> 1) Create new secret name (example: `postgres_password_v2`), 2) update `infra/swarm-stack.yml` to reference the new name, 3) redeploy with `docker stack deploy`, 4) remove old secret after no running service references it.
+Secrets are never committed — `gen-secrets.sh` builds the `shelfy-secrets`
+Secret out-of-band. Adding a new env var = add it to the script (or patch the
+Secret) + reference it in the manifests.
 
-## 4) Export required stack environment variables
+## 4) Rollback
 
 ```bash
-# Hostnames (replace with your real domains)
-export SHELFY_APP_HOST=library.example.com
-export API_HOST=api.library.example.com
-export MINIO_API_HOST=minio.library.example.com
-export MINIO_CONSOLE_HOST=minio-console.library.example.com
-export TRAEFIK_DASHBOARD_HOST=traefik.library.example.com
+# roll back to the previous ReplicaSet (per deployment)
+kubectl -n shelfy rollout undo deploy/backend deploy/worker deploy/beat deploy/frontend
 
-# Traefik ACME e-mail
-export TRAEFIK_ACME_EMAIL=ops@example.com
-
-# Image references produced in step 2
-export SHELFY_BACKEND_IMAGE=ghcr.io/<your-user-or-org>/shelfy-backend:latest
-export SHELFY_FRONTEND_IMAGE=ghcr.io/<your-user-or-org>/shelfy-frontend:latest
-export SHELFY_WORKER_IMAGE=ghcr.io/<your-user-or-org>/shelfy-worker:latest
-
-# Optional overrides
-export POSTGRES_DB=shelfy
-export POSTGRES_USER=shelfy
-export MINIO_ROOT_USER=minioadmin
-export MINIO_BUCKET=shelfy-images
-export MINIO_REGION=us-east-1
+# or redeploy a known-good commit explicitly
+gh workflow run deploy.yml   # after reverting the bad commit on main
 ```
 
-**Optional:** To override allowed CORS origins:
-`CORS_ALLOWED_ORIGINS='["https://library.example.com"]'`
+Database migrations are not rolled back automatically — if a migration must be
+reverted, handle it explicitly (`alembic downgrade`) before rolling pods back.
 
-## 5) Deploy the stack
+## 5) Releases
+
+Tag milestones on the commit that is actually running in production:
 
 ```bash
-docker stack deploy -c infra/swarm-stack.yml library-app
+git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z
+gh release create vX.Y.Z --title "..." --generate-notes
 ```
 
-Check service status:
+SemVer: patch = hotfix, minor = feature/infra milestone. First release:
+[`v1.0.0` — Kubernetes platform](https://github.com/smeglofus/shelfy/releases/tag/v1.0.0).
+
+## 6) Backups & data
+
+- Nightly Postgres dumps to R2 run via Celery beat (in-cluster) —
+  `BACKUP_KEEP_DAYS` retention.
+- Manual dump/restore (also the DR path):
 
 ```bash
-docker stack services library-app
-docker service ls | grep library-app
+kubectl -n shelfy exec deploy/postgres -- pg_dump -U shelfy -Fc shelfy > backup.dump
+kubectl -n shelfy exec -i deploy/postgres -- pg_restore -U shelfy -d shelfy \
+  --clean --if-exists --no-owner < backup.dump
+# after restoring a dump produced on a different glibc, reindex:
+kubectl -n shelfy exec deploy/postgres -- psql -U shelfy -d shelfy \
+  -c "REINDEX DATABASE shelfy;" -c "ALTER DATABASE shelfy REFRESH COLLATION VERSION;"
 ```
 
-## 6) Run Alembic migrations (first deploy and upgrades)
+## 7) Monitoring
 
-After backend service is running, run migrations once inside the backend container:
+Prometheus + Grafana still run in Docker Compose on the host (ADR 010);
+Prometheus scrapes the in-cluster backend via the LAN-only NodePort
+`192.168.88.3:30800`. Moving monitoring into the cluster
+(kube-prometheus-stack) is a planned follow-up. See
+[`docs/monitoring/README.md`](monitoring/README.md).
 
-```bash
-BACKEND_CONTAINER=$(docker ps --filter "name=library-app_backend" --format '{{.ID}}' | head -n 1)
-docker exec "$BACKEND_CONTAINER" alembic upgrade head
-```
+## 8) Smoke test checklist (after risky changes)
 
-## 7) Create the initial admin user (first deploy)
+- [ ] `infra/k8s/scripts/smoke.sh shelfy.cz` passes
+- [ ] Login works (HttpOnly cookie flow)
+- [ ] Create/edit a book; upload a photo → processing job completes
+- [ ] `kubectl -n shelfy get pods` — all Running, no restarts climbing
+- [ ] Grafana dashboards show traffic; no `frontend_runtime_error` burst
 
-The stack reads `admin_email` + `admin_password` secrets and sets `SEED_ADMIN_ON_STARTUP=true` for the backend process.
+---
 
-On the first successful backend startup, Shelfy creates the admin account automatically.
+## 9) Local Docker Compose troubleshooting (dev)
 
-To verify:
-- open `https://$SHELFY_APP_HOST`
-- sign in with the credentials from `admin_email` / `admin_password`
-
-## 8) Update to a new version
-
-1. Build and push new image tags.
-2. Export new `SHELFY_BACKEND_IMAGE`, `SHELFY_FRONTEND_IMAGE`, and `SHELFY_WORKER_IMAGE` values.
-3. Redeploy:
-
-```bash
-docker stack deploy -c infra/swarm-stack.yml library-app
-```
-
-Swarm performs rolling updates for services whose image references changed.
-
-## 9) Manual smoke test checklist
-
-After each deployment, validate:
-
-- [ ] `https://$SHELFY_APP_HOST` loads the frontend.
-- [ ] Login succeeds with admin credentials.
-- [ ] `https://$API_HOST/health` returns `{"status":"ok"}`.
-- [ ] `https://$API_HOST/health/ready` returns 200.
-- [ ] Create a location and a book through the UI.
-- [ ] Upload a cover image; job finishes successfully.
-- [ ] MinIO console (`https://$MINIO_CONSOLE_HOST`) is reachable and object appears in bucket.
-- [ ] Worker logs show job processing without errors.
-
-Useful diagnostics:
-
-```bash
-docker service logs library-app_backend --tail 100
-docker service logs library-app_worker --tail 100
-docker service logs library-app_traefik --tail 100
-```
-
-
-## 10) Production security checklist
-
-Before exposing Shelfy publicly, confirm:
-
-- [ ] ENVIRONMENT=production is set for backend/worker services.
-- [ ] JWT_SECRET_KEY is unique and not change-me.
-- [ ] MINIO_ACCESS_KEY / MINIO_SECRET_KEY are not default values.
-- [ ] ADMIN_PASSWORD is at least 12 characters.
-- [ ] Docker secrets are used for all credentials and rotated periodically.
-- [ ] CORS allowlist contains only trusted frontend origins.
-- [ ] Images are pinned to explicit tags (avoid latest).
-
-
-## 11) Local Docker Compose troubleshooting
+Local development still uses Docker Compose (`infra/docker-compose.yml`).
 
 ### White screen on `/login`
 

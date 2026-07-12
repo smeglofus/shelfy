@@ -4,6 +4,12 @@ Public source for notable Shelfy changes. Keep entries short, dated, and user-fa
 
 The public page at `/changelog` is generated from `frontend/src/content/changelog.ts`. When adding a release note, update both files in the same PR until a markdown-to-page generator exists.
 
+## 2026-07-12 — v1.0.0: nová produkční platforma (Kubernetes)
+
+- Shelfy běží na nové Kubernetes (k3s) infrastruktuře s automatizovaným nasazováním, health-gated rollouty a možností okamžitého rollbacku — nasazení změn je teď bezpečnější a bez výpadků (ADR 011, [release v1.0.0](https://github.com/smeglofus/shelfy/releases/tag/v1.0.0)).
+- Migrace proběhla s krátkou plánovanou odstávkou (~15 minut) a bez ztráty dat; přihlašovací údaje interních datastores byly při migraci rotovány.
+- *(Infra změna — nepropisuje se na /changelog stránku.)*
+
 ## 2026-05-19 — Vratná anonymizace a undo pro sloučení dlužníků
 
 - Anonymizace dlužníka je teď ve výchozím režimu plánovaná na 30 dnů; během této doby ji můžeš kdykoli zrušit tlačítkem „Vrátit". Po vypršení worker dokončí smazání PII jako dřív (#244).

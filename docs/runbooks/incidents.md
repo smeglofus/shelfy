@@ -1,5 +1,14 @@
 # Incident Runbook
 
+Production runs in k3s (namespace `shelfy`); all commands assume
+`export KUBECONFIG=~/.kube/config` on homelab2. General triage:
+
+```bash
+kubectl -n shelfy get pods                     # anything not Running / restarting?
+kubectl -n shelfy logs deploy/backend --tail=100
+kubectl -n shelfy describe pod <pod>           # events: OOMKilled, probes, pulls
+```
+
 ## 1) Frontend blank/white screen
 
 Symptoms:
@@ -7,13 +16,14 @@ Symptoms:
 
 Actions:
 1. Check browser console for runtime error.
-2. Build frontend:
+2. Frontend images are immutable builds — if a recent deploy caused it,
+   roll back instead of rebuilding in place:
    ```bash
-   docker exec infra-frontend-1 sh -lc "cd /app && npm run build"
+   kubectl -n shelfy rollout undo deploy/frontend
    ```
-3. Restart frontend container:
+3. If it is not deploy-related, restart the pod:
    ```bash
-   cd infra && docker compose restart frontend
+   kubectl -n shelfy rollout restart deploy/frontend
    ```
 4. Validate key routes: `/books`, `/bookshelf`, `/scan`.
 
@@ -33,9 +43,18 @@ Symptoms:
 - Upload accepted but processing never completes.
 
 Actions:
-1. Check `redis`, `worker`, `backend` containers are healthy.
-2. Inspect worker logs for task failures/retries.
-3. Restart worker if needed and re-run failed flow.
+1. Check the pods are healthy:
+   ```bash
+   kubectl -n shelfy get pods -l 'app in (redis,worker,backend,beat)'
+   ```
+2. Inspect worker logs for task failures/retries:
+   ```bash
+   kubectl -n shelfy logs deploy/worker --tail=100
+   ```
+3. Restart the worker if needed and re-run the failed flow:
+   ```bash
+   kubectl -n shelfy rollout restart deploy/worker
+   ```
 
 ## 4) Ordering inconsistencies on shelves
 

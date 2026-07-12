@@ -1,7 +1,11 @@
 # ADR 005: Docker Swarm + Traefik v3 deployment for homelab production
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 011](011-k3s-production-platform.md) (2026-07-12)
 - **Date:** 2026-03-18
+
+> Historic note: this Swarm setup was designed but never became the live
+> production path — the site ran on Docker Compose until the k3s migration.
+> Kept as a record of the decision and its constraints at the time.
 
 ## Context
 

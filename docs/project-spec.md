@@ -1,5 +1,10 @@
 # AI‑Assisted Home Library Manager — Project Specification
 
+> **Historical planning document** (original spec, 2026-03). The system has
+> since evolved past it — notably production now runs on Kubernetes/k3s
+> (ADR 011), not Docker Swarm. For current state see `README.md`,
+> `docs/architecture.md`, and `docs/deployment.md`.
+
 ## Context
 
 The author of this project is a DevOps / infrastructure engineer who
