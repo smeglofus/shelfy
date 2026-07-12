@@ -15,11 +15,11 @@ cd ~/shelfy && export KUBECONFIG=~/.kube/config
 
 ## Fáze A — jednorázová příprava (kdykoli předem)
 
-### A1. Zveřejnit images v GHCR (jinak ImagePullBackOff)
+### A1. Images v GHCR — ✅ hotovo
 
-Na GitHubu: profil → **Packages** → `shelfy-backend`, `shelfy-worker`,
-`shelfy-frontend` → Package settings → Danger zone → **Change visibility →
-Public**. (Repo je stejně public, images neobsahují nic navíc.)
+Cluster stahuje `shelfy-backend`, `shelfy-worker` i `shelfy-frontend` bez
+pull secretu (ověřeno staging deployem 12. 7.). Kdyby někdy nová image skončila
+v ImagePullBackOff: GitHub → Packages → Package settings → Change visibility → Public.
 
 ### A2. Staging přes tunel (sudo)
 
@@ -89,6 +89,12 @@ kubectl -n shelfy exec -i deploy/postgres -- \
   < ~/backups/shelfy-cutover-*.dump
 kubectl -n shelfy exec deploy/postgres -- \
   psql -U shelfy -d shelfy -c "select count(*) from users;"   # sanity
+
+# glibc collation dumpu a podu se liší (staging to potvrdil) — bez reindexu
+# můžou být textové indexy potichu špatně seřazené:
+kubectl -n shelfy exec deploy/postgres -- \
+  psql -U shelfy -d shelfy -c "REINDEX DATABASE shelfy;" \
+  -c "ALTER DATABASE shelfy REFRESH COLLATION VERSION;"
 ```
 
 **C4. MinIO delta:** `infra/k8s/scripts/mirror-minio.sh prod`
