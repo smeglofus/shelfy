@@ -74,9 +74,12 @@ spec:
       port: 80
       targetPort: 80
 ---
-# TODO(follow-up): add an explicit `host:` here — a host-less rule catches every
-# request on :80 that no other Ingress claims (the shelfy Ingresses win on their
-# hosts, so the app is unaffected, but this should not stay a catch-all).
+# Bound to an explicit, non-public host so this is NOT a catch-all. A host-less
+# rule would catch every request on :80 that no other Ingress claims, quietly
+# exposing the DB admin UI. Cloudflare only tunnels shelfy.cz, so
+# `pgadmin.shelfy.internal` is unreachable from the internet — resolve it via
+# LAN DNS / /etc/hosts when you need the UI, or skip the Ingress entirely and
+# use `kubectl -n shelfy port-forward svc/pgadmin 8080:80` (most secure).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -84,7 +87,8 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - http:
+    - host: pgadmin.shelfy.internal
+      http:
         paths:
           - path: /
             pathType: Prefix

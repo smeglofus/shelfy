@@ -29,16 +29,20 @@ jobs:
           echo "Deploying commit $SHA"
 
           # The runner container has no kubectl; run it via the host docker
-          # daemon with the host kubeconfig. TODO(security follow-up): replace
-          # the admin kubeconfig with a namespace-scoped ServiceAccount.
-          # --user 1000 matches the kubeconfig owner on the host (the image's
-          # default uid 1001 can't read the 600-mode file); HOME=/tmp gives
+          # daemon. Uses a namespace-scoped ServiceAccount kubeconfig
+          # (infra/k8s/deploy-rbac.yaml) — NOT the cluster-admin config — so a
+          # compromised deploy can only patch Deployments / read Pods in the
+          # `shelfy` namespace, never read Secrets or reach other namespaces.
+          # kubectl tag is pinned (no mutable :latest); keep it within ±1 minor
+          # of the k3s server version (`kubectl version`). --user 1000 matches
+          # the kubeconfig owner on the host (600-mode file); HOME=/tmp gives
           # kubectl a writable cache dir.
+          # One-time setup: docs/runbooks/deploy-rbac-setup.md
           kc() {
             docker run --rm --network host --user 1000 -e HOME=/tmp \
-              -v /home/suslik/.kube/config:/kube/config:ro \
+              -v /home/suslik/.kube/deploy-config:/kube/config:ro \
               -e KUBECONFIG=/kube/config \
-              bitnami/kubectl:latest "$@"
+              bitnami/kubectl:1.31.3 "$@"
           }
 
           # Pin exact sha tags — never deploy a mutable :latest. `set image`

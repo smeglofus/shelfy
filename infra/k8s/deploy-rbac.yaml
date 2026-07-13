@@ -1,0 +1,62 @@
+# Least-privilege deploy identity for the Deploy workflow (H4 remediation).
+#
+# Replaces the cluster-admin kubeconfig previously mounted into the deploy step.
+# The `deployer` ServiceAccount can only get/list/patch/watch Deployments and
+# read ReplicaSets/Pods in the `shelfy` namespace — exactly what
+# `kubectl set image` + `kubectl rollout status` need, and nothing more. It
+# CANNOT read Secrets (so a compromised deploy token can't exfiltrate
+# shelfy-secrets) and cannot touch any other namespace.
+#
+# Apply this manifest and generate the kubeconfig once — see
+# docs/runbooks/deploy-rbac-setup.md. .github/workflows/deploy.yml mounts the
+# resulting kubeconfig from /home/suslik/.kube/deploy-config.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: shelfy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployer
+  namespace: shelfy
+rules:
+  # `kubectl set image deploy/...` needs get + patch on Deployments.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "patch", "watch"]
+  # `kubectl rollout status` watches the rollout via ReplicaSets + Pods.
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployer
+  namespace: shelfy
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: shelfy
+roleRef:
+  kind: Role
+  name: deployer
+  apiGroup: rbac.authorization.k8s.io
+---
+# Long-lived token for CI (k8s >= 1.24 no longer auto-creates SA token Secrets).
+# The token value is populated by the control plane at apply time; it is never
+# stored in git. Only the kubeconfig built from it (kept on the deploy host,
+# mode 600) carries the secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: deployer-token
+  namespace: shelfy
+  annotations:
+    kubernetes.io/service-account.name: deployer
+type: kubernetes.io/service-account-token
