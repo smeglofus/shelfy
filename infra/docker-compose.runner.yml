@@ -1,3 +1,14 @@
+# ⚠️ DEPRECATED / DO NOT RUN — as of the CI-runner security migration, all CI
+# jobs run on GitHub-hosted `ubuntu-latest` (free & unmetered on this public
+# repo). This runner mounted /var/run/docker.sock (= root on the prod host) and
+# executed `pull_request` code, i.e. potentially untrusted fork PRs — the exact
+# "malicious PR -> RCE on production" path we closed. Kept only for reference.
+#
+# Tear the running container down and do not bring it back:
+#   docker compose -f infra/docker-compose.runner.yml down github-runner
+# Then remove the stale runner in repo Settings -> Actions -> Runners.
+#
+# ── Original documentation (historical) ──────────────────────────────────────
 # Self-hosted GitHub Actions runner for smeglofus/shelfy.
 #
 # Lives in its own compose file so it can go up/down/upgrade independently

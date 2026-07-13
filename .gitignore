@@ -26,3 +26,8 @@ e2e/tmp_*.js
 # Local-only docs (ops PII, business strategy, internal audits — kept out of
 # the public repo but the directory can hold them on your working copy).
 .private/
+
+# Internal security audit — its findings reference secret locations, infra
+# paths and unremediated weaknesses; must never be published on the public
+# repo. Lives in docs/ on the working copy only, tracked nowhere.
+docs/security-audit.md
