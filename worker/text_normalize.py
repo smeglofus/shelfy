@@ -1,7 +1,7 @@
 """Post-processing text normalization for OCR / Gemini recognized book metadata.
 
 Handles:
-- ALL-CAPS to natural title case (Czech + English aware)
+- ALL-CAPS and all-lowercase to natural title case (Czech + English aware)
 - Whitespace / punctuation cleanup
 - Duplicate word removal
 - Confidence-based field nullification
@@ -45,6 +45,11 @@ _SMALL_WORDS = _SMALL_WORDS_EN | _SMALL_WORDS_CS
 # Minimum length for an ALL-CAPS string to be treated as "probably shouting"
 _ALL_CAPS_THRESHOLD = 4
 
+# Minimum letter count for an all-lowercase string to be normalized.
+# Lower than the caps threshold — a fully lowercase title/author is almost
+# always a transcription artifact, not a stylistic choice.
+_ALL_LOWER_THRESHOLD = 2
+
 
 def _is_roman_numeral(word: str) -> bool:
     """Check if a word is a valid Roman numeral (I, II, III, IV, etc.)."""
@@ -66,12 +71,29 @@ def _is_all_caps(text: str) -> bool:
     return all(ch.isupper() for ch in letters)
 
 
-def _capitalize_word(word: str, is_first: bool, mode: str) -> str:
+def _is_all_lower(text: str) -> bool:
+    """Return True if every letter in text is lowercase.
+
+    Spines and vision output sometimes come through fully lowercase
+    ("karel čapek") — that's a transcription artifact worth fixing, unlike
+    mixed case which reflects a deliberate choice.
+    """
+    letters = [ch for ch in text if ch.isalpha()]
+    if len(letters) < _ALL_LOWER_THRESHOLD:
+        return False
+    return all(ch.islower() for ch in letters)
+
+
+def _capitalize_word(word: str, is_first: bool, mode: str, *, single_letter_roman: bool = True) -> str:
     """Capitalize a single word with awareness of acronyms, Roman numerals, and language conventions.
 
     Modes:
         "sentence" — only first word capitalized (Czech-style title case)
         "proper"   — every word capitalized (for author names / proper nouns)
+
+    ``single_letter_roman=False`` skips Roman-numeral detection for single
+    letters — in lowercase source text "i" and "v" are far more likely Czech
+    conjunctions/prepositions than numerals.
     """
     # Preserve explicitly uppercase words (acronyms)
     upper = word.upper()
@@ -79,7 +101,7 @@ def _capitalize_word(word: str, is_first: bool, mode: str) -> str:
         return upper
 
     # Preserve Roman numerals
-    if _is_roman_numeral(word):
+    if _is_roman_numeral(word) and (single_letter_roman or len(word.strip(".,;:!?()")) > 1):
         return word.upper()
 
     if not word:
@@ -91,28 +113,39 @@ def _capitalize_word(word: str, is_first: bool, mode: str) -> str:
             return word[0].upper() + word[1:].lower()
         return word.lower()
 
-    # "proper" mode: capitalize every word (for names)
+    # "proper" mode: capitalize every word (for names); name particles
+    # (von, van, de, ...) stay lowercase unless they start the name.
+    if not is_first and word.lower() in _NAME_PARTICLES:
+        return word.lower()
     return word[0].upper() + word[1:].lower()
 
 
 def normalize_casing(text: str, mode: str = "sentence") -> str:
-    """Convert ALL-CAPS text to natural case.
+    """Convert ALL-CAPS or all-lowercase text to natural case.
 
-    Only normalizes if the text appears to be all caps.
-    Preserves acronyms (USA, NATO), Roman numerals (II, III, XIV),
-    and diacritics.  If the text is mixed case or short, returns it as-is.
+    Only normalizes if the text is uniformly cased — mixed case reflects a
+    deliberate choice and is returned as-is.  Preserves acronyms (USA, NATO),
+    Roman numerals (II, III, XIV), and diacritics.
 
     Modes:
         "sentence" — first word capitalized, rest lowercase (Czech-safe default)
         "proper"   — every word capitalized (for proper nouns / author names)
     """
-    if not text or not _is_all_caps(text):
+    if not text or not (_is_all_caps(text) or _is_all_lower(text)):
         return text
+
+    # In ALL-CAPS source a lone "I"/"V" was printed uppercase, so trust it as
+    # a numeral; in lowercase source it's almost certainly a Czech word.
+    single_letter_roman = _is_all_caps(text)
 
     words = text.split()
     result: list[str] = []
     for i, word in enumerate(words):
-        result.append(_capitalize_word(word, is_first=(i == 0), mode=mode))
+        result.append(
+            _capitalize_word(
+                word, is_first=(i == 0), mode=mode, single_letter_roman=single_letter_roman
+            )
+        )
 
     return " ".join(result)
 
@@ -198,7 +231,8 @@ def normalize_book_fields(
 
     Args:
         book: Dict with at least 'title' and 'author' keys.
-        apply_casing: Whether to apply ALL-CAPS normalization.
+        apply_casing: Whether to apply uniform-casing (ALL-CAPS / all-lowercase)
+            normalization.
 
     Returns:
         The same dict (mutated in-place) with normalized fields.

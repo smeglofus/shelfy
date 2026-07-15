@@ -208,6 +208,18 @@ def test_normalize_vision_result_preserves_mixed_case() -> None:
     assert result["author"] == "J.K. Rowling"
 
 
+def test_normalize_vision_result_lowercase_casing() -> None:
+    """Fully lowercase output: title → sentence case, author → proper case."""
+    result = celery_app._normalize_vision_result({
+        "title": "nastávající maminka",
+        "author": "kateřina novotná",
+        "isbn": None,
+    })
+    assert result is not None
+    assert result["title"] == "Nastávající maminka"
+    assert result["author"] == "Kateřina Novotná"
+
+
 def test_normalize_vision_result_czech_casing() -> None:
     """Czech ALL CAPS: title → sentence case with diacritics, author → proper case."""
     result = celery_app._normalize_vision_result({
