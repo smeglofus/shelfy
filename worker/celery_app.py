@@ -26,6 +26,7 @@ from redis import Redis
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from catalog_match import apply_catalog_match, normalize_for_compare
 from gemini_parser import parse_gemini_candidates
 from settings import worker_settings
 
@@ -469,6 +470,116 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
             })
 
     return normalized_results or None
+
+
+# ---------------------------------------------------------------------------
+# Shelf-scan verification against the Open Library catalog
+# ---------------------------------------------------------------------------
+#
+# Vision output is grounded against the catalog: a near-identical match
+# adopts the catalog form (fixes casing/diacritics/small OCR misreads), a
+# partial match becomes a suggestion + needs_review. Absence of a match is
+# NOT a signal — Open Library's coverage of Czech books is thin.
+# Decision logic lives in catalog_match.py; only the I/O is here.
+
+CATALOG_VERIFY_TTL_SECONDS = 24 * 60 * 60
+# Open Library allows 3 req/s with an identifying User-Agent.
+_CATALOG_VERIFY_CONCURRENCY = 3
+_CATALOG_VERIFY_TIMEOUT_SECONDS = 30.0
+
+
+def _catalog_cache_key(title: str, author: str | None) -> str:
+    return f"catalog-verify:{normalize_for_compare(title)}|{normalize_for_compare(author or '')}"
+
+
+async def _lookup_catalog_candidate(
+    client: httpx.AsyncClient,
+    title: str,
+    author: str | None,
+) -> dict[str, object] | None:
+    """Closest Open Library candidate for a scanned title/author, or None."""
+    params: dict[str, object] = {"title": title, "limit": 1, "fields": "key,title,author_name"}
+    if author:
+        params["author"] = author
+    response = await client.get(
+        "https://openlibrary.org/search.json",
+        params=params,
+        headers={"User-Agent": worker_settings.open_library_user_agent},
+        timeout=10.0,
+    )
+    response.raise_for_status()
+    docs = response.json().get("docs") or []
+    if not docs or not isinstance(docs[0], dict):
+        return None
+    doc = docs[0]
+    candidate_title = doc.get("title") if isinstance(doc.get("title"), str) else None
+    if not candidate_title:
+        return None
+    authors = doc.get("author_name") or []
+    candidate_author = authors[0] if authors and isinstance(authors[0], str) else None
+    return {"title": candidate_title, "author": candidate_author}
+
+
+async def _verify_shelf_books_against_catalog(books: list[dict[str, object]]) -> dict[str, int]:
+    """Verify scanned rows against Open Library; mutates rows in place.
+
+    Best-effort at every level: cache errors, lookup errors and timeouts
+    leave the affected row exactly as the vision model produced it.
+    """
+    cache = _get_redis_client()
+    semaphore = asyncio.Semaphore(_CATALOG_VERIFY_CONCURRENCY)
+    stats = {"adopt": 0, "suggest": 0, "none": 0, "no_candidate": 0}
+
+    async with httpx.AsyncClient() as client:
+
+        async def _verify(item: dict[str, object]) -> None:
+            title = item.get("title")
+            if not isinstance(title, str) or not title.strip():
+                return
+            author = item.get("author") if isinstance(item.get("author"), str) else None
+
+            cache_key = _catalog_cache_key(title, author)
+            cached = None
+            try:
+                cached = cache.get(cache_key)
+            except Exception:
+                cached = None
+
+            if cached is not None:
+                candidate = json.loads(cached)
+            else:
+                async with semaphore:
+                    try:
+                        candidate = await _lookup_catalog_candidate(client, title, author)
+                    except Exception:
+                        # Lookup failure is not a definitive miss — skip the
+                        # row without caching so a retry can succeed.
+                        stats["no_candidate"] += 1
+                        return
+                try:
+                    cache.setex(cache_key, CATALOG_VERIFY_TTL_SECONDS, json.dumps(candidate))
+                except Exception:
+                    pass
+
+            if not isinstance(candidate, dict):
+                stats["no_candidate"] += 1
+                return
+
+            catalog_title = candidate.get("title") if isinstance(candidate.get("title"), str) else None
+            catalog_author = candidate.get("author") if isinstance(candidate.get("author"), str) else None
+            decision = apply_catalog_match(item, catalog_title, catalog_author)
+            stats[decision] += 1
+            if decision != "none":
+                logger.info(
+                    "shelf_scan_catalog_match",
+                    decision=decision,
+                    scanned_title=title,
+                    catalog_title=catalog_title,
+                )
+
+        await asyncio.gather(*(_verify(item) for item in books))
+
+    return stats
 
 
 async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[str, object]] | None:
@@ -969,6 +1080,21 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                 logger.warning("shelf_scan_no_results", job_id=job_id)
                 return
 
+            # Ground the vision output against the Open Library catalog —
+            # adopts near-identical catalog forms, attaches suggestions for
+            # partial matches. Best-effort: any failure keeps vision results.
+            if worker_settings.enable_catalog_verify:
+                try:
+                    verify_stats = asyncio.run(
+                        asyncio.wait_for(
+                            _verify_shelf_books_against_catalog(vision_results),
+                            timeout=_CATALOG_VERIFY_TIMEOUT_SECONDS,
+                        )
+                    )
+                    logger.info("shelf_scan_catalog_verified", **verify_stats)
+                except Exception as verify_exc:
+                    logger.warning("shelf_scan_catalog_verify_failed", error=str(verify_exc))
+
             # Log confidence summary for observability
             conf_counts = {"high": 0, "medium": 0, "low": 0, "needs_review": 0}
             for r in vision_results:
@@ -1000,6 +1126,10 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                 quality_flags = local_result.get("quality_flags")
                 if quality_flags:
                     item["quality_flags"] = quality_flags
+                if isinstance(local_result.get("suggested_title"), str):
+                    item["suggested_title"] = local_result["suggested_title"]
+                if isinstance(local_result.get("suggested_author"), str):
+                    item["suggested_author"] = local_result["suggested_author"]
                 processed_books.append(item)
 
             job.status = ProcessingJobStatus.DONE

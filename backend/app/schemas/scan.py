@@ -13,6 +13,10 @@ class ScannedBookItem(BaseModel):
     isbn: str | None = None
     observed_text: str | None = None
     confidence: str = "auto"  # "auto" | "needs_review"
+    # Closest catalog record when it only partially matches the scanned
+    # text — shown in the review UI as a one-click correction.
+    suggested_title: str | None = None
+    suggested_author: str | None = None
 
 
 class ShelfScanResponse(BaseModel):

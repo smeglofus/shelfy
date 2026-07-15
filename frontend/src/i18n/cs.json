@@ -332,6 +332,8 @@
     "back_to_scan": "Zpět na skenování",
     "needs_review": "Potřebuje upřesnění",
     "observed": "Z hřbetu",
+    "catalog_suggestion": "Katalog navrhuje",
+    "apply_suggestion": "Použít návrh",
     "book_title": "Název",
     "book_title_placeholder": "Zadejte název knihy",
     "book_author": "Autor",

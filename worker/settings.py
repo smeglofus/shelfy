@@ -29,6 +29,11 @@ class WorkerSettings(BaseSettings):
     enrichment_max_per_minute: int = 30           # max enrichment API calls per minute
     enrichment_max_per_day: int = 900             # max enrichment API calls per day
 
+    # Shelf-scan verification against Open Library (fuzzy match of scanned
+    # title/author; adopts near-identical catalog forms, suggests partial
+    # matches for review). Kill-switch in case of OL instability.
+    enable_catalog_verify: bool = True
+
     # Metadata providers — mirrors app/core/config.py. Google Books ToS
     # forbids paid applications, so it stays disabled unless a separate
     # agreement with Google exists.
