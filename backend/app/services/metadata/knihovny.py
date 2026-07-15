@@ -124,7 +124,7 @@ async def fetch_knihovny_metadata(
     else:
         return None
 
-    params: list[tuple[str, str]] = [
+    params: list[tuple[str, str | int | float | bool | None]] = [
         ("lookfor", lookfor),
         ("type", search_type),
         ("limit", "5"),
