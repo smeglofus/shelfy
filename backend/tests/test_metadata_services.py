@@ -8,6 +8,7 @@ import pytest
 
 from app.core.config import get_settings
 from app.services.metadata.google_books import fetch_google_books_metadata
+from app.services.metadata.knihovny import fetch_knihovny_metadata, looks_czech
 from app.services.metadata.open_library import fetch_open_library_metadata
 from app.services.metadata.service import (
     CACHE_TTL_SECONDS,
@@ -119,6 +120,7 @@ def test_flag_enabled_restores_google_primary(monkeypatch: pytest.MonkeyPatch) -
     _use_redis(monkeypatch, FakeRedis())
     monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _google)
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _fail_if_called)
 
     metadata = asyncio.run(enrich_metadata_with_fallback("9780132350884", title=None, author=None))
 
@@ -157,6 +159,7 @@ def test_cache_hit_skips_external_calls(monkeypatch: pytest.MonkeyPatch) -> None
     _use_redis(monkeypatch, fake_redis)
     monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _fail_if_called)
 
     metadata = asyncio.run(enrich_metadata_with_fallback("9780134494166", title=None, author=None))
 
@@ -174,8 +177,13 @@ def test_definitive_miss_is_negatively_cached(monkeypatch: pytest.MonkeyPatch) -
     fake_redis = FakeRedis()
     _use_settings(monkeypatch)
     _use_redis(monkeypatch, fake_redis)
+    async def _knihovny_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        calls.append("knihovny")
+        return None
+
     monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny_miss)
 
     first = asyncio.run(enrich_metadata_with_fallback("9799999999999", title=None, author=None))
     second = asyncio.run(enrich_metadata_with_fallback("9799999999999", title=None, author=None))
@@ -183,7 +191,7 @@ def test_definitive_miss_is_negatively_cached(monkeypatch: pytest.MonkeyPatch) -
     assert first is None
     assert second is None
     # The second lookup is served from the negative cache entry.
-    assert calls == ["open_library"]
+    assert calls == ["open_library", "knihovny"]
     assert fake_redis.storage["book-metadata:9799999999999"] == "null"
     assert fake_redis.ttls["book-metadata:9799999999999"] == NEGATIVE_CACHE_TTL_SECONDS
 
@@ -195,8 +203,12 @@ def test_provider_error_is_not_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis = FakeRedis()
     _use_settings(monkeypatch)
     _use_redis(monkeypatch, fake_redis)
+    async def _knihovny_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        return None
+
     monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_down)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny_miss)
 
     metadata = asyncio.run(enrich_metadata_with_fallback("9780201485677", title=None, author=None))
 
@@ -422,14 +434,174 @@ def test_title_author_lookup_without_isbn_uses_open_library_only(monkeypatch: py
         calls.append(("open_library", title, author))
         return {"title": "Clean Code", "author": "Martin", "provider": "open_library"}
 
+    async def _knihovny_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        calls.append(("knihovny", title, author))
+        return None
+
     fake_redis = FakeRedis()
     _use_settings(monkeypatch, enable_google_books=False)
     _use_redis(monkeypatch, fake_redis)
     monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny_miss)
 
     metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Clean Code", author="Martin"))
 
     assert metadata is not None
-    assert calls == [("open_library", "Clean Code", "Martin")]
+    # Open Library first (non-Czech lookup); the incomplete record then
+    # triggers a knihovny.cz gap-fill attempt.
+    assert calls == [("open_library", "Clean Code", "Martin"), ("knihovny", "Clean Code", "Martin")]
     assert "book-metadata:title:clean code" in fake_redis.storage
+
+
+def test_looks_czech_detection() -> None:
+    assert looks_czech("Válka s mloky") is True
+    assert looks_czech(None, "nastávající maminky") is True
+    assert looks_czech("9788085126396") is True          # 978-80 = Czech ISBN group
+    assert looks_czech("8071360279") is True             # ISBN-10, group 80
+    assert looks_czech("Clean Code", "Robert C. Martin") is False
+    assert looks_czech("9780132350884") is False
+    assert looks_czech(None, None) is False
+
+
+def test_knihovny_client_normalizes_response_and_picks_matching_record() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/search"
+        assert request.url.params["type"] == "Title"
+        return httpx.Response(
+            200,
+            json={
+                "resultCount": 2,
+                "status": "OK",
+                "records": [
+                    {
+                        # Audiokniha bez ISBN a jiný autor — nesmí vyhrát
+                        "title": "Válka s mloky",
+                        "authors": {"primary": {"Jiný Autor, 1950-": []}, "secondary": [], "corporate": []},
+                        "isbns": [],
+                        "publishers": ["Radioservis,"],
+                        "publicationDates": ["c2009"],
+                        "languages": [],
+                        "summary": [],
+                    },
+                    {
+                        "title": "Válka s Mloky",
+                        "authors": {"primary": {"Karel Čapek, 1890-1938": []}, "secondary": [], "corporate": []},
+                        "isbns": ["978-80-85126-39-6"],
+                        "publishers": ["Zoologická zahrada hl. m. Prahy,"],
+                        "publicationDates": ["2014"],
+                        "languages": [],
+                        "summary": ["Slavná antiutopická sci-fi z roku 1936."],
+                    },
+                ],
+            },
+        )
+
+    async def _run() -> dict[str, object] | None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_knihovny_metadata(client, None, title="Válka s mloky", author="Karel Čapek")
+
+    metadata = asyncio.run(_run())
+
+    assert metadata is not None
+    assert metadata["provider"] == "knihovny_cz"
+    assert metadata["title"] == "Válka s Mloky"
+    # Životní data se z VuFind zobrazovací formy odstřihnou
+    assert metadata["author"] == "Karel Čapek"
+    assert metadata["isbn"] == "9788085126396"
+    assert metadata["publisher"] == "Zoologická zahrada hl. m. Prahy"
+    assert metadata["publication_year"] == 2014
+    assert metadata["description"] == "Slavná antiutopická sci-fi z roku 1936."
+    # Obálky knihovny.cz nevrací — doplní je gap-fill z Open Library
+    assert metadata["cover_image_url"] is None
+
+
+def test_knihovny_client_isbn_search_uses_isn_type() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["type"] == "ISN"
+        assert request.url.params["lookfor"] == "9788085126396"
+        return httpx.Response(200, json={"records": [], "status": "OK"})
+
+    async def _run() -> dict[str, object] | None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_knihovny_metadata(client, "9788085126396")
+
+    assert asyncio.run(_run()) is None
+
+
+def test_czech_lookup_prefers_knihovny_and_gap_fills_cover(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def _knihovny(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        calls.append("knihovny")
+        return {
+            "title": "Válka s mloky",
+            "author": "Karel Čapek",
+            "isbn": "9788085126396",
+            "description": "Česká anotace.",
+            "cover_image_url": None,
+            "provider": "knihovny_cz",
+        }
+
+    async def _open_library(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        calls.append("open_library")
+        return {
+            "title": "War with the Newts",
+            "description": None,
+            "cover_image_url": "https://covers.openlibrary.org/b/id/1-L.jpg",
+            "provider": "open_library",
+        }
+
+    _use_settings(monkeypatch, enable_google_books=False)
+    _use_redis(monkeypatch, FakeRedis())
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny)
+
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Válka s mloky", author="Karel Čapek"))
+
+    assert metadata is not None
+    # Český dotaz → knihovny.cz první; Open Library jen doplní obálku
+    assert calls == ["knihovny", "open_library"]
+    assert metadata["provider"] == "knihovny_cz"
+    assert metadata["description"] == "Česká anotace."
+    assert metadata["cover_image_url"] == "https://covers.openlibrary.org/b/id/1-L.jpg"
+
+
+def test_non_czech_lookup_falls_back_to_knihovny_on_open_library_miss(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def _open_library_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        calls.append("open_library")
+        return None
+
+    async def _knihovny(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        calls.append("knihovny")
+        return dict(OPEN_LIBRARY_METADATA, provider="knihovny_cz")
+
+    _use_settings(monkeypatch, enable_google_books=False)
+    _use_redis(monkeypatch, FakeRedis())
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny)
+
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Clean Code", author="Martin"))
+
+    assert metadata is not None
+    assert calls == ["open_library", "knihovny"]
+    assert metadata["provider"] == "knihovny_cz"
+
+
+def test_knihovny_disabled_keeps_open_library_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _open_library_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        return None
+
+    _use_settings(monkeypatch, enable_google_books=False, enable_knihovny_cz=False)
+    _use_redis(monkeypatch, FakeRedis())
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _fail_if_called)
+
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Válka s mloky", author=None))
+
+    assert metadata is None

@@ -10,6 +10,7 @@ import structlog
 from app.core.config import get_settings
 from app.core.metrics import EXTERNAL_API_CALLS_TOTAL, observe_external_api_latency
 from app.services.metadata.google_books import fetch_google_books_metadata
+from app.services.metadata.knihovny import fetch_knihovny_metadata, looks_czech
 from app.services.metadata.open_library import fetch_open_library_metadata
 
 # Open Library allows commercial reuse of its data, so hits can be cached
@@ -72,6 +73,30 @@ async def _open_library_lookup(
         observe_external_api_latency("open_library", start)
 
 
+async def _knihovny_lookup(
+    client: httpx.AsyncClient,
+    isbn: str | None,
+    title: str | None,
+    author: str | None,
+) -> tuple[dict[str, object] | None, bool]:
+    """Returns ``(metadata, errored)``."""
+    start = perf_counter()
+    try:
+        EXTERNAL_API_CALLS_TOTAL.labels(provider="knihovny_cz").inc()
+        return await fetch_knihovny_metadata(client, isbn, title=title, author=author), False
+    except Exception as exc:
+        logger.warning("knihovny_lookup_failed", isbn=isbn, title=title, author=author, error=str(exc))
+        return None, True
+    finally:
+        observe_external_api_latency("knihovny_cz", start)
+
+
+# Fields worth backfilling from a secondary provider when the primary hit
+# lacks them (knihovny.cz never returns covers; Open Library often lacks
+# Czech annotations).
+_GAP_FILL_FIELDS = ("cover_image_url", "description")
+
+
 async def enrich_metadata_with_fallback(
     isbn: str | None,
     title: str | None,
@@ -90,18 +115,51 @@ async def enrich_metadata_with_fallback(
             result: dict[str, object] | None = json.loads(cached)
             return result
 
-        # Open Library is the sole default provider — Google Books ToS
-        # forbids paid applications, so it only runs behind the explicit
-        # ``enable_google_books`` opt-in (see app/core/config.py), where it
-        # keeps its legacy primary-with-fallback position.
+        # Provider order (ADR 012): Czech-looking lookups (diacritics or a
+        # 978-80/80 ISBN prefix) hit knihovny.cz first — its coverage of
+        # Czech titles and annotations beats Open Library. Everything else
+        # keeps Open Library first with knihovny.cz as the fallback. Google
+        # Books ToS forbids paid applications, so it only runs behind the
+        # explicit ``enable_google_books`` opt-in, keeping its legacy
+        # primary-with-fallback position.
+        if settings.enable_knihovny_cz:
+            czech = looks_czech(isbn, title, author)
+            providers = (
+                [_knihovny_lookup, _open_library_lookup]
+                if czech
+                else [_open_library_lookup, _knihovny_lookup]
+            )
+        else:
+            providers = [_open_library_lookup]
+
         metadata: dict[str, object] | None = None
         errored = False
         async with httpx.AsyncClient() as client:
             if settings.enable_google_books:
                 metadata, errored = await _google_books_lookup(client, isbn, title, author)
-            if metadata is None:
-                metadata, open_library_errored = await _open_library_lookup(client, isbn, title, author)
-                errored = errored or open_library_errored
+            remaining = list(providers)
+            while metadata is None and remaining:
+                lookup = remaining.pop(0)
+                metadata, lookup_errored = await lookup(client, isbn, title, author)
+                errored = errored or lookup_errored
+
+            # Gap-fill: the winning record may lack a cover (knihovny.cz
+            # never has one) or an annotation (Open Library rarely has
+            # Czech ones) — backfill just those fields from the next
+            # provider in line. Best-effort, never fails the lookup.
+            # Skipped for Google results to preserve its legacy standalone
+            # behaviour.
+            if (
+                metadata is not None
+                and metadata.get("provider") in ("open_library", "knihovny_cz")
+                and remaining
+                and any(not metadata.get(field) for field in _GAP_FILL_FIELDS)
+            ):
+                secondary, _ = await remaining[0](client, isbn, title, author)
+                if secondary:
+                    for field in _GAP_FILL_FIELDS:
+                        if not metadata.get(field) and secondary.get(field):
+                            metadata[field] = secondary[field]
 
         if metadata is None:
             # Only cache a miss when the provider actually answered —

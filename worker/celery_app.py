@@ -28,6 +28,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from catalog_match import apply_catalog_match, normalize_for_compare
 from gemini_parser import parse_gemini_candidates
+from knihovny_client import fetch_knihovny_metadata, looks_czech
 from settings import worker_settings
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
@@ -921,6 +922,21 @@ async def _fetch_open_library_metadata(isbn: str | None, title: str | None = Non
     }
 
 
+async def _fetch_knihovny_metadata(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
+    start = perf_counter()
+    try:
+        async with httpx.AsyncClient() as client:
+            return await fetch_knihovny_metadata(client, isbn, title=title, author=author)
+    finally:
+        logger.info("external_api_call", provider="knihovny_cz", isbn=isbn, title=title, author=author, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
+
+
+# Fields worth backfilling from a secondary provider when the primary hit
+# lacks them (knihovny.cz never returns covers; Open Library often lacks
+# Czech annotations).
+_GAP_FILL_FIELDS = ("cover_image_url", "description")
+
+
 async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
     cache = _get_redis_client()
     cache_key = _cache_key(isbn, title)
@@ -932,20 +948,52 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
 
     metadata: dict[str, object] | None = None
 
-    # Open Library is the sole default provider — Google Books ToS forbids
-    # paid applications, so it only runs behind the explicit opt-in flag
-    # (mirrors app/services/metadata/service.py in the backend).
+    # Google Books ToS forbids paid applications, so it only runs behind the
+    # explicit opt-in flag (mirrors app/services/metadata/service.py).
     if worker_settings.enable_google_books:
         try:
             metadata = await _fetch_google_books_metadata(isbn, title=title, author=author)
         except Exception:
             metadata = None
 
-    if metadata is None:
+    # Provider order (ADR 012): Czech-looking lookups (diacritics or a
+    # 978-80/80 ISBN prefix) hit knihovny.cz first; everything else keeps
+    # Open Library first with knihovny.cz as the fallback.
+    if worker_settings.enable_knihovny_cz:
+        providers = (
+            [_fetch_knihovny_metadata, _fetch_open_library_metadata]
+            if looks_czech(isbn, title, author)
+            else [_fetch_open_library_metadata, _fetch_knihovny_metadata]
+        )
+    else:
+        providers = [_fetch_open_library_metadata]
+
+    remaining = list(providers)
+    while metadata is None and remaining:
+        fetch = remaining.pop(0)
         try:
-            metadata = await _fetch_open_library_metadata(isbn, title=title, author=author)
+            metadata = await fetch(isbn, title=title, author=author)
         except Exception:
             metadata = None
+
+    # Gap-fill: the winning record may lack a cover (knihovny.cz never has
+    # one) or an annotation (Open Library rarely has Czech ones) — backfill
+    # just those fields from the next provider in line. Best-effort. Skipped
+    # for Google results to preserve its legacy standalone behaviour.
+    if (
+        metadata is not None
+        and metadata.get("provider") in ("open_library", "knihovny_cz")
+        and remaining
+        and any(not metadata.get(field) for field in _GAP_FILL_FIELDS)
+    ):
+        try:
+            secondary = await remaining[0](isbn, title=title, author=author)
+        except Exception:
+            secondary = None
+        if secondary:
+            for field in _GAP_FILL_FIELDS:
+                if not metadata.get(field) and secondary.get(field):
+                    metadata[field] = secondary[field]
 
     if metadata is not None:
         cache.setex(cache_key, CACHE_TTL_SECONDS, json.dumps(metadata))

@@ -41,6 +41,9 @@ class WorkerSettings(BaseSettings):
     google_books_api_key: str | None = None       # unused unless enable_google_books
     # Identifying User-Agent for Open Library (lifts rate limit to 3 req/s).
     open_library_user_agent: str = "Shelfy (https://shelfy.cz; support@shelfy.cz)"
+    # Knihovny.cz (Czech central library portal, VuFind API) — first choice
+    # for Czech-looking lookups, fallback otherwise (ADR 012). Kill-switch.
+    enable_knihovny_cz: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
