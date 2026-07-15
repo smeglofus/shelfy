@@ -57,8 +57,41 @@ class TestNormalizeCasing:
         # "KAFKA" is 5 letters, all caps → normalize
         assert text_normalize.normalize_casing("KAFKA") == "Kafka"
 
-    def test_lowercase_stays_lowercase(self):
-        assert text_normalize.normalize_casing("already lowercase") == "already lowercase"
+    def test_lowercase_title_gets_sentence_case(self):
+        assert text_normalize.normalize_casing("nastávající maminka") == "Nastávající maminka"
+
+    def test_lowercase_multiword_title(self):
+        result = text_normalize.normalize_casing("válka s mloky")
+        assert result == "Válka s mloky"
+
+    def test_lowercase_author_gets_proper_case(self):
+        assert text_normalize.normalize_casing("karel čapek", mode="proper") == "Karel Čapek"
+
+    def test_lowercase_author_particles_stay_lowercase(self):
+        result = text_normalize.normalize_casing("johann wolfgang von goethe", mode="proper")
+        assert result == "Johann Wolfgang von Goethe"
+
+    def test_all_caps_author_particles_stay_lowercase(self):
+        result = text_normalize.normalize_casing("JOHANN WOLFGANG VON GOETHE", mode="proper")
+        assert result == "Johann Wolfgang von Goethe"
+
+    def test_lowercase_acronym_restored(self):
+        assert text_normalize.normalize_casing("dějiny usa a nato") == "Dějiny USA a NATO"
+
+    def test_lowercase_roman_numeral_restored(self):
+        assert text_normalize.normalize_casing("dějiny evropy xiv") == "Dějiny evropy XIV"
+
+    def test_single_letter_left_alone(self):
+        # Below the lowercase threshold — too short to judge
+        assert text_normalize.normalize_casing("k") == "k"
+
+    def test_lowercase_czech_conjunction_not_roman_numeral(self):
+        # "i" and "v" in lowercase text are Czech words, not numerals I/V
+        assert text_normalize.normalize_casing("válka i mír") == "Válka i mír"
+        assert text_normalize.normalize_casing("muž v davu") == "Muž v davu"
+
+    def test_lowercase_multiletter_roman_numeral_restored(self):
+        assert text_normalize.normalize_casing("karel iv.", mode="proper") == "Karel IV."
 
     def test_sentence_case_only_first_word(self):
         result = text_normalize.normalize_casing("THE WAR OF THE WORLDS")
@@ -190,6 +223,13 @@ class TestNormalizeBookFields:
         text_normalize.normalize_book_fields(book)
         assert book["title"] == "Harry Potter"
         assert book["author"] == "J.K. Rowling"
+
+    def test_lowercase_fields_normalized(self):
+        """Fully lowercase output gets the same treatment as ALL CAPS."""
+        book = {"title": "nastávající maminka", "author": "karel čapek"}
+        text_normalize.normalize_book_fields(book)
+        assert book["title"] == "Nastávající maminka"
+        assert book["author"] == "Karel Čapek"
 
 
 # ── _is_roman_numeral ──────────────────────────────────────────────
