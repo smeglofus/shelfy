@@ -494,6 +494,7 @@ def test_enrichment_cache_hit_skips_external_calls(monkeypatch) -> None:
 
     monkeypatch.setattr(celery_app, "_fetch_google_books_metadata", _raise)
     monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _raise)
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _raise)
 
     result = celery_app.asyncio.run(celery_app._enrich_metadata_with_fallback("9780134494166"))
 
@@ -518,8 +519,12 @@ def test_enrichment_default_uses_open_library_and_skips_google(monkeypatch) -> N
     async def _open_library(isbn, title=None, author=None):
         return {"title": "Refactoring", "isbn": isbn, "provider": "open_library"}
 
+    async def _knihovny_miss(_isbn, title=None, author=None):
+        return None
+
     monkeypatch.setattr(celery_app, "_fetch_google_books_metadata", _google_must_not_be_called)
     monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _knihovny_miss)
     monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
 
     result = celery_app.asyncio.run(celery_app._enrich_metadata_with_fallback("9780201485677"))
@@ -959,3 +964,91 @@ def test_open_library_description_backfill_failure_keeps_metadata(monkeypatch) -
     assert metadata is not None
     assert metadata["title"] == "Clean Architecture"
     assert metadata["description"] is None
+
+
+def test_enrichment_czech_lookup_prefers_knihovny_and_gap_fills(monkeypatch) -> None:
+    stored = {}
+
+    class FakeRedis:
+        def get(self, _key):
+            return None
+
+        def setex(self, key, ttl, payload):
+            stored[key] = payload
+
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: FakeRedis())
+    monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
+
+    calls = []
+
+    async def _knihovny(_isbn, title=None, author=None):
+        calls.append("knihovny")
+        return {
+            "title": "Válka s mloky",
+            "author": "Karel Čapek",
+            "isbn": "9788085126396",
+            "description": "Česká anotace.",
+            "cover_image_url": None,
+            "provider": "knihovny_cz",
+        }
+
+    async def _open_library(_isbn, title=None, author=None):
+        calls.append("open_library")
+        return {
+            "title": "War with the Newts",
+            "cover_image_url": "https://covers.openlibrary.org/b/id/1-L.jpg",
+            "provider": "open_library",
+        }
+
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _knihovny)
+    monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library)
+
+    result = celery_app.asyncio.run(
+        celery_app._enrich_metadata_with_fallback(None, title="Válka s mloky", author="Karel Čapek")
+    )
+
+    assert result is not None
+    # Český dotaz → knihovny.cz první; Open Library jen doplní obálku
+    assert calls == ["knihovny", "open_library"]
+    assert result["provider"] == "knihovny_cz"
+    assert result["description"] == "Česká anotace."
+    assert result["cover_image_url"] == "https://covers.openlibrary.org/b/id/1-L.jpg"
+    assert stored  # výsledek se cachuje včetně gap-fillu
+
+
+def test_enrichment_non_czech_falls_back_to_knihovny(monkeypatch) -> None:
+    class FakeRedis:
+        def get(self, _key):
+            return None
+
+        def setex(self, key, ttl, payload):
+            pass
+
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: FakeRedis())
+    monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
+
+    calls = []
+
+    async def _open_library_miss(_isbn, title=None, author=None):
+        calls.append("open_library")
+        return None
+
+    async def _knihovny(_isbn, title=None, author=None):
+        calls.append("knihovny")
+        return {
+            "title": "Clean Code",
+            "description": "x",
+            "cover_image_url": "y",
+            "provider": "knihovny_cz",
+        }
+
+    monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library_miss)
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _knihovny)
+
+    result = celery_app.asyncio.run(
+        celery_app._enrich_metadata_with_fallback(None, title="Clean Code", author="Martin")
+    )
+
+    assert result is not None
+    assert calls == ["open_library", "knihovny"]
+    assert result["provider"] == "knihovny_cz"

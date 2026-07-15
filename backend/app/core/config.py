@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # Identifying User-Agent sent with Open Library requests — required
     # etiquette and lifts the anonymous 1 req/s rate limit to 3 req/s.
     open_library_user_agent: str = "Shelfy (https://shelfy.cz; support@shelfy.cz)"
+    # Knihovny.cz (Czech central library portal, VuFind API) — first choice
+    # for Czech-looking lookups, fallback otherwise (ADR 012). Kill-switch.
+    enable_knihovny_cz: bool = True
 
     # Observability / error tracking
     # Set SENTRY_DSN in .env to enable Sentry error reporting.
