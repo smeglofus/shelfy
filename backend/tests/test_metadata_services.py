@@ -273,6 +273,148 @@ def test_open_library_title_search_sends_user_agent() -> None:
     assert seen_user_agents == [get_settings().open_library_user_agent]
 
 
+def test_open_library_title_search_returns_edition_isbn_and_description() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/search.json":
+            # ISBN must be part of the requested fields, otherwise the search
+            # response never contains it.
+            assert "isbn" in request.url.params["fields"]
+            assert "editions" in request.url.params["fields"]
+            return httpx.Response(
+                200,
+                json={
+                    "docs": [
+                        {
+                            "key": "/works/OL1W",
+                            "title": "Malý princ",
+                            "author_name": ["Antoine de Saint-Exupéry"],
+                            "publisher": ["Gallimard"],
+                            "first_publish_year": 1943,
+                            "language": ["fre", "cze"],
+                            "cover_i": 111,
+                            "isbn": ["2070612759", "9782070612758"],
+                            "editions": {
+                                "numFound": 1,
+                                "docs": [
+                                    {
+                                        "key": "/books/OL1M",
+                                        "isbn_13": ["9788000012345"],
+                                        "publish_date": "2015",
+                                        "publishers": ["Albatros"],
+                                        "languages": ["cze"],
+                                        "cover_i": 777,
+                                    }
+                                ],
+                            },
+                        }
+                    ]
+                },
+            )
+        assert request.url.path == "/works/OL1W.json"
+        return httpx.Response(
+            200,
+            json={"description": {"value": "Slavná novela o malém princi."}},
+        )
+
+    async def _run() -> dict[str, object] | None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_open_library_metadata(client, None, title="Malý princ", author="Saint-Exupéry")
+
+    metadata = asyncio.run(_run())
+
+    assert metadata is not None
+    # ISBN comes from the best-matching edition, not the mixed work-level list.
+    assert metadata["isbn"] == "9788000012345"
+    assert metadata["description"] == "Slavná novela o malém princi."
+    assert metadata["publisher"] == "Albatros"
+    assert metadata["publication_year"] == 2015
+    assert metadata["language"] == "cze"
+    assert metadata["cover_image_url"] == "https://covers.openlibrary.org/b/id/777-L.jpg"
+
+
+def test_open_library_title_search_falls_back_to_work_level_isbn13() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/search.json"
+        return httpx.Response(
+            200,
+            json={
+                "docs": [
+                    {
+                        "title": "Clean Code",
+                        "author_name": ["Robert C. Martin"],
+                        "first_publish_year": 2008,
+                        "isbn": ["0132350882", "9780132350884"],
+                    }
+                ]
+            },
+        )
+
+    async def _run() -> dict[str, object] | None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_open_library_metadata(client, None, title="Clean Code", author=None)
+
+    metadata = asyncio.run(_run())
+
+    assert metadata is not None
+    assert metadata["isbn"] == "9780132350884"
+
+
+def test_open_library_isbn_lookup_backfills_description_from_work() -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if request.url.path == "/api/books":
+            return httpx.Response(
+                200,
+                json={
+                    "ISBN:9780134494166": {
+                        "title": "Clean Architecture",
+                        "authors": [{"name": "Robert C. Martin"}],
+                        "publish_date": "2017",
+                    }
+                },
+            )
+        if request.url.path == "/search.json":
+            assert request.url.params["q"] == "isbn:9780134494166"
+            return httpx.Response(200, json={"docs": [{"key": "/works/OL2W"}]})
+        assert request.url.path == "/works/OL2W.json"
+        return httpx.Response(200, json={"description": "Software architecture patterns."})
+
+    async def _run() -> dict[str, object] | None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_open_library_metadata(client, "9780134494166", title=None, author=None)
+
+    metadata = asyncio.run(_run())
+
+    assert metadata is not None
+    assert metadata["isbn"] == "9780134494166"
+    assert metadata["description"] == "Software architecture patterns."
+    assert calls == ["/api/books", "/search.json", "/works/OL2W.json"]
+
+
+def test_open_library_description_backfill_failure_keeps_metadata() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/books":
+            return httpx.Response(
+                200,
+                json={"ISBN:9780134494166": {"title": "Clean Architecture", "publish_date": "2017"}},
+            )
+        # Work resolution is best-effort — a failing works lookup must not
+        # break the whole enrichment.
+        return httpx.Response(500)
+
+    async def _run() -> dict[str, object] | None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_open_library_metadata(client, "9780134494166", title=None, author=None)
+
+    metadata = asyncio.run(_run())
+
+    assert metadata is not None
+    assert metadata["title"] == "Clean Architecture"
+    assert metadata["description"] is None
+
+
 def test_title_author_lookup_without_isbn_uses_open_library_only(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, object, object]] = []
 

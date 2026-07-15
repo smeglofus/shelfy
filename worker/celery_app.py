@@ -625,10 +625,95 @@ async def _fetch_google_books_metadata(isbn: str | None, title: str | None = Non
     }
 
 
+# Fields requested from search.json. ``editions`` gives the best-matching
+# edition (ranked by the ``lang`` param), which carries the edition-level
+# ISBN — the work-level ``isbn`` list mixes all editions together.
+_OPEN_LIBRARY_SEARCH_FIELDS = ",".join([
+    "key",
+    "title",
+    "author_name",
+    "publisher",
+    "first_publish_year",
+    "language",
+    "cover_i",
+    "isbn",
+    "editions",
+    "editions.key",
+    "editions.isbn_13",
+    "editions.isbn_10",
+    "editions.publish_date",
+    "editions.publishers",
+    "editions.languages",
+    "editions.cover_i",
+])
+
+
+def _pick_open_library_isbn(edition: dict[str, object], doc: dict[str, object]) -> str | None:
+    """Prefer the matched edition's ISBN-13, then its ISBN-10, then any
+    ISBN-13 from the work-level list (which spans all editions)."""
+    for field in ("isbn_13", "isbn_10"):
+        values = edition.get(field)
+        first = values[0] if isinstance(values, list) and values else None
+        if isinstance(first, str):
+            return first
+    isbns = [i for i in (doc.get("isbn") or []) if isinstance(i, str)]
+    isbn_13s = [i for i in isbns if len(i) == 13 and i.startswith(("978", "979"))]
+    if isbn_13s:
+        return isbn_13s[0]
+    return isbns[0] if isbns else None
+
+
+async def _fetch_open_library_work_description(client: httpx.AsyncClient, work_key: str | None) -> str | None:
+    """Descriptions live on the work record, not in search results or the
+    books API — fetched separately and best-effort (never fails the lookup)."""
+    if not work_key or not isinstance(work_key, str) or not work_key.startswith("/works/"):
+        return None
+    headers = {"User-Agent": worker_settings.open_library_user_agent}
+    try:
+        response = await client.get(
+            f"https://openlibrary.org{work_key}.json",
+            headers=headers,
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    description = data.get("description")
+    if isinstance(description, dict):
+        description = description.get("value")
+    if isinstance(description, str) and description.strip():
+        return description.strip()
+    return None
+
+
+async def _find_open_library_work_key_by_isbn(client: httpx.AsyncClient, isbn: str) -> str | None:
+    headers = {"User-Agent": worker_settings.open_library_user_agent}
+    try:
+        response = await client.get(
+            "https://openlibrary.org/search.json",
+            params={"q": f"isbn:{isbn}", "fields": "key", "limit": 1},
+            headers=headers,
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        docs = response.json().get("docs") or []
+    except (httpx.HTTPError, ValueError):
+        return None
+    if not docs:
+        return None
+    key = docs[0].get("key")
+    return key if isinstance(key, str) else None
+
+
 async def _fetch_open_library_metadata(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
     start = perf_counter()
-    try:
-        async with httpx.AsyncClient() as client:
+    resolved_isbn = isbn
+    work_key: str | None = None
+    async with httpx.AsyncClient() as client:
+        try:
             headers = {"User-Agent": worker_settings.open_library_user_agent}
             if isbn:
                 bib_key = f"ISBN:{isbn}"
@@ -641,7 +726,14 @@ async def _fetch_open_library_metadata(isbn: str | None, title: str | None = Non
             elif title:
                 response = await client.get(
                     "https://openlibrary.org/search.json",
-                    params={"title": title, "author": author or "", "limit": 1},
+                    params={
+                        "title": title,
+                        "author": author or "",
+                        "limit": 1,
+                        "fields": _OPEN_LIBRARY_SEARCH_FIELDS,
+                        # Prefer Czech editions when the work has one; harmless otherwise.
+                        "lang": "cs",
+                    },
                     headers=headers,
                     timeout=10.0,
                 )
@@ -649,48 +741,66 @@ async def _fetch_open_library_metadata(isbn: str | None, title: str | None = Non
                 return None
             response.raise_for_status()
             payload = response.json()
-    finally:
-        logger.info("external_api_call", provider="open_library", isbn=isbn, title=title, author=author, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
+        finally:
+            logger.info("external_api_call", provider="open_library", isbn=isbn, title=title, author=author, processing_step="metadata_lookup", latency_seconds=perf_counter() - start)
 
-    if isbn:
-        bib_key = f"ISBN:{isbn}"
-        book_data = payload.get(bib_key)
-        if not book_data:
-            return None
-    else:
-        docs = payload.get("docs") or []
-        if not docs:
-            return None
-        doc = docs[0]
-        book_data = {
-            "title": doc.get("title"),
-            "authors": [{"name": (doc.get("author_name") or [None])[0]}],
-            "publishers": [{"name": (doc.get("publisher") or [None])[0]}],
-            "publish_date": str((doc.get("first_publish_year") or "")),
-            "languages": [{"key": f"/languages/{(doc.get('language') or [None])[0]}"}] if doc.get("language") else [],
-            "description": None,
-            "cover": {
-                "large": f"https://covers.openlibrary.org/b/id/{doc.get('cover_i')}-L.jpg" if doc.get("cover_i") else None,
-            },
-        }
+        if isbn:
+            bib_key = f"ISBN:{isbn}"
+            book_data = payload.get(bib_key)
+            if not book_data:
+                return None
+        else:
+            docs = payload.get("docs") or []
+            if not docs:
+                return None
+            doc = docs[0]
+            editions = (doc.get("editions") or {}).get("docs") or []
+            edition = editions[0] if editions and isinstance(editions[0], dict) else {}
+            resolved_isbn = _pick_open_library_isbn(edition, doc)
+            work_key = doc.get("key") if isinstance(doc.get("key"), str) else None
+            edition_language = (edition.get("languages") or [None])[0]
+            doc_language = (doc.get("language") or [None])[0]
+            language = edition_language or doc_language
+            cover_i = edition.get("cover_i") or doc.get("cover_i")
+            book_data = {
+                "title": doc.get("title"),
+                "authors": [{"name": (doc.get("author_name") or [None])[0]}],
+                "publishers": [
+                    {"name": (edition.get("publishers") or doc.get("publisher") or [None])[0]}
+                ],
+                "publish_date": str(edition.get("publish_date") or doc.get("first_publish_year") or ""),
+                "languages": [{"key": f"/languages/{language}"}] if language else [],
+                "description": None,
+                "cover": {
+                    "large": f"https://covers.openlibrary.org/b/id/{cover_i}-L.jpg" if cover_i else None,
+                },
+            }
 
-    publish_date = str(book_data.get("publish_date", ""))
-    publication_year: int | None = None
-    for token in publish_date.replace(",", " ").split():
-        if len(token) == 4 and token.isdigit():
-            publication_year = int(token)
-            break
+        publish_date = str(book_data.get("publish_date", ""))
+        publication_year: int | None = None
+        for token in publish_date.replace(",", " ").split():
+            if len(token) == 4 and token.isdigit():
+                publication_year = int(token)
+                break
 
-    cover_data = book_data.get("cover") or {}
-    language_key = ((book_data.get("languages") or [{}])[0].get("key") or "").split("/")[-1] or None
-    description = book_data.get("description")
-    if isinstance(description, dict):
-        description = description.get("value")
+        cover_data = book_data.get("cover") or {}
+        language_key = ((book_data.get("languages") or [{}])[0].get("key") or "").split("/")[-1] or None
+        description = book_data.get("description")
+        if isinstance(description, dict):
+            description = description.get("value")
+
+        if not description:
+            # The books API (ISBN path) never returns descriptions and the
+            # search path sets none — resolve the work record and pull it
+            # from there.
+            if work_key is None and isbn:
+                work_key = await _find_open_library_work_key_by_isbn(client, isbn)
+            description = await _fetch_open_library_work_description(client, work_key)
 
     return {
         "title": book_data.get("title"),
         "author": (book_data.get("authors") or [{}])[0].get("name"),
-        "isbn": isbn,
+        "isbn": resolved_isbn,
         "publisher": (book_data.get("publishers") or [{}])[0].get("name"),
         "language": language_key,
         "description": description,
@@ -1093,10 +1203,12 @@ def _enrich_single_book(session: Session, book_id: uuid.UUID, force: bool = Fals
         session.commit()
         return "no_metadata"
 
+    metadata_isbn = normalize_isbn(metadata["isbn"]) if isinstance(metadata.get("isbn"), str) else None
+
     if force:
         # Overwrite mode: allow replacing stale metadata with fresher match
-        if isinstance(metadata.get("isbn"), str):
-            book.isbn = metadata["isbn"]
+        if metadata_isbn:
+            book.isbn = metadata_isbn
         if isinstance(metadata.get("publisher"), str):
             book.publisher = metadata["publisher"]
         if isinstance(metadata.get("language"), str):
@@ -1113,8 +1225,8 @@ def _enrich_single_book(session: Session, book_id: uuid.UUID, force: bool = Fals
             book.author = metadata["author"]
     else:
         # Fill in missing data only (don't overwrite user edits)
-        if not book.isbn and isinstance(metadata.get("isbn"), str):
-            book.isbn = metadata["isbn"]
+        if not book.isbn and metadata_isbn:
+            book.isbn = metadata_isbn
         if not book.publisher and isinstance(metadata.get("publisher"), str):
             book.publisher = metadata["publisher"]
         if not book.language and isinstance(metadata.get("language"), str):
