@@ -126,13 +126,19 @@ async def get_shelf_scan_result(
 
             raw_confidence = raw.get("confidence") if isinstance(raw.get("confidence"), str) else None
             has_title = bool(title and title != "Unknown title")
-            # Map worker confidence (high/medium/low) to UI confidence (auto/needs_review)
-            if raw_confidence == "high" and has_title:
-                confidence = "auto"
-            elif raw_confidence == "low" or not has_title:
+            # Map worker confidence (high/medium/low/needs_review) to UI
+            # confidence (auto/needs_review)
+            if raw_confidence in ("low", "needs_review") or not has_title:
                 confidence = "needs_review"
             else:
-                confidence = "auto" if has_title else "needs_review"
+                confidence = "auto"
+
+            suggested_title = (
+                raw.get("suggested_title") if isinstance(raw.get("suggested_title"), str) else None
+            )
+            suggested_author = (
+                raw.get("suggested_author") if isinstance(raw.get("suggested_author"), str) else None
+            )
 
             books.append(ScannedBookItem(
                 position=idx,
@@ -141,6 +147,8 @@ async def get_shelf_scan_result(
                 isbn=isbn,
                 observed_text=observed_text,
                 confidence=confidence,
+                suggested_title=suggested_title,
+                suggested_author=suggested_author,
             ))
 
         return ShelfScanResultResponse(

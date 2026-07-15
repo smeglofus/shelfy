@@ -25,6 +25,8 @@ interface ReviewBookItem extends ConfirmBookItem {
   observedText: string | null
   confidence: ScannedBookItem['confidence'] | null
   isManual?: boolean
+  suggestedTitle?: string | null
+  suggestedAuthor?: string | null
 }
 
 interface ScanSegment {
@@ -309,12 +311,16 @@ export function ScanShelfPage() {
         const observed = (b.observed_text ?? '').toLowerCase()
         const noVisibleText = observed.includes('no visible text') || observed.includes('no readable text')
         const lowConfidence = b.confidence === 'needs_review' || b.confidence === 'low'
+        // A catalog suggestion means there IS a concrete reading — keep it
+        // in the inputs so the user can compare it with the suggestion.
+        const hasSuggestion = Boolean(b.suggested_title || b.suggested_author)
 
-        const normalizedTitle = (!noVisibleText && !lowConfidence)
+        const keepScanned = !noVisibleText && (!lowConfidence || hasSuggestion)
+        const normalizedTitle = keepScanned
           ? (b.title ?? b.observed_text ?? '')
           : ''
 
-        const normalizedAuthor = (!noVisibleText && !lowConfidence)
+        const normalizedAuthor = keepScanned
           ? (b.author ?? null)
           : null
 
@@ -327,6 +333,8 @@ export function ScanShelfPage() {
           isbn: b.isbn ?? null,
           observedText: b.observed_text ?? null,
           confidence: b.confidence ?? null,
+          suggestedTitle: b.suggested_title ?? null,
+          suggestedAuthor: b.suggested_author ?? null,
         })
       }
     }
@@ -341,6 +349,20 @@ export function ScanShelfPage() {
   function updateBook(localId: string, field: keyof ConfirmBookItem, value: string | null) {
     setEditableBooks(prev => prev.map((b) =>
       b.localId === localId ? { ...b, [field]: value } : b
+    ))
+  }
+
+  function applySuggestion(localId: string) {
+    setEditableBooks(prev => prev.map((b) =>
+      b.localId === localId
+        ? {
+            ...b,
+            title: b.suggestedTitle ?? b.title,
+            author: b.suggestedAuthor ?? b.author,
+            suggestedTitle: null,
+            suggestedAuthor: null,
+          }
+        : b
     ))
   }
 
@@ -1037,6 +1059,32 @@ export function ScanShelfPage() {
                         </button>
                       </div>
                     </div>
+                    {!book.isManual && (book.suggestedTitle || book.suggestedAuthor) && (
+                      <div style={{
+                        display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+                        marginBottom: 10, fontSize: 12,
+                      }}>
+                        <span style={{ color: 'var(--sh-text-muted)' }}>
+                          {t('scan.catalog_suggestion')}:{' '}
+                          <strong style={{ color: 'var(--sh-text-main)' }}>
+                            {book.suggestedTitle ?? book.title}
+                          </strong>
+                          {book.suggestedAuthor ? ` — ${book.suggestedAuthor}` : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(book.localId)}
+                          style={{
+                            background: 'none', border: '1px solid var(--sh-teal)',
+                            borderRadius: 'var(--sh-radius-sm)', cursor: 'pointer',
+                            color: 'var(--sh-teal)', fontSize: 11, fontWeight: 600,
+                            padding: '2px 8px',
+                          }}
+                        >
+                          {t('scan.apply_suggestion')}
+                        </button>
+                      </div>
+                    )}
                     <div className="sh-review-fields">
                       <div>
                         <label className="sh-form-label--sm" style={{ fontSize: 11, marginBottom: 4 }}>{t('scan.book_title')}</label>

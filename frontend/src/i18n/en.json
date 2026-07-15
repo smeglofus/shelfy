@@ -404,6 +404,8 @@
     "back_to_scan": "Back to scanning",
     "needs_review": "Needs review",
     "observed": "From spine",
+    "catalog_suggestion": "Catalog suggests",
+    "apply_suggestion": "Apply suggestion",
     "book_title": "Title",
     "book_title_placeholder": "Enter book title",
     "book_author": "Author",

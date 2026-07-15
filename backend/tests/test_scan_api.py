@@ -208,6 +208,12 @@ async def test_get_scan_result_done_job_with_books(
                         # confidence="medium" + title=="Unknown title" → not has_title → "needs_review" (line 133)
                         {"title": "Unknown title", "author": None, "isbn": None,
                          "observed_text": None, "confidence": "medium"},
+                        # worker "needs_review" (quality flags / catalog mismatch)
+                        # → "needs_review" even with a title; suggestions pass through
+                        {"title": "Nastavení miminka", "author": None, "isbn": None,
+                         "observed_text": "nastávající maminky", "confidence": "needs_review",
+                         "suggested_title": "Nastávající maminky",
+                         "suggested_author": "Marie Nováková"},
                         # non-dict entry → isinstance check fires → continue (line 120-121)
                         "not_a_dict",
                     ],
@@ -222,12 +228,19 @@ async def test_get_scan_result_done_job_with_books(
     data = resp.json()
     assert data["status"] == "done"
     assert data["location_id"] == str(loc_id)
-    # "not_a_dict" is skipped → only 4 book items returned
-    assert len(data["books"]) == 4
+    # "not_a_dict" is skipped → only 5 book items returned
+    assert len(data["books"]) == 5
     assert data["books"][0]["confidence"] == "auto"          # high + has_title
     assert data["books"][1]["confidence"] == "needs_review"  # low
     assert data["books"][2]["confidence"] == "auto"          # medium + has_title
     assert data["books"][3]["confidence"] == "needs_review"  # medium + "Unknown title"
+    # worker needs_review propagates even when a title is present
+    assert data["books"][4]["confidence"] == "needs_review"
+    assert data["books"][4]["title"] == "Nastavení miminka"
+    assert data["books"][4]["suggested_title"] == "Nastávající maminky"
+    assert data["books"][4]["suggested_author"] == "Marie Nováková"
+    # rows without a catalog suggestion serialize it as null
+    assert data["books"][0]["suggested_title"] is None
 
 
 # ── POST /api/v1/scan/confirm ─────────────────────────────────────────────────

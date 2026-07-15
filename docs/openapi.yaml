@@ -7553,6 +7553,28 @@
             "type": "string",
             "title": "Confidence",
             "default": "auto"
+          },
+          "suggested_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Title"
+          },
+          "suggested_author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Author"
           }
         },
         "type": "object",

@@ -708,6 +708,17 @@ def test_worker_logs_include_job_id(monkeypatch, capsys) -> None:
     assert "\"job_id\": \"" + str(job_id) + "\"" in output
 
 
+class _FakeVerifyRedis:
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+
+    def get(self, key: str):
+        return self.store.get(key)
+
+    def setex(self, key: str, _ttl: int, value: str) -> None:
+        self.store[key] = value
+
+
 def _patch_open_library_transport(monkeypatch, handler) -> None:
     """Route the worker's internally-created AsyncClient through a MockTransport."""
     transport = httpx.MockTransport(handler)
@@ -719,6 +730,98 @@ def _patch_open_library_transport(monkeypatch, handler) -> None:
     )
 
 
+def test_verify_shelf_books_adopts_and_suggests(monkeypatch) -> None:
+    fake_redis = _FakeVerifyRedis()
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: fake_redis)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/search.json"
+        title = request.url.params["title"]
+        if "zivote" in title:
+            return httpx.Response(200, json={"docs": [
+                {"key": "/works/OL1W", "title": "Tibetská kniha o životě a smrti",
+                 "author_name": ["Sogjal Rinpočhe"]},
+            ]})
+        if title == "Nastavení miminka":
+            return httpx.Response(200, json={"docs": [
+                {"key": "/works/OL2W", "title": "Nastávající maminky", "author_name": []},
+            ]})
+        return httpx.Response(200, json={"docs": []})
+
+    _patch_open_library_transport(monkeypatch, handler)
+
+    books: list[dict[str, object]] = [
+        # Near-identical (diacritics only) → adopt the catalog form
+        {"title": "tibetska kniha o zivote a smrti", "author": "sogjal rinpočhe",
+         "confidence": "medium"},
+        # OCR misread → keep scanned text, attach suggestion, needs_review
+        {"title": "Nastavení miminka", "author": None, "confidence": "high"},
+        # No catalog hit → untouched
+        {"title": "Zcela neznámá kniha", "author": None, "confidence": "high"},
+        # No title → skipped entirely
+        {"title": None, "author": None, "confidence": "low"},
+    ]
+
+    stats = celery_app.asyncio.run(celery_app._verify_shelf_books_against_catalog(books))
+
+    assert books[0]["title"] == "Tibetská kniha o životě a smrti"
+    assert books[0]["author"] == "Sogjal Rinpočhe"
+    assert books[0]["confidence"] == "medium"
+    assert "catalog_adopted" in books[0]["quality_flags"]
+
+    assert books[1]["title"] == "Nastavení miminka"
+    assert books[1]["suggested_title"] == "Nastávající maminky"
+    assert books[1]["confidence"] == "needs_review"
+
+    assert books[2]["title"] == "Zcela neznámá kniha"
+    assert books[2]["confidence"] == "high"
+    assert "suggested_title" not in books[2]
+
+    assert stats == {"adopt": 1, "suggest": 1, "none": 0, "no_candidate": 1}
+    # Lookups are cached for repeat scans of the same shelf
+    assert len(fake_redis.store) == 3
+
+
+def test_verify_shelf_books_survives_lookup_failure(monkeypatch) -> None:
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: _FakeVerifyRedis())
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    _patch_open_library_transport(monkeypatch, handler)
+
+    books: list[dict[str, object]] = [
+        {"title": "Válka s mloky", "author": "Karel Čapek", "confidence": "high"},
+    ]
+
+    stats = celery_app.asyncio.run(celery_app._verify_shelf_books_against_catalog(books))
+
+    # Row stays exactly as the vision model produced it
+    assert books[0] == {"title": "Válka s mloky", "author": "Karel Čapek", "confidence": "high"}
+    assert stats["no_candidate"] == 1
+
+
+def test_verify_shelf_books_uses_cache(monkeypatch) -> None:
+    fake_redis = _FakeVerifyRedis()
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: fake_redis)
+
+    call_count = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        call_count["n"] += 1
+        return httpx.Response(200, json={"docs": [
+            {"key": "/works/OL1W", "title": "Válka s mloky", "author_name": ["Karel Čapek"]},
+        ]})
+
+    _patch_open_library_transport(monkeypatch, handler)
+
+    books1: list[dict[str, object]] = [{"title": "Válka s mloky", "author": "Karel Čapek"}]
+    books2: list[dict[str, object]] = [{"title": "Válka s mloky", "author": "Karel Čapek"}]
+
+    celery_app.asyncio.run(celery_app._verify_shelf_books_against_catalog(books1))
+    celery_app.asyncio.run(celery_app._verify_shelf_books_against_catalog(books2))
+
+    assert call_count["n"] == 1
 def test_open_library_title_search_returns_edition_isbn_and_description(monkeypatch) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/search.json":

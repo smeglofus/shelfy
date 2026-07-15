@@ -306,6 +306,9 @@ export interface ScannedBookItem {
   isbn: string | null
   observed_text: string | null
   confidence: 'auto' | 'needs_review'
+  // Closest catalog record on a partial match — one-click correction in review
+  suggested_title?: string | null
+  suggested_author?: string | null
 }
 
 export interface ShelfScanResponse {
