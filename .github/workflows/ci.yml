@@ -111,6 +111,11 @@ jobs:
 
       - name: Pytest
         working-directory: worker
+        env:
+          # Shelf-scan tests mock the Gemini HTTP call itself, but the code
+          # under test bails out early when no API key is configured (locally
+          # it comes from worker/.env, which is not in the repo).
+          GEMINI_API_KEY: test-key
         run: pytest tests -v --tb=short
 
   # ── Backend tests (Pytest + coverage gate) ────────────────────────────────
