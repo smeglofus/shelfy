@@ -82,6 +82,37 @@ jobs:
       - name: Verify OpenAPI artifact is up to date
         run: git diff --exit-code docs/openapi.yaml
 
+  # ── Worker tests (Pytest, no DB — external I/O is monkeypatched) ──────────
+  worker-tests:
+    name: worker / tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: worker/requirements*.txt
+
+      # pyzbar needs the zbar shared library at import time (mirrors the
+      # worker Dockerfile).
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libzbar0
+
+      - name: Install worker dependencies
+        working-directory: worker
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Pytest
+        working-directory: worker
+        run: pytest tests -v --tb=short
+
   # ── Backend tests (Pytest + coverage gate) ────────────────────────────────
   # Runs unconditionally in parallel with backend-lint — a lint failure never
   # prevents tests from producing a result (which was the original blind spot).
