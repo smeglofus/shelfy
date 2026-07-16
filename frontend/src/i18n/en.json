@@ -35,7 +35,8 @@
     "borrower_saved": "Borrower saved.",
     "borrowers_merged": "Borrowers merged.",
     "bulk_anonymized_one": "1 borrower anonymized.",
-    "bulk_anonymized_other": "{{count}} borrowers anonymized."
+    "bulk_anonymized_other": "{{count}} borrowers anonymized.",
+    "enrich_batch_started": "Enriching {{count}} books in the background — this takes a few minutes and updates progressively."
   },
   "bulk": {
     "selected": "{{count}} selected",

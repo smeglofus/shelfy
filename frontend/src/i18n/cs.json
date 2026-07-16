@@ -36,7 +36,8 @@
     "borrowers_merged": "Dlužníci sloučeni.",
     "bulk_anonymized_one": "Anonymizován 1 dlužník.",
     "bulk_anonymized_few": "Anonymizováni {{count}} dlužníci.",
-    "bulk_anonymized_other": "Anonymizováno {{count}} dlužníků."
+    "bulk_anonymized_other": "Anonymizováno {{count}} dlužníků.",
+    "enrich_batch_started": "Obohacení {{count}} knih běží na pozadí — potrvá pár minut a projevuje se průběžně."
   },
   "bulk": {
     "selected": "{{count}} vybráno",

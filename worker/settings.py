@@ -23,11 +23,14 @@ class WorkerSettings(BaseSettings):
     sentry_dsn: str | None = None
     environment: str = "production"
 
-    # Enrichment rate limiting (SaaS-friendly defaults). The per-minute cap
-    # also keeps us far below Open Library's identified 3 req/s limit.
-    enrichment_delay_seconds: float = 1.5         # delay between API calls per book
-    enrichment_max_per_minute: int = 30           # max enrichment API calls per minute
-    enrichment_max_per_day: int = 900             # max enrichment API calls per day
+    # Enrichment rate limiting. Open Library allows 3 req/s with an
+    # identifying User-Agent; one book costs at most ~2 provider calls
+    # (primary + gap-fill), and the loop is sequential, so 0.5 s between
+    # books stays well under that. The old 1.5 s / 30 per-minute defaults
+    # made "enrich all" on a ~100-book library take 5+ silent minutes.
+    enrichment_delay_seconds: float = 0.5         # delay between books
+    enrichment_max_per_minute: int = 100          # max enrichment lookups per minute
+    enrichment_max_per_day: int = 2000            # max enrichment lookups per day
 
     # Shelf-scan verification against Open Library (fuzzy match of scanned
     # title/author; adopts near-identical catalog forms, suggests partial
