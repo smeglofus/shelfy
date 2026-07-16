@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.library import LibraryRole
 
@@ -35,6 +35,18 @@ class UpdateLibraryMemberRequest(BaseModel):
 
 
 class UpdateLibraryRequest(BaseModel):
-    """Owner-only library settings (#309). Single field for now."""
+    """Owner-only library settings: wishlist toggle (#309) and rename.
+    Both fields optional — at least one must be provided."""
 
-    wishlist_enabled: bool
+    name: str | None = Field(default=None, max_length=200)
+    wishlist_enabled: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Library name must not be empty")
+        return stripped

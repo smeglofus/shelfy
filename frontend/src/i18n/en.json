@@ -15,7 +15,8 @@
     "scan_shelf": "Scan shelf",
     "actions": "Actions",
     "logout": "Logout",
-    "wishlist": "Wishlist"
+    "wishlist": "Wishlist",
+    "go_home": "Shelfy — go to books"
   },
   "toast": {
     "book_saved": "Changes saved successfully.",
@@ -592,7 +593,13 @@
     "creating": "Creating…",
     "create_success": "Library created and set as active.",
     "create_error": "Could not create the library.",
-    "create_error_403": "You've reached your plan's library limit. Upgrade to create more — see Settings → Billing."
+    "create_error_403": "You've reached your plan's library limit. Upgrade to create more — see Settings → Billing.",
+    "rename_title": "Library name",
+    "rename_desc": "Shown in the header above your book list.",
+    "rename_save": "Save",
+    "renaming": "Saving…",
+    "rename_success": "Library name updated.",
+    "rename_error": "Could not update the library name."
   },
   "billing": {
     "section_title": "Plan & Usage",

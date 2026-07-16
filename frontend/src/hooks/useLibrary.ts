@@ -6,10 +6,11 @@ import {
   listLibraries,
   listLibraryMembers,
   removeLibraryMember,
+  updateLibrary,
   updateLibraryMember,
 } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import type { AddMemberRequest, CreateLibraryRequest, LibraryRole } from '../lib/types'
+import type { AddMemberRequest, CreateLibraryRequest, LibraryRole, UpdateLibraryRequest } from '../lib/types'
 
 export function useLibraries() {
   const { isAuthenticated } = useAuth()
@@ -24,6 +25,18 @@ export function useCreateLibrary() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: CreateLibraryRequest) => createLibrary(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['libraries'] })
+    },
+  })
+}
+
+/** Owner-only library settings (rename, …). Refreshes the libraries payload
+ *  so the header and settings react immediately. */
+export function useUpdateLibrary(libraryId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UpdateLibraryRequest) => updateLibrary(libraryId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['libraries'] })
     },

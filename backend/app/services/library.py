@@ -80,6 +80,16 @@ async def seed_sample_library(session: AsyncSession, library: Library) -> None:
     session.add_all(books)
 
 
+async def rename_library(session: AsyncSession, library_id: uuid.UUID, name: str) -> Library:
+    library = await session.get(Library, library_id)
+    if library is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Library not found")
+    library.name = name
+    await session.commit()
+    await session.refresh(library)
+    return library
+
+
 async def list_user_libraries(session: AsyncSession, user_id: uuid.UUID) -> list[tuple[Library, LibraryRole]]:
     res = await session.execute(
         select(Library, LibraryMember.role)

@@ -10,6 +10,8 @@ import { SkeletonBookGrid } from '../components/Skeleton'
 import { StatBar } from '../components/StatBar'
 import { useBulkDeleteBooks, useBulkMoveBooks, useBulkUpdateStatus, useBookCounts, useBooks, useClearSampleLibrary, useDeleteBook, useJobStatus } from '../hooks/useBooks'
 import { useDebounce } from '../hooks/useDebounce'
+import { useLibraries } from '../hooks/useLibrary'
+import { useLibraryStore } from '../store/useLibraryStore'
 import { useLocations } from '../hooks/useLocations'
 import { useOnboardingStatus } from '../hooks/useOnboarding'
 import { useIsDemoMode } from '../features/demo/DemoContext'
@@ -220,11 +222,19 @@ export function BooksPage() {
 
   const booksCountLabel = t('books.books_count')
 
+  // Header eyebrow shows the active library's real name; falls back to the
+  // generic label while loading (and in demo, which has no libraries API).
+  const { data: headerLibraries } = useLibraries()
+  const activeLibraryId = useLibraryStore((s) => s.activeLibraryId)
+  const activeLibraryName =
+    (headerLibraries?.find((lib) => lib.id === activeLibraryId) ?? headerLibraries?.[0])?.name
+    ?? t('books.title')
+
   return (
     <div className="md-max-w-4xl sh-page-enter" style={{ margin: '0 auto', width: '100%' }}>
       <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('books.title')}</p>
+          <p className="text-small" style={{ color: 'var(--sh-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{activeLibraryName}</p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
             <span className="text-display">{total}</span>
             <span className="text-h3" style={{ color: 'var(--sh-text-muted)', margin: 0, fontWeight: 400 }}>{booksCountLabel}</span>

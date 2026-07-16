@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
@@ -27,6 +27,7 @@ from app.services.library import (
     list_members,
     list_user_libraries,
     remove_member,
+    rename_library,
     require_library_role,
     update_member_role,
 )
@@ -75,9 +76,19 @@ async def update_library(
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> LibraryResponse:
-    """Owner-only library settings — currently just the wishlist toggle (#309)."""
+    """Owner-only library settings — wishlist toggle (#309) and rename."""
     member = await require_library_role(session, current_user.id, library_id, LibraryRole.OWNER)
-    library = await set_wishlist_enabled(session, library_id, payload.wishlist_enabled)
+    if payload.name is None and payload.wishlist_enabled is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide at least one field to update",
+        )
+    library: Library | None = None
+    if payload.name is not None:
+        library = await rename_library(session, library_id, payload.name)
+    if payload.wishlist_enabled is not None:
+        library = await set_wishlist_enabled(session, library_id, payload.wishlist_enabled)
+    assert library is not None  # one of the branches above always ran
     return LibraryResponse(
         id=library.id,
         name=library.name,
