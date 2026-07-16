@@ -11,4 +11,9 @@ scrape_configs:
       # Backend runs in k3s since 2026-07-12; scraped via the LAN-only NodePort
       # (infra/k8s/overlays/prod/backend-nodeport.yaml). Interim until the
       # monitoring stack itself moves into the cluster.
-      - targets: ["192.168.88.3:30800"]
+      #
+      # host.docker.internal resolves to the host via the compose
+      # ``extra_hosts: host-gateway`` entry — a hardcoded LAN IP broke here
+      # once already when DHCP handed the box a new address (.3 → .33) and
+      # the scrape silently died with "no route to host".
+      - targets: ["host.docker.internal:30800"]
