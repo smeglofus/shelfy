@@ -50,7 +50,7 @@ test.describe('Onboarding wizard', () => {
 
     // If library is empty, wizard should appear
     // If library has books, wizard won't show (by design)
-    const hasBooks = await page.getByText(/Moje Knihovna|My Library/i).isVisible().catch(() => false)
+    const hasBooks = await page.getByText(/knihovna|library/i).isVisible().catch(() => false)
     if (hasBooks) {
       // Check if total is 0 by looking for empty state
       const isEmpty = await page.locator('.sh-empty-state').isVisible().catch(() => false)

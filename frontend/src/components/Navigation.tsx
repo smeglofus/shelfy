@@ -283,10 +283,18 @@ export function Navigation() {
           zIndex: 100,
         }}
       >
-        <div style={{ padding: '0 16px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button
+          type="button"
+          onClick={() => navigate(prefix(ROUTES.books))}
+          aria-label={t('nav.go_home', 'Shelfy — go to books')}
+          style={{
+            padding: '0 16px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12,
+            background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+          }}
+        >
           <div style={{ color: 'var(--sh-primary)' }}><BookshelfInlineIcon size={24} /></div>
           <h2 className="text-h3" style={{ margin: 0 }}>Shelfy</h2>
-        </div>
+        </button>
 
         {navGroup.map((tab) => {
           const active = isActive(tab.path)

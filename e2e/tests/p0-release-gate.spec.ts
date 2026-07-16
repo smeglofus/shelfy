@@ -141,7 +141,7 @@ test(`${P0} books page renders without blank screen`, async ({ page }) => {
 
   // Title is in a <p> element (not a heading) — getByText is the right selector
   // Accept both English and Czech (cs) locale strings
-  await expect(page.getByText(/Moje Knihovna|My Library/i).first()).toBeVisible()
+  await expect(page.getByText(/knihovna|library/i).first()).toBeVisible()
   expect(errors).toEqual([])
 })
 

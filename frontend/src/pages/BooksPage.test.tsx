@@ -13,6 +13,7 @@ import type { Book, BookListParams, BookListResponse, Location } from '../lib/ty
 
 vi.mock('../lib/api', () => ({
   listBooksForShelf: vi.fn(),  // still needed for BookshelfViewPage hook
+  listLibraries: vi.fn().mockResolvedValue([]),
   listBooks: vi.fn(),
   createBook: vi.fn(),
   updateBook: vi.fn(),

@@ -80,7 +80,7 @@ test('books route renders (no blank screen)', async ({ page }) => {
   // auth unnecessarily and is the source of CI flakiness this file was fixed
   // to eliminate.
   await expect(page).toHaveURL(/\/books$/)
-  await expect(page.getByText(/Moje Knihovna|My Library/i).first()).toBeVisible()
+  await expect(page.getByText(/knihovna|library/i).first()).toBeVisible()
   expect(errors).toEqual([])
 })
 

@@ -9,7 +9,7 @@ import { ImportCsvModal } from '../components/ImportCsvModal'
 import { Modal } from '../components/Modal'
 import { useEnrichAll } from '../hooks/useEnrich'
 import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
-import { useAddMember, useCreateLibrary, useLibraries, useLibraryMembers, useRemoveMember, useUpdateMember } from '../hooks/useLibrary'
+import { useAddMember, useCreateLibrary, useLibraries, useLibraryMembers, useRemoveMember, useUpdateLibrary, useUpdateMember } from '../hooks/useLibrary'
 import { useToggleWishlist } from '../hooks/useWishlist'
 import { useResetOnboarding } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
@@ -75,6 +75,26 @@ function LibraryManagement() {
   const updateMemberMutation = useUpdateMember(activeLibraryId ?? '')
   const removeMemberMutation = useRemoveMember(activeLibraryId ?? '')
   const toggleWishlistMutation = useToggleWishlist(activeLibraryId ?? '')
+  const updateLibraryMutation = useUpdateLibrary(activeLibraryId ?? '')
+
+  /* Rename form state — seeded from the active library, reset on switch. */
+  const [libraryName, setLibraryName] = useState('')
+  useEffect(() => {
+    setLibraryName(activeLibrary?.name ?? '')
+  }, [activeLibrary?.id, activeLibrary?.name])
+
+  function handleRenameLibrary(e: FormEvent) {
+    e.preventDefault()
+    const name = libraryName.trim()
+    if (!name || name === activeLibrary?.name) return
+    updateLibraryMutation.mutate(
+      { name },
+      {
+        onSuccess: () => showSuccess(t('library.rename_success')),
+        onError: (err) => showError(formatApiError(err) || t('library.rename_error')),
+      },
+    )
+  }
 
   function handleWishlistToggle(enabled: boolean) {
     toggleWishlistMutation.mutate(
@@ -263,6 +283,44 @@ function LibraryManagement() {
           </form>
         )}
       </div>
+
+      {/* Rename — owners only; the name shows in the books-page header. */}
+      {activeLibrary && isOwner && (
+        <form
+          onSubmit={handleRenameLibrary}
+          className='stg-row'
+          data-testid='library-rename-row'
+          style={{ marginTop: 16 }}
+        >
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('library.rename_title')}</p>
+            <p className='stg-row-desc'>{t('library.rename_desc')}</p>
+          </div>
+          <div className='stg-row-control' style={{ display: 'flex', gap: 8 }}>
+            <input
+              className='sh-input'
+              value={libraryName}
+              onChange={(e) => setLibraryName(e.target.value)}
+              aria-label='library-name'
+              maxLength={200}
+              required
+              style={{ minWidth: 180 }}
+            />
+            <button
+              type='submit'
+              className='sh-btn-primary'
+              disabled={
+                updateLibraryMutation.isPending
+                || !libraryName.trim()
+                || libraryName.trim() === activeLibrary.name
+              }
+              style={{ height: 38 }}
+            >
+              {updateLibraryMutation.isPending ? t('library.renaming') : t('library.rename_save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Wishlist toggle (#309) — owners only; viewers/editors just follow
           the flag via the nav item. */}

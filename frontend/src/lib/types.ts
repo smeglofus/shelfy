@@ -418,7 +418,9 @@ export interface Library {
 }
 
 export interface UpdateLibraryRequest {
-  wishlist_enabled: boolean
+  /** New library name (owner only). */
+  name?: string
+  wishlist_enabled?: boolean
 }
 
 export interface CreateLibraryRequest {
