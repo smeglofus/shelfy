@@ -64,11 +64,12 @@ export async function login(page: Page, alreadyOnLoginPage = false): Promise<voi
     await onboardingModal.waitFor({ state: 'hidden' })
   }
 
-  // "My Library" / "Moje Knihovna" (cs locale) is in a <p>, not a heading.
+  // The header eyebrow shows the active library's real name (fresh users get
+  // "<prefix> library"), falling back to the i18n label — match both.
   // Only assert it when login landed on /books; return-path logins may land on
   // another protected route such as /settings or /bookshelf?tab=locations.
   if (/\/books$/.test(new URL(page.url()).pathname)) {
-    await expect(page.getByText(/Moje Knihovna|My Library/i).first()).toBeVisible()
+    await expect(page.getByText(/knihovna|library/i).first()).toBeVisible()
   }
 }
 

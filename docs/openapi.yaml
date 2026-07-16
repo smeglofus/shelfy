@@ -7761,17 +7761,33 @@
       },
       "UpdateLibraryRequest": {
         "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "wishlist_enabled": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Wishlist Enabled"
           }
         },
         "type": "object",
-        "required": [
-          "wishlist_enabled"
-        ],
         "title": "UpdateLibraryRequest",
-        "description": "Owner-only library settings (#309). Single field for now."
+        "description": "Owner-only library settings: wishlist toggle (#309) and rename.\nBoth fields optional — at least one must be provided."
       },
       "UploadResponse": {
         "properties": {

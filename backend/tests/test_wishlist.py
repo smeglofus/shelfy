@@ -388,3 +388,64 @@ async def test_only_owner_toggles_wishlist_and_disabled_blocks_api(
 
         ok = await client.get("/api/v1/wishlist", headers={**owner_headers, **lib_header})
         assert ok.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_owner_renames_library(
+    test_session: async_sessionmaker[AsyncSession],
+) -> None:
+    async with test_session() as session:
+        owner = await _create_user(session, "owner@example.com")
+        editor = await _create_user(session, "editor@example.com")
+        lib = await _create_library(session, owner, "Stará knihovna")
+        await _add_member(session, lib, editor, LibraryRole.EDITOR)
+
+    async with _client() as client:
+        owner_headers = await _login(client, "owner@example.com")
+        editor_headers = await _login(client, "editor@example.com")
+
+        # Non-owner cannot rename.
+        forbidden = await client.patch(
+            f"/api/v1/libraries/{lib.id}",
+            json={"name": "Hacknutá"},
+            headers=editor_headers,
+        )
+        assert forbidden.status_code == 403
+
+        # Owner renames — response and the libraries payload reflect it.
+        renamed = await client.patch(
+            f"/api/v1/libraries/{lib.id}",
+            json={"name": "  Rodinná knihovna  "},
+            headers=owner_headers,
+        )
+        assert renamed.status_code == 200
+        assert renamed.json()["name"] == "Rodinná knihovna"
+
+        libraries = await client.get("/api/v1/libraries", headers=owner_headers)
+        assert libraries.json()[0]["name"] == "Rodinná knihovna"
+
+        # Whitespace-only name is rejected by schema validation.
+        empty = await client.patch(
+            f"/api/v1/libraries/{lib.id}",
+            json={"name": "   "},
+            headers=owner_headers,
+        )
+        assert empty.status_code == 422
+
+        # Empty payload → nothing to update.
+        nothing = await client.patch(
+            f"/api/v1/libraries/{lib.id}",
+            json={},
+            headers=owner_headers,
+        )
+        assert nothing.status_code == 422
+
+        # Rename and wishlist toggle can ride in one request.
+        both = await client.patch(
+            f"/api/v1/libraries/{lib.id}",
+            json={"name": "Domácí", "wishlist_enabled": False},
+            headers=owner_headers,
+        )
+        assert both.status_code == 200
+        assert both.json()["name"] == "Domácí"
+        assert both.json()["wishlist_enabled"] is False

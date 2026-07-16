@@ -20,6 +20,7 @@ vi.mock('../contexts/AuthContext', () => ({
 vi.mock('../lib/api', () => ({
   listBooks: vi.fn(),
   listBooksForShelf: vi.fn(),
+  listLibraries: vi.fn().mockResolvedValue([]),
   getBook: vi.fn(),
   createBook: vi.fn(),
   updateBook: vi.fn(),

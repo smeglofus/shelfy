@@ -15,7 +15,8 @@
     "scan_shelf": "Skenovat polici",
     "actions": "Akce",
     "logout": "Odhlásit",
-    "wishlist": "Wishlist"
+    "wishlist": "Wishlist",
+    "go_home": "Shelfy — přejít na knihy"
   },
   "toast": {
     "book_saved": "Změny uloženy.",
@@ -519,7 +520,13 @@
     "creating": "Vytvářím…",
     "create_success": "Knihovna byla vytvořena a přepnuta jako aktivní.",
     "create_error": "Knihovnu se nepodařilo vytvořit.",
-    "create_error_403": "Dosáhl jsi limitu knihoven svého tarifu. Vyšší tarif umožní více knihoven — mrkni do Nastavení → Předplatné."
+    "create_error_403": "Dosáhl jsi limitu knihoven svého tarifu. Vyšší tarif umožní více knihoven — mrkni do Nastavení → Předplatné.",
+    "rename_title": "Název knihovny",
+    "rename_desc": "Zobrazuje se v hlavičce nad seznamem knih.",
+    "rename_save": "Uložit",
+    "renaming": "Ukládám…",
+    "rename_success": "Název knihovny byl změněn.",
+    "rename_error": "Název se nepodařilo změnit."
   },
   "billing": {
     "section_title": "Plán & Využití",
