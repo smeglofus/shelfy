@@ -4023,7 +4023,7 @@
           "libraries"
         ],
         "summary": "Update Library",
-        "description": "Owner-only library settings — currently just the wishlist toggle (#309).",
+        "description": "Owner-only library settings — wishlist toggle (#309) and rename.",
         "operationId": "update_library_api_v1_libraries__library_id__patch",
         "security": [
           {
