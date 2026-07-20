@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '../lib/routes'
+import { SUPPORT_CONTACT_EMAIL } from '../lib/legal'
 import { useAuth } from '../contexts/AuthContext'
 import { useLibraries } from '../hooks/useLibrary'
 import { useLibraryStore } from '../store/useLibraryStore'
@@ -370,6 +371,18 @@ export function Navigation() {
               <IconLogout size={20} />
               <span>{t('nav.logout', 'Logout')}</span>
             </button>
+            <a
+              href={`mailto:${SUPPORT_CONTACT_EMAIL}?subject=${encodeURIComponent('Shelfy — zpětná vazba')}`}
+              data-testid="nav-feedback"
+              style={{
+                padding: '6px 16px',
+                fontSize: 12,
+                color: 'var(--sh-text-muted)',
+                textDecoration: 'none',
+              }}
+            >
+              {t('nav.feedback')}
+            </a>
           </>
         )}
       </nav>
