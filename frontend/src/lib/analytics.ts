@@ -20,18 +20,27 @@
 
 import type { PostHog } from 'posthog-js'
 
+import { hasAnalyticsConsent } from './consent'
+
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 const POSTHOG_HOST = (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://eu.posthog.com'
 
 // Holds the PostHog instance after initAnalytics() resolves.
 let _ph: PostHog | undefined
+// Guards against double-init (called both on load and when consent is granted).
+let _initStarted = false
 
 /**
- * Initialize PostHog. Called once from main.tsx.
- * Safe to call when VITE_POSTHOG_KEY is absent — becomes a no-op.
+ * Initialize PostHog — only when a key is configured AND the user has opted in
+ * to analytics (see `consent.ts`). Called on load from main.tsx (no-op until
+ * consent) and again from the consent banner / settings when consent is granted.
+ * Safe and idempotent: no-op without a key, without consent, or if already started.
  */
 export async function initAnalytics(): Promise<void> {
   if (!POSTHOG_KEY) return
+  if (!hasAnalyticsConsent()) return
+  if (_initStarted) return
+  _initStarted = true
 
   try {
     const { default: posthog } = await import('posthog-js')
@@ -40,14 +49,16 @@ export async function initAnalytics(): Promise<void> {
       // Only create profiles for identified users — avoids anonymous event spam
       // and reduces PII stored for GDPR compliance.
       person_profiles: 'identified_only',
-      // localStorage instead of cookies — GDPR-friendly, no consent banner needed.
+      // localStorage instead of cookies. This still counts as non-essential
+      // device storage under ePrivacy, so it runs only after opt-in consent
+      // (gated above via hasAnalyticsConsent()).
       persistence: 'localStorage',
       // Disable auto-capture of clicks/forms — we track only explicit events.
       autocapture: false,
       capture_pageview: true,
       capture_pageleave: true,
-      // Session Replay — GDPR-conservative: enabled only when a key is present
-      // (this whole init is behind `if (!POSTHOG_KEY) return`, so no-op without one).
+      // Session Replay — runs only after opt-in consent (init is gated on
+      // hasAnalyticsConsent() above, so it never records without consent).
       // Mask ALL text and ALL inputs so recordings never carry book titles,
       // e-mails or any other content — only layout/interaction is captured.
       disable_session_recording: false,
@@ -59,6 +70,21 @@ export async function initAnalytics(): Promise<void> {
     _ph = posthog
   } catch {
     // Gracefully ignore load failures (network block, ad-blocker, etc.)
+    _initStarted = false
+  }
+}
+
+/**
+ * Stop analytics after a consent withdrawal. Halts capturing + session
+ * recording for the rest of this page session; the denied choice in
+ * `consent.ts` keeps it off on subsequent loads.
+ */
+export function disableAnalytics(): void {
+  try {
+    _ph?.stopSessionRecording?.()
+    _ph?.opt_out_capturing?.()
+  } catch {
+    // No-op if PostHog never initialized.
   }
 }
 

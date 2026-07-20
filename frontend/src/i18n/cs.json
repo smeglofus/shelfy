@@ -254,6 +254,19 @@
     "privacy_link": "Zásady ochrany soukromí",
     "terms_link": "Podmínky použití"
   },
+  "consent": {
+    "aria_label": "Souhlas s analytikou",
+    "message": "Shelfy používá produktovou analytiku (PostHog vč. anonymizovaného, maskovaného záznamu relací), aby se dala vylepšovat. Nezbytné funkce pro provoz běží vždy.",
+    "learn_more": "Více v Zásadách soukromí",
+    "accept": "Přijmout",
+    "decline": "Odmítnout",
+    "settings_title": "Analytika a soukromí",
+    "settings_description": "Souhlas s produktovou analytikou (PostHog vč. anonymizovaného záznamu relací). Můžeš ho kdykoliv změnit.",
+    "status_granted": "Zapnuto",
+    "status_denied": "Vypnuto",
+    "enable": "Zapnout",
+    "disable": "Vypnout"
+  },
   "app": {
     "update_available": "Je dostupná nová verze Shelfy — klikni pro aktualizaci.",
     "offline_ready": "Shelfy je připravené i offline.",

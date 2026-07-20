@@ -13,7 +13,8 @@ import { useAddMember, useCreateLibrary, useLibraries, useLibraryMembers, useRem
 import { useToggleWishlist } from '../hooks/useWishlist'
 import { useResetOnboarding } from '../hooks/useOnboarding'
 import { useToastStore } from '../lib/toast-store'
-import { trackEvent } from '../lib/analytics'
+import { disableAnalytics, initAnalytics, trackEvent } from '../lib/analytics'
+import { getConsent, setConsent } from '../lib/consent'
 import type { LibraryRole } from '../lib/types'
 import { ROUTES } from '../lib/routes'
 import { useAuth } from '../contexts/AuthContext'
@@ -636,6 +637,19 @@ export function SettingsPage() {
   const [exportingData, setExportingData] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [analyticsConsent, setAnalyticsConsent] = useState(() => getConsent() === 'granted')
+
+  function toggleAnalyticsConsent() {
+    if (analyticsConsent) {
+      setConsent('denied')
+      disableAnalytics()
+      setAnalyticsConsent(false)
+    } else {
+      setConsent('granted')
+      void initAnalytics()
+      setAnalyticsConsent(true)
+    }
+  }
 
   const isOAuthOnly = user?.has_local_password === false
 
@@ -861,6 +875,27 @@ export function SettingsPage() {
               }}
             >
               {t('onboarding.settings_reset')}
+            </button>
+          </div>
+        </div>
+
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('consent.settings_title')}</p>
+            <p className='stg-row-desc'>{t('consent.settings_description')}</p>
+          </div>
+          <div className='stg-row-control' style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className='stg-row-desc' style={{ margin: 0 }}>
+              {analyticsConsent ? t('consent.status_granted') : t('consent.status_denied')}
+            </span>
+            <button
+              type='button'
+              className='sh-btn-secondary'
+              style={{ fontSize: 13 }}
+              onClick={toggleAnalyticsConsent}
+              data-testid='toggle-analytics-consent'
+            >
+              {analyticsConsent ? t('consent.disable') : t('consent.enable')}
             </button>
           </div>
         </div>

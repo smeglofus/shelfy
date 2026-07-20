@@ -7,6 +7,7 @@ import { MergeUndoToast } from './components/MergeUndoToast'
 import { Toast } from './components/Toast'
 import { Navigation } from './components/Navigation'
 import { UpgradePrompt } from './components/UpgradePrompt'
+import { ConsentBanner } from './components/ConsentBanner'
 import { useToastStore } from './lib/toast-store'
 import { useAuth } from './contexts/AuthContext'
 
@@ -181,6 +182,7 @@ function AppShell() {
       )}
       <Toast />
       <MergeUndoToast />
+      <ConsentBanner />
     </div>
   )
 }
