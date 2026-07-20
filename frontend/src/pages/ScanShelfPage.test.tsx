@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ScanShelfPage } from './ScanShelfPage'
+import { trackEvent } from '../lib/analytics'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,46 @@ function setReviewDraft(books: ReturnType<typeof makeReviewBook>[]) {
 
 async function restoreDraft() {
   await userEvent.click(screen.getByText('scan.restore_draft'))
+}
+
+// A draft parked on the `scan` step with one completed segment, so restoring it
+// lands on the scan step with the "go to review" button already available.
+function setScanDraftWithDoneSegment() {
+  const draft = {
+    version: 1,
+    step: 'scan',
+    selRoom: 'Living Room',
+    selFurniture: 'Bookshelf',
+    selShelf: 'Shelf 1',
+    newRoom: '',
+    newFurniture: '',
+    newShelf: '',
+    showNewLocation: false,
+    segments: [
+      {
+        jobId: 'job-1',
+        photoIndex: 0,
+        status: 'done',
+        books: [
+          {
+            title: 'Alpha',
+            author: null,
+            isbn: null,
+            observed_text: 'Alpha',
+            confidence: 'high',
+            suggested_title: null,
+            suggested_author: null,
+          },
+        ],
+      },
+    ],
+    editableBooks: [],
+    locationId: 'loc-1',
+    scanMode: 'replace',
+    appendAfterBookId: null,
+    savedAt: new Date().toISOString(),
+  }
+  localStorage.setItem(SCAN_DRAFT_KEY, JSON.stringify(draft))
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -334,5 +375,57 @@ describe('ScanShelfPage – review step', () => {
       { position: 2, title: 'Inserted', author: null, isbn: null },
       { position: 3, title: 'Gamma', author: null, isbn: null },
     ])
+  })
+})
+
+// ── Funnel analytics (BOD 1 + BOD 3) ────────────────────────────────────────
+describe('ScanShelfPage – funnel analytics', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    cleanup()
+    localStorage.clear()
+  })
+
+  it('fires scan_opened once on mount', () => {
+    renderWithProviders(<ScanShelfPage />)
+    const opened = vi.mocked(trackEvent).mock.calls.filter(([e]) => e === 'scan_opened')
+    expect(opened).toHaveLength(1)
+  })
+
+  it('fires scan_review_reached once when advancing to review, not on repeat visits', async () => {
+    setScanDraftWithDoneSegment()
+    renderWithProviders(<ScanShelfPage />)
+    await restoreDraft()
+
+    await userEvent.click(screen.getByRole('button', { name: 'scan.go_to_review' }))
+    expect(vi.mocked(trackEvent).mock.calls.filter(([e]) => e === 'scan_review_reached')).toHaveLength(1)
+
+    // Go back to scan and return to review — must not fire again.
+    await userEvent.click(screen.getByRole('button', { name: /scan\.back_to_scan/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'scan.go_to_review' }))
+    expect(vi.mocked(trackEvent).mock.calls.filter(([e]) => e === 'scan_review_reached')).toHaveLength(1)
+  })
+
+  it('fires scan_abandoned on unmount when review was reached but nothing was saved', async () => {
+    setScanDraftWithDoneSegment()
+    const { unmount } = renderWithProviders(<ScanShelfPage />)
+    await restoreDraft()
+    await userEvent.click(screen.getByRole('button', { name: 'scan.go_to_review' }))
+
+    vi.mocked(trackEvent).mockClear()
+    unmount()
+
+    expect(vi.mocked(trackEvent).mock.calls.filter(([e]) => e === 'scan_abandoned')).toHaveLength(1)
+  })
+
+  it('does not fire scan_abandoned on unmount when review was never reached', () => {
+    const { unmount } = renderWithProviders(<ScanShelfPage />)
+    vi.mocked(trackEvent).mockClear()
+    unmount()
+    expect(vi.mocked(trackEvent).mock.calls.filter(([e]) => e === 'scan_abandoned')).toHaveLength(0)
   })
 })

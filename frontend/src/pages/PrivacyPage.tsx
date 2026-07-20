@@ -128,6 +128,12 @@ export function PrivacyPage() {
                 <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
               </tr>
               <tr>
+                <td style={TD}>Záznam relací</td>
+                <td style={TD}>Anonymizovaný záznam relací (PostHog Session Replay) — veškerý text i vstupy jsou maskované, nezaznamenávají se tak názvy knih, e-maily ani jiný obsah</td>
+                <td style={TD}>Diagnostika chyb a vylepšování použitelnosti</td>
+                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+              </tr>
+              <tr>
                 <td style={TD}>Technické logy</td>
                 <td style={TD}>IP adresa, user-agent, chybové záznamy (Sentry)</td>
                 <td style={TD}>Bezpečnost, diagnostika</td>
@@ -241,6 +247,14 @@ export function PrivacyPage() {
             Totéž platí pro interaktivní ukázku (demo) na úvodní stránce: měříme jen
             agregované, neosobní události (např. počet výsledků hledání nebo počet přidaných knih),
             <strong>nikdy</strong> názvy knih, fotografie ani text vyhledávání.
+          </p>
+          <p style={P}>
+            V rámci PostHog využíváme také <strong>záznam relací (Session Replay)</strong> pro
+            diagnostiku chyb a vylepšování použitelnosti. Záznam je <strong>anonymizovaný</strong>:
+            veškerý text i všechna vstupní pole jsou při nahrávání maskované, takže se
+            <strong> nezaznamenávají</strong> názvy knih, e-maily ani žádný jiný obsah, který
+            zadáte — pouze rozvržení stránky a interakce. I zde je právním základem oprávněný
+            zájem správce (čl. 6/1f GDPR) a proti zpracování můžete vznést námitku.
           </p>
           <p style={P}>
             PostHog pracuje <strong>bez sledovacích cookies</strong>. Pro persistenci analytického

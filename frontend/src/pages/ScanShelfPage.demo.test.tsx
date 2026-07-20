@@ -39,6 +39,7 @@ vi.mock('../lib/toast-store', () => ({
 }))
 
 import * as api from '../lib/api'
+import { trackEvent } from '../lib/analytics'
 import { ScanShelfPage } from './ScanShelfPage'
 import { DemoModeProvider } from '../features/demo/DemoContext'
 import { useDemoStore } from '../store/useDemoStore'
@@ -109,5 +110,21 @@ describe('ScanShelfPage — demo mode (#286)', () => {
     expect(api.scanShelf).not.toHaveBeenCalled()
     expect(api.getShelfScanResult).not.toHaveBeenCalled()
     expect(api.confirmShelfScan).not.toHaveBeenCalled()
+
+    // Real product/funnel events must never fire in the demo — the demo has its
+    // own analytics (demoAnalytics.ts). Guards the `if (isDemo)` branches.
+    const FUNNEL_EVENTS = [
+      'scan_opened',
+      'scan_photo_selected',
+      'scan_job_done',
+      'scan_job_failed',
+      'scan_review_reached',
+      'scan_abandoned',
+      'shelf_scanned',
+    ]
+    const firedFunnelEvents = vi.mocked(trackEvent).mock.calls
+      .map(([event]) => event)
+      .filter((event) => FUNNEL_EVENTS.includes(event))
+    expect(firedFunnelEvents).toEqual([])
   }, 20000) // multi-step wizard + simulated scan delay; generous for slow CI
 })
