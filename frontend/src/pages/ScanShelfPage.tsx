@@ -102,6 +102,34 @@ export function ScanShelfPage() {
   // Demo-only: a brief simulated "scanning" state while the canned result lands.
   const [demoScanning, setDemoScanning] = useState(false)
 
+  // ── Funnel analytics (non-demo only) ──────────────────────────────────────
+  // Refs, not state: they must not trigger re-renders and must hold the latest
+  // value inside the unmount cleanup below.
+  const isDemoRef = useRef(isDemo)
+  isDemoRef.current = isDemo
+  // `scan_review_reached` and `scan_abandoned` are fired at most once per scan.
+  const reviewReachedRef = useRef(false)
+  // Set on a successful save so unmount doesn't misreport it as abandonment.
+  const scanSavedRef = useRef(false)
+
+  // BOD 1: explicit funnel entry — one `scan_opened` per mount, non-demo only.
+  // Lets PostHog build `scan_opened → … → shelf_scanned` without relying on the
+  // fragile `$pageview` path=/scan match.
+  useEffect(() => {
+    if (isDemo) return
+    trackEvent('scan_opened')
+  }, [isDemo])
+
+  // BOD 3: `scan_abandoned` — user reached review but left without saving.
+  // Runs on unmount / route change; refs keep it from firing after a save.
+  useEffect(() => {
+    return () => {
+      if (!isDemoRef.current && reviewReachedRef.current && !scanSavedRef.current) {
+        trackEvent('scan_abandoned')
+      }
+    }
+  }, [])
+
   const { data: booksAtLocation = [] } = useBooksByLocation(locationId)
   const existingShelfBooks = [...booksAtLocation].sort((a, b) => (a.shelf_position ?? 99999) - (b.shelf_position ?? 99999))
 
@@ -117,6 +145,8 @@ export function ScanShelfPage() {
           : seg
       ))
       setActiveJobId(null)
+      // BOD 3: scan job produced a result. Count only — never titles/authors.
+      if (!isDemo) trackEvent('scan_job_done', { book_count: data.books.length })
     } else if (data.status === 'failed') {
       showError(data.error_message ?? t('scan.error_failed'))
       setSegments(prev => prev.map(seg =>
@@ -125,12 +155,17 @@ export function ScanShelfPage() {
           : seg
       ))
       setActiveJobId(null)
+      // BOD 3: scan job failed. `reason` is the server-side error message when
+      // present (no user content), omitted otherwise.
+      if (!isDemo) {
+        trackEvent('scan_job_failed', data.error_message ? { reason: data.error_message } : undefined)
+      }
     }
     // Full dependency list is safe here: the polling query refreshes
     // `activeResult.data` every ~2s, but the guard above makes non-terminal
     // re-runs a no-op, and `setActiveJobId(null)` after a terminal status
     // short-circuits the follow-up run.
-  }, [activeResult.data, activeJobId, showError, t])
+  }, [activeResult.data, activeJobId, showError, t, isDemo])
 
 
   useEffect(() => {
@@ -265,6 +300,8 @@ export function ScanShelfPage() {
     e.target.value = ''
 
     const photoIndex = segments.length
+    // BOD 3: user picked a photo to scan. Only the index — no file data.
+    if (!isDemo) trackEvent('scan_photo_selected', { photo_index: photoIndex })
     scanMutation.mutate(
       { file, locationId: locationId ?? undefined },
       {
@@ -340,7 +377,13 @@ export function ScanShelfPage() {
     }
     setEditableBooks(allBooks)
     setStep('review')
-  }, [segments])
+    // BOD 3: reached the review step. Fire once per scan (guarded by the ref),
+    // so going back to the scan step and returning doesn't double-count.
+    if (!isDemo && !reviewReachedRef.current) {
+      reviewReachedRef.current = true
+      trackEvent('scan_review_reached')
+    }
+  }, [segments, isDemo])
 
   function removeSegment(index: number) {
     setSegments(prev => prev.filter((_, i) => i !== index))
@@ -466,6 +509,9 @@ export function ScanShelfPage() {
             useDemoActivity.getState().recordScan()
             trackDemoScanComplete(validBooks.length)
           } else {
+            // Mark saved BEFORE navigating so the unmount cleanup doesn't
+            // misreport this successful scan as `scan_abandoned`.
+            scanSavedRef.current = true
             trackEvent('shelf_scanned', { book_count: validBooks.length })
           }
           clearDraft()

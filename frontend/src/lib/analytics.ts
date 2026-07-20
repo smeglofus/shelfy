@@ -46,6 +46,15 @@ export async function initAnalytics(): Promise<void> {
       autocapture: false,
       capture_pageview: true,
       capture_pageleave: true,
+      // Session Replay — GDPR-conservative: enabled only when a key is present
+      // (this whole init is behind `if (!POSTHOG_KEY) return`, so no-op without one).
+      // Mask ALL text and ALL inputs so recordings never carry book titles,
+      // e-mails or any other content — only layout/interaction is captured.
+      disable_session_recording: false,
+      session_recording: {
+        maskAllInputs: true,
+        maskTextSelector: '*',
+      },
     })
     _ph = posthog
   } catch {
