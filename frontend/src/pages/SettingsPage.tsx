@@ -17,6 +17,7 @@ import { disableAnalytics, initAnalytics, trackEvent } from '../lib/analytics'
 import { getConsent, setConsent } from '../lib/consent'
 import type { LibraryRole } from '../lib/types'
 import { ROUTES } from '../lib/routes'
+import { SUPPORT_CONTACT_EMAIL } from '../lib/legal'
 import { useAuth } from '../contexts/AuthContext'
 import { setLanguage } from '../i18n'
 import { useSettingsStore } from '../store/useSettingsStore'
@@ -853,6 +854,23 @@ export function SettingsPage() {
       {/* ── About & legal ── */}
       <div className='stg-section' data-testid='section-about'>
         <h3 className='stg-section-title'>{t('settings.about_title')}</h3>
+
+        <div className='stg-row'>
+          <div className='stg-row-label'>
+            <p className='stg-row-title'>{t('settings.feedback_title')}</p>
+            <p className='stg-row-desc'>{t('settings.feedback_description')}</p>
+          </div>
+          <div className='stg-row-control'>
+            <a
+              className='sh-btn-secondary'
+              href={`mailto:${SUPPORT_CONTACT_EMAIL}?subject=${encodeURIComponent('Shelfy — zpětná vazba')}`}
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: 13 }}
+              data-testid='feedback-link'
+            >
+              {t('settings.feedback_button')}
+            </a>
+          </div>
+        </div>
 
         <div className='stg-row'>
           <div className='stg-row-label'>

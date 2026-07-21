@@ -16,7 +16,8 @@
     "actions": "Actions",
     "logout": "Logout",
     "wishlist": "Wishlist",
-    "go_home": "Shelfy — go to books"
+    "go_home": "Shelfy — go to books",
+    "feedback": "Feedback"
   },
   "toast": {
     "book_saved": "Changes saved successfully.",
@@ -212,6 +213,9 @@
     "preferences_title": "Preferences",
     "data_title": "Data & export",
     "about_title": "About & legal",
+    "feedback_title": "Feedback",
+    "feedback_description": "Hit a bug or have an idea? Drop us a line — every message helps.",
+    "feedback_button": "Contact us",
     "dark_mode_title": "Dark mode",
     "dark_mode_description": "Theme preference is stored locally in your browser.",
     "dark_mode_on": "On",
