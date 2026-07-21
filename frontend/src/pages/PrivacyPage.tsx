@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LEGAL_DOC_EFFECTIVE_DATE, LEGAL_DOC_VERSION, LEGAL_ENTITY_ICO, LEGAL_ENTITY_NAME, LEGAL_ENTITY_SEAT, PRIVACY_CONTACT_EMAIL } from '../lib/legal'
+import { LEGAL_DOC_EFFECTIVE_DATE, LEGAL_DOC_VERSION, LEGAL_ENTITY_ICO, LEGAL_ENTITY_NAME, LEGAL_ENTITY_SEAT, SUPPORT_CONTACT_EMAIL } from '../lib/legal'
 
 const SECTION: CSSProperties = { marginBottom: 32 }
 const H2: CSSProperties = { fontSize: 18, fontWeight: 700, margin: '0 0 8px' }
@@ -67,7 +67,7 @@ export function PrivacyPage() {
               <tr><td style={{ ...TD, fontWeight: 600 }}>IČO</td><td style={TD}>{LEGAL_ENTITY_ICO}</td></tr>
               {/* TODO: doplnit sídlo po ověření s právníkem */}
               <tr><td style={{ ...TD, fontWeight: 600 }}>Sídlo</td><td style={TD}>{LEGAL_ENTITY_SEAT}</td></tr>
-              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{PRIVACY_CONTACT_EMAIL}</a></td></tr>
+              <tr><td style={{ ...TD, fontWeight: 600 }}>E-mail</td><td style={TD}><a href={`mailto:${SUPPORT_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{SUPPORT_CONTACT_EMAIL}</a></td></tr>
               <tr><td style={{ ...TD, fontWeight: 600 }}>Web</td><td style={TD}>https://shelfy.cz</td></tr>
             </tbody>
           </table>
@@ -230,7 +230,7 @@ export function PrivacyPage() {
           </ul>
           <p style={P}>
             Práva, která nelze uplatnit přímo v aplikaci, vyřídíme na základě žádosti zaslané na{' '}
-            <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{PRIVACY_CONTACT_EMAIL}</a>.
+            <a href={`mailto:${SUPPORT_CONTACT_EMAIL}`} style={{ color: 'var(--sh-primary)' }}>{SUPPORT_CONTACT_EMAIL}</a>.
             Na žádost odpovíme nejpozději do 30 dnů.
           </p>
         </div>
