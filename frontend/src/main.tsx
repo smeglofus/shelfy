@@ -23,7 +23,10 @@ if (_sentryDsn) {
         Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true }),
       ],
       tracesSampleRate: 0.1,
-      replaysSessionSampleRate: 0.05,
+      // No proactive session recording — that's non-essential and would need
+      // consent (see consent.ts). Keep only crash-triggered replay, which is
+      // tied to error debugging (legitimate interest).
+      replaysSessionSampleRate: 0,
       replaysOnErrorSampleRate: 1.0,
     })
   })

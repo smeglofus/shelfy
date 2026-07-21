@@ -257,6 +257,19 @@
     "privacy_link": "Privacy Policy",
     "terms_link": "Terms of Service"
   },
+  "consent": {
+    "aria_label": "Analytics consent",
+    "message": "Shelfy uses product analytics (PostHog, incl. anonymized, masked session replay) to improve the app. Essential features always run.",
+    "learn_more": "More in the Privacy Policy",
+    "accept": "Accept",
+    "decline": "Decline",
+    "settings_title": "Analytics & privacy",
+    "settings_description": "Consent to product analytics (PostHog, incl. anonymized session replay). You can change it anytime.",
+    "status_granted": "Enabled",
+    "status_denied": "Disabled",
+    "enable": "Enable",
+    "disable": "Disable"
+  },
   "app": {
     "update_available": "A new version of Shelfy is available — click to update.",
     "offline_ready": "Shelfy is ready offline.",

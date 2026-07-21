@@ -53,7 +53,7 @@ export function PrivacyPage() {
             <li>Ukládáme jen to, co potřebujeme k provozu služby (e-mail, heslo, vaše knihy).</li>
             <li>Neprodáváme a nesdílíme vaše data s třetími stranami za účelem reklamy.</li>
             <li>Svá data si můžete kdykoliv stáhnout (JSON export) nebo smazat celý účet — obojí v Nastavení.</li>
-            <li>Nepoužíváme sledovací cookies. Analytika (PostHog) běží bez cookies.</li>
+            <li>Produktová analytika (PostHog) běží jen s vaším souhlasem — ten můžete kdykoliv odvolat v Nastavení. Nezbytné funkce (přihlášení) fungují vždy.</li>
             <li>Data jsou uložena na serveru v Česku, za Cloudflare ochranou.</li>
           </ul>
         </div>
@@ -125,13 +125,13 @@ export function PrivacyPage() {
                 <td style={TD}>Analytická data</td>
                 <td style={TD}>Anonymizované události používání (PostHog)</td>
                 <td style={TD}>Vylepšování služby</td>
-                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+                <td style={TD}>Souhlas (čl. 6/1a)</td>
               </tr>
               <tr>
                 <td style={TD}>Záznam relací</td>
                 <td style={TD}>Anonymizovaný záznam relací (PostHog Session Replay) — veškerý text i vstupy jsou maskované, nezaznamenávají se tak názvy knih, e-maily ani jiný obsah</td>
                 <td style={TD}>Diagnostika chyb a vylepšování použitelnosti</td>
-                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+                <td style={TD}>Souhlas (čl. 6/1a)</td>
               </tr>
               <tr>
                 <td style={TD}>Technické logy</td>
@@ -253,14 +253,16 @@ export function PrivacyPage() {
             diagnostiku chyb a vylepšování použitelnosti. Záznam je <strong>anonymizovaný</strong>:
             veškerý text i všechna vstupní pole jsou při nahrávání maskované, takže se
             <strong> nezaznamenávají</strong> názvy knih, e-maily ani žádný jiný obsah, který
-            zadáte — pouze rozvržení stránky a interakce. I zde je právním základem oprávněný
-            zájem správce (čl. 6/1f GDPR) a proti zpracování můžete vznést námitku.
+            zadáte — pouze rozvržení stránky a interakce.
           </p>
           <p style={P}>
-            PostHog pracuje <strong>bez sledovacích cookies</strong>. Pro persistenci analytického
-            identifikátoru je využíván localStorage prohlížeče. Právním základem je oprávněný
-            zájem správce na vylepšování služby (čl. 6/1f GDPR). Proti tomuto zpracování
-            můžete vznést námitku na výše uvedeném kontaktním e-mailu.
+            Veškerá tato analytika (včetně záznamu relací) běží <strong>pouze s vaším
+            souhlasem</strong>, o který vás žádáme při první návštěvě. Do udělení souhlasu se
+            nespouští a neukládá nic do vašeho zařízení. Právním základem je tedy váš
+            <strong> souhlas</strong> (čl. 6/1a GDPR) a můžete jej kdykoliv
+            <strong> odvolat v Nastavení</strong> — od té chvíle se analytika zastaví.
+            PostHog pracuje bez cookies; pro persistenci analytického identifikátoru využívá
+            localStorage prohlížeče, který se zapíše až po vašem souhlasu.
           </p>
         </div>
 
