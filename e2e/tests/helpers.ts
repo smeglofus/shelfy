@@ -23,9 +23,27 @@ export function getE2EAccessToken(page: Page): string | null {
  *   that would wipe out the saved return-path and land the app on /books instead
  *   of the original destination.
  */
+/**
+ * Keep the analytics consent banner out of e2e. It renders app-wide and its
+ * "Privacy Policy" link would otherwise collide with page-level locators.
+ * Tests run with analytics declined — deterministic, no tracking during CI.
+ * Must be called before the page first navigates (addInitScript runs on load).
+ */
+export async function suppressConsentBanner(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('shelfy_analytics_consent', 'denied')
+    } catch {
+      /* storage disabled — banner may show, harmless */
+    }
+  })
+}
+
 export async function login(page: Page, alreadyOnLoginPage = false): Promise<void> {
   const email = process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com'
   const password = process.env.E2E_ADMIN_PASSWORD ?? 'change-me'
+
+  await suppressConsentBanner(page)
 
   if (!alreadyOnLoginPage) {
     await page.goto('/login')
@@ -108,6 +126,7 @@ export async function createManualBook(page: Page, title: string, author = 'E2E 
 
 export async function navigateProtected(page: Page, path: string): Promise<void> {
   const escapedPath = path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  await suppressConsentBanner(page)
   await page.goto(path)
   // Wait for networkidle so React's async auth bootstrap (POST /auth/refresh) can
   // complete and potentially redirect to /login before we inspect the URL.

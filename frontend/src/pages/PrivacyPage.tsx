@@ -125,13 +125,13 @@ export function PrivacyPage() {
                 <td style={TD}>Analytická data</td>
                 <td style={TD}>Anonymizované události používání (PostHog)</td>
                 <td style={TD}>Vylepšování služby</td>
-                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+                <td style={TD}>Souhlas (čl. 6/1a)</td>
               </tr>
               <tr>
                 <td style={TD}>Záznam relací</td>
                 <td style={TD}>Anonymizovaný záznam relací (PostHog Session Replay) — veškerý text i vstupy jsou maskované, nezaznamenávají se tak názvy knih, e-maily ani jiný obsah</td>
                 <td style={TD}>Diagnostika chyb a vylepšování použitelnosti</td>
-                <td style={TD}>Oprávněný zájem (čl. 6/1f)</td>
+                <td style={TD}>Souhlas (čl. 6/1a)</td>
               </tr>
               <tr>
                 <td style={TD}>Technické logy</td>
