@@ -585,7 +585,10 @@ def test_non_czech_lookup_falls_back_to_knihovny_on_open_library_miss(monkeypatc
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
     monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny)
 
-    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Clean Code", author="Martin"))
+    # Title/author match the fixture (OPEN_LIBRARY_METADATA) so the title-only
+    # trust guard accepts the knihovny fallback — this test is about provider
+    # fallback ordering, not about catalogue mismatch.
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Refactoring", author="Martin Fowler"))
 
     assert metadata is not None
     assert calls == ["open_library", "knihovny"]
@@ -605,3 +608,93 @@ def test_knihovny_disabled_keeps_open_library_only(monkeypatch: pytest.MonkeyPat
     metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Válka s mloky", author=None))
 
     assert metadata is None
+
+
+def test_enrich_rejects_title_only_hit_with_conflicting_author(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The reported bug: an ISBN-less book ("Příběh lásky" by Honza Vojtek)
+    # falls back to a title-only lookup; the catalogue returns a stranger's
+    # identically-titled book. That record must be rejected, not adopted.
+    async def _knihovny_wrong_author(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        return {
+            "title": "Příběh lásky",
+            "author": "Jarmila Maršálová",
+            "isbn": "8071810234",
+            "publisher": "Cizí nakladatelství",
+            "publication_year": 2004,
+            "description": "Sbírka básní.",
+            "provider": "knihovny_cz",
+        }
+
+    async def _open_library_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        return None
+
+    fake_redis = FakeRedis()
+    _use_settings(monkeypatch, enable_google_books=False, enable_knihovny_cz=True)
+    _use_redis(monkeypatch, fake_redis)
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
+    # "Příběh lásky" is Czech (diacritics) -> knihovny.cz is tried first.
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny_wrong_author)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
+
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Příběh lásky", author="Honza Vojtek"))
+
+    assert metadata is None
+    # A rejected match is not a definitive miss — it must not be negatively
+    # cached, so a later ISBN-based retry stays able to find the right record.
+    assert fake_redis.storage == {}
+
+
+def test_enrich_accepts_title_only_hit_with_matching_author(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _knihovny_right(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        return {
+            "title": "Válka s mloky",
+            "author": "Karel Čapek",
+            "isbn": "9788085126396",
+            "publisher": "Fragment",
+            "language": "cze",
+            "description": "Satirický román.",
+            "publication_year": 2010,
+            "cover_image_url": "https://covers.openlibrary.org/b/id/1-L.jpg",
+            "provider": "knihovny_cz",
+        }
+
+    async def _open_library_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        return None
+
+    fake_redis = FakeRedis()
+    _use_settings(monkeypatch, enable_google_books=False, enable_knihovny_cz=True)
+    _use_redis(monkeypatch, fake_redis)
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny_right)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
+
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Válka s mloky", author="Karel Čapek"))
+
+    assert metadata is not None
+    assert metadata["provider"] == "knihovny_cz"
+    assert metadata["publication_year"] == 2010
+    assert "book-metadata:title:válka s mloky" in fake_redis.storage
+
+
+def test_enrich_isbn_hit_bypasses_title_author_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    # With an ISBN the match is authoritative — the guard must not second-guess
+    # it even if the returned author looks unrelated to the scanned one.
+    async def _open_library(_client: httpx.AsyncClient, isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object]:
+        return {"title": "Whatever", "author": "Someone Else", "isbn": isbn, "provider": "open_library"}
+
+    async def _knihovny_miss(_client: httpx.AsyncClient, _isbn: str | None, title: str | None = None, author: str | None = None) -> None:
+        return None
+
+    fake_redis = FakeRedis()
+    _use_settings(monkeypatch, enable_google_books=False, enable_knihovny_cz=True)
+    _use_redis(monkeypatch, fake_redis)
+    monkeypatch.setattr("app.services.metadata.service.fetch_google_books_metadata", _fail_if_called)
+    monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny_miss)
+
+    metadata = asyncio.run(
+        enrich_metadata_with_fallback("9780134494166", title="Scanned Title", author="Scanned Author")
+    )
+
+    assert metadata is not None
+    assert metadata["provider"] == "open_library"

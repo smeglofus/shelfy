@@ -26,7 +26,7 @@ from redis import Redis
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
-from catalog_match import apply_catalog_match, normalize_for_compare
+from catalog_match import apply_catalog_match, normalize_for_compare, title_lookup_result_is_trustworthy
 from gemini_parser import parse_gemini_candidates
 from knihovny_client import fetch_knihovny_metadata, looks_czech
 from settings import worker_settings
@@ -946,13 +946,40 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
     if cached:
         return json.loads(cached)
 
+    def _vet(candidate: dict[str, object] | None) -> dict[str, object] | None:
+        """Reject a title-only hit that is a different book sharing the title.
+
+        A title search returns the best-ranked record for the *title* with no
+        guarantee it is the same book — generic titles are shared by many
+        unrelated works, and adopting the wrong one silently overwrites the
+        book with a stranger's publisher/year/description. ISBN hits are
+        authoritative and pass through untouched.
+        """
+        if candidate is None or isbn is not None or not title:
+            return candidate
+        raw_title = candidate.get("title")
+        raw_author = candidate.get("author")
+        cand_title = raw_title if isinstance(raw_title, str) else None
+        cand_author = raw_author if isinstance(raw_author, str) else None
+        if title_lookup_result_is_trustworthy(title, author, cand_title, cand_author):
+            return candidate
+        logger.info(
+            "enrichment_title_match_rejected",
+            query_title=title,
+            query_author=author,
+            candidate_title=cand_title,
+            candidate_author=cand_author,
+            provider=candidate.get("provider"),
+        )
+        return None
+
     metadata: dict[str, object] | None = None
 
     # Google Books ToS forbids paid applications, so it only runs behind the
     # explicit opt-in flag (mirrors app/services/metadata/service.py).
     if worker_settings.enable_google_books:
         try:
-            metadata = await _fetch_google_books_metadata(isbn, title=title, author=author)
+            metadata = _vet(await _fetch_google_books_metadata(isbn, title=title, author=author))
         except Exception:
             metadata = None
 
@@ -972,7 +999,7 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
     while metadata is None and remaining:
         fetch = remaining.pop(0)
         try:
-            metadata = await fetch(isbn, title=title, author=author)
+            metadata = _vet(await fetch(isbn, title=title, author=author))
         except Exception:
             metadata = None
 
@@ -987,6 +1014,11 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
         and any(not metadata.get(field) for field in _GAP_FILL_FIELDS)
     ):
         try:
+            # Not vetted: the secondary is a deliberately loose match used only
+            # to backfill non-identifying fields (cover/description). It is
+            # often a different-language edition of the same work (e.g. "Válka
+            # s mloky" ↔ "War with the Newts"), which the title guard would
+            # wrongly reject. Identity was already established by the primary.
             secondary = await remaining[0](isbn, title=title, author=author)
         except Exception:
             secondary = None
