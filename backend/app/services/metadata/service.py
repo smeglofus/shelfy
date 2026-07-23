@@ -24,11 +24,15 @@ NEGATIVE_CACHE_TTL_SECONDS = 24 * 60 * 60
 logger = structlog.get_logger()
 
 
-def _cache_key(isbn: str | None, title: str | None) -> str | None:
+def _cache_key(isbn: str | None, title: str | None, author: str | None = None) -> str | None:
     if isbn:
         return f"book-metadata:{isbn}"
     if title and title.strip():
-        return f"book-metadata:title:{title.lower().strip()}"
+        # Author is part of the title key: a bare, generic title ("Příběh
+        # lásky") is shared by many different books, so keying on the title
+        # alone lets one author's result poison lookups for another's.
+        author_part = (author or "").lower().strip()
+        return f"book-metadata:title:{title.lower().strip()}|{author_part}"
     return None
 
 
@@ -104,7 +108,7 @@ async def enrich_metadata_with_fallback(
     author: str | None,
 ) -> dict[str, object] | None:
     settings = get_settings()
-    cache_key = _cache_key(isbn, title)
+    cache_key = _cache_key(isbn, title, author)
     if cache_key is None:
         return None
     redis_client = redis_async.from_url(settings.redis_url, decode_responses=True)

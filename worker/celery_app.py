@@ -690,11 +690,15 @@ def _extract_metadata(image_bytes: bytes) -> tuple[list[dict[str, object]], Proc
     ], ProcessingJobStatus.FAILED, "No barcode detected and Gemini Vision returned no book metadata")
 
 
-def _cache_key(isbn: str | None, title: str | None = None) -> str | None:
+def _cache_key(isbn: str | None, title: str | None = None, author: str | None = None) -> str | None:
     if isbn:
         return f"book-metadata:{isbn}"
     if title:
-        return f"book-metadata:title:{title.lower().strip()}"
+        # Author is part of the title key: a bare, generic title ("Příběh
+        # lásky") is shared by many different books, so keying on the title
+        # alone lets one author's result poison lookups for another's.
+        author_part = (author or "").lower().strip()
+        return f"book-metadata:title:{title.lower().strip()}|{author_part}"
     return None
 
 
@@ -939,7 +943,7 @@ _GAP_FILL_FIELDS = ("cover_image_url", "description")
 
 async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = None, author: str | None = None) -> dict[str, object] | None:
     cache = _get_redis_client()
-    cache_key = _cache_key(isbn, title)
+    cache_key = _cache_key(isbn, title, author)
     if cache_key is None:
         return None
     cached = cache.get(cache_key)

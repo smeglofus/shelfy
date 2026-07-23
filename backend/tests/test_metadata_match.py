@@ -81,3 +81,21 @@ class TestTitleLookupResultIsTrustworthy:
         assert title_lookup_result_is_trustworthy(
             "Láska", None, "Láska nebeská a jiné povídky", None
         ) is False
+
+
+class TestTitleLookupSubtitleContainment:
+    def test_accepts_catalog_subtitle_when_author_matches(self) -> None:
+        assert title_lookup_result_is_trustworthy(
+            "Příběh lásky", "Honza Vojtko",
+            "Příběh lásky : jak a proč milujeme", "Honza Vojtko",
+        ) is True
+
+    def test_rejects_different_book_by_same_author(self) -> None:
+        assert title_lookup_result_is_trustworthy(
+            "Morana Mařena", "Honza Vojtko", "Vztahy a pasti", "Honza Vojtko"
+        ) is False
+
+    def test_subtitle_containment_needs_author(self) -> None:
+        assert title_lookup_result_is_trustworthy(
+            "Příběh lásky", None, "Příběh lásky : jak a proč milujeme", None
+        ) is False

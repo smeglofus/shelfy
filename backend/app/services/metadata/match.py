@@ -52,6 +52,19 @@ def authors_match(a: str | None, b: str | None) -> bool:
     return bool(a_tokens & b_tokens)
 
 
+def _query_title_contained(query_title: str | None, result_title: str | None) -> bool:
+    """True when every significant word of the scanned title also appears in
+    the catalogue title. Catalogues routinely carry a subtitle the spine/scan
+    omits ("Příběh lásky" ⊂ "Příběh lásky: jak a proč milujeme"), which a plain
+    length-sensitive ratio penalises below threshold even though it is plainly
+    the same book. Single-character tokens are ignored as noise."""
+    if not query_title or not result_title:
+        return False
+    q = {t for t in normalize_for_compare(query_title).split() if len(t) > 1}
+    r = {t for t in normalize_for_compare(result_title).split() if len(t) > 1}
+    return bool(q) and q <= r
+
+
 def title_lookup_result_is_trustworthy(
     query_title: str | None,
     query_author: str | None,
@@ -69,7 +82,14 @@ def title_lookup_result_is_trustworthy(
     title_score = similarity(query_title, result_title)
     if query_author and result_author:
         if authors_match(query_author, result_author):
-            return title_score >= AUTHOR_CONFIRMED_TITLE_THRESHOLD
+            # Author corroborates the book — tolerate subtitle/edition noise in
+            # the title, either as a close ratio or as full word containment
+            # ("Příběh lásky" ⊂ "Příběh lásky: jak a proč milujeme", whose ratio
+            # dips below the bar purely from the subtitle's length).
+            return (
+                title_score >= AUTHOR_CONFIRMED_TITLE_THRESHOLD
+                or _query_title_contained(query_title, result_title)
+            )
         # Author conflict: identical generic titles by different authors are
         # different books — the exact bug this guard exists to stop.
         return False
