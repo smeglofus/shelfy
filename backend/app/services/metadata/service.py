@@ -133,14 +133,20 @@ async def enrich_metadata_with_fallback(
         else:
             providers = [_open_library_lookup]
 
+        metadata: dict[str, object] | None = None
+        errored = False
+        rejected = False
+
         def _vet(candidate: dict[str, object] | None) -> dict[str, object] | None:
             """Reject a title-only hit that is a different book sharing the
             title. ISBN hits are authoritative and pass through untouched."""
             nonlocal rejected
             if candidate is None or isbn is not None or not title:
                 return candidate
-            cand_title = candidate.get("title") if isinstance(candidate.get("title"), str) else None
-            cand_author = candidate.get("author") if isinstance(candidate.get("author"), str) else None
+            raw_title = candidate.get("title")
+            raw_author = candidate.get("author")
+            cand_title = raw_title if isinstance(raw_title, str) else None
+            cand_author = raw_author if isinstance(raw_author, str) else None
             if title_lookup_result_is_trustworthy(title, author, cand_title, cand_author):
                 return candidate
             rejected = True
@@ -154,9 +160,6 @@ async def enrich_metadata_with_fallback(
             )
             return None
 
-        metadata: dict[str, object] | None = None
-        errored = False
-        rejected = False
         async with httpx.AsyncClient() as client:
             if settings.enable_google_books:
                 metadata, errored = await _google_books_lookup(client, isbn, title, author)
@@ -180,8 +183,12 @@ async def enrich_metadata_with_fallback(
                 and remaining
                 and any(not metadata.get(field) for field in _GAP_FILL_FIELDS)
             ):
+                # Not vetted: the secondary is a deliberately loose match used
+                # only to backfill non-identifying fields (cover/description).
+                # It is often a different-language edition of the same work
+                # ("Válka s mloky" ↔ "War with the Newts"), which the title
+                # guard would wrongly reject. Identity is set by the primary.
                 secondary, _ = await remaining[0](client, isbn, title, author)
-                secondary = _vet(secondary)
                 if secondary:
                     for field in _GAP_FILL_FIELDS:
                         if not metadata.get(field) and secondary.get(field):

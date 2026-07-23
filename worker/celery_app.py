@@ -957,8 +957,10 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
         """
         if candidate is None or isbn is not None or not title:
             return candidate
-        cand_title = candidate.get("title") if isinstance(candidate.get("title"), str) else None
-        cand_author = candidate.get("author") if isinstance(candidate.get("author"), str) else None
+        raw_title = candidate.get("title")
+        raw_author = candidate.get("author")
+        cand_title = raw_title if isinstance(raw_title, str) else None
+        cand_author = raw_author if isinstance(raw_author, str) else None
         if title_lookup_result_is_trustworthy(title, author, cand_title, cand_author):
             return candidate
         logger.info(
@@ -1012,7 +1014,12 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
         and any(not metadata.get(field) for field in _GAP_FILL_FIELDS)
     ):
         try:
-            secondary = _vet(await remaining[0](isbn, title=title, author=author))
+            # Not vetted: the secondary is a deliberately loose match used only
+            # to backfill non-identifying fields (cover/description). It is
+            # often a different-language edition of the same work (e.g. "Válka
+            # s mloky" ↔ "War with the Newts"), which the title guard would
+            # wrongly reject. Identity was already established by the primary.
+            secondary = await remaining[0](isbn, title=title, author=author)
         except Exception:
             secondary = None
         if secondary:

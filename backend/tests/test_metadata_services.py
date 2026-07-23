@@ -585,7 +585,10 @@ def test_non_czech_lookup_falls_back_to_knihovny_on_open_library_miss(monkeypatc
     monkeypatch.setattr("app.services.metadata.service.fetch_open_library_metadata", _open_library_miss)
     monkeypatch.setattr("app.services.metadata.service.fetch_knihovny_metadata", _knihovny)
 
-    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Clean Code", author="Martin"))
+    # Title/author match the fixture (OPEN_LIBRARY_METADATA) so the title-only
+    # trust guard accepts the knihovny fallback — this test is about provider
+    # fallback ordering, not about catalogue mismatch.
+    metadata = asyncio.run(enrich_metadata_with_fallback(None, title="Refactoring", author="Martin Fowler"))
 
     assert metadata is not None
     assert calls == ["open_library", "knihovny"]
