@@ -32,6 +32,11 @@ SUGGEST_THRESHOLD = 0.55
 # Weight of the title score when an author is available on both sides.
 _TITLE_WEIGHT = 0.75
 
+# Minimum title similarity for a title-only (ISBN-less) enrichment hit to be
+# trusted. Deliberately lenient — the discriminator for generic shared titles
+# is the author, not tiny title variations (subtitles, edition suffixes).
+ENRICH_TITLE_THRESHOLD = 0.80
+
 
 def normalize_for_compare(text: str) -> str:
     """Lowercase, strip diacritics and punctuation — OCR noise the comparison
@@ -50,6 +55,61 @@ def similarity(a: str | None, b: str | None) -> float:
     if not norm_a or not norm_b:
         return 0.0
     return SequenceMatcher(None, norm_a, norm_b).ratio()
+
+
+def authors_match(a: str | None, b: str | None) -> bool:
+    """True when two author strings share a significant name token
+    (diacritics- and order-insensitive).
+
+    Deliberately token-based rather than a whole-string ratio: catalogues
+    render names in different orders ("Karel Čapek" vs "Čapek, Karel") and
+    with life dates, but a shared surname is a strong same-author signal.
+    Tokens of two chars or fewer (initials, "a", "de") are ignored so they
+    never manufacture a false match.
+    """
+    if not a or not b:
+        return False
+    a_tokens = {t for t in normalize_for_compare(a).split() if len(t) > 2}
+    b_tokens = {t for t in normalize_for_compare(b).split() if len(t) > 2}
+    return bool(a_tokens & b_tokens)
+
+
+def title_lookup_result_is_trustworthy(
+    query_title: str | None,
+    query_author: str | None,
+    result_title: str | None,
+    result_author: str | None,
+) -> bool:
+    """Guard for ISBN-less (title-only) metadata enrichment.
+
+    A title-only catalogue search returns the *best-ranked* record for the
+    title, with no guarantee it is the same book — generic titles ("Příběh
+    lásky") are shared by many unrelated works. Adopting that record silently
+    overwrites the book with a stranger's publisher/year/description.
+
+    We trust the result only when:
+      * the titles are reasonably close (``ENRICH_TITLE_THRESHOLD``), and
+      * *if* the query names an author and the record also names one, the
+        two authors match. Identical generic titles by different authors are
+        different books, so an author conflict is a hard reject.
+
+    A missing author on either side is not treated as a conflict: many
+    scanned spines carry no author, and rejecting those outright would gut
+    enrichment coverage. The author check only fires when it can actually
+    discriminate.
+    """
+    title_score = similarity(query_title, result_title)
+    if query_author and result_author:
+        if authors_match(query_author, result_author):
+            # Author corroborates the book — tolerate subtitle/edition noise
+            # in the title (e.g. "Válka s mloky" vs "Válka s mloky (2. vyd.)").
+            return title_score >= SUGGEST_THRESHOLD
+        # Author conflict: identical generic titles by different authors are
+        # different books — the exact bug this guard exists to stop.
+        return False
+    # No author to corroborate — the title must carry the decision alone, so
+    # it has to clear the stricter bar.
+    return title_score >= ENRICH_TITLE_THRESHOLD
 
 
 def evaluate_match(

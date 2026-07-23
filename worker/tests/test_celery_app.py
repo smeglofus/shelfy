@@ -1052,3 +1052,112 @@ def test_enrichment_non_czech_falls_back_to_knihovny(monkeypatch) -> None:
     assert result is not None
     assert calls == ["open_library", "knihovny"]
     assert result["provider"] == "knihovny_cz"
+
+
+def _title_only_fake_redis():
+    """FakeRedis for title-only lookups: always misses, records any cache write
+    so a test can assert a rejected result was NOT cached."""
+    stored: dict = {}
+
+    class FakeRedis:
+        def get(self, _key):
+            return None
+
+        def setex(self, key, _ttl, payload):
+            stored[key] = payload
+
+    return FakeRedis(), stored
+
+
+def test_enrichment_rejects_title_only_hit_with_conflicting_author(monkeypatch) -> None:
+    # The reported bug: a book without ISBN ("Příběh lásky" by Honza Vojtek)
+    # falls back to a title-only lookup; knihovny.cz returns a stranger's
+    # identically-titled book. That record must be rejected, not adopted.
+    fake_redis, stored = _title_only_fake_redis()
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: fake_redis)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_knihovny_cz", True)
+
+    async def _knihovny_wrong_author(_isbn, title=None, author=None):
+        return {
+            "title": "Příběh lásky",
+            "author": "Jarmila Maršálová",
+            "isbn": "8071810234",
+            "publisher": "Cizí nakladatelství",
+            "publication_year": 2004,
+            "description": "Sbírka básní.",
+            "provider": "knihovny_cz",
+        }
+
+    async def _open_library_miss(_isbn, title=None, author=None):
+        return None
+
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _knihovny_wrong_author)
+    monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library_miss)
+
+    result = celery_app.asyncio.run(
+        celery_app._enrich_metadata_with_fallback(None, title="Příběh lásky", author="Honza Vojtek")
+    )
+
+    assert result is None
+    # A rejected match must not be cached — a later ISBN-based retry must stay
+    # able to find the right record.
+    assert stored == {}
+
+
+def test_enrichment_accepts_title_only_hit_with_matching_author(monkeypatch) -> None:
+    fake_redis, stored = _title_only_fake_redis()
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: fake_redis)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_knihovny_cz", True)
+
+    async def _knihovny_right(_isbn, title=None, author=None):
+        return {
+            "title": "Válka s mloky",
+            "author": "Karel Čapek",
+            "isbn": "9788072777747",
+            "publisher": "Fragment",
+            "publication_year": 2010,
+            "description": "Satirický román.",
+            "provider": "knihovny_cz",
+        }
+
+    async def _open_library_miss(_isbn, title=None, author=None):
+        return None
+
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _knihovny_right)
+    monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library_miss)
+
+    result = celery_app.asyncio.run(
+        celery_app._enrich_metadata_with_fallback(None, title="Válka s mloky", author="Karel Čapek")
+    )
+
+    assert result is not None
+    assert result["provider"] == "knihovny_cz"
+    assert result["publication_year"] == 2010
+    assert stored  # accepted match is cached
+
+
+def test_enrichment_isbn_hit_bypasses_title_author_guard(monkeypatch) -> None:
+    # With an ISBN the match is authoritative — the title/author guard must
+    # not second-guess it even if the returned author looks unrelated.
+    fake_redis, _ = _title_only_fake_redis()
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: fake_redis)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_google_books", False)
+    monkeypatch.setattr(celery_app.worker_settings, "enable_knihovny_cz", True)
+
+    async def _open_library(isbn, title=None, author=None):
+        return {"title": "Whatever", "author": "Someone Else", "isbn": isbn, "provider": "open_library"}
+
+    async def _knihovny_miss(_isbn, title=None, author=None):
+        return None
+
+    monkeypatch.setattr(celery_app, "_fetch_open_library_metadata", _open_library)
+    monkeypatch.setattr(celery_app, "_fetch_knihovny_metadata", _knihovny_miss)
+
+    result = celery_app.asyncio.run(
+        celery_app._enrich_metadata_with_fallback("9780134494166", title="Scanned Title", author="Scanned Author")
+    )
+
+    assert result is not None
+    assert result["provider"] == "open_library"

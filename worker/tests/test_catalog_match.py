@@ -135,3 +135,62 @@ class TestApplyCatalogMatch:
         }
         catalog_match.apply_catalog_match(item, "Nastávající maminky", None)
         assert item["quality_flags"] == ["author_has_separator", "catalog_mismatch"]
+
+
+class TestAuthorsMatch:
+    def test_shared_surname_matches_across_order(self):
+        assert catalog_match.authors_match("Karel Čapek", "Čapek, Karel") is True
+
+    def test_diacritics_insensitive(self):
+        assert catalog_match.authors_match("Karel Capek", "Karel Čapek") is True
+
+    def test_ignores_life_dates(self):
+        assert catalog_match.authors_match("Jan Budař", "Jan Budař, 1977-") is True
+
+    def test_different_authors_do_not_match(self):
+        assert catalog_match.authors_match("Honza Vojtek", "Jarmila Maršálová") is False
+
+    def test_short_tokens_never_manufacture_a_match(self):
+        # Only two-letter/initial tokens in common must not count as a match.
+        assert catalog_match.authors_match("J. K. Rowling", "J. R. R. Tolkien") is False
+
+    def test_missing_side_is_not_a_match(self):
+        assert catalog_match.authors_match(None, "Karel Čapek") is False
+        assert catalog_match.authors_match("Karel Čapek", None) is False
+
+
+class TestTitleLookupResultIsTrustworthy:
+    def test_rejects_same_title_different_author(self):
+        # The reported bug: generic title "Příběh lásky" scanned as Honza
+        # Vojtek's book; knihovny.cz returns a stranger's identically-titled
+        # record. Identical title, conflicting author -> must be rejected.
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Příběh lásky", "Honza Vojtek", "Příběh lásky", "Jarmila Maršálová"
+        ) is False
+
+    def test_accepts_matching_title_and_author(self):
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Válka s mloky", "Karel Čapek", "Válka s mloky", "Karel Čapek"
+        ) is True
+
+    def test_accepts_when_query_has_no_author(self):
+        # No author to discriminate on -> trust the title match rather than
+        # gut coverage for spines scanned without an author.
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Válka s mloky", None, "Válka s mloky", "Karel Čapek"
+        ) is True
+
+    def test_accepts_when_record_has_no_author(self):
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Válka s mloky", "Karel Čapek", "Válka s mloky", None
+        ) is True
+
+    def test_rejects_clearly_different_title(self):
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Válka s mloky", "Karel Čapek", "Harry Potter", "Karel Čapek"
+        ) is False
+
+    def test_tolerates_minor_title_variation_with_matching_author(self):
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Válka s mloky", "Karel Čapek", "Válka s mloky (2. vydání)", "Karel Čapek"
+        ) is True

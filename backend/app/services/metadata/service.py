@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.metrics import EXTERNAL_API_CALLS_TOTAL, observe_external_api_latency
 from app.services.metadata.google_books import fetch_google_books_metadata
 from app.services.metadata.knihovny import fetch_knihovny_metadata, looks_czech
+from app.services.metadata.match import title_lookup_result_is_trustworthy
 from app.services.metadata.open_library import fetch_open_library_metadata
 
 # Open Library allows commercial reuse of its data, so hits can be cached
@@ -132,15 +133,39 @@ async def enrich_metadata_with_fallback(
         else:
             providers = [_open_library_lookup]
 
+        def _vet(candidate: dict[str, object] | None) -> dict[str, object] | None:
+            """Reject a title-only hit that is a different book sharing the
+            title. ISBN hits are authoritative and pass through untouched."""
+            nonlocal rejected
+            if candidate is None or isbn is not None or not title:
+                return candidate
+            cand_title = candidate.get("title") if isinstance(candidate.get("title"), str) else None
+            cand_author = candidate.get("author") if isinstance(candidate.get("author"), str) else None
+            if title_lookup_result_is_trustworthy(title, author, cand_title, cand_author):
+                return candidate
+            rejected = True
+            logger.info(
+                "enrichment_title_match_rejected",
+                query_title=title,
+                query_author=author,
+                candidate_title=cand_title,
+                candidate_author=cand_author,
+                provider=candidate.get("provider"),
+            )
+            return None
+
         metadata: dict[str, object] | None = None
         errored = False
+        rejected = False
         async with httpx.AsyncClient() as client:
             if settings.enable_google_books:
                 metadata, errored = await _google_books_lookup(client, isbn, title, author)
+                metadata = _vet(metadata)
             remaining = list(providers)
             while metadata is None and remaining:
                 lookup = remaining.pop(0)
                 metadata, lookup_errored = await lookup(client, isbn, title, author)
+                metadata = _vet(metadata)
                 errored = errored or lookup_errored
 
             # Gap-fill: the winning record may lack a cover (knihovny.cz
@@ -156,15 +181,18 @@ async def enrich_metadata_with_fallback(
                 and any(not metadata.get(field) for field in _GAP_FILL_FIELDS)
             ):
                 secondary, _ = await remaining[0](client, isbn, title, author)
+                secondary = _vet(secondary)
                 if secondary:
                     for field in _GAP_FILL_FIELDS:
                         if not metadata.get(field) and secondary.get(field):
                             metadata[field] = secondary[field]
 
         if metadata is None:
-            # Only cache a miss when the provider actually answered —
-            # transient failures must stay retryable.
-            if not errored:
+            # Only cache a miss when the provider actually answered *and* we
+            # didn't reject a mismatched hit — a rejected title-only match is
+            # not a definitive miss, so a later ISBN-based retry must stay able
+            # to find the right record.
+            if not errored and not rejected:
                 await redis_client.set(cache_key, json.dumps(None), ex=NEGATIVE_CACHE_TTL_SECONDS)
             return None
 
