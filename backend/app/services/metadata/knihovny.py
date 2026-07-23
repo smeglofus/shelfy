@@ -113,7 +113,7 @@ def _pick_record(records: list[dict[str, Any]], author: str | None) -> dict[str,
 
 def _search_params(
     isbn: str | None, title: str | None, author: str | None
-) -> list[tuple[str, str]] | None:
+) -> list[tuple[str, str | int | float | bool | None]] | None:
     """VuFind query params for a lookup, or None when there is nothing to search.
 
     With both a title and an author we issue a combined field search
@@ -125,7 +125,7 @@ def _search_params(
     but is the sole hit once the author is part of the query).
     """
     if isbn:
-        query: list[tuple[str, str]] = [("lookfor", isbn), ("type", "ISN")]
+        query: list[tuple[str, str | int | float | bool | None]] = [("lookfor", isbn), ("type", "ISN")]
     elif title and author:
         query = [
             ("lookfor0[]", title),
