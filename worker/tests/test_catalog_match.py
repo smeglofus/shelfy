@@ -194,3 +194,26 @@ class TestTitleLookupResultIsTrustworthy:
         assert catalog_match.title_lookup_result_is_trustworthy(
             "Válka s mloky", "Karel Čapek", "Válka s mloky (2. vydání)", "Karel Čapek"
         ) is True
+
+
+class TestTitleLookupSubtitleContainment:
+    def test_accepts_catalog_subtitle_when_author_matches(self):
+        # Reported book: scan "Příběh lásky", catalogue "Příběh lásky : jak a
+        # proč milujeme" by the same author. Ratio dips below threshold from
+        # the subtitle length, but full word containment + author accepts it.
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Příběh lásky", "Honza Vojtko",
+            "Příběh lásky : jak a proč milujeme", "Honza Vojtko",
+        ) is True
+
+    def test_rejects_different_book_by_same_author(self):
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Morana Mařena", "Honza Vojtko", "Vztahy a pasti", "Honza Vojtko"
+        ) is False
+
+    def test_subtitle_containment_needs_author(self):
+        # Without an author to corroborate, a subtitled catalogue title must
+        # still clear the strict ratio bar (containment does not apply).
+        assert catalog_match.title_lookup_result_is_trustworthy(
+            "Příběh lásky", None, "Příběh lásky : jak a proč milujeme", None
+        ) is False

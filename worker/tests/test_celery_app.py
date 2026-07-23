@@ -1161,3 +1161,17 @@ def test_enrichment_isbn_hit_bypasses_title_author_guard(monkeypatch) -> None:
 
     assert result is not None
     assert result["provider"] == "open_library"
+
+
+def test_cache_key_scopes_title_lookups_by_author() -> None:
+    # Same generic title, different authors -> different cache keys, so one
+    # author's result can't poison the other's lookup (the "Příběh lásky" bug).
+    key_vojtko = celery_app._cache_key(None, "Příběh lásky", "Honza Vojtko")
+    key_marsalova = celery_app._cache_key(None, "Příběh lásky", "Jarmila Maršálová")
+    assert key_vojtko is not None and key_marsalova is not None
+    assert key_vojtko != key_marsalova
+    assert key_vojtko == "book-metadata:title:příběh lásky|honza vojtko"
+
+
+def test_cache_key_isbn_is_unchanged() -> None:
+    assert celery_app._cache_key("9788076375789", "Whatever", "Someone") == "book-metadata:9788076375789"

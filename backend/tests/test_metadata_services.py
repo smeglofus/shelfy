@@ -451,7 +451,7 @@ def test_title_author_lookup_without_isbn_uses_open_library_only(monkeypatch: py
     # Open Library first (non-Czech lookup); the incomplete record then
     # triggers a knihovny.cz gap-fill attempt.
     assert calls == [("open_library", "Clean Code", "Martin"), ("knihovny", "Clean Code", "Martin")]
-    assert "book-metadata:title:clean code" in fake_redis.storage
+    assert "book-metadata:title:clean code|martin" in fake_redis.storage
 
 
 def test_looks_czech_detection() -> None:
@@ -467,7 +467,10 @@ def test_looks_czech_detection() -> None:
 def test_knihovny_client_normalizes_response_and_picks_matching_record() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/api/v1/search"
-        assert request.url.params["type"] == "Title"
+        # Title + author -> combined VuFind field search (Title AND Author).
+        assert request.url.params.get_list("type0[]") == ["Title", "Author"]
+        assert request.url.params.get_list("lookfor0[]") == ["Válka s mloky", "Karel Čapek"]
+        assert request.url.params["join"] == "AND"
         return httpx.Response(
             200,
             json={
@@ -673,7 +676,7 @@ def test_enrich_accepts_title_only_hit_with_matching_author(monkeypatch: pytest.
     assert metadata is not None
     assert metadata["provider"] == "knihovny_cz"
     assert metadata["publication_year"] == 2010
-    assert "book-metadata:title:válka s mloky" in fake_redis.storage
+    assert "book-metadata:title:válka s mloky|karel čapek" in fake_redis.storage
 
 
 def test_enrich_isbn_hit_bypasses_title_author_guard(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -698,3 +701,40 @@ def test_enrich_isbn_hit_bypasses_title_author_guard(monkeypatch: pytest.MonkeyP
 
     assert metadata is not None
     assert metadata["provider"] == "open_library"
+
+
+def test_knihovny_search_params_combine_title_and_author() -> None:
+    from app.services.metadata.knihovny import _search_params
+
+    params = _search_params(None, "Příběh lásky", "Honza Vojtko")
+    assert params is not None
+    assert ("lookfor0[]", "Příběh lásky") in params
+    assert ("type0[]", "Title") in params
+    assert ("lookfor0[]", "Honza Vojtko") in params
+    assert ("type0[]", "Author") in params
+    assert ("join", "AND") in params
+    assert not any(key == "type" for key, _ in params)
+
+
+def test_knihovny_search_params_title_only_and_isbn() -> None:
+    from app.services.metadata.knihovny import _search_params
+
+    title_only = _search_params(None, "Válka s mloky", None)
+    assert title_only is not None
+    assert ("type", "Title") in title_only
+    assert not any(key == "type0[]" for key, _ in title_only)
+
+    by_isbn = _search_params("9788085126396", "Whatever", "Someone")
+    assert by_isbn is not None
+    assert ("type", "ISN") in by_isbn
+    assert ("lookfor", "9788085126396") in by_isbn
+
+
+def test_service_cache_key_scopes_title_by_author() -> None:
+    from app.services.metadata.service import _cache_key
+
+    vojtko = _cache_key(None, "Příběh lásky", "Honza Vojtko")
+    marsalova = _cache_key(None, "Příběh lásky", "Jarmila Maršálová")
+    assert vojtko == "book-metadata:title:příběh lásky|honza vojtko"
+    assert vojtko != marsalova
+    assert _cache_key("9788076375789", "Whatever", "Someone") == "book-metadata:9788076375789"

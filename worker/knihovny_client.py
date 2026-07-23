@@ -111,25 +111,47 @@ def _pick_record(records: list[dict[str, Any]], author: str | None) -> dict[str,
     return best
 
 
+def _search_params(
+    isbn: str | None, title: str | None, author: str | None
+) -> list[tuple[str, str | int | float | bool | None]] | None:
+    """VuFind query params for a lookup, or None when there is nothing to search.
+
+    With both a title and an author we issue a combined field search
+    (Title AND Author). Putting the author into the *query* — not only into
+    the post-fetch ``_pick_record`` scoring — surfaces the correct edition
+    even when the bare title is extremely common and the right record carries
+    a subtitle, which would otherwise rank far below the fetched window
+    (e.g. "Příběh lásky": the wanted book sits at rank ~12 for the bare title,
+    but is the sole hit once the author is part of the query).
+    """
+    if isbn:
+        query: list[tuple[str, str | int | float | bool | None]] = [("lookfor", isbn), ("type", "ISN")]
+    elif title and author:
+        query = [
+            ("lookfor0[]", title),
+            ("type0[]", "Title"),
+            ("lookfor0[]", author),
+            ("type0[]", "Author"),
+            ("join", "AND"),
+        ]
+    elif title:
+        query = [("lookfor", title), ("type", "Title")]
+    else:
+        return None
+    query.append(("limit", "5"))
+    query.extend(("field[]", field) for field in _FIELDS)
+    return query
+
+
 async def fetch_knihovny_metadata(
     client: httpx.AsyncClient,
     isbn: str | None,
     title: str | None = None,
     author: str | None = None,
 ) -> dict[str, Any] | None:
-    if isbn:
-        lookfor, search_type = isbn, "ISN"
-    elif title:
-        lookfor, search_type = title, "Title"
-    else:
+    params = _search_params(isbn, title, author)
+    if params is None:
         return None
-
-    params: list[tuple[str, str | int | float | bool | None]] = [
-        ("lookfor", lookfor),
-        ("type", search_type),
-        ("limit", "5"),
-    ]
-    params.extend(("field[]", field) for field in _FIELDS)
 
     response = await client.get(
         _API_URL,
