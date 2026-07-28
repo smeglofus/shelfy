@@ -5,11 +5,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mockCreateMutate = vi.fn()
+const mockUseJobStatus = vi.fn((): { data: unknown } => ({ data: undefined }))
 
 vi.mock('../hooks/useBooks', () => ({
   useCreateBook: () => ({ mutate: mockCreateMutate, isPending: false }),
   useUploadBookImage: () => ({ mutate: vi.fn(), isPending: false }),
-  useJobStatus: () => ({ data: undefined }),
+  useJobStatus: () => mockUseJobStatus(),
 }))
 
 vi.mock('../hooks/useLocations', () => ({
@@ -71,6 +72,44 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
   mockUseIsDemoMode.mockReturnValue(false)
+  mockUseJobStatus.mockReturnValue({ data: undefined })
+})
+
+describe('AddBookPage single-book scan prefill', () => {
+  it('prefills the form from a completed scan job and does not auto-create the book', async () => {
+    mockUseJobStatus.mockReturnValue({
+      data: {
+        status: 'done',
+        result_json: {
+          books: [
+            {
+              title: 'Příběh lásky : jak a proč milujeme',
+              author: 'Honza Vojtko',
+              isbn: '9788076375789',
+              publisher: 'Paseka',
+              publication_year: 2025,
+              language: 'cze',
+              cover_image_url: null,
+              description: 'Kniha o lásce.',
+              source: 'gemini_vision',
+            },
+          ],
+        },
+      },
+    })
+
+    renderPage()
+
+    // Scan hands the recognised fields back and the form pre-fills them.
+    await waitFor(() => {
+      expect(titleInput()).toHaveValue('Příběh lásky : jak a proč milujeme')
+    })
+    expect(screen.getByDisplayValue('Honza Vojtko')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('9788076375789')).toBeInTheDocument()
+
+    // Scanning alone must NOT create the book — that happens on Save.
+    expect(mockCreateMutate).not.toHaveBeenCalled()
+  })
 })
 
 describe('AddBookPage title autocomplete (#308)', () => {

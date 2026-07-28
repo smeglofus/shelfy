@@ -13,10 +13,12 @@ import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import type { BookCreateRequest, BookSuggestion, ReadingStatus } from '../lib/types'
 
-/** Metadata carried over silently from a picked suggestion (#308). */
+/** Metadata carried over silently from a picked suggestion (#308) or a spine
+ *  scan — rides into the create payload so the saved book keeps its
+ *  cover/year/publisher/language/annotation. */
 type SuggestionMeta = Pick<
   BookCreateRequest,
-  'publisher' | 'language' | 'publication_year' | 'cover_image_url'
+  'publisher' | 'language' | 'publication_year' | 'cover_image_url' | 'description'
 >
 
 export function AddBookPage() {
@@ -108,20 +110,55 @@ export function AddBookPage() {
 
   // Poll upload job
   const uploadJobStatusQuery = useJobStatus(uploadJobId)
+  // Handle each completed scan exactly once. The done branch pre-fills the form
+  // (a state update), so without this guard a re-render whose deps include an
+  // unstable ``t`` would re-enter the effect and loop.
+  const scanHandledRef = useRef(false)
 
   useEffect(() => {
-    const status = uploadJobStatusQuery.data?.status
-    if (status === 'done' || status === 'failed') {
-      if (status === 'failed') {
-        showError(uploadJobStatusQuery.data?.error_message ?? t('books.processing_failed'))
-      }
+    const data = uploadJobStatusQuery.data
+    const status = data?.status
+    if (status !== 'done' && status !== 'failed') return
+    if (scanHandledRef.current) return
+    scanHandledRef.current = true
+
+    if (status === 'failed') {
+      showError(data?.error_message ?? t('books.processing_failed'))
       setUploadJobId(null)
+      return
     }
-  }, [uploadJobStatusQuery.data?.status, uploadJobStatusQuery.data?.error_message, showError, t])
+
+    // The scan recognises the spine and hands the fields back — it no longer
+    // creates the book itself. Pre-fill the form so the user reviews the data,
+    // picks a location and saves (which is what actually creates the book).
+    const books = (data?.result_json as { books?: Array<Record<string, unknown>> } | null)?.books
+    const scanned = Array.isArray(books) ? books[0] : undefined
+    const pick = (key: string) => (typeof scanned?.[key] === 'string' ? (scanned[key] as string) : null)
+
+    if (scanned && (pick('title') || pick('isbn'))) {
+      setTitle(pick('title') ?? '')
+      setAuthor(pick('author') ?? '')
+      setIsbn(pick('isbn') ?? '')
+      const year = scanned.publication_year
+      setSuggestMeta({
+        publisher: pick('publisher'),
+        language: pick('language'),
+        publication_year: typeof year === 'number' ? year : null,
+        cover_image_url: pick('cover_image_url'),
+        description: pick('description'),
+      })
+      showSuccess(t('add_book.scan_prefilled', 'Kniha naskenována — zkontroluj údaje a ulož.'))
+    } else {
+      showError(t('add_book.scan_no_result', 'Z fotky se nepodařilo rozpoznat knihu. Zadej ji ručně.'))
+    }
+    setUploadJobId(null)
+  }, [uploadJobStatusQuery.data, showError, showSuccess, t])
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    // New scan → allow its completion to be handled (see scanHandledRef).
+    scanHandledRef.current = false
     uploadMutation.mutate(file, {
       onSuccess: res => setUploadJobId(res.job_id),
     })

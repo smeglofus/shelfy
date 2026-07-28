@@ -1042,47 +1042,36 @@ async def _enrich_metadata_with_fallback(isbn: str | None, title: str | None = N
     return metadata
 
 
-def _upsert_book_from_metadata(
-    session: Session,
-    book_image: BookImage,
+def _scanned_book_fields(
     local_result: dict[str, object],
     metadata: dict[str, object] | None,
-    library_id: uuid.UUID,
-) -> Book:
-    isbn = local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None
-    metadata_or_empty = metadata or {}
+) -> dict[str, object]:
+    """Flatten a scanned row + any enriched metadata into the fields the
+    Add-Book form pre-fills from.
 
-    book: Book | None = None
+    The single-book scan intentionally does NOT create a book — it recognises
+    the spine and hands the fields back so the user can review them, choose a
+    location and save (which is the path that actually creates the book). This
+    avoids silently dropping the book into "Bez umístění" with no confirmation.
+    """
+    meta = metadata or {}
 
-    if isbn:
-        # ISBN uniqueness is per library ((library_id, isbn)), so an existing
-        # row must be matched within the same library — never adopt another
-        # library's book, and never collide across libraries.
-        book = session.execute(
-            select(Book).where(Book.isbn == isbn, Book.library_id == library_id)
-        ).scalar_one_or_none()
+    def _str(source: dict[str, object], key: str) -> str | None:
+        value = source.get(key)
+        return value if isinstance(value, str) else None
 
-    if book is None:
-        book = Book(id=uuid.uuid4(), title="Unknown title", library_id=library_id)
-        session.add(book)
-
-    book.title = (metadata_or_empty.get("title") if isinstance(metadata_or_empty.get("title"), str) else None) or (
-        local_result.get("title") if isinstance(local_result.get("title"), str) else None
-    ) or "Unknown title"
-    book.author = (metadata_or_empty.get("author") if isinstance(metadata_or_empty.get("author"), str) else None) or (
-        local_result.get("author") if isinstance(local_result.get("author"), str) else None
-    )
-    book.isbn = isbn
-    book.publisher = metadata_or_empty.get("publisher") if isinstance(metadata_or_empty.get("publisher"), str) else None
-    book.language = metadata_or_empty.get("language") if isinstance(metadata_or_empty.get("language"), str) else None
-    book.description = metadata_or_empty.get("description") if isinstance(metadata_or_empty.get("description"), str) else None
-    book.publication_year = metadata_or_empty.get("publication_year") if isinstance(metadata_or_empty.get("publication_year"), int) else None
-    book.cover_image_url = metadata_or_empty.get("cover_image_url") if isinstance(metadata_or_empty.get("cover_image_url"), str) else None
-    book.processing_status = BookProcessingStatus.DONE if metadata is not None else BookProcessingStatus.PARTIAL
-
-    session.flush()
-    book_image.book_id = book.id
-    return book
+    year = meta.get("publication_year")
+    return {
+        "title": _str(meta, "title") or _str(local_result, "title"),
+        "author": _str(meta, "author") or _str(local_result, "author"),
+        "isbn": _str(meta, "isbn") or _str(local_result, "isbn"),
+        "publisher": _str(meta, "publisher"),
+        "language": _str(meta, "language"),
+        "publication_year": year if isinstance(year, int) else None,
+        "cover_image_url": _str(meta, "cover_image_url"),
+        "description": _str(meta, "description"),
+        "source": _str(local_result, "source"),
+    }
 
 
 def _mark_failed(job_id: str, message: str) -> None:
@@ -1130,11 +1119,6 @@ def process_book_image(self, job_id: str) -> None:
             if image is None:
                 raise self.retry(exc=RuntimeError(f"BookImage for job {job_id} not found"), countdown=2)
 
-            # Snapshot the library before any commit expires the ORM row —
-            # every book created below must carry it (books.library_id is NOT
-            # NULL).
-            library_id = job.library_id
-
             job.status = ProcessingJobStatus.PROCESSING
             job.attempts += 1
             session.commit()
@@ -1152,6 +1136,9 @@ def process_book_image(self, job_id: str) -> None:
                 session.commit()
                 return
 
+            # Recognise + enrich only — the book is NOT created here. The
+            # fields are handed back in result_json so the Add-Book form can
+            # pre-fill them; the user reviews, picks a location and saves.
             processed_books: list[dict[str, object]] = []
             had_partial = False
 
@@ -1169,11 +1156,7 @@ def process_book_image(self, job_id: str) -> None:
                     had_partial = True
                     logger.warning("metadata_enrichment_partial", job_id=job_id, isbn=isbn, title=title, author=author, processing_step="metadata_enrichment")
 
-                book = _upsert_book_from_metadata(session, image, local_result, metadata, library_id)
-                item_result = {**local_result, "book_id": str(book.id)}
-                if metadata is not None:
-                    item_result["metadata"] = metadata
-                processed_books.append(item_result)
+                processed_books.append(_scanned_book_fields(local_result, metadata))
 
             job.status = ProcessingJobStatus.DONE
             job.result_json = {"books": processed_books}

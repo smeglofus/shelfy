@@ -131,25 +131,27 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
     async def _no_metadata(_isbn: str | None, title: str | None = None, author: str | None = None) -> None:
         return None
 
-    class FakeBook:
-        id = uuid.uuid4()
-
     monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _no_metadata)
-    monkeypatch.setattr(celery_app, "_upsert_book_from_metadata", lambda _session, _image, _local, _meta, _library_id: FakeBook())
 
     celery_app.process_book_image.run(job_id=str(job_id))
 
     assert fake_job.status == celery_app.ProcessingJobStatus.DONE
     assert fake_job.attempts == 1
     assert fake_job.error_message is None
+    # Recognise-only: the scanned fields are handed back for the form to
+    # pre-fill; no book is created (no book_id).
     assert fake_job.result_json == {
         "books": [
             {
-                "isbn": "9780306406157",
                 "title": None,
                 "author": None,
+                "isbn": "9780306406157",
+                "publisher": None,
+                "language": None,
+                "publication_year": None,
+                "cover_image_url": None,
+                "description": None,
                 "source": "barcode",
-                "book_id": str(FakeBook.id),
             }
         ]
     }
@@ -535,7 +537,7 @@ def test_enrichment_default_uses_open_library_and_skips_google(monkeypatch) -> N
     assert "book-metadata:9780201485677" in stored
 
 
-def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> None:
+def test_both_providers_failing_returns_scanned_fields_without_creating_book(monkeypatch) -> None:
     job_id = uuid.uuid4()
     book_image_id = uuid.uuid4()
 
@@ -555,32 +557,14 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
             self.minio_path = "uploads/test.jpg"
             self.book_id = None
 
-    class FakeBook:
-        def __init__(self) -> None:
-            self.id = uuid.uuid4()
-            self.title = ""
-            self.author = None
-            self.isbn = None
-            self.publisher = None
-            self.language = None
-            self.description = None
-            self.publication_year = None
-            self.cover_image_url = None
-            self.processing_status = celery_app.BookProcessingStatus.MANUAL
-
     fake_job = FakeJob()
     fake_book_image = FakeBookImage()
-    fake_book = FakeBook()
 
-    class FakeResult:
-        def scalar_one_or_none(self):
-            return None
-
-    added_books = []
+    added = []
 
     class FakeSession:
         def __init__(self, _engine) -> None:
-            self.added = []
+            pass
 
         def __enter__(self):
             return self
@@ -593,21 +577,10 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
                 return fake_job
             if model is celery_app.BookImage and identifier == book_image_id:
                 return fake_book_image
-            if model is celery_app.Book and identifier == fake_book_image.book_id:
-                return fake_book
             return None
-
-        def execute(self, _query):
-            return FakeResult()
 
         def add(self, obj) -> None:
-            self.added.append(obj)
-            if isinstance(obj, celery_app.Book):
-                obj.id = fake_book.id
-                added_books.append(obj)
-
-        def flush(self) -> None:
-            return None
+            added.append(obj)
 
         def commit(self) -> None:
             return None
@@ -629,18 +602,30 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
         return None
 
     monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _no_metadata)
-    monkeypatch.setattr(celery_app.uuid, "uuid4", lambda: fake_book.id)
 
     celery_app.process_book_image.run(job_id=str(job_id))
 
     assert fake_job.status == celery_app.ProcessingJobStatus.DONE
     assert fake_job.error_message is None
-    assert fake_book_image.book_id == fake_book.id
-    assert len(added_books) == 1
-    assert added_books[0].processing_status == celery_app.BookProcessingStatus.PARTIAL
-    # Regression: a worker-created book must carry the job's library_id
-    # (books.library_id is NOT NULL) — the single-book scan used to crash here.
-    assert added_books[0].library_id == fake_job.library_id
+    # Recognise-only: no book is created, and the scanned fields (falling back
+    # to the OCR values when enrichment misses) are handed back for the form.
+    assert added == []
+    assert fake_book_image.book_id is None
+    assert fake_job.result_json == {
+        "books": [
+            {
+                "title": "Fallback title",
+                "author": "Fallback author",
+                "isbn": "9780306406157",
+                "publisher": None,
+                "language": None,
+                "publication_year": None,
+                "cover_image_url": None,
+                "description": None,
+                "source": "ocr",
+            }
+        ]
+    }
 
 
 def test_worker_logs_include_job_id(monkeypatch, capsys) -> None:
