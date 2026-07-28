@@ -86,6 +86,7 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
             self.result_json = None
             self.error_message = None
             self.attempts = 0
+            self.library_id = uuid.uuid4()
 
     class FakeBookImage:
         def __init__(self) -> None:
@@ -134,7 +135,7 @@ def test_process_book_image_stores_result_json(monkeypatch) -> None:
         id = uuid.uuid4()
 
     monkeypatch.setattr(celery_app, "_enrich_metadata_with_fallback", _no_metadata)
-    monkeypatch.setattr(celery_app, "_upsert_book_from_metadata", lambda _session, _image, _local, _meta: FakeBook())
+    monkeypatch.setattr(celery_app, "_upsert_book_from_metadata", lambda _session, _image, _local, _meta, _library_id: FakeBook())
 
     celery_app.process_book_image.run(job_id=str(job_id))
 
@@ -546,6 +547,7 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
             self.result_json = None
             self.error_message = None
             self.attempts = 0
+            self.library_id = uuid.uuid4()
 
     class FakeBookImage:
         def __init__(self) -> None:
@@ -636,6 +638,9 @@ def test_both_providers_failing_sets_partial_and_creates_book(monkeypatch) -> No
     assert fake_book_image.book_id == fake_book.id
     assert len(added_books) == 1
     assert added_books[0].processing_status == celery_app.BookProcessingStatus.PARTIAL
+    # Regression: a worker-created book must carry the job's library_id
+    # (books.library_id is NOT NULL) — the single-book scan used to crash here.
+    assert added_books[0].library_id == fake_job.library_id
 
 
 def test_worker_logs_include_job_id(monkeypatch, capsys) -> None:
@@ -650,6 +655,7 @@ def test_worker_logs_include_job_id(monkeypatch, capsys) -> None:
             self.result_json = None
             self.error_message = None
             self.attempts = 0
+            self.library_id = uuid.uuid4()
 
     class FakeBookImage:
         def __init__(self) -> None:
