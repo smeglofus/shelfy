@@ -512,7 +512,10 @@
     "no_room_option": "No room / place later",
     "no_furniture_option": "No bookshelf / place later",
     "no_shelf_option": "No shelf / place later",
-    "suggestions_label": "Catalogue suggestions"
+    "suggestions_label": "Catalogue suggestions",
+    "scan_prefilled": "Book scanned — review the details and save.",
+    "scan_no_result": "Couldn't recognise a book from the photo. Enter it manually.",
+    "success_created": "Book added."
   },
   "enrich": {
     "enriching": "Enriching…",

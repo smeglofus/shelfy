@@ -440,7 +440,10 @@
     "no_room_option": "Bez místnosti / zařadit později",
     "no_furniture_option": "Bez knihovny / zařadit později",
     "no_shelf_option": "Bez police / zařadit později",
-    "suggestions_label": "Návrhy z katalogu"
+    "suggestions_label": "Návrhy z katalogu",
+    "scan_prefilled": "Kniha naskenována — zkontroluj údaje a ulož.",
+    "scan_no_result": "Z fotky se nepodařilo rozpoznat knihu. Zadej ji ručně.",
+    "success_created": "Kniha byla přidána."
   },
   "enrich": {
     "enriching": "Obohacuji…",
