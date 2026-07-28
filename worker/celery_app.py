@@ -107,6 +107,9 @@ class Book(Base):
     __tablename__ = "books"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    # NOT NULL since the multi-library migration; a book always belongs to a
+    # library. The worker must set it when creating rows or the INSERT fails.
+    library_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     author: Mapped[str | None] = mapped_column(String(500), nullable=True)
     isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True, index=True)
@@ -156,6 +159,9 @@ class ProcessingJob(Base):
     book_image_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("book_images.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Which library the upload belongs to — set by the backend on job
+    # creation, propagated onto the book the worker inserts.
+    library_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
     result_json: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -1041,6 +1047,7 @@ def _upsert_book_from_metadata(
     book_image: BookImage,
     local_result: dict[str, object],
     metadata: dict[str, object] | None,
+    library_id: uuid.UUID,
 ) -> Book:
     isbn = local_result.get("isbn") if isinstance(local_result.get("isbn"), str) else None
     metadata_or_empty = metadata or {}
@@ -1048,10 +1055,15 @@ def _upsert_book_from_metadata(
     book: Book | None = None
 
     if isbn:
-        book = session.execute(select(Book).where(Book.isbn == isbn)).scalar_one_or_none()
+        # ISBN uniqueness is per library ((library_id, isbn)), so an existing
+        # row must be matched within the same library — never adopt another
+        # library's book, and never collide across libraries.
+        book = session.execute(
+            select(Book).where(Book.isbn == isbn, Book.library_id == library_id)
+        ).scalar_one_or_none()
 
     if book is None:
-        book = Book(id=uuid.uuid4(), title="Unknown title")
+        book = Book(id=uuid.uuid4(), title="Unknown title", library_id=library_id)
         session.add(book)
 
     book.title = (metadata_or_empty.get("title") if isinstance(metadata_or_empty.get("title"), str) else None) or (
@@ -1118,6 +1130,11 @@ def process_book_image(self, job_id: str) -> None:
             if image is None:
                 raise self.retry(exc=RuntimeError(f"BookImage for job {job_id} not found"), countdown=2)
 
+            # Snapshot the library before any commit expires the ORM row —
+            # every book created below must carry it (books.library_id is NOT
+            # NULL).
+            library_id = job.library_id
+
             job.status = ProcessingJobStatus.PROCESSING
             job.attempts += 1
             session.commit()
@@ -1152,7 +1169,7 @@ def process_book_image(self, job_id: str) -> None:
                     had_partial = True
                     logger.warning("metadata_enrichment_partial", job_id=job_id, isbn=isbn, title=title, author=author, processing_step="metadata_enrichment")
 
-                book = _upsert_book_from_metadata(session, image, local_result, metadata)
+                book = _upsert_book_from_metadata(session, image, local_result, metadata, library_id)
                 item_result = {**local_result, "book_id": str(book.id)}
                 if metadata is not None:
                     item_result["metadata"] = metadata
