@@ -110,11 +110,17 @@ export function AddBookPage() {
 
   // Poll upload job
   const uploadJobStatusQuery = useJobStatus(uploadJobId)
+  // Handle each completed scan exactly once. The done branch pre-fills the form
+  // (a state update), so without this guard a re-render whose deps include an
+  // unstable ``t`` would re-enter the effect and loop.
+  const scanHandledRef = useRef(false)
 
   useEffect(() => {
     const data = uploadJobStatusQuery.data
     const status = data?.status
     if (status !== 'done' && status !== 'failed') return
+    if (scanHandledRef.current) return
+    scanHandledRef.current = true
 
     if (status === 'failed') {
       showError(data?.error_message ?? t('books.processing_failed'))
@@ -151,6 +157,8 @@ export function AddBookPage() {
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    // New scan → allow its completion to be handled (see scanHandledRef).
+    scanHandledRef.current = false
     uploadMutation.mutate(file, {
       onSuccess: res => setUploadJobId(res.job_id),
     })
