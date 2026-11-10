@@ -14,6 +14,16 @@ class WorkerSettings(BaseSettings):
     celery_broker_url: str = "redis://redis:6379/0"
     celery_result_backend: str = "redis://redis:6379/1"
     gemini_api_key: str | None = None
+    # Vision model for shelf/spine scans. gemini-2.5-flash shuts down on
+    # 2026-12-01 (see issue #336); 3.8 Flash is Google's recommended Flash
+    # successor. Override via GEMINI_MODEL without a code change.
+    gemini_model: str = "gemini-3.8-flash"
+    # Gemini 3 reasoning depth ("minimal"/"low"/"medium"/"high"; empty =
+    # model default, which is "high" and bills many thinking tokens).
+    # Transcribing spines needs little reasoning, so "low" keeps cost down.
+    gemini_thinking_level: str = "low"
+    # Long-edge cap (px) for photos sent to Gemini; 0 disables downscaling.
+    gemini_image_max_side: int = 2048
 
     # Sentry. ``SENTRY_DSN`` was already being passed to the worker
     # container in infra/docker-compose.prod.yml, but the worker had no

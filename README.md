@@ -157,7 +157,10 @@ The app reads from `.env` — see `.env.example` for the full list with defaults
 |---|---|---:|---|
 | `CELERY_BROKER_URL` | `redis://redis:6379/0` | Yes | Celery broker URL. |
 | `CELERY_RESULT_BACKEND` | `redis://redis:6379/1` | Yes | Celery result backend URL. |
-| `GEMINI_API_KEY` | _unset_ | **Yes for full scan fallback** | Gemini Vision API key. |
+| `GEMINI_API_KEY` | _unset_ | **Yes for full scan fallback** | Gemini Vision API key. Must belong to a billing-enabled (paid) Google project — the Gemini API terms allow only Paid Services for apps serving EEA/CH/UK users. |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | No | Vision model used for shelf and single-spine scans. |
+| `GEMINI_THINKING_LEVEL` | `low` | No | Gemini 3 reasoning depth (`minimal`/`low`/`medium`/`high`; empty = model default). Rejected levels fall back to the model default automatically. |
+| `GEMINI_IMAGE_MAX_SIDE` | `2048` | No | Long-edge cap in px for photos sent to Gemini (`0` disables downscaling). |
 
 ### MinIO / object storage
 
