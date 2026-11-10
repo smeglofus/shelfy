@@ -98,7 +98,7 @@ Do not change the stack. The following are fixed:
 | ORM | SQLAlchemy 2.x async |
 | Migrations | Alembic |
 | Task queue | Celery + Redis |
-| Auth | python-jose (JWT) + passlib (bcrypt) |
+| Auth | PyJWT (JWT) + passlib (bcrypt) |
 | Vision fallback | Google Gemini Vision API |
 | Barcode | pyzbar |
 | Object storage | MinIO (boto3 client) |

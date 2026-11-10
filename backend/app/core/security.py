@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
@@ -22,11 +22,10 @@ def create_token(subject: str, expires_delta: timedelta, token_type: str) -> str
     issued_at = datetime.now(timezone.utc)
     expire = issued_at + expires_delta
     payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": token_type, "iat": issued_at}
-    token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-    return cast(str, token)
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
 def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
-    payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-    return cast(dict[str, Any], payload)
+    payload: dict[str, Any] = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    return payload

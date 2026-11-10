@@ -215,7 +215,7 @@ via a CLI command or environment variable on first startup.
 - **ORM:** SQLAlchemy 2.x (async mode)
 - **Migrations:** Alembic
 - **Task queue:** Celery with Redis broker
-- **Auth:** python-jose (JWT), passlib (password hashing)
+- **Auth:** PyJWT (JWT), passlib (password hashing)
 - **Vision fallback:** Google Gemini Vision API
 - **Barcode detection:** pyzbar
 - **Object storage client:** boto3 (MinIO-compatible S3 API)
