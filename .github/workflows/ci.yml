@@ -273,7 +273,9 @@ jobs:
   # trigger it manually via `workflow_dispatch`.
   e2e:
     name: e2e
-    runs-on: ubuntu-latest
+    # ubuntu-latest moved to 26.04, which Playwright 1.55 has no Chromium
+    # build for; pin until @playwright/test is upgraded.
+    runs-on: ubuntu-24.04
     needs: [backend-lint, backend-tests, frontend]
     if: github.event.pull_request.draft != true
 
@@ -368,7 +370,9 @@ jobs:
   # ── E2E P0 mobile (manual trigger only) ────────────────────────────────────
   e2e-p0-mobile:
     name: e2e-p0-mobile
-    runs-on: ubuntu-latest
+    # ubuntu-latest moved to 26.04, which Playwright 1.55 has no Chromium
+    # build for; pin until @playwright/test is upgraded.
+    runs-on: ubuntu-24.04
     needs: [backend-lint, backend-tests, frontend]
     if: github.event_name == 'workflow_dispatch'
 

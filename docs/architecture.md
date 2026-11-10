@@ -84,7 +84,7 @@ not exposed through the Cloudflare tunnel.
 ## 6. Security model
 
 - JWT auth in HttpOnly cookies with CSRF double-submit protection (ADR 007);
-  tokens signed via `python-jose`.
+  tokens signed via `PyJWT`.
 - Password hashing via `passlib` + bcrypt.
 - Secret-like values supplied through environment variables — in production
   injected from a Kubernetes Secret generated out-of-git
