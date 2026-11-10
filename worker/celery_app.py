@@ -361,6 +361,111 @@ def _detect_isbn_from_barcode(image: np.ndarray) -> str | None:
     return None
 
 
+_GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+def _prepare_image_for_gemini(image_bytes: bytes) -> tuple[bytes, str]:
+    """Downscale large photos before sending them to Gemini.
+
+    Phone photos are often 3–6 MB at 4000+ px; Gemini resamples images to its
+    own token budget anyway, so the full-size upload only costs bandwidth and
+    latency. The long edge is capped at ``gemini_image_max_side`` and the
+    result re-encoded as JPEG. Small or undecodable images pass through
+    unchanged (the API will reject truly broken input on its own).
+    """
+    mime_type = _detect_mime_type(image_bytes)
+    max_side = worker_settings.gemini_image_max_side
+    if max_side <= 0:
+        return image_bytes, mime_type
+    try:
+        image = _decode_image_bytes(image_bytes)
+    except ValueError:
+        return image_bytes, mime_type
+    height, width = image.shape[:2]
+    longest = max(height, width)
+    if longest <= max_side:
+        return image_bytes, mime_type
+    scale = max_side / longest
+    resized = cv2.resize(
+        image,
+        (max(1, round(width * scale)), max(1, round(height * scale))),
+        interpolation=cv2.INTER_AREA,
+    )
+    ok, encoded = cv2.imencode(".jpg", resized, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    if not ok:
+        return image_bytes, mime_type
+    return encoded.tobytes(), "image/jpeg"
+
+
+async def _call_gemini(
+    prompt: str,
+    image_bytes: bytes,
+    *,
+    timeout: float,
+    processing_step: str,
+) -> dict[str, object] | None:
+    """POST one prompt + image to Gemini and return the raw JSON payload.
+
+    The model comes from ``GEMINI_MODEL`` and the reasoning depth from
+    ``GEMINI_THINKING_LEVEL`` (empty = model default). If the API rejects the
+    thinking config with HTTP 400 (a model that does not support the level),
+    the request is retried once without it so a config mismatch never takes
+    scanning down.
+    """
+    api_key = worker_settings.gemini_api_key
+    if not api_key:
+        return None
+
+    prepared_bytes, mime_type = _prepare_image_for_gemini(image_bytes)
+    generation_config: dict[str, object] = {"temperature": 0}
+    thinking_level = (worker_settings.gemini_thinking_level or "").strip()
+    if thinking_level:
+        generation_config["thinkingConfig"] = {"thinkingLevel": thinking_level}
+    request_payload: dict[str, object] = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(prepared_bytes).decode("ascii")}},
+                ]
+            }
+        ],
+        "generationConfig": generation_config,
+    }
+    url = _GEMINI_ENDPOINT.format(model=worker_settings.gemini_model)
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, params={"key": api_key}, json=request_payload)
+            if response.status_code == 400 and "thinkingConfig" in generation_config:
+                logger.warning(
+                    "gemini_thinking_config_rejected",
+                    processing_step=processing_step,
+                    model=worker_settings.gemini_model,
+                    thinking_level=thinking_level,
+                )
+                generation_config.pop("thinkingConfig")
+                response = await client.post(url, params={"key": api_key}, json=request_payload)
+            response.raise_for_status()
+            payload: dict[str, object] = response.json()
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "gemini_vision_http_error",
+            processing_step=processing_step,
+            model=worker_settings.gemini_model,
+            status_code=exc.response.status_code,
+        )
+        return None
+    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(
+            "gemini_vision_failed",
+            processing_step=processing_step,
+            error_type=type(exc).__name__,
+        )
+        return None
+    return payload
+
+
 async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[str, object]] | None:
     """Extract all book spines from a shelf photo, ordered left-to-right."""
     api_key = worker_settings.gemini_api_key
@@ -398,33 +503,8 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         "  observed_text (string) — all raw text visible on the spine\n"
         "  confidence (\"high\"|\"medium\"|\"low\") — overall reading confidence"
     )
-    mime_type = _detect_mime_type(image_bytes)
-    request_payload: dict[str, object] = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt},
-                    {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
-                ]
-            }
-        ],
-        "generationConfig": {"temperature": 0},
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-                params={"key": api_key},
-                json=request_payload,
-            )
-            response.raise_for_status()
-            payload = response.json()
-    except httpx.HTTPStatusError as exc:
-        logger.warning("gemini_shelf_scan_http_error", status_code=exc.response.status_code)
-        return None
-    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
-        logger.warning("gemini_shelf_scan_failed", error_type=type(exc).__name__)
+    payload = await _call_gemini(prompt, image_bytes, timeout=30.0, processing_step="shelf_scan")
+    if payload is None:
         return None
 
     parsed_result = parse_gemini_candidates(payload)
@@ -608,41 +688,8 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         "  title (string|null), author (string|null), isbn (string|null), "
         "observed_text (string|null), confidence (\"high\"|\"medium\"|\"low\")."
     )
-    mime_type = _detect_mime_type(image_bytes)
-    request_payload: dict[str, object] = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt},
-                    {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
-                ]
-            }
-        ],
-        "generationConfig": {"temperature": 0},
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-                params={"key": api_key},
-                json=request_payload,
-            )
-            response.raise_for_status()
-            payload = response.json()
-    except httpx.HTTPStatusError as exc:
-        logger.warning(
-            "gemini_vision_http_error",
-            processing_step="spine_recognition",
-            status_code=exc.response.status_code,
-        )
-        return None
-    except (httpx.RequestError, json.JSONDecodeError, ValueError) as exc:
-        logger.warning(
-            "gemini_vision_failed",
-            processing_step="spine_recognition",
-            error_type=type(exc).__name__,
-        )
+    payload = await _call_gemini(prompt, image_bytes, timeout=15.0, processing_step="spine_recognition")
+    if payload is None:
         return None
 
     parsed_result = parse_gemini_candidates(payload)
