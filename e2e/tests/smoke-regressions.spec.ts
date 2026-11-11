@@ -58,7 +58,7 @@ async function clickNavScan(page: Page): Promise<void> {
 
 test('public landing communicates audience and trust positioning', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Najdi plán podle toho, kdo knihovnu používá|Pick the plan by who shares the shelves/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Pro koho je Shelfy|Who Shelfy is for/i })).toBeVisible()
   await expect(page.getByText(/škola|classroom|school/i).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /Důvěra bez marketingové mlhy|Trust without marketing fog/i })).toBeVisible()
   await expect(page.getByText(/Export|account deletion|smazání účtu/i).first()).toBeVisible()
@@ -66,8 +66,10 @@ test('public landing communicates audience and trust positioning', async ({ page
 
 test('public pricing communicates intended audience per plan', async ({ page }) => {
   await page.goto('/pricing')
-  await expect(page.getByTestId('plan-card-free')).toContainText(/menší domácí sbírky|small home collections/i)
-  await expect(page.getByTestId('plan-card-library')).toContainText(/školy, spolky a malé knihovny|schools, associations, and small libraries/i)
+  await expect(page.getByTestId('plan-card-free')).toContainText(/přehled o knihách doma|keep track of their books/i)
+  await expect(page.getByTestId('plan-card-home')).toContainText(/Shelfy podpořit|support Shelfy/i)
+  // Legacy plans are no longer offered (ADR 013)
+  await expect(page.getByTestId('plan-card-library')).toHaveCount(0)
 })
 
 test('books route renders (no blank screen)', async ({ page }) => {

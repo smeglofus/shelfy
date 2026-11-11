@@ -14,6 +14,29 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    date: '2026-11-11',
+    title: {
+      cs: 'Shelfy zdarma bez limitu knih, nový tarif Podporovatel',
+      en: 'Shelfy is free with no book limit, new Supporter plan',
+    },
+    summary: {
+      cs: 'Free tarif už neomezuje počet knih ani obohacení metadat. Placený je jediný tarif — Podporovatel — pro ty, kdo hodně skenují nebo chtějí Shelfy podpořit.',
+      en: 'The Free plan no longer limits books or metadata enrichments. There is a single paid plan — Supporter — for heavy scanners and anyone who wants to support Shelfy.',
+    },
+    changed: {
+      cs: [
+        'Free: neomezený počet knih, neomezené obohacení metadat, sdílení až se třemi členy a 20 skenů polic měsíčně.',
+        'Místo tarifů Home, Pro a Library je jediný placený tarif Podporovatel za 59 Kč měsíčně / 590 Kč ročně (60 skenů, až 5 knihoven, 10 členů). Původní tarify Pro a Library zůstávají stávajícím předplatitelům beze změny.',
+        'Sken poličky čte autory čistěji: bez akademických titulů a VELKÝCH písmen, se všemi spoluautory a u knih, kde je na hřbetu jen příjmení, doplní celé jméno z Knihovny.cz.',
+      ],
+      en: [
+        'Free: unlimited books, unlimited metadata enrichments, sharing with up to three members and 20 shelf scans a month.',
+        'The Home, Pro and Library plans are replaced by a single Supporter plan at 59 CZK a month / 590 CZK a year (60 scans, up to 5 libraries, 10 members). Existing Pro and Library subscribers keep their plan unchanged.',
+        'Shelf scans read authors more cleanly: no academic titles or ALL CAPS, all co-authors kept, and a full name looked up in the Czech union catalogue when the spine shows only a surname.',
+      ],
+    },
+  },
+  {
     date: '2026-05-19',
     title: {
       cs: 'Vratná anonymizace a undo pro sloučení dlužníků',

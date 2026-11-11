@@ -9,40 +9,53 @@ from app.models.subscription import SubscriptionPlan
 
 # ── Hard limits per plan ───────────────────────────────────────────────────────
 
+# Pricing model (ADR 013, 2026-11-11): only two plans are offered —
+#   * free       — generous; only shelf scans (the one feature with a real
+#                  per-use cost: Gemini Vision) are capped,
+#   * home       — shown to users as "Podporovatel" / "Supporter" (59 Kč/month,
+#                  590 Kč/year; reuses the existing Stripe "home" prices).
+# ``pro`` and ``library`` are legacy plans: no longer sold, kept only so that
+# existing subscribers keep working. They must never be less generous than
+# the supporter plan.
+#
+# ``-1`` means unlimited — supported for the *_per_month metrics and
+# books_per_library. ``libraries`` and ``members_per_library`` must stay
+# finite (the counting checks compare against the number directly).
 LIMITS: dict[SubscriptionPlan, dict[str, int]] = {
     SubscriptionPlan.free: {
-        "scans_per_month": 5,
-        "enrichments_per_month": 20,
-        "libraries": 1,
-        "members_per_library": 1,
-        "books_per_library": 200,
-    },
-    # Home sits between free and pro — starter paid tier aimed at one
-    # household. TODO(product): confirm final numbers; these are provisional
-    # and chosen so Home is always strictly more generous than Free and
-    # strictly less generous than Pro.
-    SubscriptionPlan.home: {
         "scans_per_month": 20,
-        "enrichments_per_month": 100,
+        "enrichments_per_month": -1,
         "libraries": 1,
         "members_per_library": 3,
-        "books_per_library": 1000,
+        "books_per_library": -1,
     },
-    SubscriptionPlan.pro: {
-        "scans_per_month": 50,
-        "enrichments_per_month": -1,       # -1 = unlimited
-        "libraries": 3,
+    SubscriptionPlan.home: {
+        "scans_per_month": 60,
+        "enrichments_per_month": -1,
+        "libraries": 5,
         "members_per_library": 10,
-        "books_per_library": 5000,
+        "books_per_library": -1,
     },
+    # Legacy — not offered for new checkouts.
+    SubscriptionPlan.pro: {
+        "scans_per_month": 60,
+        "enrichments_per_month": -1,
+        "libraries": 5,
+        "members_per_library": 10,
+        "books_per_library": -1,
+    },
+    # Legacy — not offered for new checkouts.
     SubscriptionPlan.library: {
         "scans_per_month": 200,
-        "enrichments_per_month": -1,       # -1 = unlimited
+        "enrichments_per_month": -1,
         "libraries": 10,
         "members_per_library": 30,
-        "books_per_library": 30000,
+        "books_per_library": -1,
     },
 }
+
+# Plans that can be bought via Stripe Checkout today.
+PURCHASABLE_PLANS: frozenset[SubscriptionPlan] = frozenset({SubscriptionPlan.home})
 
 
 def get_limit(plan: SubscriptionPlan, key: str) -> int:

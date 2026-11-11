@@ -465,7 +465,6 @@ function LibraryManagement() {
 
 // ── BillingSection ────────────────────────────────────────────────────────
 
-const PLAN_LABELS: Record<string, string> = { free: 'Free', home: 'Home', pro: 'Pro', library: 'Library' }
 
 function UsageMeter({ label, used, limit }: { label: string; used: number; limit: number }) {
   const pct = limit <= 0 ? 0 : Math.min(100, Math.round((used / limit) * 100))
@@ -532,7 +531,7 @@ function BillingSection() {
     )
   }
 
-  const planLabel = PLAN_LABELS[billing.plan] ?? billing.plan
+  const planLabel = t(`billing.plan_${billing.plan}`, { defaultValue: billing.plan })
   const isFree = billing.plan === 'free'
 
   return (
@@ -569,11 +568,10 @@ function BillingSection() {
               type='button'
               className='sh-btn-primary'
               onClick={() => {
-                // Settings-page upgrade shortcut goes straight to Pro monthly.
-                // Users who want Home/yearly/library go through "See all plans"
-                // → PricingPage which exposes the interval toggle + full tier grid.
-                trackEvent('upgrade_clicked', { plan: 'pro', source: 'settings', interval: 'monthly' })
-                checkoutMutation.mutate({ plan: 'pro', interval: 'monthly' })
+                // Settings-page shortcut goes straight to Supporter (internal
+                // key ``home``) monthly; yearly is on the PricingPage toggle.
+                trackEvent('upgrade_clicked', { plan: 'home', source: 'settings', interval: 'monthly' })
+                checkoutMutation.mutate({ plan: 'home', interval: 'monthly' })
               }}
               disabled={checkoutMutation.isPending}
               style={{ fontSize: 13 }}

@@ -53,7 +53,7 @@ describe('UsageMeterCard', () => {
   it('shows plan badge and meter rows for free plan', async () => {
     vi.mocked(getBillingStatus).mockResolvedValue(makeBilling())
     renderCard()
-    expect(await screen.findByTestId('usage-plan-badge')).toHaveTextContent('Free')
+    expect(await screen.findByTestId('usage-plan-badge')).toHaveTextContent('billing.plan_free')
     expect(screen.getByText('usage_meter.scans')).toBeInTheDocument()
     expect(screen.getByText('usage_meter.enrichments')).toBeInTheDocument()
   })

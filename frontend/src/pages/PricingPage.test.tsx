@@ -143,19 +143,18 @@ function renderPage(): void {
 // ── Unauthenticated (public) mode ─────────────────────────────────────────
 
 describe('PricingPage — unauthenticated visitor', () => {
-  it('renders all four plan tiers without firing /billing/status', async () => {
+  it('renders the free + supporter tiers without firing /billing/status', async () => {
     setAuthState({ isAuthenticated: false, isLoading: false })
     renderPage()
 
     expect(await screen.findByTestId('plan-card-free')).toBeInTheDocument()
     expect(screen.getByTestId('plan-card-home')).toBeInTheDocument()
-    expect(screen.getByTestId('plan-card-pro')).toBeInTheDocument()
-    expect(screen.getByTestId('plan-card-library')).toBeInTheDocument()
+    // Legacy plans (pro/library) are no longer offered (ADR 013).
+    expect(screen.queryByTestId('plan-card-pro')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('plan-card-library')).not.toBeInTheDocument()
     expect(screen.getByText('billing.plan_free_audience')).toBeInTheDocument()
     expect(screen.getByText('billing.plan_home_audience')).toBeInTheDocument()
-    expect(screen.getByText('billing.plan_pro_audience')).toBeInTheDocument()
-    expect(screen.getByText('billing.plan_library_audience')).toBeInTheDocument()
-    expect(screen.getByText('billing.plan_library_use_case')).toBeInTheDocument()
+    expect(screen.getByText('billing.plan_home_use_case')).toBeInTheDocument()
 
     // Non-negotiable outcome: logged-out users browse without the app
     // pretending they're signed in. Concretely that means we do NOT fire
@@ -176,7 +175,7 @@ describe('PricingPage — unauthenticated visitor', () => {
     renderPage()
 
     const user = userEvent.setup()
-    await user.click(await screen.findByTestId('plan-checkout-pro'))
+    await user.click(await screen.findByTestId('plan-checkout-home'))
 
     // Intent preserved, but zero direct checkout. Guest cannot bypass auth.
     expect(createCheckoutSession).not.toHaveBeenCalled()
@@ -187,11 +186,11 @@ describe('PricingPage — unauthenticated visitor', () => {
     renderPage()
 
     const user = userEvent.setup()
-    await user.click(await screen.findByTestId('plan-checkout-pro'))
+    await user.click(await screen.findByTestId('plan-checkout-home'))
 
     const intent = readPendingCheckout()
     expect(intent).toEqual(
-      expect.objectContaining({ plan: 'pro', interval: 'monthly' }),
+      expect.objectContaining({ plan: 'home', interval: 'monthly' }),
     )
     expect(mockNavigate).toHaveBeenCalledWith(
       '/login',
@@ -205,11 +204,11 @@ describe('PricingPage — unauthenticated visitor', () => {
 
     const user = userEvent.setup()
     await user.click(await screen.findByTestId('billing-interval-yearly'))
-    await user.click(await screen.findByTestId('plan-checkout-library'))
+    await user.click(await screen.findByTestId('plan-checkout-home'))
 
     const intent = readPendingCheckout()
     expect(intent).toEqual(
-      expect.objectContaining({ plan: 'library', interval: 'yearly' }),
+      expect.objectContaining({ plan: 'home', interval: 'yearly' }),
     )
   })
 
@@ -279,10 +278,10 @@ describe('PricingPage — authenticated visitor', () => {
 
     const user = userEvent.setup()
     await user.click(await screen.findByTestId('billing-interval-yearly'))
-    await user.click(await screen.findByTestId('plan-checkout-pro'))
+    await user.click(await screen.findByTestId('plan-checkout-home'))
 
     expect(createCheckoutSession).toHaveBeenCalledTimes(1)
-    expect(createCheckoutSession).toHaveBeenCalledWith('pro', 'yearly')
+    expect(createCheckoutSession).toHaveBeenCalledWith('home', 'yearly')
   })
 
   it('does NOT show the guest banner when authenticated', async () => {
@@ -300,12 +299,12 @@ describe('PricingPage — post-login checkout resume', () => {
   it('auto-resumes checkout with the saved plan + interval', async () => {
     // Stash an intent as if the user came back from /login after clicking
     // "Sign in to continue" on the Pro-yearly card.
-    savePendingCheckout({ plan: 'pro', interval: 'yearly' })
+    savePendingCheckout({ plan: 'home', interval: 'yearly' })
     setAuthState({ isAuthenticated: true, isLoading: false })
     renderPage()
 
     await waitFor(() =>
-      expect(createCheckoutSession).toHaveBeenCalledWith('pro', 'yearly'),
+      expect(createCheckoutSession).toHaveBeenCalledWith('home', 'yearly'),
     )
     // Intent is consumed — a reload / re-mount must not re-fire.
     expect(readPendingCheckout()).toBeNull()
@@ -325,13 +324,27 @@ describe('PricingPage — post-login checkout resume', () => {
   })
 
   it('does NOT resume for unauthenticated visitors even if an intent leaked in', async () => {
-    savePendingCheckout({ plan: 'library', interval: 'monthly' })
+    savePendingCheckout({ plan: 'home', interval: 'monthly' })
     setAuthState({ isAuthenticated: false, isLoading: false })
     renderPage()
 
-    await screen.findByTestId('plan-card-library')
+    await screen.findByTestId('plan-card-home')
     expect(createCheckoutSession).not.toHaveBeenCalled()
     // The guest still owns the intent — it wasn't consumed behind their back.
     expect(readPendingCheckout()).not.toBeNull()
+  })
+})
+
+describe('PricingPage — legacy subscriber', () => {
+  it('shows a note instead of a checkout button for pro/library subscribers', async () => {
+    setAuthState({ isAuthenticated: true, isLoading: false })
+    vi.mocked(getBillingStatus).mockResolvedValue({
+      ...(await vi.mocked(getBillingStatus)()),
+      plan: 'library',
+    })
+    renderPage()
+
+    expect(await screen.findByTestId('plan-legacy-note-home')).toBeInTheDocument()
+    expect(screen.queryByTestId('plan-checkout-home')).not.toBeInTheDocument()
   })
 })

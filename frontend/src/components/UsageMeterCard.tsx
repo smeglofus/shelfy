@@ -4,14 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { useBillingStatus } from '../hooks/useBilling'
 import { ROUTES } from '../lib/routes'
-import type { SubscriptionPlan, UsageSummary } from '../lib/types'
-
-const PLAN_LABELS: Record<SubscriptionPlan, string> = {
-  free: 'Free',
-  home: 'Home',
-  pro: 'Pro',
-  library: 'Library',
-}
+import type { UsageSummary } from '../lib/types'
 
 function pct(used: number, limit: number): number {
   if (limit <= 0) return 0
@@ -86,7 +79,7 @@ export function UsageMeterCard() {
     <div className="sh-usage-card" data-testid="usage-meter-card">
       <div className="sh-usage-card__header">
         <span className="sh-usage-plan-badge" data-testid="usage-plan-badge">
-          {PLAN_LABELS[plan]}
+          {t(`billing.plan_${plan}`, { defaultValue: plan })}
         </span>
       </div>
 

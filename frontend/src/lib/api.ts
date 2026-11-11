@@ -808,7 +808,8 @@ export async function getBillingStatus(): Promise<BillingStatus> {
 /**
  * Kick off a Stripe Checkout session.
  *
- * Backend contract (CheckoutRequest): `{ plan: 'home'|'pro'|'library', interval?: 'monthly'|'yearly' }`
+ * Backend contract (CheckoutRequest): `{ plan: 'home', interval?: 'monthly'|'yearly' }` — only the
+ * Supporter plan (internal key `home`) is sold; pro/library are legacy (ADR 013).
  * — `interval` defaults to `'monthly'` on the server. We always send it
  * explicitly when we know the user's choice, but omit it at the call-site-level
  * for backward-compat with any older internal caller that passes only a plan.

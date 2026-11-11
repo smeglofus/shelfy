@@ -4,8 +4,8 @@
  * Wired to `useUpgradeStore`: any component or API call that triggers a
  * quota-exceeded error will automatically open this modal.
  *
- * The modal always offers the *next two tiers above* the user's current plan,
- * driven by the `UPGRADE_PATH` table below. Yearly billing is available on the
+ * Free users are offered the Supporter plan (internal key ``home``); paid and
+ * legacy plans get no upsell (ADR 013), driven by `UPGRADE_PATH` below. Yearly billing is available on the
  * full pricing page — this modal defaults to monthly to keep the quota-hit
  * flow as frictionless as possible.
  */
@@ -17,13 +17,6 @@ import { useCreateCheckout } from '../hooks/useBilling'
 import { trackEvent } from '../lib/analytics'
 import { ROUTES } from '../lib/routes'
 import type { BillingInterval, PaidPlan, SubscriptionPlan } from '../lib/types'
-
-const PLAN_LABELS: Record<SubscriptionPlan, string> = {
-  free: 'Free',
-  home: 'Home',
-  pro: 'Pro',
-  library: 'Library',
-}
 
 const METRIC_LABELS: Record<string, string> = {
   scans: 'shelf scans',
@@ -46,19 +39,18 @@ const PLAN_PRICE_CZK: Record<PaidPlan, number> = {
  * PricingPage toggle.
  */
 const UPGRADE_PATH: Record<SubscriptionPlan, readonly PaidPlan[]> = {
-  free: ['home', 'pro'],
-  home: ['pro', 'library'],
-  pro: ['library'],
+  free: ['home'],
+  home: [],
+  pro: [],
   library: [],
 }
 
 const PLAN_FEATURE_KEYS: Record<PaidPlan, readonly string[]> = {
   home: [
     'billing.feature_home_scans',
-    'billing.feature_home_enrichments',
     'billing.feature_home_library',
     'billing.feature_home_members',
-    'billing.feature_home_books',
+    'billing.feature_home_support',
   ],
   pro: [
     'billing.feature_pro_scans',
@@ -99,7 +91,7 @@ export function UpgradePrompt() {
   if (!isOpen || !detail) return null
 
   const metricLabel = detail.metric ? (METRIC_LABELS[detail.metric] ?? detail.metric) : null
-  const currentPlan = PLAN_LABELS[detail.plan] ?? detail.plan
+  const currentPlan = t(`billing.plan_${detail.plan}`, { defaultValue: detail.plan })
   const suggestions = UPGRADE_PATH[detail.plan] ?? []
 
   function handleUpgrade(plan: PaidPlan, interval: BillingInterval = 'monthly') {

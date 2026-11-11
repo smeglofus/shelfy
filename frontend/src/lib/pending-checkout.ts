@@ -27,7 +27,9 @@ import type { BillingInterval, PaidPlan } from './types'
 const _STORAGE_KEY = 'shelfy.pending_checkout_intent_v1'
 const _TTL_MS = 10 * 60 * 1000 // 10 minutes
 
-const _VALID_PLANS: readonly PaidPlan[] = ['home', 'pro', 'library']
+// Only purchasable plans — a stale intent for a legacy plan (pro/library)
+// would just 400 at checkout (ADR 013).
+const _VALID_PLANS: readonly PaidPlan[] = ['home']
 const _VALID_INTERVALS: readonly BillingInterval[] = ['monthly', 'yearly']
 
 export interface PendingCheckoutIntent {
