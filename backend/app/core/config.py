@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     stripe_price_id_pro_yearly: str | None = None
     stripe_price_id_library_monthly: str | None = None
     stripe_price_id_library_yearly: str | None = None
+    # Kill-switch for selling subscriptions (ADR 013 addendum). Off until the
+    # operator's identification (name, IČO, address) is published on the site —
+    # Czech law requires it for paid services to consumers. Existing
+    # subscribers keep working (webhooks, portal); only new checkouts are blocked.
+    billing_checkout_enabled: bool = False
 
     # URL the Stripe Customer Portal redirects back to after changes.
     # Falls back to ``<app_url>/settings#billing`` when unset.

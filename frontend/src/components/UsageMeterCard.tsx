@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '../contexts/AuthContext'
 import { useBillingStatus } from '../hooks/useBilling'
+import { isCheckoutEnabled } from '../lib/billing-flags'
 import { ROUTES } from '../lib/routes'
 import type { UsageSummary } from '../lib/types'
 
@@ -66,7 +67,9 @@ export function UsageMeterCard() {
   const mp = maxPct(usage)
 
   // CTA: always for free plan; for paid only when approaching / hitting a limit
-  const showCta = plan === 'free' || mp >= 80
+  // Without a paid plan on sale there is nothing to upsell — the meters alone
+  // tell the user where they stand.
+  const showCta = isCheckoutEnabled() && (plan === 'free' || mp >= 80)
   const ctaLabel =
     mp >= 100
       ? t('usage_meter.cta_over')

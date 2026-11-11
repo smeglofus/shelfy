@@ -27,6 +27,13 @@ import { type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Paid-plan UI is gated by a kill-switch (ADR 013 addendum). Most tests cover
+// the "on" behaviour; dedicated tests below cover "off" (current production).
+vi.mock('../lib/billing-flags', () => ({
+  CHECKOUT_ENABLED: true,
+  isCheckoutEnabled: vi.fn(() => true),
+}))
+
 // ── Mocks ───────────────────────────────────────────────────────────────────
 
 // IMPORTANT: the current mode is mutated by individual tests via
@@ -346,5 +353,33 @@ describe('PricingPage — legacy subscriber', () => {
 
     expect(await screen.findByTestId('plan-legacy-note-home')).toBeInTheDocument()
     expect(screen.queryByTestId('plan-checkout-home')).not.toBeInTheDocument()
+  })
+})
+
+describe('PricingPage — checkout disabled (current production)', () => {
+  it('shows only the Free plan, no interval toggle and a coming-soon note', async () => {
+    const { isCheckoutEnabled } = await import('../lib/billing-flags')
+    vi.mocked(isCheckoutEnabled).mockReturnValue(false)
+    setAuthState({ isAuthenticated: false, isLoading: false })
+    renderPage()
+
+    expect(await screen.findByTestId('plan-card-free')).toBeInTheDocument()
+    expect(screen.queryByTestId('plan-card-home')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('billing-interval-yearly')).not.toBeInTheDocument()
+    expect(screen.getByText('billing.paid_plan_coming_soon')).toBeInTheDocument()
+    vi.mocked(isCheckoutEnabled).mockReturnValue(true)
+  })
+
+  it('drops a leftover checkout intent instead of resuming it', async () => {
+    const { isCheckoutEnabled } = await import('../lib/billing-flags')
+    vi.mocked(isCheckoutEnabled).mockReturnValue(false)
+    savePendingCheckout({ plan: 'home', interval: 'monthly' })
+    setAuthState({ isAuthenticated: true, isLoading: false })
+    renderPage()
+
+    await screen.findByTestId('plan-card-free')
+    expect(createCheckoutSession).not.toHaveBeenCalled()
+    expect(readPendingCheckout()).toBeNull()
+    vi.mocked(isCheckoutEnabled).mockReturnValue(true)
   })
 })

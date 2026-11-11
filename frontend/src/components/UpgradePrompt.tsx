@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUpgradeStore } from '../store/useUpgradeStore'
 import { useCreateCheckout } from '../hooks/useBilling'
 import { trackEvent } from '../lib/analytics'
+import { isCheckoutEnabled } from '../lib/billing-flags'
 import { ROUTES } from '../lib/routes'
 import type { BillingInterval, PaidPlan, SubscriptionPlan } from '../lib/types'
 
@@ -92,7 +93,7 @@ export function UpgradePrompt() {
 
   const metricLabel = detail.metric ? (METRIC_LABELS[detail.metric] ?? detail.metric) : null
   const currentPlan = t(`billing.plan_${detail.plan}`, { defaultValue: detail.plan })
-  const suggestions = UPGRADE_PATH[detail.plan] ?? []
+  const suggestions = isCheckoutEnabled() ? (UPGRADE_PATH[detail.plan] ?? []) : []
 
   function handleUpgrade(plan: PaidPlan, interval: BillingInterval = 'monthly') {
     trackEvent('upgrade_clicked', { plan, interval, source: 'quota_prompt', metric: detail?.metric })
@@ -183,7 +184,11 @@ export function UpgradePrompt() {
             </p>
           )}
           <p className='text-small' style={{ margin: 0, color: 'var(--sh-text-secondary)' }}>
-            {t('billing.upgrade_cta')}
+            {isCheckoutEnabled()
+              ? t('billing.upgrade_cta')
+              : detail.metric
+                ? t('billing.limit_resets_note')
+                : t('billing.limit_contact_note')}
           </p>
         </div>
 
@@ -215,10 +220,10 @@ export function UpgradePrompt() {
         <button
           type='button'
           className='sh-btn-secondary'
-          onClick={handleSeePricing}
+          onClick={isCheckoutEnabled() ? handleSeePricing : hide}
           style={{ fontSize: 13 }}
         >
-          {t('billing.see_all_plans')}
+          {isCheckoutEnabled() ? t('billing.see_all_plans') : t('common.close')}
         </button>
       </div>
     </>

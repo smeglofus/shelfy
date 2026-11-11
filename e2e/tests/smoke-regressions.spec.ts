@@ -67,8 +67,9 @@ test('public landing communicates audience and trust positioning', async ({ page
 test('public pricing communicates intended audience per plan', async ({ page }) => {
   await page.goto('/pricing')
   await expect(page.getByTestId('plan-card-free')).toContainText(/přehled o knihách doma|keep track of their books/i)
-  await expect(page.getByTestId('plan-card-home')).toContainText(/Shelfy podpořit|support Shelfy/i)
-  // Legacy plans are no longer offered (ADR 013)
+  // Paid checkout is switched off until the operator identity is published
+  // (ADR 013 addendum) — only the Free plan is offered.
+  await expect(page.getByTestId('plan-card-home')).toHaveCount(0)
   await expect(page.getByTestId('plan-card-library')).toHaveCount(0)
 })
 
