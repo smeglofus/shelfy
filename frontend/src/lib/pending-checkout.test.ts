@@ -35,11 +35,11 @@ afterEach(() => {
 
 describe('pending-checkout — happy path', () => {
   it('round-trips a valid intent through save/read', () => {
-    savePendingCheckout({ plan: 'pro', interval: 'yearly' })
+    savePendingCheckout({ plan: 'home', interval: 'yearly' })
 
     const intent = readPendingCheckout()
     expect(intent).not.toBeNull()
-    expect(intent?.plan).toBe('pro')
+    expect(intent?.plan).toBe('home')
     expect(intent?.interval).toBe('yearly')
     expect(typeof intent?.createdAt).toBe('number')
   })
@@ -56,13 +56,20 @@ describe('pending-checkout — happy path', () => {
   })
 
   it('clear() wipes an existing intent', () => {
-    savePendingCheckout({ plan: 'library', interval: 'monthly' })
+    savePendingCheckout({ plan: 'home', interval: 'monthly' })
     clearPendingCheckout()
     expect(readPendingCheckout()).toBeNull()
   })
 })
 
 describe('pending-checkout — validation (refuses garbage on write)', () => {
+  it('drops legacy plans that can no longer be bought (ADR 013)', () => {
+    savePendingCheckout({ plan: 'pro', interval: 'monthly' })
+    expect(readPendingCheckout()).toBeNull()
+    savePendingCheckout({ plan: 'library', interval: 'yearly' })
+    expect(readPendingCheckout()).toBeNull()
+  })
+
   it('drops an unknown plan silently', () => {
     // @ts-expect-error — proving runtime guard even if TS is bypassed
     savePendingCheckout({ plan: 'enterprise', interval: 'monthly' })
@@ -88,7 +95,7 @@ describe('pending-checkout — TTL expiry', () => {
     const t0 = new Date('2026-01-01T00:00:00Z').getTime()
     vi.setSystemTime(t0)
 
-    savePendingCheckout({ plan: 'pro', interval: 'yearly' })
+    savePendingCheckout({ plan: 'home', interval: 'yearly' })
     expect(readPendingCheckout()).not.toBeNull()
 
     // Just before TTL — still valid.

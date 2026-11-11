@@ -82,7 +82,7 @@ def test_settings() -> Settings:
         jwt_algorithm="HS256",
         stripe_secret_key="sk_test_walletcheck",
         stripe_webhook_secret="whsec_test_walletcheck_123456789012345678901234",
-        stripe_price_id_pro_monthly=_PRICE_PRO_MONTHLY,
+        stripe_price_id_home_monthly=_PRICE_PRO_MONTHLY,
         app_url="https://shelfy.test",
     )
 
@@ -158,7 +158,7 @@ async def test_create_checkout_session_omits_payment_method_types(
 
     async with test_sessionmaker() as session:
         await billing_svc.create_checkout_session(
-            session, user, "pro", test_settings, interval="monthly"
+            session, user, "home", test_settings, interval="monthly"
         )
 
     assert captured_kwargs, "Stripe Session.create should have been invoked"
@@ -210,7 +210,7 @@ async def test_create_checkout_session_first_time_includes_trial(
 
     async with test_sessionmaker() as session:
         await billing_svc.create_checkout_session(
-            session, user, "pro", test_settings, interval="monthly"
+            session, user, "home", test_settings, interval="monthly"
         )
 
     sd = captured["subscription_data"]
@@ -533,3 +533,23 @@ async def test_wallet_readiness_endpoint_503_when_stripe_unset(
         app.dependency_overrides.clear()
 
     assert res.status_code == 503
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_plan", ["pro", "library"])
+async def test_create_checkout_session_rejects_legacy_plans(
+    test_sessionmaker: async_sessionmaker[AsyncSession],
+    test_settings: Settings,
+    seeded_user: tuple[uuid.UUID, User],
+    legacy_plan: str,
+) -> None:
+    """pro/library are no longer sold (ADR 013) — only existing subscribers keep them."""
+    from fastapi import HTTPException
+
+    _, user = seeded_user
+    async with test_sessionmaker() as session:
+        with pytest.raises(HTTPException) as exc:
+            await billing_svc.create_checkout_session(
+                session, user, legacy_plan, test_settings, interval="monthly"
+            )
+    assert exc.value.status_code == 400

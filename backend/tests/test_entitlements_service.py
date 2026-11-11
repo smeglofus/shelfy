@@ -21,7 +21,10 @@ from app.models.subscription import (
     UsageMetric,
 )
 from app.models.user import User
+from app.core.plan_limits import LIMITS, PURCHASABLE_PLANS, get_limit
 from app.services import entitlements
+
+FREE_SCANS = get_limit(SubscriptionPlan.free, "scans_per_month")
 
 
 @pytest.fixture
@@ -164,7 +167,7 @@ async def test_can_use_metric_true_under_limit(test_session: AsyncSession) -> No
     user = await _make_user(test_session)
     await _make_subscription(test_session, user.id)
     await test_session.commit()
-    # Free plan: 5 scans/month. With 0 used, should be True.
+    # Free plan scans are capped; with 0 used, should be True.
     result = await entitlements.can_use_metric(test_session, user.id, UsageMetric.scans)
     assert result is True
 
@@ -172,9 +175,9 @@ async def test_can_use_metric_true_under_limit(test_session: AsyncSession) -> No
 @pytest.mark.asyncio
 async def test_can_use_metric_false_at_limit(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 5 scans
+    await _make_subscription(test_session, user.id)
     await test_session.commit()
-    await _set_usage(test_session, user.id, UsageMetric.scans, 5)
+    await _set_usage(test_session, user.id, UsageMetric.scans, FREE_SCANS)
     result = await entitlements.can_use_metric(test_session, user.id, UsageMetric.scans)
     assert result is False
 
@@ -182,7 +185,7 @@ async def test_can_use_metric_false_at_limit(test_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_can_use_metric_unlimited_plan(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id, SubscriptionPlan.pro)  # pro: unlimited enrichments
+    await _make_subscription(test_session, user.id, SubscriptionPlan.home)  # unlimited enrichments
     await test_session.commit()
     result = await entitlements.can_use_metric(test_session, user.id, UsageMetric.enrichments)
     assert result is True
@@ -193,21 +196,21 @@ async def test_can_use_metric_unlimited_plan(test_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_can_use_metric_n_true_fits(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 5 scans
+    await _make_subscription(test_session, user.id)
     await test_session.commit()
-    await _set_usage(test_session, user.id, UsageMetric.scans, 3)
+    await _set_usage(test_session, user.id, UsageMetric.scans, FREE_SCANS - 2)
     result = await entitlements.can_use_metric_n(test_session, user.id, UsageMetric.scans, 2)
-    assert result is True  # 3 used + 2 needed = 5 = limit
+    assert result is True  # (limit - 2) used + 2 needed = limit
 
 
 @pytest.mark.asyncio
 async def test_can_use_metric_n_false_exceeds(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 5 scans
+    await _make_subscription(test_session, user.id)
     await test_session.commit()
-    await _set_usage(test_session, user.id, UsageMetric.scans, 4)
+    await _set_usage(test_session, user.id, UsageMetric.scans, FREE_SCANS - 1)
     result = await entitlements.can_use_metric_n(test_session, user.id, UsageMetric.scans, 2)
-    assert result is False  # 4 used + 2 needed > 5
+    assert result is False  # (limit - 1) used + 2 needed > limit
 
 
 @pytest.mark.asyncio
@@ -245,7 +248,7 @@ async def test_can_create_library_false_at_limit(test_session: AsyncSession) -> 
 @pytest.mark.asyncio
 async def test_can_add_member_true_under_limit(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id, SubscriptionPlan.pro)  # pro: 10 members
+    await _make_subscription(test_session, user.id, SubscriptionPlan.home)  # supporter: 10 members
     lib = await _make_library_with_owner(test_session, user)
     # Only owner (1 member) → well under the cap
     result = await entitlements.can_add_member(test_session, user.id, lib.id)
@@ -253,9 +256,12 @@ async def test_can_add_member_true_under_limit(test_session: AsyncSession) -> No
 
 
 @pytest.mark.asyncio
-async def test_can_add_member_false_at_limit(test_session: AsyncSession) -> None:
+async def test_can_add_member_false_at_limit(
+    test_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(LIMITS[SubscriptionPlan.free], "members_per_library", 1)
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 1 member
+    await _make_subscription(test_session, user.id)
     lib = await _make_library_with_owner(test_session, user)
     # Owner is the 1 member, limit is 1 → False
     result = await entitlements.can_add_member(test_session, user.id, lib.id)
@@ -282,7 +288,7 @@ async def test_can_add_books_library_not_found_raises_404(test_session: AsyncSes
 @pytest.mark.asyncio
 async def test_can_add_books_true_unlimited_plan(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id, SubscriptionPlan.pro)  # books_per_library=5000
+    await _make_subscription(test_session, user.id, SubscriptionPlan.home)  # books unlimited
     lib = await _make_library_with_owner(test_session, user)
     result = await entitlements.can_add_books_to_library(test_session, lib.id, 1)
     assert result is True
@@ -302,9 +308,9 @@ async def test_assert_can_use_success(test_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_assert_can_use_raises_402(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 5 scans
+    await _make_subscription(test_session, user.id)
     await test_session.commit()
-    await _set_usage(test_session, user.id, UsageMetric.scans, 5)
+    await _set_usage(test_session, user.id, UsageMetric.scans, FREE_SCANS)
     with pytest.raises(HTTPException) as exc:
         await entitlements.assert_can_use(test_session, user.id, UsageMetric.scans)
     assert exc.value.status_code == 402
@@ -323,9 +329,9 @@ async def test_assert_can_use_n_success(test_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_assert_can_use_n_raises_402(test_session: AsyncSession) -> None:
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 5 scans
+    await _make_subscription(test_session, user.id)
     await test_session.commit()
-    await _set_usage(test_session, user.id, UsageMetric.scans, 4)
+    await _set_usage(test_session, user.id, UsageMetric.scans, FREE_SCANS - 1)
     with pytest.raises(HTTPException) as exc:
         await entitlements.assert_can_use_n(test_session, user.id, UsageMetric.scans, 2)
     assert exc.value.status_code == 402
@@ -362,9 +368,12 @@ async def test_assert_can_add_member_success(test_session: AsyncSession) -> None
 
 
 @pytest.mark.asyncio
-async def test_assert_can_add_member_raises_403(test_session: AsyncSession) -> None:
+async def test_assert_can_add_member_raises_403(
+    test_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(LIMITS[SubscriptionPlan.free], "members_per_library", 1)
     user = await _make_user(test_session)
-    await _make_subscription(test_session, user.id)  # free: 1 member
+    await _make_subscription(test_session, user.id)
     lib = await _make_library_with_owner(test_session, user)
     with pytest.raises(HTTPException) as exc:
         await entitlements.assert_can_add_member(test_session, user.id, lib.id)
@@ -395,3 +404,38 @@ async def test_assert_can_add_books_zero_count_noop(test_session: AsyncSession) 
     lib = await _make_library_with_owner(test_session, user)
     # Should not raise even though there's no subscription
     await entitlements.assert_can_add_books_to_library(test_session, lib.id, 0)
+
+
+# ── finite book cap (no shipped plan has one today; keep the path covered) ────
+
+@pytest.mark.asyncio
+async def test_finite_book_limit_enforced(
+    test_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(LIMITS[SubscriptionPlan.free], "books_per_library", 2)
+    user = await _make_user(test_session)
+    await _make_subscription(test_session, user.id)
+    lib = await _make_library_with_owner(test_session, user)
+
+    assert await entitlements.can_add_books_to_library(test_session, lib.id, 2) is True
+    assert await entitlements.can_add_books_to_library(test_session, lib.id, 3) is False
+    await entitlements.assert_can_add_books_to_library(test_session, lib.id, 2)
+    with pytest.raises(HTTPException) as exc:
+        await entitlements.assert_can_add_books_to_library(test_session, lib.id, 3)
+    assert exc.value.status_code == 403
+    detail = exc.value.detail
+    assert isinstance(detail, dict) and detail["code"] == "book_limit_reached"
+
+
+def test_paid_plans_never_less_generous_than_supporter() -> None:
+    for legacy in (SubscriptionPlan.pro, SubscriptionPlan.library):
+        for key, supporter_value in LIMITS[SubscriptionPlan.home].items():
+            value = LIMITS[legacy][key]
+            if supporter_value == -1:
+                assert value == -1, (legacy, key)
+            else:
+                assert value == -1 or value >= supporter_value, (legacy, key)
+
+
+def test_only_supporter_is_purchasable() -> None:
+    assert PURCHASABLE_PLANS == frozenset({SubscriptionPlan.home})

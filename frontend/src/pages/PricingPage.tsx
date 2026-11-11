@@ -36,16 +36,18 @@ const PLANS: PlanDef[] = [
     useCaseKey: 'billing.plan_free_use_case',
     priceCzk: null,
     featureKeys: [
+      'billing.feature_free_books',
       'billing.feature_free_scans',
       'billing.feature_free_enrichments',
       'billing.feature_free_library',
       'billing.feature_free_members',
-      'billing.feature_free_books',
       'billing.feature_pwa',
       'billing.feature_csv',
     ],
   },
   {
+    // Internal plan key stays ``home`` (existing Stripe prices 59 / 590 Kč);
+    // the UI calls it "Podporovatel" / "Supporter" (ADR 013).
     key: 'home',
     nameKey: 'billing.plan_home',
     audienceKey: 'billing.plan_home_audience',
@@ -53,49 +55,18 @@ const PLANS: PlanDef[] = [
     priceCzk: { monthly: 59, yearly: 590 },
     featureKeys: [
       'billing.feature_home_scans',
-      'billing.feature_home_enrichments',
       'billing.feature_home_library',
       'billing.feature_home_members',
-      'billing.feature_home_books',
       'billing.feature_includes_free',
-    ],
-    checkoutPlan: 'home',
-  },
-  {
-    key: 'pro',
-    nameKey: 'billing.plan_pro',
-    audienceKey: 'billing.plan_pro_audience',
-    useCaseKey: 'billing.plan_pro_use_case',
-    priceCzk: { monthly: 129, yearly: 1290 },
-    featureKeys: [
-      'billing.feature_pro_scans',
-      'billing.feature_pro_enrichments',
-      'billing.feature_pro_libraries',
-      'billing.feature_pro_members',
-      'billing.feature_pro_books',
-      'billing.feature_includes_home',
+      'billing.feature_home_support',
     ],
     highlighted: true,
-    checkoutPlan: 'pro',
-  },
-  {
-    key: 'library',
-    nameKey: 'billing.plan_library',
-    audienceKey: 'billing.plan_library_audience',
-    useCaseKey: 'billing.plan_library_use_case',
-    priceCzk: { monthly: 299, yearly: 2990 },
-    featureKeys: [
-      'billing.feature_library_scans',
-      'billing.feature_library_enrichments',
-      'billing.feature_library_libraries',
-      'billing.feature_library_members',
-      'billing.feature_library_books',
-      'billing.feature_includes_pro',
-      'billing.feature_priority_support',
-    ],
-    checkoutPlan: 'library',
+    checkoutPlan: 'home',
   },
 ]
+
+/** Plans that are no longer sold — existing subscribers keep them (ADR 013). */
+const LEGACY_PLANS: readonly SubscriptionPlan[] = ['pro', 'library']
 
 /**
  * Format a Czech-Koruna amount. We intentionally use `cs-CZ` locale regardless
@@ -340,6 +311,10 @@ export function PricingPage() {
               {renderPlanCta({
                 plan,
                 isCurrent,
+                legacyPlanName:
+                  currentPlan !== null && LEGACY_PLANS.includes(currentPlan)
+                    ? t(`billing.plan_${currentPlan}`)
+                    : null,
                 isHighlighted,
                 isAuthenticated,
                 isAuthLoading: authLoading,
@@ -372,18 +347,20 @@ export function PricingPage() {
 interface PlanCtaProps {
   plan: PlanDef
   isCurrent: boolean
+  /** Name of the user's legacy paid plan (pro/library), or null. */
+  legacyPlanName: string | null
   isHighlighted: boolean
   isAuthenticated: boolean
   isAuthLoading: boolean
   isCheckoutPending: boolean
-  t: (key: string) => string
+  t: (key: string, options?: Record<string, unknown>) => string
   onGuestCta: (paidPlan?: PaidPlan) => void
   onAuthedCheckout: (plan: PaidPlan) => void
 }
 
 function renderPlanCta(props: PlanCtaProps) {
   const {
-    plan, isCurrent, isHighlighted, isAuthenticated, isAuthLoading,
+    plan, isCurrent, legacyPlanName, isHighlighted, isAuthenticated, isAuthLoading,
     isCheckoutPending, t, onGuestCta, onAuthedCheckout,
   } = props
 
@@ -436,6 +413,20 @@ function renderPlanCta(props: PlanCtaProps) {
   }
 
   // Paid tier:
+  // A legacy subscriber (pro/library) must not start a second subscription
+  // from here — their plan stays; changes go through the Stripe portal.
+  if (legacyPlanName) {
+    return (
+      <p
+        className='text-small'
+        data-testid={`plan-legacy-note-${plan.key}`}
+        style={{ margin: 0, color: 'var(--sh-text-secondary)' }}
+      >
+        {t('billing.legacy_plan_note', { plan: legacyPlanName })}
+      </p>
+    )
+  }
+
   if (isCurrent) {
     return (
       <button type='button' className='sh-btn-secondary' disabled style={{ fontSize: 13 }}>

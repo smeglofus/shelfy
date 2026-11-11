@@ -26,12 +26,15 @@ class BillingStatusResponse(BaseModel):
 class CheckoutRequest(BaseModel):
     """Payload for POST /api/v1/billing/checkout.
 
+    Only the ``home`` plan (shown as "Podporovatel" / "Supporter") is sold;
+    ``pro`` and ``library`` are legacy plans kept for existing subscribers.
+
     ``interval`` defaults to ``monthly`` for backwards compatibility with
     older clients that don't know about yearly pricing. The backend maps
     the (plan, interval) pair to a concrete Stripe price ID.
     """
 
-    plan: Literal["home", "pro", "library"]
+    plan: Literal["home"]
     interval: Literal["monthly", "yearly"] = "monthly"
 
 

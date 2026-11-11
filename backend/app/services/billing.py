@@ -47,6 +47,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
+from app.core.plan_limits import PURCHASABLE_PLANS
 from app.models.subscription import (
     Subscription,
     SubscriptionPlan,
@@ -220,7 +221,7 @@ async def get_or_create_stripe_customer(
 
 # ── Checkout ──────────────────────────────────────────────────────────────────
 
-_TRIAL_DAYS = 14  # Free trial for first-time Pro / Library subscribers
+_TRIAL_DAYS = 14  # Free trial for first-time supporter subscribers
 
 
 async def create_checkout_session(
@@ -238,10 +239,12 @@ async def create_checkout_session(
     First-time subscribers (no previous stripe_subscription_id) automatically
     receive a 14-day free trial. Returning subscribers go straight to billing.
 
-    ``plan`` is one of ``home``/``pro``/``library``. ``interval`` is
+    ``plan`` must be purchasable (currently only ``home``). ``interval`` is
     ``monthly`` or ``yearly``. Unknown combinations → 400.
     """
-    if plan not in ("home", "pro", "library"):
+    # Only plans in PURCHASABLE_PLANS can be bought; pro/library are legacy
+    # (existing subscribers keep them, webhooks still map their prices).
+    if plan not in {p.value for p in PURCHASABLE_PLANS}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid plan"
         )

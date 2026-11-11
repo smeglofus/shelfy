@@ -29,6 +29,7 @@ from app.models.subscription import (
     UsageMetric,
 )
 from app.models.user import User
+from app.core.plan_limits import LIMITS, get_limit
 from app.services import entitlements
 
 
@@ -42,6 +43,8 @@ TEST_DB = _os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://shelfy:shelfy@postgres:5432/shelfy_test",
 )
+
+FREE_SCANS = get_limit(SubscriptionPlan.free, "scans_per_month")
 
 
 @pytest.fixture
@@ -107,37 +110,40 @@ class TestFreeLimit:
 
     async def test_blocked_after_limit(self, session: AsyncSession) -> None:
         user = await _make_user(session)
-        # Exhaust the 5 free scans
-        for _ in range(5):
+        for _ in range(FREE_SCANS):
             await entitlements.consume(session, user.id, UsageMetric.scans)
         assert await entitlements.can_use_metric(session, user.id, UsageMetric.scans) is False
 
     async def test_assert_raises_402_when_exceeded(self, session: AsyncSession) -> None:
         from fastapi import HTTPException
         user = await _make_user(session)
-        for _ in range(5):
+        for _ in range(FREE_SCANS):
             await entitlements.consume(session, user.id, UsageMetric.scans)
         with pytest.raises(HTTPException) as exc_info:
             await entitlements.assert_can_use(session, user.id, UsageMetric.scans)
         assert exc_info.value.status_code == 402
         detail = cast(dict[str, Any], exc_info.value.detail)
         assert detail["code"] == "quota_exceeded"
-        assert detail["limit"] == 5
-        assert detail["used"] == 5
+        assert detail["limit"] == FREE_SCANS
+        assert detail["used"] == FREE_SCANS
 
-    async def test_enrichment_limit(self, session: AsyncSession) -> None:
+    async def test_free_enrichments_unlimited(self, session: AsyncSession) -> None:
+        # Enrichment is free to run (Open Library / Knihovny.cz) → never capped.
         user = await _make_user(session)
-        for _ in range(20):
+        for _ in range(50):
             await entitlements.consume(session, user.id, UsageMetric.enrichments)
-        assert await entitlements.can_use_metric(session, user.id, UsageMetric.enrichments) is False
+        assert await entitlements.can_use_metric(session, user.id, UsageMetric.enrichments) is True
 
     async def test_library_limit(self, session: AsyncSession) -> None:
         user = await _make_user(session)
         await _make_library(session, user)   # 1st — at limit for free
         assert await entitlements.can_create_library(session, user.id) is False
 
-    async def test_member_limit_raises_403(self, session: AsyncSession) -> None:
+    async def test_member_limit_raises_403(
+        self, session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from fastapi import HTTPException
+        monkeypatch.setitem(LIMITS[SubscriptionPlan.free], "members_per_library", 1)
         user = await _make_user(session)
         lib = await _make_library(session, user)  # owner already counted as 1 member
         with pytest.raises(HTTPException) as exc_info:
@@ -148,15 +154,15 @@ class TestFreeLimit:
 
 
 class TestPlanUpgrade:
-    async def test_upgrade_to_pro_unlocks_quota(self, session: AsyncSession) -> None:
+    async def test_upgrade_to_supporter_unlocks_quota(self, session: AsyncSession) -> None:
         user = await _make_user(session)
         # Exhaust free scans
-        for _ in range(5):
+        for _ in range(FREE_SCANS):
             await entitlements.consume(session, user.id, UsageMetric.scans)
         assert await entitlements.can_use_metric(session, user.id, UsageMetric.scans) is False
         # Upgrade mid-cycle
-        await _set_plan(session, user, SubscriptionPlan.pro)
-        # Now allowed (50 scans for Pro)
+        await _set_plan(session, user, SubscriptionPlan.home)
+        # Now allowed (supporter plan has a higher scan cap)
         assert await entitlements.can_use_metric(session, user.id, UsageMetric.scans) is True
 
     async def test_pro_enrichments_unlimited(self, session: AsyncSession) -> None:
@@ -166,10 +172,10 @@ class TestPlanUpgrade:
             await entitlements.consume(session, user.id, UsageMetric.enrichments)
         assert await entitlements.can_use_metric(session, user.id, UsageMetric.enrichments) is True
 
-    async def test_pro_library_limit(self, session: AsyncSession) -> None:
+    async def test_supporter_library_limit(self, session: AsyncSession) -> None:
         user = await _make_user(session)
-        await _set_plan(session, user, SubscriptionPlan.pro)
-        for _ in range(3):
+        await _set_plan(session, user, SubscriptionPlan.home)
+        for _ in range(get_limit(SubscriptionPlan.home, "libraries")):
             await _make_library(session, user)
         assert await entitlements.can_create_library(session, user.id) is False
 
@@ -178,15 +184,15 @@ class TestPlanDowngrade:
     async def test_canceled_sub_falls_back_to_free(self, session: AsyncSession) -> None:
         user = await _make_user(session)
         await _set_plan(session, user, SubscriptionPlan.pro, SubscriptionStatus.canceled)
-        # Should enforce free limits (5 scans)
-        for _ in range(5):
+        # Should enforce free limits
+        for _ in range(FREE_SCANS):
             await entitlements.consume(session, user.id, UsageMetric.scans)
         assert await entitlements.can_use_metric(session, user.id, UsageMetric.scans) is False
 
     async def test_past_due_falls_back_to_free(self, session: AsyncSession) -> None:
         user = await _make_user(session)
         await _set_plan(session, user, SubscriptionPlan.library, SubscriptionStatus.past_due)
-        for _ in range(5):
+        for _ in range(FREE_SCANS):
             await entitlements.consume(session, user.id, UsageMetric.scans)
         assert await entitlements.can_use_metric(session, user.id, UsageMetric.scans) is False
 
@@ -197,7 +203,7 @@ class TestMonthRollover:
         this_month = entitlements.current_period_start()
         last_month = (this_month - timedelta(days=1)).replace(day=1)
         # Exhaust scans this month
-        for _ in range(5):
+        for _ in range(FREE_SCANS):
             await entitlements.consume(session, user.id, UsageMetric.scans, )
         # Directly check a different period — should be 0
         usage = await entitlements.get_current_usage(
@@ -207,7 +213,7 @@ class TestMonthRollover:
         current = await entitlements.get_current_usage(
             session, user.id, UsageMetric.scans, period_start=this_month
         )
-        assert current == 5
+        assert current == FREE_SCANS
 
 
 class TestConcurrentIncrements:
@@ -298,10 +304,10 @@ class TestConcurrentLimitEnforcement:
         assert succeeded == 1, f"expected exactly 1 successful creation, got {succeeded}"
         assert total == 1, f"free-plan library cap is 1, ended with {total}"
 
-    async def test_concurrent_library_creates_respect_pro_limit(
+    async def test_concurrent_library_creates_respect_supporter_limit(
         self, sessionmaker_: async_sessionmaker[AsyncSession]
     ) -> None:
-        """5 parallel create-library attempts on a Pro plan (limit=3) → 3 successes.
+        """More parallel create-library attempts than the supporter cap → exactly cap successes.
 
         Exercises the lock under a larger limit where multiple inserts *should*
         succeed but not all 5. If the lock is missing, the count would likely
@@ -311,8 +317,9 @@ class TestConcurrentLimitEnforcement:
 
         async with sessionmaker_() as s:
             user = await _make_user(s)
-            await _set_plan(s, user, SubscriptionPlan.pro)
+            await _set_plan(s, user, SubscriptionPlan.home)
             await s.commit()
+        cap = get_limit(SubscriptionPlan.home, "libraries")
 
         async def _try_create() -> bool:
             async with sessionmaker_() as s:
@@ -330,7 +337,7 @@ class TestConcurrentLimitEnforcement:
                 await s.commit()
                 return True
 
-        results = await asyncio.gather(*[_try_create() for _ in range(5)])
+        results = await asyncio.gather(*[_try_create() for _ in range(cap + 3)])
         succeeded = sum(1 for r in results if r)
 
         from sqlalchemy import func as _func, select as _select
@@ -343,16 +350,16 @@ class TestConcurrentLimitEnforcement:
                 )
             ).scalar_one()
 
-        assert succeeded == 3, f"Pro-plan library cap is 3, got {succeeded} successes"
-        assert total == 3, f"Pro-plan library cap is 3, ended with {total}"
+        assert succeeded == cap, f"supporter library cap is {cap}, got {succeeded} successes"
+        assert total == cap, f"supporter library cap is {cap}, ended with {total}"
 
     async def test_concurrent_add_member_never_exceeds_limit(
         self, sessionmaker_: async_sessionmaker[AsyncSession]
     ) -> None:
-        """5 parallel add-member calls on a Home-plan library (limit=3) → exactly 2 new members.
+        """5 parallel add-member calls on a Free-plan library (limit=3) → exactly 2 new members.
 
-        Home (not Pro) on purpose: the race assertion needs a limit smaller
-        than the number of candidates, and Pro was raised to 10 members.
+        Free on purpose: the race assertion needs a limit smaller than the
+        number of candidates (paid plans allow 10 members).
 
         Owner already counts as the first member. Without the lock, two or
         more tasks could both observe count=1 and both insert, overshooting
@@ -362,7 +369,7 @@ class TestConcurrentLimitEnforcement:
 
         async with sessionmaker_() as s:
             owner = await _make_user(s)
-            await _set_plan(s, owner, SubscriptionPlan.home)
+            await _set_plan(s, owner, SubscriptionPlan.free)
             lib = await _make_library(s, owner)   # owner = 1 member
             # Create the candidates up front so the race is purely on the
             # member-count check, not on user-row visibility.
@@ -394,9 +401,10 @@ class TestConcurrentLimitEnforcement:
                 )
             ).scalar_one()
 
-        # Home: members_per_library=3. Owner + 2 new members = 3.
+        # Free: members_per_library=3. Owner + 2 new members = 3.
+        assert get_limit(SubscriptionPlan.free, "members_per_library") == 3
         assert succeeded == 2, f"expected 2 new members (cap 3 minus owner), got {succeeded}"
-        assert total == 3, f"Home-plan member cap is 3, ended with {total}"
+        assert total == 3, f"free-plan member cap is 3, ended with {total}"
 
 
 class TestIdempotency:

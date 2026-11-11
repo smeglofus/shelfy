@@ -6172,11 +6172,7 @@
         "properties": {
           "plan": {
             "type": "string",
-            "enum": [
-              "home",
-              "pro",
-              "library"
-            ],
+            "const": "home",
             "title": "Plan"
           },
           "interval": {
@@ -6194,7 +6190,7 @@
           "plan"
         ],
         "title": "CheckoutRequest",
-        "description": "Payload for POST /api/v1/billing/checkout.\n\n``interval`` defaults to ``monthly`` for backwards compatibility with\nolder clients that don't know about yearly pricing. The backend maps\nthe (plan, interval) pair to a concrete Stripe price ID."
+        "description": "Payload for POST /api/v1/billing/checkout.\n\nOnly the ``home`` plan (shown as \"Podporovatel\" / \"Supporter\") is sold;\n``pro`` and ``library`` are legacy plans kept for existing subscribers.\n\n``interval`` defaults to ``monthly`` for backwards compatibility with\nolder clients that don't know about yearly pricing. The backend maps\nthe (plan, interval) pair to a concrete Stripe price ID."
       },
       "CheckoutResponse": {
         "properties": {
