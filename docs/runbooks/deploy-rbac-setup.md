@@ -85,3 +85,22 @@ kubectl apply -f infra/k8s/deploy-rbac.yaml   # recreates the empty Secret; cont
 After a few green deploys, confirm `/home/suslik/.kube/config` (cluster-admin)
 is no longer mounted by any workflow (`grep -rn '.kube/config' .github/`).
 Keep the admin config off the runner's reach where practical.
+
+## Runner jako samostatný neprivilegovaný uživatel (od 2026-11-11)
+
+Deploy runner (`actions.runner.smeglofus-shelfy.homelab2`) neběží pod
+`suslik`, ale pod systémovým uživatelem **`gh-runner`**: bez sudo, bez skupiny
+`docker`. Repo je veřejné a runner je self-hosted, takže kód v deploy jobu nesmí
+mít cestu k rootovi (dřív: `suslik` = NOPASSWD sudo + docker).
+
+- Runner: `/opt/actions-runner-shelfy` (vlastník `gh-runner`), unit
+  `/etc/systemd/system/actions.runner.smeglofus-shelfy.homelab2.service` s `User=gh-runner`.
+- `kubectl` = k3s binárka `/usr/local/bin/kubectl`, žádný Docker.
+- Kubeconfig: `/home/gh-runner/.kube/deploy-config` (600, `gh-runner`) — kopie
+  scoped `deployer` configu výše. Při rotaci tokenu zkopírovat znovu:
+
+```bash
+sudo install -m 600 -o gh-runner -g gh-runner ~/.kube/deploy-config /home/gh-runner/.kube/deploy-config
+```
+
+Ověření: `sudo -u gh-runner env KUBECONFIG=/home/gh-runner/.kube/deploy-config kubectl auth can-i get secrets -n shelfy` → `no`.
