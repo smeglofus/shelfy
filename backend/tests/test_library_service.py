@@ -325,3 +325,14 @@ async def test_seed_sample_library_marks_is_sample(test_session: AsyncSession) -
 
     assert non_sample_books == 0
     assert non_sample_locs == 0
+
+
+def test_personal_library_name_and_sample_locations_by_locale() -> None:
+    from app.services.library import personal_library_name, sample_locations
+
+    assert personal_library_name("jana@example.com", "cs") == "Knihovna jana"
+    assert personal_library_name("jana@example.com", "cs-CZ") == "Knihovna jana"
+    assert personal_library_name("jana@example.com", "en") == "jana library"
+    assert personal_library_name("jana@example.com") == "jana library"
+    assert sample_locations("cs")[2]["shelf"] == "K přečtení"
+    assert sample_locations("de")[0]["room"] == "Living room"

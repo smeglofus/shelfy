@@ -163,6 +163,24 @@ async def test_register_creates_user(test_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
+async def test_register_uses_browser_language_for_library_name(test_session: AsyncSession) -> None:
+    from sqlalchemy import select
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "cesky.uzivatel@example.com", "password": "StrongPass123"},
+            headers={"Accept-Language": "cs-CZ,cs;q=0.9,en;q=0.8"},
+        )
+    assert response.status_code == 201
+
+    library = (await test_session.execute(
+        select(Library).where(Library.name == "Knihovna cesky.uzivatel")
+    )).scalar_one_or_none()
+    assert library is not None
+
+
+@pytest.mark.asyncio
 async def test_register_weak_password_returns_422(test_session: AsyncSession) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(

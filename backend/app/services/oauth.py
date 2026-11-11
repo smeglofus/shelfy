@@ -188,6 +188,7 @@ async def find_or_create_google_user(
     google_sub: str,
     email: str,
     avatar_url: str | None,
+    locale: str | None = None,
 ) -> User:
     """Return the User for this Google identity, creating or linking as needed.
 
@@ -249,7 +250,7 @@ async def find_or_create_google_user(
         )
     )
 
-    await create_personal_library(session, new_user)
+    await create_personal_library(session, new_user, locale)
     await session.commit()
     await session.refresh(new_user)
     logger.info("oauth_new_user_created", user_id=str(new_user.id), email=email)

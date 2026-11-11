@@ -428,13 +428,38 @@ export function createDemoLoans(): Loan[] {
   })
 }
 
-/** Build a fresh array of seed locations (new objects every call). */
-export function createDemoLocations(): Location[] {
+/**
+ * Czech names for the seed locations. The seed itself stays English (it
+ * mirrors the backend sample library and the tests pin it); visitors browsing
+ * in Czech get these instead — matches `_SAMPLE_LOCATIONS_BY_LOCALE["cs"]`
+ * in backend/app/services/library.py.
+ */
+const CS_LOCATION_NAMES: Readonly<Record<string, string>> = {
+  'Living room': 'Obývák',
+  Bedroom: 'Ložnice',
+  Study: 'Pracovna',
+  Bookcase: 'Knihovna',
+  Nightstand: 'Noční stolek',
+  'To read': 'K přečtení',
+}
+
+function localizeLocationName(name: string, language: string | undefined): string {
+  if (!language?.toLowerCase().startsWith('cs')) return name
+  const shelf = /^Shelf (\d+)$/.exec(name)
+  if (shelf) return `Police ${shelf[1]}`
+  return CS_LOCATION_NAMES[name] ?? name
+}
+
+/**
+ * Build a fresh array of seed locations (new objects every call), named in
+ * the visitor's UI language (`cs` → Czech, anything else → English).
+ */
+export function createDemoLocations(language?: string): Location[] {
   return SEED_LOCATIONS.map((loc) => ({
     id: loc.id,
-    room: loc.room,
-    furniture: loc.furniture,
-    shelf: loc.shelf,
+    room: localizeLocationName(loc.room, language),
+    furniture: localizeLocationName(loc.furniture, language),
+    shelf: localizeLocationName(loc.shelf, language),
     display_order: loc.display_order,
     is_sample: true,
     created_at: DEMO_SEED_TS,

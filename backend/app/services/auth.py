@@ -64,7 +64,9 @@ def read_refresh_token_subject(token: str) -> str:
 
 
 
-async def register_user(session: AsyncSession, email: str, password: str) -> User:
+async def register_user(
+    session: AsyncSession, email: str, password: str, locale: str | None = None
+) -> User:
     existing = await get_user_by_email(session, email)
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -82,8 +84,9 @@ async def register_user(session: AsyncSession, email: str, password: str) -> Use
         )
     )
 
-    lib = await create_personal_library(session, user)
-    await seed_sample_library(session, lib)
+    # Library name + sample shelves in the UI language of the sign-up.
+    lib = await create_personal_library(session, user, locale)
+    await seed_sample_library(session, lib, locale)
     await session.commit()
     await session.refresh(user)
     logger.info("registration_success", user_id=str(user.id))
