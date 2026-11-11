@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+// Paid-plan UI is gated by a kill-switch (ADR 013 addendum). Most tests cover
+// the "on" behaviour; dedicated tests below cover "off" (current production).
+vi.mock('../lib/billing-flags', () => ({
+  CHECKOUT_ENABLED: true,
+  isCheckoutEnabled: vi.fn(() => true),
+}))
+
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: vi.fn(() => ({ isAuthenticated: true })),
 }))
@@ -117,5 +124,18 @@ describe('UsageMeterCard', () => {
     await userEvent.click(cta)
     // Navigation is handled by react-router — just verify the click doesn't throw
     expect(cta).toBeInTheDocument()
+  })
+})
+
+describe('UsageMeterCard — checkout disabled', () => {
+  it('shows meters but no upsell CTA', async () => {
+    const { isCheckoutEnabled } = await import('../lib/billing-flags')
+    vi.mocked(isCheckoutEnabled).mockReturnValue(false)
+    vi.mocked(getBillingStatus).mockResolvedValue(makeBilling({ plan: 'free' }))
+    renderCard()
+
+    expect(await screen.findByTestId('usage-plan-badge')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    vi.mocked(isCheckoutEnabled).mockReturnValue(true)
   })
 })

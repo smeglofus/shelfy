@@ -83,6 +83,7 @@ def test_settings() -> Settings:
         stripe_secret_key="sk_test_walletcheck",
         stripe_webhook_secret="whsec_test_walletcheck_123456789012345678901234",
         stripe_price_id_home_monthly=_PRICE_PRO_MONTHLY,
+        billing_checkout_enabled=True,
         app_url="https://shelfy.test",
     )
 
@@ -553,3 +554,29 @@ async def test_create_checkout_session_rejects_legacy_plans(
                 session, user, legacy_plan, test_settings, interval="monthly"
             )
     assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_checkout_session_blocked_when_kill_switch_off(
+    test_sessionmaker: async_sessionmaker[AsyncSession],
+    test_settings: Settings,
+    seeded_user: tuple[uuid.UUID, User],
+) -> None:
+    """Checkout stays off until the operator identity is on the site (ADR 013)."""
+    from fastapi import HTTPException
+
+    _, user = seeded_user
+    disabled = test_settings.model_copy(update={"billing_checkout_enabled": False})
+    async with test_sessionmaker() as session:
+        with pytest.raises(HTTPException) as exc:
+            await billing_svc.create_checkout_session(
+                session, user, "home", disabled, interval="monthly"
+            )
+    assert exc.value.status_code == 503
+
+
+def test_billing_checkout_disabled_by_default() -> None:
+    assert Settings(
+        database_url="sqlite+aiosqlite:///:memory:",
+        jwt_secret_key="test-secret",
+    ).billing_checkout_enabled is False

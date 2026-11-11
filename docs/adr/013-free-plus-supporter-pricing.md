@@ -54,3 +54,19 @@ Gemini Vision. Podle odhadu z ceníku Gemini 3.8 Flash stojí sken zhruba
   produkt bez platících zákazníků.
 - **Vlastní API klíč uživatele (BYOK):** zamítnuto v ADR 006 kvůli
   riziku spojenému s ukládáním cizích klíčů.
+
+## Dodatek 2026-11-11 — prodej zatím vypnutý
+
+Prodávat předplatné spotřebitelům je v ČR podnikání. Na webu proto musí
+být identifikace provozovatele (jméno, IČO, adresa) a provozovatel musí mít
+živnostenské oprávnění, a to bez ohledu na výši příjmu. Hranice 2 mil. Kč se
+týká jen DPH. Autor má živnost teď přerušenou, a proto:
+
+- **`BILLING_CHECKOUT_ENABLED=false`** (backend, výchozí hodnota) +
+  `CHECKOUT_ENABLED = false` (`frontend/src/lib/billing-flags.ts`). Checkout
+  vrací 503, v UI není nabídka placeného tarifu ani tlačítka k nákupu.
+- Limity zůstávají podle tohoto ADR. Free má 20 skenů měsíčně, víc dá autor
+  ručně (`app.cli.set_plan --plan home`, např. beta testerům).
+- Stávající předplatitelé (pro/library) fungují dál: webhooky, portál, limity.
+- Zapnutí = obnovit živnost, doplnit údaje provozovatele do Obchodních
+  podmínek a Zásad soukromí (#302) a přepnout oba přepínače.

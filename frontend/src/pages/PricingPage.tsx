@@ -8,6 +8,7 @@ import {
   consumePendingCheckout,
   savePendingCheckout,
 } from '../lib/pending-checkout'
+import { isCheckoutEnabled } from '../lib/billing-flags'
 import { ROUTES } from '../lib/routes'
 import type { BillingInterval, PaidPlan, SubscriptionPlan } from '../lib/types'
 
@@ -110,7 +111,7 @@ export function PricingPage() {
   useEffect(() => {
     if (authLoading || !isAuthenticated || resumeAttempted.current) return
     const intent = consumePendingCheckout()
-    if (!intent) return
+    if (!intent || !isCheckoutEnabled()) return
     resumeAttempted.current = true
     // Reflect the user's saved interval on the UI in case the redirect
     // is slow / blocked — they shouldn't see "monthly" when they actually
@@ -188,7 +189,8 @@ export function PricingPage() {
         </div>
       )}
 
-      {/* Monthly / Yearly toggle */}
+      {/* Monthly / Yearly toggle — only meaningful when a paid plan is on sale */}
+      {isCheckoutEnabled() && (
       <div
         role='tablist'
         aria-label={t('billing.interval_toggle_label')}
@@ -235,6 +237,7 @@ export function PricingPage() {
           )
         })}
       </div>
+      )}
 
       <div
         style={{
@@ -243,7 +246,7 @@ export function PricingPage() {
           gap: 16,
         }}
       >
-        {PLANS.map((plan) => {
+        {PLANS.filter((plan) => isCheckoutEnabled() || !plan.checkoutPlan).map((plan) => {
           const isCurrent = currentPlan !== null && plan.key === currentPlan
           const isHighlighted = Boolean(plan.highlighted)
           const priceDisplay = plan.priceCzk
@@ -330,7 +333,7 @@ export function PricingPage() {
       </div>
 
       <p className='text-small' style={{ marginTop: 20, color: 'var(--sh-text-secondary)', textAlign: 'center' }}>
-        {t('billing.pricing_footer')}
+        {isCheckoutEnabled() ? t('billing.pricing_footer') : t('billing.paid_plan_coming_soon')}
       </p>
     </section>
   )

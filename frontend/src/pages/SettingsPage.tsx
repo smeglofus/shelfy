@@ -9,6 +9,7 @@ import { ImportCsvModal } from '../components/ImportCsvModal'
 import { Modal } from '../components/Modal'
 import { useEnrichAll } from '../hooks/useEnrich'
 import { useBillingStatus, useCreateCheckout, useCreatePortal } from '../hooks/useBilling'
+import { isCheckoutEnabled } from '../lib/billing-flags'
 import { useAddMember, useCreateLibrary, useLibraries, useLibraryMembers, useRemoveMember, useUpdateLibrary, useUpdateMember } from '../hooks/useLibrary'
 import { useToggleWishlist } from '../hooks/useWishlist'
 import { useResetOnboarding } from '../hooks/useOnboarding'
@@ -563,6 +564,7 @@ function BillingSection() {
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {isFree ? (
+          isCheckoutEnabled() ? (
           <>
             <button
               type='button'
@@ -587,6 +589,9 @@ function BillingSection() {
               {t('billing.see_all_plans')}
             </button>
           </>
+          ) : (
+            <p className='stg-row-desc' style={{ margin: 0 }}>{t('billing.paid_plan_coming_soon')}</p>
+          )
         ) : (
           <button
             type='button'

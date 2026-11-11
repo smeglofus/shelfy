@@ -242,6 +242,11 @@ async def create_checkout_session(
     ``plan`` must be purchasable (currently only ``home``). ``interval`` is
     ``monthly`` or ``yearly``. Unknown combinations → 400.
     """
+    if not settings.billing_checkout_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Checkout is temporarily disabled",
+        )
     # Only plans in PURCHASABLE_PLANS can be bought; pro/library are legacy
     # (existing subscribers keep them, webhooks still map their prices).
     if plan not in {p.value for p in PURCHASABLE_PLANS}:

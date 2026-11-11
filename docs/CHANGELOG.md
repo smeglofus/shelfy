@@ -4,10 +4,10 @@ Public source for notable Shelfy changes. Keep entries short, dated, and user-fa
 
 The public page at `/changelog` is generated from `frontend/src/content/changelog.ts`. When adding a release note, update both files in the same PR until a markdown-to-page generator exists.
 
-## 2026-11-11 — Shelfy zdarma bez limitu knih, nový tarif Podporovatel
+## 2026-11-11 — Shelfy zdarma bez limitu knih
 
 - Free tarif už nemá limit knih ani obohacení metadat a knihovnu můžeš sdílet až se třemi členy. Sken poličky je zdarma 20× měsíčně (ADR 013).
-- Místo tří placených tarifů je jen jeden: **Podporovatel** za 59 Kč měsíčně / 590 Kč ročně (60 skenů, až 5 knihoven, 10 členů). Kdo měl původní tarif Pro nebo Library, má ho beze změny.
+- Prodej placeného tarifu je zatím vypnutý (do zveřejnění údajů o provozovateli). Kdo měl původní tarif Pro nebo Library, má ho beze změny.
 - Sken poličky čte autory čistěji: bez akademických titulů a VELKÝCH písmen, se všemi spoluautory a u knih, kde je na hřbetu jen příjmení, doplní celé jméno z Knihovny.cz (#351).
 
 ## 2026-07-12 — v1.0.0: nová produkční platforma (Kubernetes)
