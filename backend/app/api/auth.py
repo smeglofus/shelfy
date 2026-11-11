@@ -71,10 +71,11 @@ async def register(
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
-    user = await register_user(session, str(payload.email), payload.password)
+    locale = email_locale_from_request(request)
+    user = await register_user(session, str(payload.email), payload.password, locale)
     # Fire-and-forget welcome email — never blocks the response
     name = user.email.split("@")[0]
-    background_tasks.add_task(email_svc.send_welcome, user.email, name, locale=email_locale_from_request(request))
+    background_tasks.add_task(email_svc.send_welcome, user.email, name, locale=locale)
     return UserResponse.model_validate(user)
 
 
@@ -491,6 +492,7 @@ async def google_authorize(
 
 @router.post("/google/callback", response_model=TokenResponse)
 async def google_callback(
+    request: Request,
     payload: OAuthCallbackRequest,
     response: Response,
     session: AsyncSession = Depends(get_db_session),
@@ -532,7 +534,9 @@ async def google_callback(
     avatar_url: str | None = claims.get("picture")
 
     # 5. Find / link / create user
-    user = await find_or_create_google_user(session, google_sub, email, avatar_url)
+    user = await find_or_create_google_user(
+        session, google_sub, email, avatar_url, locale=email_locale_from_request(request)
+    )
 
     # 6. Issue token pair (same shape as /login) + set cookies.
     access_token, refresh_token = issue_token_pair(user.email, settings)

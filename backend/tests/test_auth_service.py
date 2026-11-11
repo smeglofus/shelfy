@@ -171,3 +171,34 @@ async def test_register_user_duplicate_email_raises_409(test_session: AsyncSessi
     with pytest.raises(HTTPException) as exc:
         await register_user(test_session, "dup@example.com", "password2")
     assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("locale", "library_name", "rooms"),
+    [
+        ("cs", "Knihovna locuser", {"Obývák", "Ložnice"}),
+        ("en", "locuser library", {"Living room", "Bedroom"}),
+        (None, "locuser library", {"Living room", "Bedroom"}),
+    ],
+)
+async def test_register_user_localizes_library_and_sample_shelves(
+    test_session: AsyncSession, locale: str | None, library_name: str, rooms: set[str]
+) -> None:
+    """Czech sign-ups get Czech sample shelves and library name (first impression)."""
+    from sqlalchemy import select
+    from app.models.library import Library, LibraryMember
+    from app.models.location import Location
+
+    user = await register_user(test_session, "locuser@example.com", "password123", locale)
+
+    library = (await test_session.execute(
+        select(Library).join(LibraryMember, LibraryMember.library_id == Library.id)
+        .where(LibraryMember.user_id == user.id)
+    )).scalar_one()
+    assert library.name == library_name
+    locations = (await test_session.execute(
+        select(Location).where(Location.library_id == library.id)
+    )).scalars().all()
+    assert {loc.room for loc in locations} == rooms
+    assert all(loc.is_sample for loc in locations)

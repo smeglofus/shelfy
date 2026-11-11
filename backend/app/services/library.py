@@ -24,15 +24,42 @@ async def create_library(session: AsyncSession, user_id: uuid.UUID, name: str) -
     return lib
 
 
-async def create_personal_library(session: AsyncSession, user: User) -> Library:
-    return await create_library(session, user.id, f"{user.email.split('@')[0]} library")
+def _is_czech(locale: str | None) -> bool:
+    return (locale or "").lower().startswith("cs")
 
 
-_SAMPLE_LOCATIONS = [
-    {"room": "Living room", "furniture": "Bookcase", "shelf": "Shelf 1", "display_order": 1},
-    {"room": "Living room", "furniture": "Bookcase", "shelf": "Shelf 2", "display_order": 2},
-    {"room": "Bedroom", "furniture": "Nightstand", "shelf": "To read", "display_order": 1},
-]
+def personal_library_name(email: str, locale: str | None = None) -> str:
+    """Default name of a new user's own library, in the UI language."""
+    prefix = email.split("@")[0]
+    return f"Knihovna {prefix}" if _is_czech(locale) else f"{prefix} library"
+
+
+async def create_personal_library(
+    session: AsyncSession, user: User, locale: str | None = None
+) -> Library:
+    return await create_library(session, user.id, personal_library_name(user.email, locale))
+
+
+# Sample locations per UI language (the frontend demo mirrors these in
+# frontend/src/features/demo/demoSeed.ts). English is the fallback.
+_SAMPLE_LOCATIONS_BY_LOCALE: dict[str, list[dict[str, str | int]]] = {
+    "en": [
+        {"room": "Living room", "furniture": "Bookcase", "shelf": "Shelf 1", "display_order": 1},
+        {"room": "Living room", "furniture": "Bookcase", "shelf": "Shelf 2", "display_order": 2},
+        {"room": "Bedroom", "furniture": "Nightstand", "shelf": "To read", "display_order": 1},
+    ],
+    "cs": [
+        {"room": "Obývák", "furniture": "Knihovna", "shelf": "Police 1", "display_order": 1},
+        {"room": "Obývák", "furniture": "Knihovna", "shelf": "Police 2", "display_order": 2},
+        {"room": "Ložnice", "furniture": "Noční stolek", "shelf": "K přečtení", "display_order": 1},
+    ],
+}
+# Backwards-compatible alias (English) for callers/tests that imported it.
+_SAMPLE_LOCATIONS = _SAMPLE_LOCATIONS_BY_LOCALE["en"]
+
+
+def sample_locations(locale: str | None = None) -> list[dict[str, str | int]]:
+    return _SAMPLE_LOCATIONS_BY_LOCALE["cs" if _is_czech(locale) else "en"]
 
 # (title, author, language, year, reading_status, location_index, shelf_position)
 _SAMPLE_BOOKS: list[tuple[str, str, str, int, ReadingStatus, int, int]] = [
@@ -55,10 +82,12 @@ _SAMPLE_BOOKS: list[tuple[str, str, str, int, ReadingStatus, int, int]] = [
 ]
 
 
-async def seed_sample_library(session: AsyncSession, library: Library) -> None:
+async def seed_sample_library(
+    session: AsyncSession, library: Library, locale: str | None = None
+) -> None:
     locations = [
         Location(library_id=library.id, is_sample=True, **loc_data)
-        for loc_data in _SAMPLE_LOCATIONS
+        for loc_data in sample_locations(locale)
     ]
     session.add_all(locations)
     await session.flush()
