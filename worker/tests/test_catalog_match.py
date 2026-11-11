@@ -217,3 +217,55 @@ class TestTitleLookupSubtitleContainment:
         assert catalog_match.title_lookup_result_is_trustworthy(
             "Příběh lásky", None, "Příběh lásky : jak a proč milujeme", None
         ) is False
+
+
+class TestCompleteAuthor:
+    def test_surname_completed_from_catalog(self):
+        assert catalog_match.complete_author(
+            "Život Vernona Subutexe 1", "Despentes", "Život Vernona Subutexe 1", "Virginie Despentes"
+        ) == "Virginie Despentes"
+
+    def test_full_scanned_name_is_never_replaced(self):
+        # Keeps co-authors, pseudonyms and preferred spellings from the spine.
+        assert catalog_match.complete_author(
+            "Přístav", "Magdaléna Rejžková", "Přístav", "Magdaléna Bujabéza Rejžková"
+        ) is None
+
+    def test_surname_must_be_catalog_last_token(self):
+        assert catalog_match.complete_author(
+            "Umění fermentace", "Sandor", "Umění fermentace", "Sandor Katz"
+        ) is None
+
+    def test_catalog_display_form_with_comma_rejected(self):
+        assert catalog_match.complete_author(
+            "Tahle kniha ti změní život", "Palán", "Tahle kniha ti změní život", "Palán, Aleš"
+        ) is None
+
+    def test_parallel_title_counts_as_match(self):
+        assert catalog_match.complete_author(
+            "A Study in Scarlet Studie v šarlatové", "Doyle",
+            "A study in scarlet = Studie v šarlatové", "Arthur Conan Doyle",
+        ) == "Arthur Conan Doyle"
+
+    def test_different_person_not_completed(self):
+        assert catalog_match.complete_author(
+            "Příběh lásky", "Novák", "Příběh lásky", "Erich Segal"
+        ) is None
+
+    def test_title_mismatch_blocks_completion(self):
+        assert catalog_match.complete_author(
+            "Válka s mloky", "Čapek", "Krakatit", "Karel Čapek"
+        ) is None
+
+    def test_identical_names_return_none(self):
+        assert catalog_match.complete_author(
+            "Osvícení", "Stephen King", "Osvícení", "Stephen King"
+        ) is None
+
+    def test_apply_completes_author_without_review(self):
+        item: dict[str, object] = {"title": "Možná že odcházíme", "author": "Balabán", "confidence": "high"}
+        decision = catalog_match.apply_catalog_match(item, "Možná, že odcházíme", "Jan Balabán")
+        assert decision == "adopt"
+        assert item["author"] == "Jan Balabán"
+        assert item["confidence"] == "high"
+        assert "catalog_author_completed" in item["quality_flags"]

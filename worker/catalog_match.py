@@ -156,6 +156,55 @@ def evaluate_match(
     return "none", score
 
 
+def _name_tokens(text: str | None) -> set[str]:
+    if not text:
+        return set()
+    return {t for t in normalize_for_compare(text).split() if len(t) > 2}
+
+
+def complete_author(
+    scanned_title: str | None,
+    scanned_author: str | None,
+    catalog_title: str | None,
+    catalog_author: str | None,
+) -> str | None:
+    """Return the catalog's full author name when the spine only gave a
+    surname, else None.
+
+    Spines often print just the surname ("Despentes", "Balabán", "Doyle").
+    We complete it from a catalog record only when it is unmistakably the
+    same person and the same book:
+
+      * the scanned author is a single significant token,
+      * it equals the *last* token of the catalog name ("Despentes" →
+        "Virginie Despentes"; never a first-name or middle-name hit),
+      * the catalog name is in natural "Given Surname" order (no comma —
+        catalogue display forms like "Palán, Aleš" are worse than the spine),
+      * the titles match: near-identical, or every scanned title word appears
+        in the catalog title (spine without subtitle, or with a translated
+        parallel title the catalog also carries).
+
+    A scanned name that already has a given name is never touched — the
+    spine form is then as good as the catalog's and keeps co-authors,
+    pseudonyms and preferred spellings intact.
+    """
+    if not scanned_author or not catalog_author or "," in catalog_author:
+        return None
+    scanned_tokens = normalize_for_compare(scanned_author).split()
+    significant = [t for t in scanned_tokens if len(t) > 2]
+    if len(significant) != 1 or len(scanned_tokens) != 1:
+        return None
+    catalog_tokens = normalize_for_compare(catalog_author).split()
+    if len(catalog_tokens) < 2 or catalog_tokens[-1] != significant[0]:
+        return None
+    title_ok = similarity(scanned_title, catalog_title) >= ADOPT_TITLE_THRESHOLD or _query_title_contained(
+        scanned_title, catalog_title
+    )
+    if not title_ok:
+        return None
+    return catalog_author.strip()
+
+
 def apply_catalog_match(
     item: dict[str, object],
     catalog_title: str | None,
@@ -171,17 +220,44 @@ def apply_catalog_match(
     decision, score = evaluate_match(title, author, catalog_title, catalog_author)
 
     if decision == "adopt":
+        completed_on_adopt = complete_author(title, author, catalog_title, catalog_author) is not None
         if isinstance(catalog_title, str) and catalog_title.strip():
             item["title"] = catalog_title.strip()
         if isinstance(catalog_author, str) and catalog_author.strip():
             item["author"] = catalog_author.strip()
         flags = item.setdefault("quality_flags", [])
         if isinstance(flags, list):
+            if completed_on_adopt:
+                flags.append("catalog_author_completed")
             flags.append("catalog_adopted")
-    elif decision == "suggest":
+    else:
+        # Even when the title is not adopted verbatim (e.g. the catalog adds a
+        # subtitle), a partial/decorated author can still be completed from
+        # the same record.
+        completed = complete_author(title, author, catalog_title, catalog_author)
+        if completed:
+            item["author"] = completed
+            author = completed
+            flags = item.setdefault("quality_flags", [])
+            if isinstance(flags, list):
+                flags.append("catalog_author_completed")
+            # Re-evaluate with the completed name: a row that only looked like
+            # a mismatch because of the bare surname should not go to review.
+            decision, score = evaluate_match(title, author, catalog_title, catalog_author)
+            if decision == "adopt":
+                if isinstance(catalog_title, str) and catalog_title.strip():
+                    item["title"] = catalog_title.strip()
+                flags.append("catalog_adopted")
+                return decision
+
+    if decision == "suggest":
         if isinstance(catalog_title, str) and catalog_title.strip():
             item["suggested_title"] = catalog_title.strip()
-        if isinstance(catalog_author, str) and catalog_author.strip():
+        if (
+            isinstance(catalog_author, str)
+            and catalog_author.strip()
+            and normalize_for_compare(catalog_author) != normalize_for_compare(author or "")
+        ):
             item["suggested_author"] = catalog_author.strip()
         # Only downgrade when there is actually something to review.
         if "suggested_title" in item or "suggested_author" in item:

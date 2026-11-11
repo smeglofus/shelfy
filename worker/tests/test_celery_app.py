@@ -1166,3 +1166,71 @@ def test_cache_key_scopes_title_lookups_by_author() -> None:
 
 def test_cache_key_isbn_is_unchanged() -> None:
     assert celery_app._cache_key("9788076375789", "Whatever", "Someone") == "book-metadata:9788076375789"
+
+
+
+def _knihovny_record(title: str, author: str) -> dict[str, object]:
+    return {"title": title, "authors": {"primary": {author: []}}}
+
+
+def test_complete_surname_authors_from_knihovny(monkeypatch) -> None:
+    fake_redis = _FakeVerifyRedis()
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: fake_redis)
+    queried: list[list[str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == "www.knihovny.cz"
+        lookfor = request.url.params.get_list("lookfor0[]")
+        queried.append(lookfor)
+        if "Možná že odcházíme" in lookfor:
+            return httpx.Response(200, json={"records": [
+                _knihovny_record("Možná, že odcházíme", "Jan Balabán, 1961-2010"),
+            ]})
+        if "Život vernona subutexe 1" in lookfor:
+            return httpx.Response(200, json={"records": [
+                _knihovny_record("Život Vernona Subutexe. 1", "Virginie Despentes, 1969-"),
+            ]})
+        return httpx.Response(200, json={"records": []})
+
+    _patch_open_library_transport(monkeypatch, handler)
+
+    books: list[dict[str, object]] = [
+        {"title": "Možná že odcházíme", "author": "Balabán", "confidence": "high"},
+        {"title": "Život vernona subutexe 1", "author": "Despentes", "confidence": "high"},
+        # Already a full name → never queried, never changed
+        {"title": "Osvícení", "author": "Stephen King", "confidence": "high"},
+        # Surname with no catalog hit → untouched
+        {"title": "Neznámá kniha", "author": "Novák", "confidence": "high"},
+    ]
+
+    completed = celery_app.asyncio.run(celery_app._complete_surname_authors(books))
+
+    assert completed == 2
+    assert books[0]["author"] == "Jan Balabán"
+    assert books[0]["title"] == "Možná že odcházíme"  # title stays as scanned
+    assert "catalog_author_completed" in books[0]["quality_flags"]
+    assert books[1]["author"] == "Virginie Despentes"
+    assert books[2] == {"title": "Osvícení", "author": "Stephen King", "confidence": "high"}
+    assert books[3]["author"] == "Novák"
+    assert len(queried) == 3
+
+    # Second run is served from cache
+    books_again: list[dict[str, object]] = [{"title": "Možná že odcházíme", "author": "Balabán"}]
+    celery_app.asyncio.run(celery_app._complete_surname_authors(books_again))
+    assert books_again[0]["author"] == "Jan Balabán"
+    assert len(queried) == 3
+
+
+def test_complete_surname_authors_survives_errors(monkeypatch) -> None:
+    monkeypatch.setattr(celery_app, "_get_redis_client", lambda: _FakeVerifyRedis())
+    _patch_open_library_transport(monkeypatch, lambda _r: httpx.Response(503))
+
+    books: list[dict[str, object]] = [{"title": "Možná že odcházíme", "author": "Balabán"}]
+    assert celery_app.asyncio.run(celery_app._complete_surname_authors(books)) == 0
+    assert books[0] == {"title": "Možná že odcházíme", "author": "Balabán"}
+
+
+def test_complete_surname_authors_respects_kill_switch(monkeypatch) -> None:
+    monkeypatch.setattr(celery_app.worker_settings, "enable_knihovny_cz", False)
+    books: list[dict[str, object]] = [{"title": "Možná že odcházíme", "author": "Balabán"}]
+    assert celery_app.asyncio.run(celery_app._complete_surname_authors(books)) == 0
