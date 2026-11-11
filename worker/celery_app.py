@@ -26,7 +26,12 @@ from redis import Redis
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, Uuid, create_engine, exc, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
-from catalog_match import apply_catalog_match, normalize_for_compare, title_lookup_result_is_trustworthy
+from catalog_match import (
+    apply_catalog_match,
+    complete_author,
+    normalize_for_compare,
+    title_lookup_result_is_trustworthy,
+)
 from gemini_parser import parse_gemini_candidates
 from knihovny_client import fetch_knihovny_metadata, looks_czech
 from settings import worker_settings
@@ -494,7 +499,15 @@ async def _extract_shelf_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         "9. If the boundary between two spines is unclear, produce SEPARATE entries for "
         "each possible spine with confidence \"low\" rather than one merged entry.\n"
         "10. The author field must contain ONLY the author of that single book. "
-        "Do NOT include author names from neighboring spines.\n\n"
+        "Do NOT include author names from neighboring spines.\n"
+        "11. Write each author as a plain personal name in normal capitalization "
+        "(\"Marek Holeček\", not \"MAREK HOLEČEK\"), given name before surname. If the "
+        "spine names several authors, list ALL of them separated by \", \". Leave out "
+        "academic titles (MUDr., PhDr., Ing., Prof., ...), nicknames and decorative or "
+        "stylised words printed next to the name. Never add name parts that are not "
+        "printed — if only a surname is visible, return only the surname.\n"
+        "12. Only include books standing upright on the shelf (spine vertical). Ignore books "
+        "lying horizontally on top of other books or stacked flat.\n\n"
         "Return ONLY a strict JSON array. No markdown, no ```json fences, no commentary.\n"
         "Each array element must be an object with exactly these keys:\n"
         "  title (string|null) — full title as printed on spine\n"
@@ -669,6 +682,80 @@ async def _verify_shelf_books_against_catalog(books: list[dict[str, object]]) ->
     return stats
 
 
+AUTHOR_COMPLETE_TTL_SECONDS = 7 * 24 * 60 * 60
+_AUTHOR_COMPLETE_TIMEOUT_SECONDS = 20.0
+
+
+def _needs_author_completion(item: dict[str, object]) -> bool:
+    title = item.get("title")
+    author = item.get("author")
+    if not isinstance(title, str) or not title.strip() or not isinstance(author, str):
+        return False
+    return len(normalize_for_compare(author).split()) == 1
+
+
+async def _complete_surname_authors(books: list[dict[str, object]]) -> int:
+    """Complete surname-only authors ("Despentes") from Knihovny.cz.
+
+    Runs after the Open Library verification for rows whose author is still a
+    single word. Knihovny.cz (the Czech union catalogue) knows Czech editions
+    of foreign authors too, which Open Library mostly does not. The record is
+    used for the author only — titles stay as read from the spine, since the
+    catalogue form carries cataloguing punctuation (" = ", " ; ").
+    Best-effort: any error leaves the row untouched. Returns rows completed.
+    """
+    if not worker_settings.enable_knihovny_cz:
+        return 0
+    pending = [b for b in books if _needs_author_completion(b)]
+    if not pending:
+        return 0
+    cache = _get_redis_client()
+    semaphore = asyncio.Semaphore(_CATALOG_VERIFY_CONCURRENCY)
+    completed = 0
+
+    async with httpx.AsyncClient() as client:
+
+        async def _complete(item: dict[str, object]) -> None:
+            nonlocal completed
+            title = str(item["title"])
+            author = str(item["author"])
+            cache_key = f"author-complete:v1:{normalize_for_compare(title)}|{normalize_for_compare(author)}"
+            record: dict[str, object] | None
+            try:
+                cached = cache.get(cache_key)
+            except Exception:
+                cached = None
+            if cached is not None:
+                record = json.loads(cached)
+            else:
+                async with semaphore:
+                    try:
+                        found = await fetch_knihovny_metadata(client, None, title=title, author=author)
+                    except Exception:
+                        return
+                record = {"title": found.get("title"), "author": found.get("author")} if found else None
+                try:
+                    cache.setex(cache_key, AUTHOR_COMPLETE_TTL_SECONDS, json.dumps(record))
+                except Exception:
+                    pass
+            if not isinstance(record, dict):
+                return
+            catalog_title = record.get("title") if isinstance(record.get("title"), str) else None
+            catalog_author = record.get("author") if isinstance(record.get("author"), str) else None
+            full_name = complete_author(title, author, catalog_title, catalog_author)
+            if full_name:
+                item["author"] = full_name
+                flags = item.setdefault("quality_flags", [])
+                if isinstance(flags, list):
+                    flags.append("catalog_author_completed")
+                completed += 1
+                logger.info("shelf_scan_author_completed", scanned_author=author, completed_author=full_name)
+
+        await asyncio.gather(*(_complete(item) for item in pending))
+
+    return completed
+
+
 async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[str, object]] | None:
     api_key = worker_settings.gemini_api_key
     if not api_key:
@@ -683,7 +770,10 @@ async def _extract_spine_metadata_with_gemini(image_bytes: bytes) -> list[dict[s
         "You are reading a photo of a single book spine or cover. "
         "Transcribe the text exactly as printed. Do NOT invent or hallucinate titles, authors, or ISBNs.\n"
         "Books may be in Czech or other languages — preserve diacritics exactly.\n"
-        "If ISBN is not clearly visible, set isbn to null.\n\n"
+        "If ISBN is not clearly visible, set isbn to null.\n"
+        "Write each author as a plain personal name in normal capitalization, without academic "
+        "titles or nicknames; list all printed authors separated by \", \"; never add name parts "
+        "that are not printed.\n\n"
         "Return ONLY a strict JSON array (no markdown). Each item must have keys:\n"
         "  title (string|null), author (string|null), isbn (string|null), "
         "observed_text (string|null), confidence (\"high\"|\"medium\"|\"low\")."
@@ -1335,6 +1425,18 @@ def process_shelf_scan(self, job_id: str, location_id: str | None = None) -> Non
                     logger.info("shelf_scan_catalog_verified", **verify_stats)
                 except Exception as verify_exc:
                     logger.warning("shelf_scan_catalog_verify_failed", error=str(verify_exc))
+
+            # Surname-only authors ("Despentes") → full name from Knihovny.cz.
+            try:
+                completed_authors = asyncio.run(
+                    asyncio.wait_for(
+                        _complete_surname_authors(vision_results),
+                        timeout=_AUTHOR_COMPLETE_TIMEOUT_SECONDS,
+                    )
+                )
+                logger.info("shelf_scan_authors_completed", count=completed_authors)
+            except Exception as complete_exc:
+                logger.warning("shelf_scan_author_completion_failed", error=str(complete_exc))
 
             # Log confidence summary for observability
             conf_counts = {"high": 0, "medium": 0, "low": 0, "needs_review": 0}

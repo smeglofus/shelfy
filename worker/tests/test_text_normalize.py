@@ -1,9 +1,11 @@
+import pytest
 """Tests for text_normalize module — casing, cleanup, and book field normalization."""
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import text_normalize
+from text_normalize import normalize_author_name, normalize_book_fields  # noqa: E402
 
 
 # ── normalize_casing ────────────────────────────────────────────────
@@ -512,3 +514,39 @@ class TestAuditBookRow:
         flags = text_normalize.audit_book_row(book)
         assert book["title"] == "The trial"
         assert "author_has_separator" in flags
+
+
+class TestNormalizeAuthorName:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("MAREK Maara HOLEČEK", "Marek Maara Holeček"),
+            ("MUDr. DAVID FREJ", "David Frej"),
+            ("PhDr. Václav Budínský", "Václav Budínský"),
+            ("Václav Budínský, CSc.", "Václav Budínský"),
+            ("Mcconaughey", "McConaughey"),
+            ("MATTHEW McCONAUGHEY", "Matthew McConaughey"),
+            ("O'BRIEN", "O'Brien"),
+            ("JEAN-PAUL SARTRE", "Jean-Paul Sartre"),
+            ("Johann Wolfgang VON GOETHE", "Johann Wolfgang von Goethe"),
+            ("J. R. R. Tolkien", "J. R. R. Tolkien"),
+            ("Leonardo DiCaprio", "Leonardo DiCaprio"),
+            ("Despentes", "Despentes"),
+            ("karel čapek", "Karel Čapek"),
+            ("Ma Jian", "Ma Jian"),
+        ],
+    )
+    def test_cases(self, raw: str, expected: str) -> None:
+        assert normalize_author_name(raw) == expected
+
+    def test_only_titles_becomes_none(self) -> None:
+        assert normalize_author_name("Prof. Dr.") is None
+
+    def test_none_passthrough(self) -> None:
+        assert normalize_author_name(None) is None
+
+    def test_book_fields_use_author_normalization(self) -> None:
+        book: dict[str, object] = {"title": "DOTKNOUT SE NEBE", "author": "MAREK Maara HOLEČEK"}
+        normalize_book_fields(book)
+        assert book["author"] == "Marek Maara Holeček"
+        assert book["title"] == "Dotknout se nebe"

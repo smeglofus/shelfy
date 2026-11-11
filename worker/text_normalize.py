@@ -215,6 +215,91 @@ _FIELD_CASING_MODE: dict[str, str] = {
 }
 
 
+# Academic / professional titles printed on Czech (and some English) spines.
+# Matched case-insensitively against a token with its trailing dot(s) and
+# comma stripped; the author field should carry the name only.
+_ACADEMIC_TITLES: frozenset[str] = frozenset({
+    "bc", "mgr", "ing", "ingarch", "mudr", "mvdr", "mddr", "phdr", "rndr",
+    "judr", "paeddr", "thdr", "thlic", "phmr", "pharmdr", "doc", "prof",
+    "dr", "drsc", "csc", "phd", "dis", "mba", "msc", "ma", "ba", "dipl",
+})
+
+
+def _is_academic_title(token: str) -> bool:
+    core = token.strip(",").replace(".", "").lower()
+    if core not in _ACADEMIC_TITLES:
+        return False
+    # "Ma" / "Ba" are also plausible name fragments — only treat them as
+    # titles when written with a dot or in caps (M.A., BA).
+    if core in {"ma", "ba"}:
+        return "." in token or token.strip(",").isupper()
+    return True
+
+
+def _capitalize_name_part(part: str) -> str:
+    """Capitalize one name fragment: "HOLEČEK" → "Holeček", "MCCONAUGHEY" →
+    "McConaughey", "O'BRIEN" → "O'Brien". Lowercase particles are handled by
+    the caller."""
+    if not part:
+        return part
+    if "'" in part:
+        head, _, tail = part.partition("'")
+        return _capitalize_name_part(head) + "'" + _capitalize_name_part(tail)
+    lowered = part.lower()
+    if lowered.startswith("mc") and len(lowered) > 2 and lowered[2].isalpha():
+        return "Mc" + lowered[2].upper() + lowered[3:]
+    return lowered[0].upper() + lowered[1:]
+
+
+def _fix_name_token(token: str, is_first: bool) -> str:
+    """Normalize the casing of a single author-name token.
+
+    Only tokens that are uniformly cased (ALL CAPS, all lowercase, or an
+    ALL-CAPS-derived "Mcconaughey") are touched — a deliberately mixed token
+    like "DiCaprio" or "deWitt" is kept verbatim.
+    """
+    letters = [ch for ch in token if ch.isalpha()]
+    if not letters:
+        return token
+    # Initials ("J.", "R.R.") stay as printed, just uppercased.
+    if len(letters) <= 2 and "." in token:
+        return token.upper()
+    if token.upper() in _UPPERCASE_WORDS or _is_roman_numeral(token) and token.isupper() and len(letters) <= 4:
+        return token
+    if not is_first and token.lower() in _NAME_PARTICLES:
+        return token.lower()
+    uniform = all(ch.isupper() for ch in letters) or all(ch.islower() for ch in letters)
+    # "Mcconaughey" (flattened ALL CAPS) or "McCONAUGHEY" (spine typography).
+    mc_flattened = token.lower().startswith("mc") and (token[2:3].islower() or token[2:].isupper())
+    if not (uniform or mc_flattened):
+        return token
+    return "-".join(_capitalize_name_part(p) for p in token.split("-"))
+
+
+def normalize_author_name(author: str | None) -> str | None:
+    """Normalize an author string read off a spine.
+
+    * drops academic titles ("MUDr. David Frej" → "David Frej"),
+    * fixes casing token by token, so a mix like "MAREK Maara HOLEČEK"
+      becomes "Marek Maara Holeček" (whole-string ``normalize_casing`` leaves
+      mixed case alone on purpose — for names a per-token fix is safe),
+    * restores "Mc" capitalization ("Mcconaughey" → "McConaughey").
+
+    It never reorders or invents name parts; completing a bare surname is
+    the catalog matcher's job (``catalog_match.complete_author``).
+    """
+    if author is None:
+        return None
+    tokens = [t for t in author.split() if not _is_academic_title(t)]
+    # Titles are often comma-attached ("Václav Budínský, PhDr.") — tidy the
+    # dangling comma left behind.
+    if tokens:
+        tokens[-1] = tokens[-1].rstrip(",")
+    fixed = [_fix_name_token(t, is_first=(i == 0)) for i, t in enumerate(tokens)]
+    result = " ".join(t for t in fixed if t)
+    return result or None
+
+
 def normalize_book_fields(
     book: dict[str, object],
     *,
@@ -245,8 +330,11 @@ def normalize_book_fields(
         normalized = clean_punctuation(normalized)
         normalized = deduplicate_words(normalized)
         if apply_casing:
-            mode = _FIELD_CASING_MODE.get(field, "sentence")
-            normalized = normalize_casing(normalized, mode=mode)
+            if field == "author":
+                normalized = normalize_author_name(normalized) or ""
+            else:
+                mode = _FIELD_CASING_MODE.get(field, "sentence")
+                normalized = normalize_casing(normalized, mode=mode)
         book[field] = normalized if normalized else None
 
     return book
