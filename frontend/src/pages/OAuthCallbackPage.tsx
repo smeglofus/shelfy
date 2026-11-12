@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { formatApiError } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
+import { trackVisit } from '../lib/visits'
 import { readPendingCheckout } from '../lib/pending-checkout'
 import { ROUTES } from '../lib/routes'
 
@@ -45,6 +46,7 @@ export function OAuthCallbackPage() {
     loginWithGoogle(code, state)
       .then(() => {
         trackEvent('oauth_google_success')
+        trackVisit('google_auth')
         // If the user arrived at OAuth from "Sign in to continue" on the
         // pricing page, a pending-checkout intent is waiting in
         // sessionStorage. The pricing page owns the intent lifecycle, so

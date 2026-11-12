@@ -98,6 +98,7 @@ class Settings(BaseSettings):
     rate_limit_refresh: str = "30/minute"
     rate_limit_password_reset: str = "5/15minutes"
     rate_limit_telemetry_frontend_error: str = "15/minute"
+    rate_limit_telemetry_visit: str = "30/minute"
 
     # Password-reset TTLs — split on purpose.
     # ``password_reset_token_ttl_minutes`` controls how long an issued reset

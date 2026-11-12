@@ -20,7 +20,30 @@ spec:
         - name: worker
           image: ghcr.io/smeglofus/shelfy-worker:latest
           imagePullPolicy: Always
-          command: ["celery", "-A", "celery_app", "worker", "--loglevel=info", "-Q", "default"]
+          # Memory budget (measured 11/2026): the pool parent ~120 MiB, every idle
+          # child ~90 MiB, and a shelf scan adds up to ~250 MiB on top (decode +
+          # downscale of a 10 MB phone photo). With Celery's default concurrency
+          # (= CPU count, 8 on homelab2) a handful of parallel scans blew the old
+          # 768 Mi limit and the OOM killer took down the whole container.
+          # - concurrency 4: 4 scans in parallel; the rest wait in the queue
+          #   (scans are I/O-bound on Gemini, ~20–40 s each).
+          # - prefetch-multiplier 1: a child grabs a task only when it is free,
+          #   so a long scan does not hold queued tasks hostage.
+          # - max-memory-per-child: recycle a child that grew past ~350 MiB
+          #   after its task finishes (guards against slow leaks).
+          # Worst case 120 + 4 x (90 + 250) ~ 1.5 GiB, under the 2 Gi limit.
+          command:
+            - celery
+            - -A
+            - celery_app
+            - worker
+            - --loglevel=info
+            - -Q
+            - default
+            - --concurrency=4
+            - --prefetch-multiplier=1
+            - --max-tasks-per-child=200
+            - --max-memory-per-child=350000
           # Explicit env wins over envFrom: the worker talks to Postgres with the
           # sync (psycopg2) driver, same as in docker-compose.prod.yml.
           env:
@@ -35,6 +58,6 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 192Mi
+              memory: 512Mi
             limits:
-              memory: 768Mi
+              memory: 2Gi

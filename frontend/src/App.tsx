@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRegisterSW } from 'virtual:pwa-register/react'
@@ -29,6 +29,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ChangelogPage } from './pages/ChangelogPage'
 
 import { ROUTES } from './lib/routes'
+import { getEntrySource, trackVisit, visitPageForPath } from './lib/visits'
 
 // The demo subtree (layout chrome + the ~100-book seed library) is lazy so
 // its weight ships in a separate chunk — authenticated users never load it,
@@ -94,6 +95,20 @@ function AppShell() {
     },
   })
   const location = useLocation()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  // Capture the entry source before any in-app navigation drops utm_source.
+  useEffect(() => {
+    try {
+      getEntrySource()
+    } catch {
+      // ignore
+    }
+  }, [])
+  useEffect(() => {
+    if (authLoading) return
+    const page = visitPageForPath(location.pathname, isAuthenticated)
+    if (page) trackVisit(page)
+  }, [location.pathname, isAuthenticated, authLoading])
   // Marketing/auth pages render full-bleed with no app chrome. The demo subtree
   // (#285) keeps the sidebar `Navigation` (which is demo-aware and scopes itself
   // to `/demo/*`) on top of its own `DemoBanner`, so visitors can move between

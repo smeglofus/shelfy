@@ -61,6 +61,8 @@ _WHITELIST_PATHS: Final = frozenset(
         "/api/v1/billing/stripe/webhook",
         # Frontend error beacon is public and unauthenticated.
         "/api/v1/telemetry/frontend-error",
+        # Anonymous visit counter beacon — public, no auth, no state but a counter.
+        "/api/v1/telemetry/visit",
     }
 )
 

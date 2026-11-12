@@ -3879,6 +3879,52 @@
         }
       }
     },
+    "/api/v1/telemetry/visit": {
+      "post": {
+        "tags": [
+          "telemetry"
+        ],
+        "summary": "Visit",
+        "description": "Count an anonymous visit. Unknown pages are dropped, unknown sources become \"other\".",
+        "operationId": "visit_api_v1_telemetry_visit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisitEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Visit Api V1 Telemetry Visit Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/jobs/{job_id}": {
       "get": {
         "tags": [
@@ -7899,6 +7945,32 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VisitEvent": {
+        "properties": {
+          "page": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Page"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page"
+        ],
+        "title": "VisitEvent"
       },
       "WalletReadinessResponse": {
         "properties": {
