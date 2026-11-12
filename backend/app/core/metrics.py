@@ -26,6 +26,12 @@ FRONTEND_RUNTIME_ERRORS_TOTAL = Counter(
     labelnames=("kind",),
 )
 
+PAGE_VIEWS_TOTAL = Counter(
+    "shelfy_page_views_total",
+    "Anonymous visits by page kind and traffic source (one per page load)",
+    labelnames=("page", "source"),
+)
+
 # ── Business gauges (computed on every /metrics scrape) ───────────────────────
 # Prefixed shelfy_ to keep them apart from the request-level counters above.
 USERS_TOTAL = Gauge("shelfy_users_total", "Registered users")
@@ -72,6 +78,10 @@ def observe_external_api_latency(provider: str, start_time: float) -> None:
 
 def render_metrics() -> tuple[bytes, str]:
     return generate_latest(), CONTENT_TYPE_LATEST
+
+
+def record_page_view(page: str, source: str) -> None:
+    PAGE_VIEWS_TOTAL.labels(page=page, source=source).inc()
 
 
 def record_frontend_runtime_error(kind: str) -> None:

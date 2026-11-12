@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { formatApiError, getGoogleAuthorizeUrl } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
+import { trackVisit } from '../lib/visits'
 import { useToastStore } from '../lib/toast-store'
 import { ROUTES } from '../lib/routes'
 import {
@@ -135,6 +136,7 @@ export function LoginPage() {
 
             authAction
               .then(() => {
+                if (mode === 'register') trackVisit('signup')
                 const state = location.state as PostLoginRouteState | undefined
                 navigate(resolvePostLoginDestination(state), { replace: true })
               })

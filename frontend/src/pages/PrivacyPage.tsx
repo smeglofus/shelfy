@@ -264,6 +264,15 @@ export function PrivacyPage() {
             PostHog pracuje bez cookies; pro persistenci analytického identifikátoru využívá
             localStorage prohlížeče, který se zapíše až po vašem souhlasu.
           </p>
+          <p style={P}>
+            Nezávisle na PostHog počítáme <strong>anonymní návštěvnost</strong> veřejných stránek
+            (úvodní stránka, ukázka, ceník, přihlášení a dokončená registrace). Prohlížeč při
+            načtení takové stránky pošle jen druh stránky a zdroj návštěvy (např. „facebook“ podle
+            parametru <code>utm_source</code> nebo podle webu, ze kterého jste přišli). Neukládáme
+            IP adresu, identifikátor, adresu stránky ani nic do vašeho zařízení — na serveru se
+            jen zvýší souhrnné počítadlo. Účelem je zjistit, odkud lidé o Shelfy slyší; právním
+            základem je oprávněný zájem (čl. 6/1f GDPR).
+          </p>
         </div>
 
         {/* ── 8. Cookies a localStorage ── */}

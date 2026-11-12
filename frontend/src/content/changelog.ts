@@ -14,6 +14,27 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    date: '2026-11-12',
+    title: {
+      cs: 'Spolehlivější skenování při návalu',
+      en: 'More reliable scanning under load',
+    },
+    summary: {
+      cs: 'Zpracování skenů zvládne víc souběžných fotek bez výpadku a návštěvnost veřejných stránek počítáme anonymně, bez cookies.',
+      en: 'Scan processing now handles more simultaneous photos without crashing, and public-page visits are counted anonymously, without cookies.',
+    },
+    changed: {
+      cs: [
+        'Když skenuje víc lidí najednou, skeny se řadí do fronty místo toho, aby zpracování spadlo.',
+        'Anonymní počítadlo návštěv úvodní stránky, ukázky a ceníku: jen druh stránky a zdroj návštěvy, nic se neukládá do zařízení (zásady ochrany osobních údajů, bod 7).',
+      ],
+      en: [
+        'When several people scan at once, scans queue up instead of crashing the processing.',
+        'Anonymous visit counter for the landing, demo and pricing pages: only the page kind and traffic source, nothing stored on your device (privacy policy, section 7).',
+      ],
+    },
+  },
+  {
     date: '2026-11-11',
     title: {
       cs: 'Shelfy zdarma bez limitu knih',

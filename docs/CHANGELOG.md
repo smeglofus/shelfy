@@ -4,6 +4,11 @@ Public source for notable Shelfy changes. Keep entries short, dated, and user-fa
 
 The public page at `/changelog` is generated from `frontend/src/content/changelog.ts`. When adding a release note, update both files in the same PR until a markdown-to-page generator exists.
 
+## 2026-11-12 — Spolehlivější skenování při návalu
+
+- Worker zpracovává nejvýš 4 skeny souběžně (ostatní čekají ve frontě) a má 2 GiB paměti místo 768 MiB — předtím mohl několik souběžných skenů nepřežít (OOM).
+- Anonymní počítadlo návštěv veřejných stránek podle zdroje (`utm_source` / referrer) do Prometheu a Grafany (`shelfy_page_views_total`), bez cookies a bez ukládání do zařízení.
+
 ## 2026-11-11 — Shelfy zdarma bez limitu knih
 
 - Free tarif už nemá limit knih ani obohacení metadat a knihovnu můžeš sdílet až se třemi členy. Sken poličky je zdarma 20× měsíčně (ADR 013).
